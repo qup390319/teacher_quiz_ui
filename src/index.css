@@ -1,0 +1,80 @@
+﻿@import "tailwindcss";
+
+/* ── 主題色彩變數（Pastel & Soft Aesthetic）────────────────────── */
+:root {
+  /* 主色：偏黃薄荷綠 #8FC87A 體系 */
+  --color-primary-50:  #EEF5E6;
+  --color-primary-100: #EDF6E3;
+  --color-primary-200: #C8EAAE;
+  --color-primary-300: #C4E5AA;
+  --color-primary-400: #8FC87A;
+  --color-primary-500: #76B563;
+  --color-primary-600: #5A8A5C;
+  --color-primary-700: #3D5A3E;
+  --color-primary-800: #2D3436;
+  --color-primary-900: #1E2420;
+
+  /* 設計語彙 (Design Tokens) */
+  --bg-page:         #EEF5E6;   /* 頁面背景：極淺暖灰綠 */
+  --bg-surface:      #FFFFFF;   /* 卡片/容器白底 */
+  --bg-soft-green:   #C8EAAE;   /* 次要綠色卡片 */
+  --bg-soft-blue:    #BADDF4;   /* 藍色功能卡片 */
+  --bg-soft-pink:    #FAC8CC;   /* 粉色功能卡片 */
+  --bg-soft-yellow:  #FCF0C2;   /* 黃色功能卡片 */
+
+  --text-main:       #2D3436;   /* 標題深炭綠 */
+  --text-muted:      #636E72;   /* 次要灰 */
+  --text-hint:       #95A5A6;   /* 提示灰 */
+
+  --border-soft:     #BDC3C7;   /* 柔灰邊框（主要） */
+  --border-subtle:   #D5D8DC;   /* 極淺邊框（分隔線） */
+
+  --shadow-card:     0 2px 12px rgba(0,0,0,0.06);  /* 極微陰影 */
+
+  --radius-outer:    32px;      /* 外層大圓角 */
+  --radius-inner:    16px;      /* 內層元件圓角 */
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background-color: #EEF5E6;
+  color: #2D3436;
+}
+
+/* Chat bubble animation */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.chat-bubble-in {
+  animation: fadeInUp 0.3s ease forwards;
+}
+
+/* Thinking dots */
+@keyframes dotPulse {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40%           { transform: scale(1);   opacity: 1; }
+}
+.dot-1 { animation: dotPulse 1.2s infinite 0s; }
+.dot-2 { animation: dotPulse 1.2s infinite 0.2s; }
+.dot-3 { animation: dotPulse 1.2s infinite 0.4s; }
+
+/* Fade-in for conditional banners */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* Table cell text always wraps */
+td, th {
+  word-break: break-word;
+  white-space: normal;
+}
