@@ -1,0 +1,23 @@
+# 依賴套件（在 Docker 裡會重新安裝）
+node_modules/
+
+# 本地端已打包的產出（Docker 裡會重新打包）
+dist/
+
+# Git 版本控制資料夾
+.git/
+.gitignore
+
+# 開發用設定，不需要進 Docker
+.cursor/
+screenshot0317/
+
+# 環境變數（機密資訊，不進 image）
+.env
+.env.local
+.env.*.local
+
+# 系統產生的雜檔
+.DS_Store
+Thumbs.db
+*.log

@@ -74,10 +74,10 @@ export default function LoginPage() {
           </div>
           <h2 className="text-xl font-bold text-[#2D3436] mb-2">我是學生</h2>
           <p className="text-[#636E72] text-sm leading-relaxed mb-5">
-            與虛擬導師對話，探索自己的科學思維
+            以情境式對話完成診斷，取得個人學習體檢表
           </p>
           <div className="space-y-2">
-            {['對話式情境作答', '不顯示 ABCD 選項', '循序探索科學概念', '個人學習體檢表'].map((f) => (
+            {['對話式情境作答', '循序探索科學概念', '個人學習體檢表'].map((f) => (
               <div key={f} className="flex items-center gap-2 text-sm text-[#636E72]">
                 <span className="w-1.5 h-1.5 bg-[#5DADE2] rounded-full flex-shrink-0"></span>
                 {f}
