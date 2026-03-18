@@ -10,6 +10,7 @@ import AssignmentManagement from './pages/teacher/AssignmentManagement';
 import ClassManagement from './pages/teacher/ClassManagement';
 import ClassDetail from './pages/teacher/ClassDetail';
 import KnowledgeMap from './pages/teacher/KnowledgeMap';
+import StudentHome from './pages/student/StudentHome';
 import StudentQuiz from './pages/student/StudentQuiz';
 import StudentReport from './pages/student/StudentReport';
 
@@ -33,7 +34,8 @@ export default function App() {
           <Route path="/teacher/report" element={<TeacherReport />} />
 
           {/* 學生端 */}
-          <Route path="/student" element={<StudentQuiz />} />
+          <Route path="/student" element={<StudentHome />} />
+          <Route path="/student/quiz/:quizId" element={<StudentQuiz />} />
           <Route path="/student/report" element={<StudentReport />} />
 
           <Route path="*" element={<Navigate to="/" replace />} />

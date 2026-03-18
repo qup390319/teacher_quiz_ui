@@ -1,34 +1,45 @@
-﻿import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { defaultQuestions } from '../../data/quizData';
+import { getQuizQuestions } from '../../data/quizData';
 import { knowledgeNodes } from '../../data/knowledgeGraph';
 
 export default function StudentReport() {
   const navigate = useNavigate();
-  const { studentAnswers, correctCount, studentMisconceptions, resetStudentAnswers } = useApp();
+  const {
+    studentAnswers,
+    correctCount,
+    studentMisconceptions,
+    resetStudentAnswers,
+    currentQuizId,
+    activeStudentReport,
+  } = useApp();
 
-  const hasAnswers = studentAnswers.length > 0;
-  const totalQuestions = defaultQuestions.length;
-  const displayCorrect = hasAnswers ? correctCount : 2;
-  const displayWrong = hasAnswers ? totalQuestions - correctCount : 3;
+  const reportQuizId = activeStudentReport?.quizId || currentQuizId || 'quiz-001';
+  const reportQuestions = getQuizQuestions(reportQuizId);
+  const answerSource = activeStudentReport?.answers || studentAnswers;
+  const misconceptionSource = activeStudentReport?.misconceptions || studentMisconceptions;
+  const hasAnswers = answerSource.length > 0;
+  const totalQuestions = reportQuestions.length || 5;
+  const displayCorrect = hasAnswers ? (activeStudentReport?.correctCount ?? correctCount) : 2;
+  const displayWrong = hasAnswers ? totalQuestions - displayCorrect : 3;
 
-  const misconDetails = (hasAnswers ? studentMisconceptions : ['M01-2', 'M01-3', 'M06-2'])
+  const misconDetails = (hasAnswers ? misconceptionSource : ['M01-2', 'M01-3', 'M06-2'])
     .map((mId) => {
       const node = knowledgeNodes.find((n) => n.misconceptions.find((m) => m.id === mId));
       const miscon = node?.misconceptions.find((m) => m.id === mId);
       if (!node || !miscon) return null;
       const relatedQs = hasAnswers
-        ? studentAnswers
+        ? answerSource
             .filter((a) => a.diagnosis === mId)
-            .map((a) => defaultQuestions.find((q) => q.id === a.questionId))
+            .map((a) => reportQuestions.find((q) => q.id === a.questionId))
             .filter(Boolean)
-        : defaultQuestions.filter((q) => q.options.find((o) => o.diagnosis === mId));
+        : reportQuestions.filter((q) => q.options.find((o) => o.diagnosis === mId));
       return { node, miscon, relatedQs };
     })
     .filter(Boolean);
 
   const wrongNodeIds = (hasAnswers
-    ? studentAnswers.filter((a) => a.diagnosis !== 'CORRECT').map((a) => defaultQuestions.find((q) => q.id === a.questionId)?.knowledgeNodeId)
+    ? answerSource.filter((a) => a.diagnosis !== 'CORRECT').map((a) => reportQuestions.find((q) => q.id === a.questionId)?.knowledgeNodeId)
     : ['INa-Ⅲ-8-01', 'INa-Ⅲ-8-06']
   ).filter(Boolean);
 
@@ -50,7 +61,7 @@ export default function StudentReport() {
 
   const handleRetry = () => {
     resetStudentAnswers();
-    navigate('/student');
+    navigate(`/student/quiz/${reportQuizId}`);
   };
 
   return (
@@ -58,9 +69,21 @@ export default function StudentReport() {
       {/* Header */}
       <div className="bg-[#8FC87A] border-b border-[#BDC3C7] px-6 py-8">
         <div className="max-w-2xl mx-auto">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-2xl">📋</span>
-            <p className="text-[#3D5A3E] text-sm font-semibold">學習體檢表</p>
+          <div className="flex items-center gap-3 mb-4">
+            <button
+              type="button"
+              onClick={() => navigate('/student')}
+              className="w-9 h-9 flex items-center justify-center rounded-full border border-[#BDC3C7] bg-white/90 text-[#2D3436] hover:bg-white transition-colors"
+              aria-label="返回"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">📋</span>
+              <p className="text-[#3D5A3E] text-sm font-semibold">學習體檢表</p>
+            </div>
           </div>
           <h1 className="text-2xl font-bold text-[#2D3436] mb-4">你的科學思維診斷結果</h1>
 
@@ -106,7 +129,7 @@ export default function StudentReport() {
                   <div className="bg-[#FAC8CC] border border-[#F5B8BA] rounded-2xl p-4 mb-3">
                     <p className="text-xs font-semibold text-[#E74C5E] mb-1.5">💡 你目前的想法</p>
                     <p className="text-sm text-[#2D3436] font-medium leading-relaxed">「{miscon.label}」</p>
-                    <p className="text-sm text-[#636E72] mt-1 leading-relaxed">{miscon.detail}</p>
+                    <p className="text-sm text-[#636E72] mt-1 leading-relaxed">{miscon.studentDetail || miscon.detail}</p>
                   </div>
 
                   {relatedQs.length > 0 && (
@@ -122,7 +145,9 @@ export default function StudentReport() {
 
                   <div className="bg-[#BADDF4] border border-[#BDC3C7] rounded-2xl p-3.5">
                     <p className="text-xs font-semibold text-[#2E86C1] mb-1.5">🧪 科學上是這樣的</p>
-                    <p className="text-sm text-[#2471A3] leading-relaxed">{node.teachingStrategy.split('。')[0]}。</p>
+                    <p className="text-sm text-[#2471A3] leading-relaxed">
+                      {node.studentHint || `${node.teachingStrategy.split('。')[0]}。`}
+                    </p>
                   </div>
                 </div>
               ))}
@@ -172,13 +197,6 @@ export default function StudentReport() {
                       <p className="text-xs text-[#2E86C1] font-medium">{node.id} · 因材網</p>
                     </div>
                   </div>
-                  <div className="flex-1 bg-[#BADDF4] border border-[#BDC3C7] rounded-xl px-3 py-2.5 flex items-center gap-2">
-                    <span className="text-base">📝</span>
-                    <div>
-                      <p className="text-xs font-semibold text-[#2D3436]">互動練習</p>
-                      <p className="text-xs text-[#2E86C1] font-medium">加深理解 · 因材網</p>
-                    </div>
-                  </div>
                 </div>
               </div>
             ))}
@@ -194,7 +212,7 @@ export default function StudentReport() {
             重新作答
           </button>
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/student')}
             className="flex-1 py-3 text-sm font-semibold bg-[#8FC87A] text-[#2D3436] border border-[#BDC3C7] rounded-2xl hover:bg-[#76B563] transition-colors"
           >
             回到首頁

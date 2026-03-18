@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import TeacherLayout from '../../components/TeacherLayout';
 import { useApp } from '../../context/AppContext';
 
-// 格子：未派發
+// ─── 格子：未派發 ─────────────────────────────────────────────────────────────
 function CellEmpty({ onClick }) {
   return (
     <button
@@ -18,7 +18,7 @@ function CellEmpty({ onClick }) {
   );
 }
 
-// 格子：進行中
+// ─── 格子：已派發 ─────────────────────────────────────────────────────────────
 function CellActive({ assignment, onClick }) {
   const pct = assignment.completionRate;
   const barColor = pct === 100 ? '#8FC87A' : pct >= 50 ? '#F4D03F' : '#F28B95';
@@ -27,12 +27,11 @@ function CellActive({ assignment, onClick }) {
   return (
     <button
       onClick={onClick}
-      disabled={pct === 0}
       className={`w-full h-full min-h-[88px] flex flex-col items-start justify-between p-3 rounded-2xl border transition-all ${
         isComplete
           ? 'bg-[#C8EAAE] border-[#8FC87A] hover:bg-[#8FC87A]'
           : pct === 0
-          ? 'bg-[#EEF5E6] border-[#D5D8DC] cursor-default'
+          ? 'bg-[#EEF5E6] border-[#D5D8DC] hover:bg-[#DDE8D4]'
           : 'bg-[#FCF0C2] border-[#F5D669] hover:bg-[#F8E89A]'
       }`}
     >
@@ -42,11 +41,10 @@ function CellActive({ assignment, onClick }) {
         }`}>
           {isComplete ? '已完成' : pct === 0 ? '待作答' : '進行中'}
         </span>
-        {pct > 0 && (
-          <svg className="w-3.5 h-3.5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        )}
+        <svg className="w-3.5 h-3.5 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+        </svg>
       </div>
       <div className="w-full">
         <div className="flex items-end justify-between mb-1.5">
@@ -63,12 +61,15 @@ function CellActive({ assignment, onClick }) {
             style={{ width: `${pct}%`, backgroundColor: barColor }}
           />
         </div>
+        {assignment.dueDate && (
+          <p className="text-[10px] text-[#95A5A6] mt-1.5 truncate">截止：{assignment.dueDate}</p>
+        )}
       </div>
     </button>
   );
 }
 
-// Popover：點擊空格子後顯示
+// ─── Popover：派發考卷 ────────────────────────────────────────────────────────
 function AssignPopover({ quiz, cls, onConfirm, onClose }) {
   const [dueDate, setDueDate] = useState('');
   const ref = useRef(null);
@@ -119,10 +120,141 @@ function AssignPopover({ quiz, cls, onConfirm, onClose }) {
   );
 }
 
+// ─── Popover：管理已派發考卷 ──────────────────────────────────────────────────
+function ManagePopover({ assignment, quiz, cls, onViewReport, onUpdateDueDate, onRemove, onClose }) {
+  const [dueDate, setDueDate] = useState(assignment.dueDate || '');
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
+  const [dueDateDirty, setDueDateDirty] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) onClose();
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [onClose]);
+
+  const handleDueDateChange = (value) => {
+    setDueDate(value);
+    setDueDateDirty(value !== (assignment.dueDate || ''));
+  };
+
+  const handleSaveDueDate = () => {
+    onUpdateDueDate(assignment.id, dueDate);
+    setDueDateDirty(false);
+  };
+
+  const pct = assignment.completionRate;
+
+  return (
+    <div
+      ref={ref}
+      className="absolute top-full left-0 mt-2 z-30 bg-white border border-[#BDC3C7] rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.12)] p-4 w-64"
+    >
+      {/* 標題 */}
+      <div className="mb-4">
+        <div className="flex items-center gap-1.5 mb-1">
+          <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: cls.color }} />
+          <p className="text-sm font-bold text-[#2D3436]">{cls.name}</p>
+        </div>
+        <p className="text-xs text-[#95A5A6] truncate">{quiz.title}</p>
+      </div>
+
+      {/* 資訊列 */}
+      <div className="space-y-2 mb-4">
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-[#636E72]">派發日期</span>
+          <span className="text-[#2D3436] font-medium">{assignment.assignedAt}</span>
+        </div>
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-[#636E72]">完成進度</span>
+          <span className={`font-bold ${pct === 100 ? 'text-[#3D5A3E]' : pct >= 50 ? 'text-[#B7950B]' : pct > 0 ? 'text-[#E74C5E]' : 'text-[#95A5A6]'}`}>
+            {assignment.submittedCount}/{assignment.totalStudents} 人（{pct}%）
+          </span>
+        </div>
+      </div>
+
+      {/* 截止日期編輯 */}
+      <div className="mb-4">
+        <label className="text-xs text-[#636E72] mb-1 block">截止日期</label>
+        <div className="flex gap-2">
+          <input
+            type="date"
+            value={dueDate}
+            onChange={(e) => handleDueDateChange(e.target.value)}
+            className="flex-1 border border-[#BDC3C7] rounded-xl px-2.5 py-1.5 text-sm text-[#2D3436] focus:outline-none focus:ring-2 focus:ring-[#8FC87A]"
+          />
+          {dueDateDirty && (
+            <button
+              onClick={handleSaveDueDate}
+              className="px-3 py-1.5 text-xs font-semibold bg-[#8FC87A] text-[#2D3436] border border-[#BDC3C7] rounded-xl hover:bg-[#76B563] transition-colors flex-shrink-0"
+            >
+              儲存
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* 操作按鈕 */}
+      <div className="space-y-2">
+        <button
+          onClick={() => onViewReport(assignment.classId, assignment.quizId)}
+          disabled={pct === 0}
+          className={`w-full py-2 text-xs font-semibold rounded-xl border transition-colors ${
+            pct > 0
+              ? 'bg-[#8FC87A] text-[#2D3436] border-[#BDC3C7] hover:bg-[#76B563]'
+              : 'bg-[#EEF5E6] text-[#95A5A6] border-[#D5D8DC] cursor-not-allowed'
+          }`}
+        >
+          {pct > 0 ? '查看診斷報告' : '尚無作答資料'}
+        </button>
+
+        {/* 取消派發 */}
+        {!confirmingRemove ? (
+          <button
+            onClick={() => setConfirmingRemove(true)}
+            className="w-full py-2 text-xs font-medium text-[#E74C5E] border border-[#F5B8BA] rounded-xl hover:bg-[#FAC8CC] transition-colors"
+          >
+            取消派發
+          </button>
+        ) : (
+          <div className="border border-[#F5B8BA] rounded-xl p-3 bg-[#FFF5F5]">
+            <p className="text-xs text-[#E74C5E] mb-2 leading-relaxed">
+              確定要取消派發嗎？已收到的作答資料將被清除。
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setConfirmingRemove(false)}
+                className="flex-1 py-1.5 text-xs font-medium text-[#636E72] border border-[#BDC3C7] rounded-xl hover:bg-[#EEF5E6] transition-colors"
+              >
+                返回
+              </button>
+              <button
+                onClick={() => onRemove(assignment.id)}
+                className="flex-1 py-1.5 text-xs font-semibold bg-[#E74C5E] text-white border border-[#E74C5E] rounded-xl hover:bg-[#C0392B] transition-colors"
+              >
+                確認取消
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── 主頁面 ───────────────────────────────────────────────────────────────────
 export default function AssignmentManagement() {
   const navigate = useNavigate();
-  const { assignments, quizzes, classes, addAssignment, setCurrentClassId } = useApp();
-  const [popover, setPopover] = useState(null); // { quizId, classId } | null
+  const {
+    assignments, quizzes, classes,
+    addAssignment, updateAssignment, removeAssignment,
+    setCurrentClassId, setCurrentQuizId,
+  } = useApp();
+
+  const [popover, setPopover] = useState(null);
+  const [managePopover, setManagePopover] = useState(null);
 
   const publishedQuizzes = quizzes.filter((q) => q.status === 'published');
 
@@ -152,23 +284,31 @@ export default function AssignmentManagement() {
     setPopover(null);
   };
 
-  const handleViewReport = (classId) => {
+  const handleViewReport = (classId, quizId) => {
     setCurrentClassId(classId);
+    setCurrentQuizId(quizId);
     navigate('/teacher/dashboard');
+  };
+
+  const handleUpdateDueDate = (assignmentId, dueDate) => {
+    updateAssignment(assignmentId, { dueDate });
+  };
+
+  const handleRemove = (assignmentId) => {
+    removeAssignment(assignmentId);
+    setManagePopover(null);
   };
 
   return (
     <TeacherLayout>
       <div className="p-8">
-        {/* 頁首 */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-[#2D3436]">派題管理</h1>
           <p className="text-[#636E72] mt-1 text-sm">
-            點擊空格即可將考卷派發給班級，點擊已派格子可查看診斷報告
+            點擊空格即可將考卷派發給班級，點擊已派格子可管理派發狀態或查看診斷報告
           </p>
         </div>
 
-        {/* 空狀態：無已發佈考卷 */}
         {publishedQuizzes.length === 0 ? (
           <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-12 text-center shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
             <div className="w-14 h-14 bg-[#EEF5E6] rounded-full flex items-center justify-center mx-auto mb-4">
@@ -190,9 +330,7 @@ export default function AssignmentManagement() {
             </button>
           </div>
         ) : (
-          /* 矩陣看板 */
           <div className="bg-white rounded-[32px] border border-[#BDC3C7] shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-            {/* 表頭：班級欄 */}
             <div
               className="grid border-b border-[#D5D8DC] bg-[#EEF5E6] rounded-t-[32px]"
               style={{ gridTemplateColumns: `280px repeat(${classes.length}, 1fr)` }}
@@ -211,14 +349,12 @@ export default function AssignmentManagement() {
               ))}
             </div>
 
-            {/* 矩陣列 */}
             {matrix.map(({ quiz, cells }, rowIdx) => (
               <div
                 key={quiz.id}
                 className={`grid ${rowIdx < matrix.length - 1 ? 'border-b border-[#D5D8DC]' : ''}`}
                 style={{ gridTemplateColumns: `280px repeat(${classes.length}, 1fr)` }}
               >
-                {/* 考卷資訊欄 */}
                 <div className="px-5 py-4 flex flex-col justify-center">
                   <div className="flex items-center gap-1.5 mb-1">
                     <span className="text-xs font-bold bg-[#C8EAAE] text-[#3D5A3E] border border-[#BDC3C7] px-2 py-0.5 rounded-full">
@@ -229,12 +365,11 @@ export default function AssignmentManagement() {
                   <p className="text-xs text-[#95A5A6]">{quiz.questionCount} 題 · {quiz.knowledgeNodeIds.length} 個節點</p>
                 </div>
 
-                {/* 班級格子 */}
                 {cells.map(({ cls, assignment }) => (
                   <div key={cls.id} className="p-3 border-l border-[#D5D8DC] relative">
                     {assignment === null ? (
                       <>
-                        <CellEmpty onClick={() => setPopover({ quizId: quiz.id, classId: cls.id })} />
+                        <CellEmpty onClick={() => { setPopover({ quizId: quiz.id, classId: cls.id }); setManagePopover(null); }} />
                         {popover?.quizId === quiz.id && popover?.classId === cls.id && (
                           <AssignPopover
                             quiz={quiz}
@@ -245,17 +380,29 @@ export default function AssignmentManagement() {
                         )}
                       </>
                     ) : (
-                      <CellActive
-                        assignment={assignment}
-                        onClick={() => assignment.completionRate > 0 && handleViewReport(cls.id)}
-                      />
+                      <>
+                        <CellActive
+                          assignment={assignment}
+                          onClick={() => { setManagePopover({ assignmentId: assignment.id, quizId: quiz.id, classId: cls.id }); setPopover(null); }}
+                        />
+                        {managePopover?.assignmentId === assignment.id && (
+                          <ManagePopover
+                            assignment={assignment}
+                            quiz={quiz}
+                            cls={cls}
+                            onViewReport={handleViewReport}
+                            onUpdateDueDate={handleUpdateDueDate}
+                            onRemove={handleRemove}
+                            onClose={() => setManagePopover(null)}
+                          />
+                        )}
+                      </>
                     )}
                   </div>
                 ))}
               </div>
             ))}
 
-            {/* 圖例說明 */}
             <div className="px-5 py-3 border-t border-[#D5D8DC] bg-[#EEF5E6] rounded-b-[32px] flex items-center gap-6">
               <span className="text-xs text-[#95A5A6] font-medium">圖例：</span>
               {[

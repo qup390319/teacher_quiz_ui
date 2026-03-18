@@ -11,42 +11,115 @@ import InfoDrawer from '../../components/InfoDrawer';
 import { CHART_INFO } from '../../data/chartInfoConfig';
 import { knowledgeNodes } from '../../data/knowledgeGraph';
 import {
-  defaultQuestions, classAnswers,
+  getQuizQuestions, getClassAnswers,
   getQuestionStats, getMisconceptionStudents, getNodePassRates,
 } from '../../data/quizData';
 
-const TOTAL_STUDENTS = classAnswers.length;
+// ─── 常數 & Helper ────────────────────────────────────────────────────────────
+const CLASS_KEY_MAP = { 'class-A': 'classA', 'class-B': 'classB', 'class-C': 'classC' };
+const CLASS_CHART_COLORS = { 'class-A': '#8FC87A', 'class-B': '#5DADE2', 'class-C': '#F4D03F' };
 
-// ─── 跨班靜態模擬資料（供展示用）────────────────────────────────────────────
-const OVERVIEW_MOCK_DATA = {
-  classStats: [
-    { id: 'class-A', name: '三年甲班', color: '#8FC87A', completionRate: 100, avgPassRate: 57, highFreqMisconCount: 3, pendingStudents: 0 },
-    { id: 'class-B', name: '三年乙班', color: '#5DADE2', completionRate: 72,  avgPassRate: 49, highFreqMisconCount: 4, pendingStudents: 5 },
-    { id: 'class-C', name: '三年丙班', color: '#F4D03F', completionRate: 45,  avgPassRate: 38, highFreqMisconCount: 5, pendingStudents: 12 },
-  ],
-  nodePassRates: [
-    { name: '熱傳導',    id: 'INa-Ⅲ-8-01', classA: 40, classB: 33, classC: 27 },
-    { name: '熱對流(氣)', id: 'INa-Ⅲ-8-03', classA: 35, classB: 28, classC: 18 },
-    { name: '熱輻射阻擋', id: 'INa-Ⅲ-8-05', classA: 45, classB: 44, classC: 32 },
-    { name: '阻隔與保溫', id: 'INa-Ⅲ-8-06', classA: 30, classB: 40, classC: 36 },
-    { name: '加快散熱',  id: 'Na-Ⅲ-8-07',  classA: 50, classB: 50, classC: 45 },
-  ],
-  topMisconceptions: [
-    { id: 'M01-1', label: '不同材質在同環境下溫度不同', node: '熱傳導',    classA: 30, classB: 39, classC: 50, avg: 40 },
-    { id: 'M03-1', label: '冷熱空氣流向混淆',           node: '熱對流(氣)', classA: 35, classB: 44, classC: 55, avg: 45 },
-    { id: 'M06-4', label: '生活經驗干擾保溫原理',        node: '阻隔與保溫', classA: 35, classB: 28, classC: 41, avg: 35 },
-    { id: 'M05-1', label: '遮蔽物能主動製冷',            node: '熱輻射阻擋', classA: 25, classB: 33, classC: 36, avg: 31 },
-    { id: 'M07-3', label: '散熱風扇只是為了換新鮮空氣',  node: '加快散熱',   classA: 20, classB: 22, classC: 32, avg: 25 },
-    { id: 'M01-2', label: '冷是一種可傳播的能量',         node: '熱傳導',    classA: 10, classB: 17, classC: 23, avg: 17 },
-  ],
-};
+function getAssignment(assignments, classId, quizId) {
+  return assignments.find(a => a.classId === classId && a.quizId === quizId) ?? null;
+}
+
+function getAvailableQuizzesForClass(assignments, quizzes, classId) {
+  const quizIds = [...new Set(assignments.filter(a => a.classId === classId).map(a => a.quizId))];
+  return quizzes.filter(q => quizIds.includes(q.id));
+}
+
+function getAllAssignedQuizzes(assignments, quizzes) {
+  const quizIds = [...new Set(assignments.map(a => a.quizId))];
+  return quizzes.filter(q => quizIds.includes(q.id));
+}
+
+function getLatestQuizIdForClass(assignments, classId) {
+  const sorted = assignments
+    .filter(a => a.classId === classId)
+    .sort((a, b) => b.assignedAt.localeCompare(a.assignedAt));
+  return sorted[0]?.quizId ?? null;
+}
+
+// 為指定考卷動態計算跨班診斷資料
+function computeOverviewForQuiz(quizId, classes, assignments) {
+  const questions = getQuizQuestions(quizId);
+  if (questions.length === 0) return null;
+  const nodeIds = [...new Set(questions.map(q => q.knowledgeNodeId))];
+
+  const classStats = [];
+  classes.forEach(cls => {
+    const assignment = getAssignment(assignments, cls.id, quizId);
+    if (!assignment) return;
+
+    const answersData = getClassAnswers(quizId, cls.id);
+    const totalStudents = answersData.length;
+
+    const passRates = getNodePassRates(quizId, cls.id);
+    const vals = Object.values(passRates);
+    const avgPassRate = vals.length > 0
+      ? Math.round(vals.reduce((s, v) => s + v, 0) / vals.length) : 0;
+
+    const misconStudents = getMisconceptionStudents(quizId, cls.id);
+    const highFreqMisconCount = totalStudents > 0
+      ? Object.values(misconStudents)
+          .filter(students => Math.round((students.length / totalStudents) * 100) >= 30).length
+      : 0;
+
+    classStats.push({
+      id: cls.id,
+      name: cls.name,
+      color: CLASS_CHART_COLORS[cls.id] || '#BDC3C7',
+      completionRate: assignment.completionRate,
+      avgPassRate,
+      highFreqMisconCount,
+      pendingStudents: assignment.totalStudents - assignment.submittedCount,
+    });
+  });
+
+  if (classStats.length === 0) return null;
+
+  const nodePassRates = nodeIds.map(nodeId => {
+    const node = knowledgeNodes.find(n => n.id === nodeId);
+    const entry = { name: node?.name ?? nodeId, id: nodeId };
+    classStats.forEach(cs => {
+      const rates = getNodePassRates(quizId, cs.id);
+      entry[CLASS_KEY_MAP[cs.id] ?? cs.id] = rates[nodeId] ?? 0;
+    });
+    return entry;
+  });
+
+  const misconMap = {};
+  classStats.forEach(cs => {
+    const answersData = getClassAnswers(quizId, cs.id);
+    const total = answersData.length;
+    if (total === 0) return;
+    const ms = getMisconceptionStudents(quizId, cs.id);
+    Object.entries(ms).forEach(([mid, students]) => {
+      if (!misconMap[mid]) {
+        const nd = knowledgeNodes.find(n => n.misconceptions?.find(m => m.id === mid));
+        const mc = nd?.misconceptions?.find(m => m.id === mid);
+        misconMap[mid] = { id: mid, label: mc?.label ?? mid, node: nd?.name ?? '' };
+      }
+      misconMap[mid][CLASS_KEY_MAP[cs.id] ?? cs.id] = Math.round((students.length / total) * 100);
+    });
+  });
+
+  const topMisconceptions = Object.values(misconMap).map(m => {
+    const keys = classStats.map(cs => CLASS_KEY_MAP[cs.id] ?? cs.id);
+    const values = keys.map(k => m[k] || 0).filter(v => v > 0);
+    keys.forEach(k => { if (m[k] === undefined) m[k] = 0; });
+    return { ...m, avg: values.length > 0 ? Math.round(values.reduce((s, v) => s + v, 0) / values.length) : 0 };
+  }).sort((a, b) => b.avg - a.avg).slice(0, 6);
+
+  return { classStats, nodePassRates, topMisconceptions };
+}
 
 
 // ─── AI 診斷摘要 ──────────────────────────────────────────────────────────────
-function AIDiagnosisSummary() {
+function AIDiagnosisSummary({ quizId, classId, totalStudents }) {
   const [infoOpen, setInfoOpen] = useState(false);
-  const passRates = getNodePassRates();
-  const misconStudents = getMisconceptionStudents();
+  const passRates = getNodePassRates(quizId, classId);
+  const misconStudents = getMisconceptionStudents(quizId, classId);
 
   const passRateValues = Object.values(passRates);
   const avgPassRate = passRateValues.length > 0
@@ -57,7 +130,7 @@ function AIDiagnosisSummary() {
     .map(([id, students]) => ({
       id,
       count: students.length,
-      pct: Math.round((students.length / TOTAL_STUDENTS) * 100),
+      pct: Math.round((students.length / totalStudents) * 100),
     }))
     .filter(({ pct }) => pct >= 30)
     .sort((a, b) => b.pct - a.pct);
@@ -98,7 +171,6 @@ function AIDiagnosisSummary() {
       return true;
     });
 
-  // 下一步行動建議
   const nextStep = isGood
     ? '可設計跨概念的應用情境題，進行延伸學習，強化概念遷移能力。'
     : isWarning
@@ -177,15 +249,11 @@ function AIDiagnosisSummary() {
 }
 
 // ─── 本週行動清單 ─────────────────────────────────────────────────────────────
-function WeeklyActionChecklist() {
+function WeeklyActionChecklist({ quizId, classId, totalStudents }) {
   const [infoOpen, setInfoOpen] = useState(false);
-  const misconStudents = getMisconceptionStudents();
+  const misconStudents = getMisconceptionStudents(quizId, classId);
   const highFreqMiscons = Object.entries(misconStudents)
-    .map(([id, students]) => ({
-      id,
-      count: students.length,
-      pct: Math.round((students.length / TOTAL_STUDENTS) * 100),
-    }))
+    .map(([id, students]) => ({ id, count: students.length, pct: Math.round((students.length / totalStudents) * 100) }))
     .filter(({ pct }) => pct >= 30)
     .sort((a, b) => b.pct - a.pct);
 
@@ -198,9 +266,7 @@ function WeeklyActionChecklist() {
         </div>
         <span className="text-xs text-[#95A5A6]">依緊急程度排序</span>
       </div>
-      <p className="text-sm text-[#636E72] mb-4">
-        針對高頻迷思（≥30% 學生持有）的具體補救行動，完成後可安排複測追蹤
-      </p>
+      <p className="text-sm text-[#636E72] mb-4">針對高頻迷思（≥30% 學生持有）的具體補救行動，完成後可安排複測追蹤</p>
 
       {highFreqMiscons.length === 0 ? (
         <div className="bg-[#C8EAAE] rounded-2xl border border-[#BDC3C7] p-6 text-center">
@@ -217,94 +283,58 @@ function WeeklyActionChecklist() {
               : pct >= 45
               ? { label: '建議補救', color: 'bg-[#FCF0C2] text-[#B7950B] border-[#F5D669]' }
               : { label: '留意觀察', color: 'bg-[#FCF0C2] text-[#D4AC0D] border-[#F5D669]' };
-            const prereqNames = node.prerequisites
-              .map(pid => knowledgeNodes.find(n => n.id === pid)?.name)
-              .filter(Boolean);
+            const prereqNames = node.prerequisites.map(pid => knowledgeNodes.find(n => n.id === pid)?.name).filter(Boolean);
 
             return (
-              <div
-                key={id}
-                className={`bg-white px-5 py-4 ${idx < highFreqMiscons.length - 1 ? 'border-b border-[#D5D8DC]' : ''}`}
-              >
-                {/* 第一行：序號 + 緊急程度 + 迷思名稱 + 概念 tag */}
+              <div key={id} className={`bg-white px-5 py-4 ${idx < highFreqMiscons.length - 1 ? 'border-b border-[#D5D8DC]' : ''}`}>
                 <div className="flex items-center gap-2.5 mb-2">
-                  <span className="w-6 h-6 rounded-full bg-[#3D5A3E] text-white text-xs flex items-center justify-center font-bold flex-shrink-0">
-                    {idx + 1}
-                  </span>
-                  <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border flex-shrink-0 ${urgency.color}`}>
-                    {urgency.label} {pct}%
-                  </span>
+                  <span className="w-6 h-6 rounded-full bg-[#3D5A3E] text-white text-xs flex items-center justify-center font-bold flex-shrink-0">{idx + 1}</span>
+                  <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border flex-shrink-0 ${urgency.color}`}>{urgency.label} {pct}%</span>
                   <p className="text-sm font-semibold text-[#2D3436] flex-1 min-w-0 truncate">{miscon.label}</p>
-                  <span className="text-xs text-[#636E72] bg-[#EEF5E6] border border-[#D5D8DC] px-2 py-0.5 rounded-full flex-shrink-0 whitespace-nowrap">
-                    {node.name}
-                  </span>
+                  <span className="text-xs text-[#636E72] bg-[#EEF5E6] border border-[#D5D8DC] px-2 py-0.5 rounded-full flex-shrink-0 whitespace-nowrap">{node.name}</span>
                 </div>
-
-                {/* 第二行：教學策略（最多 2 行） */}
                 <div className="flex items-start gap-2 ml-[34px]">
                   <span className="text-[#3D5A3E] font-bold text-sm flex-shrink-0 mt-0.5">→</span>
                   <p className="text-sm text-[#2D3436] leading-relaxed line-clamp-2">{node.teachingStrategy}</p>
                 </div>
-
-                {/* 先備概念 tag（如有） */}
                 {prereqNames.length > 0 && (
                   <div className="flex items-center gap-1.5 mt-1.5 ml-[34px]">
                     <span className="text-xs text-[#636E72]">先備確認：</span>
                     {prereqNames.map(name => (
-                      <span key={name} className="text-xs bg-[#FCF0C2] border border-[#F5D669] text-[#B7950B] px-2 py-0.5 rounded-full">
-                        {name}
-                      </span>
+                      <span key={name} className="text-xs bg-[#FCF0C2] border border-[#F5D669] text-[#B7950B] px-2 py-0.5 rounded-full">{name}</span>
                     ))}
                   </div>
                 )}
               </div>
             );
           })}
-
-          {/* 下週追蹤 footer */}
           <div className="bg-[#EEF5E6] border-t border-[#D5D8DC] px-5 py-3 flex items-start gap-2">
             <svg className="w-4 h-4 text-[#3D5A3E] flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
             <p className="text-xs text-[#2D3436] leading-relaxed">
-              <span className="font-bold text-[#3D5A3E]">下週追蹤：</span>
-              完成上述補救教學後，安排簡短複測確認迷思是否已澄清，再決定是否需要進一步介入。
+              <span className="font-bold text-[#3D5A3E]">下週追蹤：</span>完成上述補救教學後，安排簡短複測確認迷思是否已澄清，再決定是否需要進一步介入。
             </p>
           </div>
         </div>
       )}
-      <InfoDrawer
-        isOpen={infoOpen}
-        onClose={() => setInfoOpen(false)}
-        config={CHART_INFO['weekly-action-checklist']}
-        dynamicStatus={`目前共有 ${highFreqMiscons.length} 個高頻迷思（持有率 ≥30%）需要教學介入，依緊急程度排列於下方清單。`}
-      />
+      <InfoDrawer isOpen={infoOpen} onClose={() => setInfoOpen(false)} config={CHART_INFO['weekly-action-checklist']}
+        dynamicStatus={`目前共有 ${highFreqMiscons.length} 個高頻迷思（持有率 ≥30%）需要教學介入，依緊急程度排列於下方清單。`} />
     </div>
   );
 }
 
-// ─── 迷思概念分佈（可展開學生名單）──────────────────────────────────────────
-function MisconceptionDistribution() {
+// ─── 迷思概念分佈 ─────────────────────────────────────────────────────────────
+function MisconceptionDistribution({ quizId, classId, totalStudents }) {
   const [expandedIds, setExpandedIds] = useState(new Set());
   const [infoOpen, setInfoOpen] = useState(false);
-  const misconStudents = getMisconceptionStudents();
+  const misconStudents = getMisconceptionStudents(quizId, classId);
 
   const sorted = Object.entries(misconStudents)
-    .map(([id, students]) => ({
-      id,
-      students,
-      pct: Math.round((students.length / TOTAL_STUDENTS) * 100),
-    }))
+    .map(([id, students]) => ({ id, students, pct: Math.round((students.length / totalStudents) * 100) }))
     .sort((a, b) => b.pct - a.pct);
 
-  const toggle = (id) => {
-    setExpandedIds(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  };
+  const toggle = (id) => setExpandedIds(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
 
   return (
     <div>
@@ -312,72 +342,45 @@ function MisconceptionDistribution() {
         <h3 className="text-base font-bold text-[#2D3436]">迷思概念分佈</h3>
         <InfoButton onClick={() => setInfoOpen(true)} />
       </div>
-      <p className="text-sm text-[#636E72] mb-4">
-        依佔比由高至低排列，點擊「展開」可查看持有該迷思的學生名單
-      </p>
+      <p className="text-sm text-[#636E72] mb-4">依佔比由高至低排列，點擊「展開」可查看持有該迷思的學生名單</p>
       <div className="space-y-2">
         {sorted.map(({ id, students, pct }) => {
           const node = knowledgeNodes.find(n => n.misconceptions.find(m => m.id === id));
           const miscon = node?.misconceptions.find(m => m.id === id);
           const isExpanded = expandedIds.has(id);
-
           const urgencyColor = pct >= 50
-            ? { bar: '#F28B95', text: 'text-[#E74C5E]', badge: 'bg-[#FAC8CC] text-[#E74C5E] border-[#F5B8BA]' }
+            ? { bar: '#F28B95', badge: 'bg-[#FAC8CC] text-[#E74C5E] border-[#F5B8BA]' }
             : pct >= 30
-            ? { bar: '#F4D03F', text: 'text-[#B7950B]', badge: 'bg-[#FCF0C2] text-[#B7950B] border-[#F5D669]' }
-            : { bar: '#BDC3C7', text: 'text-[#636E72]', badge: 'bg-[#EEF5E6] text-[#636E72] border-[#D5D8DC]' };
+            ? { bar: '#F4D03F', badge: 'bg-[#FCF0C2] text-[#B7950B] border-[#F5D669]' }
+            : { bar: '#BDC3C7', badge: 'bg-[#EEF5E6] text-[#636E72] border-[#D5D8DC]' };
 
           return (
             <div key={id} className="bg-[#EEF5E6] rounded-2xl border border-[#D5D8DC] overflow-hidden">
-              {/* 主列：點擊展開/收合 */}
               <div className="flex items-center gap-3 px-4 py-3">
-                {/* urgency badge */}
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full border flex-shrink-0 ${urgencyColor.badge}`}>
-                  {pct}%
-                </span>
-
-                {/* 迷思名稱 */}
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-full border flex-shrink-0 ${urgencyColor.badge}`}>{pct}%</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-[#2D3436] truncate">{miscon?.label}</p>
                   <p className="text-xs text-[#95A5A6] truncate">{node?.name} · {id}</p>
                 </div>
-
-                {/* 進度條 + 人數 */}
                 <div className="flex items-center gap-3 flex-shrink-0">
                   <div className="w-28 bg-[#D5D8DC] rounded-full h-2">
-                    <div
-                      className="h-2 rounded-full transition-all"
-                      style={{ width: `${pct}%`, backgroundColor: urgencyColor.bar }}
-                    />
+                    <div className="h-2 rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: urgencyColor.bar }} />
                   </div>
-                  <span className="text-xs text-[#636E72] w-14 text-right">
-                    {students.length}/{TOTAL_STUDENTS} 人
-                  </span>
+                  <span className="text-xs text-[#636E72] w-14 text-right">{students.length}/{totalStudents} 人</span>
                 </div>
-
-                {/* 展開按鈕 */}
-                <button
-                  onClick={() => toggle(id)}
-                  className="flex items-center gap-1 text-xs font-semibold text-[#636E72] hover:text-[#2D3436] transition-colors flex-shrink-0 border border-[#BDC3C7] bg-white rounded-xl px-2.5 py-1"
-                >
+                <button onClick={() => toggle(id)}
+                  className="flex items-center gap-1 text-xs font-semibold text-[#636E72] hover:text-[#2D3436] transition-colors flex-shrink-0 border border-[#BDC3C7] bg-white rounded-xl px-2.5 py-1">
                   {isExpanded ? '收合' : `展開 ${students.length} 人`}
-                  <svg
-                    className={`w-3.5 h-3.5 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                  >
+                  <svg className={`w-3.5 h-3.5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
               </div>
-
-              {/* 展開的學生名單 */}
               {isExpanded && (
                 <div className="px-4 pb-3 pt-0 border-t border-[#D5D8DC] bg-white">
                   <div className="flex flex-wrap gap-1.5 pt-3">
                     {students.map(name => (
-                      <span key={name} className="text-xs bg-[#EEF5E6] border border-[#D5D8DC] text-[#636E72] px-2.5 py-1 rounded-full">
-                        {name}
-                      </span>
+                      <span key={name} className="text-xs bg-[#EEF5E6] border border-[#D5D8DC] text-[#636E72] px-2.5 py-1 rounded-full">{name}</span>
                     ))}
                   </div>
                 </div>
@@ -386,51 +389,33 @@ function MisconceptionDistribution() {
           );
         })}
       </div>
-      <InfoDrawer
-        isOpen={infoOpen}
-        onClose={() => setInfoOpen(false)}
-        config={CHART_INFO['misconception-distribution']}
-        dynamicStatus={`目前共偵測到 ${sorted.length} 種迷思概念。持有率最高的迷思為「${sorted[0]?.label ?? '—'}」（${sorted[0]?.pct ?? 0}%）。高頻迷思（≥30%）共 ${sorted.filter(m => m.pct >= 30).length} 種。`}
-      />
+      <InfoDrawer isOpen={infoOpen} onClose={() => setInfoOpen(false)} config={CHART_INFO['misconception-distribution']}
+        dynamicStatus={`目前共偵測到 ${sorted.length} 種迷思概念。持有率最高的迷思為「${sorted[0]?.label ?? '—'}」（${sorted[0]?.pct ?? 0}%）。高頻迷思（≥30%）共 ${sorted.filter(m => m.pct >= 30).length} 種。`} />
     </div>
   );
 }
 
-// ─── 知識節點通過率圖（顏色編碼）────────────────────────────────────────────
-function BreakdownChart() {
+// ─── 知識節點通過率圖 ─────────────────────────────────────────────────────────
+function BreakdownChart({ quizId, classId }) {
   const [infoOpen, setInfoOpen] = useState(false);
-  const passRates = getNodePassRates();
-  const chartData = knowledgeNodes
-    .filter(n => passRates[n.id] !== undefined)
-    .map(node => ({
-      name: node.name,
-      id: node.id,
-      passRate: passRates[node.id] || 0,
-    }));
+  const passRates = getNodePassRates(quizId, classId);
+  const chartData = knowledgeNodes.filter(n => passRates[n.id] !== undefined)
+    .map(node => ({ name: node.name, id: node.id, passRate: passRates[node.id] || 0 }));
 
   const rateValues = Object.values(passRates);
-  const avgPassRate = rateValues.length > 0
-    ? Math.round(rateValues.reduce((s, v) => s + v, 0) / rateValues.length)
-    : 0;
+  const avgPassRate = rateValues.length > 0 ? Math.round(rateValues.reduce((s, v) => s + v, 0) / rateValues.length) : 0;
   const belowThreshold = rateValues.filter(r => r < 50).length;
-  const breakdownStatus = `目前班級各概念平均答對率為 ${avgPassRate}%。${
-    belowThreshold > 0
-      ? `共有 ${belowThreshold} 個概念答對率低於 50%，建議優先安排補救教學。`
-      : '所有概念答對率均達 50% 以上，表現良好。'
-  }`;
+  const breakdownStatus = `目前班級各概念平均答對率為 ${avgPassRate}%。${belowThreshold > 0 ? `共有 ${belowThreshold} 個概念答對率低於 50%，建議優先安排補救教學。` : '所有概念答對率均達 50% 以上，表現良好。'}`;
 
-  const getBarColor = (rate) =>
-    rate >= 70 ? '#8FC87A' : rate >= 50 ? '#F4D03F' : '#F28B95';
-
+  const getBarColor = (rate) => rate >= 70 ? '#8FC87A' : rate >= 50 ? '#F4D03F' : '#F28B95';
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload?.length) {
       const d = payload[0].payload;
-      const color = getBarColor(d.passRate);
       return (
         <div className="bg-white border border-[#BDC3C7] rounded-xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] p-3 text-sm">
           <p className="font-bold text-[#2D3436]">{d.name}</p>
           <p className="text-xs text-[#636E72] mb-1">{d.id}</p>
-          <p className="font-semibold" style={{ color }}>答對率：{d.passRate}%</p>
+          <p className="font-semibold" style={{ color: getBarColor(d.passRate) }}>答對率：{d.passRate}%</p>
           <p className="text-xs text-[#95A5A6] mt-0.5">（答對人數 / 全班人數）</p>
         </div>
       );
@@ -444,15 +429,9 @@ function BreakdownChart() {
         <h3 className="text-base font-bold text-[#2D3436]">各概念掌握程度分析</h3>
         <InfoButton onClick={() => setInfoOpen(true)} />
       </div>
-      <p className="text-sm text-[#636E72] mb-2">
-        每個概念對應一道診斷題，長條越高代表全班答對比例越高、掌握程度越佳
-      </p>
+      <p className="text-sm text-[#636E72] mb-2">每個概念對應一道診斷題，長條越高代表全班答對比例越高、掌握程度越佳</p>
       <div className="flex items-center gap-4 mb-4">
-        {[
-          { color: '#8FC87A', label: '≥70% 多數學生掌握' },
-          { color: '#F4D03F', label: '50–69% 部分學生有迷思' },
-          { color: '#F28B95', label: '<50% 多數學生需補救' },
-        ].map(item => (
+        {[{ color: '#8FC87A', label: '≥70% 多數學生掌握' }, { color: '#F4D03F', label: '50–69% 部分學生有迷思' }, { color: '#F28B95', label: '<50% 多數學生需補救' }].map(item => (
           <div key={item.label} className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: item.color }} />
             <span className="text-xs text-[#636E72]">{item.label}</span>
@@ -466,36 +445,25 @@ function BreakdownChart() {
             <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#636E72' }} angle={-15} textAnchor="end" interval={0} />
             <YAxis domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 11, fill: '#636E72' }} />
             <Tooltip content={<CustomTooltip />} />
-            <ReferenceLine
-              y={70}
-              stroke="#95A5A6"
-              strokeDasharray="4 4"
-              label={{ value: '70%', position: 'right', fontSize: 11, fill: '#95A5A6' }}
-            />
+            <ReferenceLine y={70} stroke="#95A5A6" strokeDasharray="4 4" label={{ value: '70%', position: 'right', fontSize: 11, fill: '#95A5A6' }} />
             <Bar dataKey="passRate" radius={[8, 8, 0, 0]}>
-              {chartData.map(entry => (
-                <Cell key={entry.id} fill={getBarColor(entry.passRate)} />
-              ))}
+              {chartData.map(entry => (<Cell key={entry.id} fill={getBarColor(entry.passRate)} />))}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <InfoDrawer
-        isOpen={infoOpen}
-        onClose={() => setInfoOpen(false)}
-        config={CHART_INFO['breakdown-chart']}
-        dynamicStatus={breakdownStatus}
-      />
+      <InfoDrawer isOpen={infoOpen} onClose={() => setInfoOpen(false)} config={CHART_INFO['breakdown-chart']} dynamicStatus={breakdownStatus} />
     </div>
   );
 }
 
 // ─── 題目明細矩陣 ─────────────────────────────────────────────────────────────
-function HeatmapView() {
+function HeatmapView({ quizId, classId, totalStudents }) {
   const [infoOpen, setInfoOpen] = useState(false);
-  const rows = defaultQuestions.map((q, qIdx) => {
+  const questions = getQuizQuestions(quizId);
+  const rows = questions.map((q, qIdx) => {
     const node = knowledgeNodes.find(n => n.id === q.knowledgeNodeId);
-    const stats = getQuestionStats(qIdx);
+    const stats = getQuestionStats(qIdx, quizId, classId);
     return { q, node, stats };
   });
 
@@ -508,7 +476,6 @@ function HeatmapView() {
         </div>
         <InfoButton onClick={() => setInfoOpen(true)} />
       </div>
-
       <div className="mt-3 overflow-x-auto rounded-2xl border border-[#BDC3C7]">
         <table className="w-full text-sm bg-white" style={{ minWidth: '700px' }}>
           <thead>
@@ -530,27 +497,20 @@ function HeatmapView() {
                 </td>
                 {q.options.map(opt => {
                   const count = stats[opt.tag] || 0;
-                  const pct = Math.round((count / TOTAL_STUDENTS) * 100);
+                  const pct = Math.round((count / totalStudents) * 100);
                   const isCorrect = opt.diagnosis === 'CORRECT';
-                  const intensity = isCorrect ? 0 : pct;
                   const bgStyle = isCorrect
                     ? { backgroundColor: `rgba(167,214,150,${pct / 100 * 0.5 + 0.08})` }
-                    : { backgroundColor: `rgba(242,139,149,${intensity / 100 * 0.6 + 0.05})` };
-                  const misconLabel = isCorrect
-                    ? null
-                    : node?.misconceptions.find(m => m.id === opt.diagnosis)?.label;
+                    : { backgroundColor: `rgba(242,139,149,${(isCorrect ? 0 : pct) / 100 * 0.6 + 0.05})` };
+                  const misconLabel = isCorrect ? null : node?.misconceptions.find(m => m.id === opt.diagnosis)?.label;
                   return (
                     <td key={opt.tag} className="px-3 py-4 text-center align-top" style={bgStyle}>
                       <div className="font-bold text-lg text-[#2D3436]">{count}</div>
                       <div className="text-xs text-[#636E72] mb-1">{pct}% 學生</div>
                       {isCorrect ? (
-                        <span className="text-xs font-semibold text-[#3D5A3E] bg-[#C8EAAE] border border-[#BDC3C7] px-2 py-0.5 rounded-full">
-                          正確答案
-                        </span>
+                        <span className="text-xs font-semibold text-[#3D5A3E] bg-[#C8EAAE] border border-[#BDC3C7] px-2 py-0.5 rounded-full">正確答案</span>
                       ) : (
-                        <span className="text-xs text-[#E74C5E] bg-[#FAC8CC] border border-[#F5B8BA] px-2 py-0.5 rounded-full leading-tight block mt-1">
-                          {misconLabel}
-                        </span>
+                        <span className="text-xs text-[#E74C5E] bg-[#FAC8CC] border border-[#F5B8BA] px-2 py-0.5 rounded-full leading-tight block mt-1">{misconLabel}</span>
                       )}
                     </td>
                   );
@@ -560,19 +520,15 @@ function HeatmapView() {
           </tbody>
         </table>
       </div>
-      <InfoDrawer
-        isOpen={infoOpen}
-        onClose={() => setInfoOpen(false)}
-        config={CHART_INFO['heatmap-view']}
-      />
+      <InfoDrawer isOpen={infoOpen} onClose={() => setInfoOpen(false)} config={CHART_INFO['heatmap-view']} />
     </div>
   );
 }
 
-// ─── 全年級診斷總覽 ────────────────────────────────────────────────────────────
-function OverallAIDiagnosisSummary() {
+// ─── 全年級診斷總覽（接受 overviewData prop）────────────────────────────────────
+function OverallAIDiagnosisSummary({ overviewData }) {
   const [infoOpen, setInfoOpen] = useState(false);
-  const { classStats } = OVERVIEW_MOCK_DATA;
+  const { classStats } = overviewData;
   const avgCompletion = Math.round(classStats.reduce((s, c) => s + c.completionRate, 0) / classStats.length);
   const avgPassRate   = Math.round(classStats.reduce((s, c) => s + c.avgPassRate,   0) / classStats.length);
   const riskClasses   = classStats.filter(c => c.completionRate < 60 || c.avgPassRate < 50);
@@ -613,13 +569,9 @@ function OverallAIDiagnosisSummary() {
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <InfoButton onClick={() => setInfoOpen(true)} />
-          <span className={`text-xs font-bold px-3 py-1.5 rounded-full border ${health.color}`}>
-            {health.label}
-          </span>
+          <span className={`text-xs font-bold px-3 py-1.5 rounded-full border ${health.color}`}>{health.label}</span>
         </div>
       </div>
-
-      {/* 三項關鍵數據 */}
       <div className="grid grid-cols-3 gap-3 mb-4">
         {[
           { label: '全年級平均完成率', value: `${avgCompletion}%`, color: avgCompletion >= 80 ? 'text-[#3D5A3E]' : avgCompletion >= 60 ? 'text-[#B7950B]' : 'text-[#E74C5E]' },
@@ -632,26 +584,17 @@ function OverallAIDiagnosisSummary() {
           </div>
         ))}
       </div>
-
-      {/* 核心診斷 */}
       <div className="bg-[#EEF5E6] rounded-2xl border border-[#D5D8DC] p-4 mb-4">
-        <p className="text-sm text-[#2D3436] leading-relaxed">
-          <span className="font-bold text-[#3D5A3E]">跨班診斷：</span>
-          {coreSentence}
-        </p>
+        <p className="text-sm text-[#2D3436] leading-relaxed"><span className="font-bold text-[#3D5A3E]">跨班診斷：</span>{coreSentence}</p>
       </div>
-
       <div className="grid grid-cols-2 gap-4">
-        {/* 優先處理順序 */}
         <div className="bg-[#EEF5E6] rounded-2xl border border-[#D5D8DC] p-4">
           <p className="text-xs font-bold text-[#636E72] uppercase tracking-wide mb-3">優先介入順序</p>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
             {[...classStats].sort((a, b) => (a.completionRate + a.avgPassRate) - (b.completionRate + b.avgPassRate)).map((cls, idx) => (
               <div key={cls.id} className="flex items-center gap-2">
                 <div className="flex items-center gap-1.5">
-                  <span className="w-5 h-5 rounded-full bg-[#3D5A3E] text-white text-[10px] flex items-center justify-center font-bold flex-shrink-0">
-                    {idx + 1}
-                  </span>
+                  <span className="w-5 h-5 rounded-full bg-[#3D5A3E] text-white text-[10px] flex items-center justify-center font-bold flex-shrink-0">{idx + 1}</span>
                   <span className="text-xs font-semibold text-[#2D3436]">{cls.name}</span>
                   <span className="text-xs text-[#95A5A6]">({cls.completionRate}% / {cls.avgPassRate}%)</span>
                 </div>
@@ -665,26 +608,20 @@ function OverallAIDiagnosisSummary() {
           </div>
           <p className="text-[10px] text-[#95A5A6] mt-2">括號內：完成率 / 平均掌握率</p>
         </div>
-
-        {/* 下一步行動建議 */}
         <div className="bg-[#EEF5E6] rounded-2xl border border-[#D5D8DC] p-4">
           <p className="text-xs font-bold text-[#636E72] uppercase tracking-wide mb-2">年級層級行動建議</p>
           <p className="text-xs text-[#2D3436] leading-relaxed">{nextStep}</p>
         </div>
       </div>
-      <InfoDrawer
-        isOpen={infoOpen}
-        onClose={() => setInfoOpen(false)}
-        config={CHART_INFO['overall-ai-summary']}
-      />
+      <InfoDrawer isOpen={infoOpen} onClose={() => setInfoOpen(false)} config={CHART_INFO['overall-ai-summary']} />
     </div>
   );
 }
 
-// ─── 知識節點跨班比較圖（Grouped Bar）────────────────────────────────────────
-function CrossClassNodeChart() {
+// ─── 知識節點跨班比較圖 ───────────────────────────────────────────────────────
+function CrossClassNodeChart({ overviewData }) {
   const [infoOpen, setInfoOpen] = useState(false);
-  const { nodePassRates, classStats } = OVERVIEW_MOCK_DATA;
+  const { nodePassRates, classStats } = overviewData;
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload?.length) {
@@ -730,27 +667,22 @@ function CrossClassNodeChart() {
             <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#636E72' }} angle={-15} textAnchor="end" interval={0} />
             <YAxis domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 11, fill: '#636E72' }} />
             <Tooltip content={<CustomTooltip />} />
-            <ReferenceLine y={70} stroke="#95A5A6" strokeDasharray="4 4"
-              label={{ value: '70%', position: 'right', fontSize: 11, fill: '#95A5A6' }} />
-            <Bar dataKey="classA" name="三年甲班" fill="#8FC87A" radius={[6, 6, 0, 0]} />
-            <Bar dataKey="classB" name="三年乙班" fill="#5DADE2" radius={[6, 6, 0, 0]} />
-            <Bar dataKey="classC" name="三年丙班" fill="#F4D03F" radius={[6, 6, 0, 0]} />
+            <ReferenceLine y={70} stroke="#95A5A6" strokeDasharray="4 4" label={{ value: '70%', position: 'right', fontSize: 11, fill: '#95A5A6' }} />
+            {classStats.map(c => (
+              <Bar key={c.id} dataKey={CLASS_KEY_MAP[c.id] ?? c.id} name={c.name} fill={c.color} radius={[6, 6, 0, 0]} />
+            ))}
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <InfoDrawer
-        isOpen={infoOpen}
-        onClose={() => setInfoOpen(false)}
-        config={CHART_INFO['cross-class-node-chart']}
-      />
+      <InfoDrawer isOpen={infoOpen} onClose={() => setInfoOpen(false)} config={CHART_INFO['cross-class-node-chart']} />
     </div>
   );
 }
 
-// ─── 跨班高頻迷思 Top N ────────────────────────────────────────────────────────
-function TopMisconceptionsChart() {
+// ─── 跨班高頻迷思 Top N ──────────────────────────────────────────────────────
+function TopMisconceptionsChart({ overviewData }) {
   const [infoOpen, setInfoOpen] = useState(false);
-  const { topMisconceptions, classStats } = OVERVIEW_MOCK_DATA;
+  const { topMisconceptions, classStats } = overviewData;
   const sorted = [...topMisconceptions].sort((a, b) => b.avg - a.avg);
 
   const CustomTooltip = ({ active, payload, label }) => {
@@ -761,11 +693,11 @@ function TopMisconceptionsChart() {
           <p className="font-bold text-[#2D3436] mb-1 text-xs leading-snug">{label}</p>
           <p className="text-xs text-[#95A5A6] mb-2">{item?.node}</p>
           {classStats.map(c => {
-            const key = c.id === 'class-A' ? 'classA' : c.id === 'class-B' ? 'classB' : 'classC';
+            const key = CLASS_KEY_MAP[c.id] ?? c.id;
             return (
               <div key={c.id} className="flex items-center gap-2 text-xs mb-0.5">
                 <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: c.color }} />
-                <span className="text-[#636E72]">{c.name}：{item?.[key]}%</span>
+                <span className="text-[#636E72]">{c.name}：{item?.[key] ?? 0}%</span>
               </div>
             );
           })}
@@ -777,6 +709,17 @@ function TopMisconceptionsChart() {
 
   const getBarColor = (avg) => avg >= 45 ? '#F28B95' : avg >= 30 ? '#F4D03F' : '#BDC3C7';
 
+  if (sorted.length === 0) {
+    return (
+      <div>
+        <h3 className="text-base font-bold text-[#2D3436] mb-2">跨班高頻迷思</h3>
+        <div className="bg-[#C8EAAE] rounded-2xl border border-[#BDC3C7] p-6 text-center">
+          <p className="text-[#3D5A3E] font-semibold">無顯著高頻迷思</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="flex items-start justify-between mb-1">
@@ -785,11 +728,7 @@ function TopMisconceptionsChart() {
       </div>
       <p className="text-sm text-[#636E72] mb-4">依全年級平均持有率由高至低排列，找出需年級層級教學策略的迷思</p>
       <div className="flex items-center gap-4 mb-4">
-        {[
-          { color: '#F28B95', label: '≥45% 急需年級補救' },
-          { color: '#F4D03F', label: '30–44% 建議關注' },
-          { color: '#BDC3C7', label: '<30% 低風險' },
-        ].map(item => (
+        {[{ color: '#F28B95', label: '≥45% 急需年級補救' }, { color: '#F4D03F', label: '30–44% 建議關注' }, { color: '#BDC3C7', label: '<30% 低風險' }].map(item => (
           <div key={item.label} className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: item.color }} />
             <span className="text-xs text-[#636E72]">{item.label}</span>
@@ -804,27 +743,22 @@ function TopMisconceptionsChart() {
             <YAxis type="category" dataKey="label" tick={{ fontSize: 10, fill: '#636E72' }} width={140} />
             <Tooltip content={<CustomTooltip />} />
             <Bar dataKey="avg" name="全年級平均" radius={[0, 6, 6, 0]}>
-              {sorted.map(entry => (
-                <Cell key={entry.id} fill={getBarColor(entry.avg)} />
-              ))}
+              {sorted.map(entry => (<Cell key={entry.id} fill={getBarColor(entry.avg)} />))}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <InfoDrawer
-        isOpen={infoOpen}
-        onClose={() => setInfoOpen(false)}
-        config={CHART_INFO['top-misconceptions-chart']}
-      />
+      <InfoDrawer isOpen={infoOpen} onClose={() => setInfoOpen(false)} config={CHART_INFO['top-misconceptions-chart']} />
     </div>
   );
 }
 
-// ─── 班級 × 迷思熱力圖 ─────────────────────────────────────────────────────────
-function ClassMisconceptionHeatmap() {
+// ─── 班級 × 迷思熱力圖 ──────────────────────────────────────────────────────
+function ClassMisconceptionHeatmap({ overviewData }) {
   const [infoOpen, setInfoOpen] = useState(false);
-  const { topMisconceptions, classStats } = OVERVIEW_MOCK_DATA;
+  const { topMisconceptions, classStats } = overviewData;
   const sorted = [...topMisconceptions].sort((a, b) => b.avg - a.avg);
+  const classKeys = classStats.map(c => ({ key: CLASS_KEY_MAP[c.id] ?? c.id, id: c.id }));
 
   const getCellBg = (pct) => {
     if (pct >= 50) return { bg: 'rgba(242,139,149,0.75)', text: '#C0392B' };
@@ -833,11 +767,7 @@ function ClassMisconceptionHeatmap() {
     return { bg: 'rgba(200,234,174,0.45)', text: '#3D5A3E' };
   };
 
-  const classKeys = [
-    { key: 'classA', id: 'class-A' },
-    { key: 'classB', id: 'class-B' },
-    { key: 'classC', id: 'class-C' },
-  ];
+  if (sorted.length === 0) return null;
 
   return (
     <div>
@@ -847,12 +777,7 @@ function ClassMisconceptionHeatmap() {
       </div>
       <p className="text-sm text-[#636E72] mb-3">顏色越深表示持有該迷思的學生比例越高，一眼找出哪個班在哪個迷思特別嚴重</p>
       <div className="flex items-center gap-4 mb-4">
-        {[
-          { color: 'rgba(242,139,149,0.75)', label: '≥50% 嚴重' },
-          { color: 'rgba(242,139,149,0.45)', label: '35–49% 偏高' },
-          { color: 'rgba(244,208,63,0.55)',  label: '20–34% 留意' },
-          { color: 'rgba(200,234,174,0.45)', label: '<20% 低風險' },
-        ].map(item => (
+        {[{ color: 'rgba(242,139,149,0.75)', label: '≥50% 嚴重' }, { color: 'rgba(242,139,149,0.45)', label: '35–49% 偏高' }, { color: 'rgba(244,208,63,0.55)', label: '20–34% 留意' }, { color: 'rgba(200,234,174,0.45)', label: '<20% 低風險' }].map(item => (
           <div key={item.label} className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded-sm border border-[#BDC3C7] flex-shrink-0" style={{ backgroundColor: item.color }} />
             <span className="text-xs text-[#636E72]">{item.label}</span>
@@ -865,9 +790,7 @@ function ClassMisconceptionHeatmap() {
             <tr className="bg-[#C8EAAE] border-b border-[#BDC3C7]">
               <th className="px-4 py-3 text-left text-xs font-bold text-[#636E72] uppercase">迷思概念</th>
               <th className="px-3 py-3 text-xs font-bold text-[#636E72] uppercase">知識節點</th>
-              {classStats.map(c => (
-                <th key={c.id} className="px-4 py-3 text-center text-xs font-bold text-[#636E72] uppercase">{c.name}</th>
-              ))}
+              {classStats.map(c => (<th key={c.id} className="px-4 py-3 text-center text-xs font-bold text-[#636E72] uppercase">{c.name}</th>))}
               <th className="px-4 py-3 text-center text-xs font-bold text-[#636E72] uppercase">年級平均</th>
             </tr>
           </thead>
@@ -881,12 +804,10 @@ function ClassMisconceptionHeatmap() {
                     <p className="text-[10px] text-[#95A5A6] font-mono">{item.id}</p>
                   </td>
                   <td className="px-3 py-3 text-center">
-                    <span className="text-xs text-[#636E72] bg-[#EEF5E6] border border-[#D5D8DC] px-2 py-0.5 rounded-full whitespace-nowrap">
-                      {item.node}
-                    </span>
+                    <span className="text-xs text-[#636E72] bg-[#EEF5E6] border border-[#D5D8DC] px-2 py-0.5 rounded-full whitespace-nowrap">{item.node}</span>
                   </td>
                   {classKeys.map(({ key, id }) => {
-                    const pct = item[key];
+                    const pct = item[key] ?? 0;
                     const style = getCellBg(pct);
                     return (
                       <td key={id} className="px-4 py-3 text-center" style={{ backgroundColor: style.bg }}>
@@ -903,19 +824,15 @@ function ClassMisconceptionHeatmap() {
           </tbody>
         </table>
       </div>
-      <InfoDrawer
-        isOpen={infoOpen}
-        onClose={() => setInfoOpen(false)}
-        config={CHART_INFO['class-misconception-heatmap']}
-      />
+      <InfoDrawer isOpen={infoOpen} onClose={() => setInfoOpen(false)} config={CHART_INFO['class-misconception-heatmap']} />
     </div>
   );
 }
 
-// ─── 各班學習狀況總覽（卡片）──────────────────────────────────────────────────
-function ClassStatusCards({ onSelectClass }) {
+// ─── 各班學習狀況總覽（卡片）─────────────────────────────────────────────────
+function ClassStatusCards({ overviewData, onSelectClass }) {
   const [infoOpen, setInfoOpen] = useState(false);
-  const { classStats } = OVERVIEW_MOCK_DATA;
+  const { classStats } = overviewData;
 
   const getStatus = (cls) => {
     const good = cls.completionRate >= 60 && cls.avgPassRate >= 50;
@@ -926,18 +843,9 @@ function ClassStatusCards({ onSelectClass }) {
   };
 
   const metrics = [
-    {
-      key: 'completionRate', label: '完成率', unit: '%',
-      color: (v) => v >= 80 ? 'text-[#3D5A3E]' : v >= 60 ? 'text-[#B7950B]' : 'text-[#E74C5E]',
-    },
-    {
-      key: 'avgPassRate', label: '掌握率', unit: '%',
-      color: (v) => v >= 70 ? 'text-[#3D5A3E]' : v >= 50 ? 'text-[#B7950B]' : 'text-[#E74C5E]',
-    },
-    {
-      key: 'highFreqMisconCount', label: '高頻迷思', unit: ' 個',
-      color: (v) => v === 0 ? 'text-[#3D5A3E]' : v <= 2 ? 'text-[#B7950B]' : 'text-[#E74C5E]',
-    },
+    { key: 'completionRate', label: '完成率', unit: '%', color: (v) => v >= 80 ? 'text-[#3D5A3E]' : v >= 60 ? 'text-[#B7950B]' : 'text-[#E74C5E]' },
+    { key: 'avgPassRate', label: '掌握率', unit: '%', color: (v) => v >= 70 ? 'text-[#3D5A3E]' : v >= 50 ? 'text-[#B7950B]' : 'text-[#E74C5E]' },
+    { key: 'highFreqMisconCount', label: '高頻迷思', unit: ' 個', color: (v) => v === 0 ? 'text-[#3D5A3E]' : v <= 2 ? 'text-[#B7950B]' : 'text-[#E74C5E]' },
   ];
 
   return (
@@ -949,64 +857,41 @@ function ClassStatusCards({ onSelectClass }) {
         </div>
         <InfoButton onClick={() => setInfoOpen(true)} />
       </div>
-
-      <div className="grid grid-cols-3 gap-4 mt-4">
+      <div className={`grid gap-4 mt-4`} style={{ gridTemplateColumns: `repeat(${classStats.length}, 1fr)` }}>
         {classStats.map((cls) => {
           const status = getStatus(cls);
           return (
-            <div
-              key={cls.id}
-              onClick={() => onSelectClass(cls.id)}
-              className="bg-white rounded-2xl border border-[#BDC3C7] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.06)] cursor-pointer hover:border-[#8FC87A] hover:shadow-md transition-all"
-            >
-              {/* 班級名稱 + 色點 */}
+            <div key={cls.id} onClick={() => onSelectClass(cls.id)}
+              className="bg-white rounded-2xl border border-[#BDC3C7] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.06)] cursor-pointer hover:border-[#8FC87A] hover:shadow-md transition-all">
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: cls.color }} />
                 <span className="text-base font-bold text-[#2D3436]">{cls.name}</span>
               </div>
-
-              {/* 三項指標 */}
               <div className="space-y-3 mb-4">
-                {metrics.map((m) => {
-                  const val = cls[m.key];
-                  return (
-                    <div key={m.key} className="flex items-center justify-between">
-                      <span className="text-sm text-[#636E72]">{m.label}</span>
-                      <span className={`text-sm font-bold ${m.color(val)}`}>
-                        {val}{m.unit}
-                      </span>
-                    </div>
-                  );
-                })}
+                {metrics.map((m) => { const val = cls[m.key]; return (
+                  <div key={m.key} className="flex items-center justify-between">
+                    <span className="text-sm text-[#636E72]">{m.label}</span>
+                    <span className={`text-sm font-bold ${m.color(val)}`}>{val}{m.unit}</span>
+                  </div>
+                ); })}
               </div>
-
-              {/* 狀態標示 */}
               <div className={`rounded-xl px-3 py-2 border text-center ${status.bg} ${status.border}`}>
                 <span className={`text-xs font-bold ${status.color}`}>{status.label}</span>
               </div>
-
-              {/* 導引文字 */}
-              <p className="text-xs text-[#95A5A6] text-center mt-3">
-                點擊查看詳細報告 →
-              </p>
+              <p className="text-xs text-[#95A5A6] text-center mt-3">點擊查看詳細報告 →</p>
             </div>
           );
         })}
       </div>
-
-      <InfoDrawer
-        isOpen={infoOpen}
-        onClose={() => setInfoOpen(false)}
-        config={CHART_INFO['class-status-cards']}
-      />
+      <InfoDrawer isOpen={infoOpen} onClose={() => setInfoOpen(false)} config={CHART_INFO['class-status-cards']} />
     </div>
   );
 }
 
-// ─── 班級完成率 vs 掌握率散佈圖 ────────────────────────────────────────────────
-function ClassScatterChart() {
+// ─── 班級完成率 vs 掌握率散佈圖 ──────────────────────────────────────────────
+function ClassScatterChart({ overviewData }) {
   const [infoOpen, setInfoOpen] = useState(false);
-  const { classStats } = OVERVIEW_MOCK_DATA;
+  const { classStats } = overviewData;
 
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload?.length) {
@@ -1035,20 +920,12 @@ function ClassScatterChart() {
     return (
       <g>
         <circle cx={cx} cy={cy} r={10} fill={payload.color} fillOpacity={0.9} stroke="white" strokeWidth={2} />
-        <text x={cx} y={cy - 16} textAnchor="middle" fontSize={11} fill="#2D3436" fontWeight="600">
-          {payload.name}
-        </text>
+        <text x={cx} y={cy - 16} textAnchor="middle" fontSize={11} fill="#2D3436" fontWeight="600">{payload.name}</text>
       </g>
     );
   };
 
-  const scatterData = classStats.map((c) => ({
-    name: c.name,
-    x: c.avgPassRate,
-    y: c.completionRate,
-    color: c.color,
-    miscon: c.highFreqMisconCount,
-  }));
+  const scatterData = classStats.map(c => ({ name: c.name, x: c.avgPassRate, y: c.completionRate, color: c.color, miscon: c.highFreqMisconCount }));
 
   return (
     <div>
@@ -1056,80 +933,75 @@ function ClassScatterChart() {
         <h3 className="text-base font-bold text-[#2D3436]">完成率 × 掌握率 班級分布</h3>
         <InfoButton onClick={() => setInfoOpen(true)} />
       </div>
-      <p className="text-sm text-[#636E72] mb-3">
-        右上角 = 作答完整且掌握良好；左下角 = 優先介入
-      </p>
-
+      <p className="text-sm text-[#636E72] mb-3">右上角 = 作答完整且掌握良好；左下角 = 優先介入</p>
       <div className="flex items-center gap-3 mb-4 flex-wrap">
-        {[
-          { label: '右上：表現良好', cls: 'bg-[#C8EAAE] text-[#3D5A3E] border-[#8FC87A]' },
-          { label: '左下：優先介入', cls: 'bg-[#FAC8CC] text-[#E74C5E] border-[#F5B8BA]' },
-          { label: '其他：需要關注', cls: 'bg-[#FCF0C2] text-[#B7950B] border-[#F5D669]' },
-        ].map((q) => (
-          <span key={q.label} className={`text-xs font-medium px-2 py-0.5 rounded-full border ${q.cls}`}>
-            {q.label}
-          </span>
+        {[{ label: '右上：表現良好', cls: 'bg-[#C8EAAE] text-[#3D5A3E] border-[#8FC87A]' }, { label: '左下：優先介入', cls: 'bg-[#FAC8CC] text-[#E74C5E] border-[#F5B8BA]' }, { label: '其他：需要關注', cls: 'bg-[#FCF0C2] text-[#B7950B] border-[#F5D669]' }].map(q => (
+          <span key={q.label} className={`text-xs font-medium px-2 py-0.5 rounded-full border ${q.cls}`}>{q.label}</span>
         ))}
       </div>
-
       <div className="bg-[#EEF5E6] border border-[#BDC3C7] rounded-2xl p-4" style={{ height: 300 }}>
         <ResponsiveContainer width="100%" height="100%">
           <ScatterChart margin={{ top: 24, right: 40, bottom: 30, left: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#C8EAAE" />
-            <XAxis
-              type="number" dataKey="x"
-              domain={[0, 100]}
-              tickFormatter={(v) => `${v}%`}
-              tick={{ fontSize: 11, fill: '#636E72' }}
-              label={{ value: '掌握率', position: 'insideBottom', offset: -14, fontSize: 11, fill: '#636E72' }}
-            />
-            <YAxis
-              type="number" dataKey="y"
-              domain={[0, 100]}
-              tickFormatter={(v) => `${v}%`}
-              tick={{ fontSize: 11, fill: '#636E72' }}
-              label={{ value: '完成率', angle: -90, position: 'insideLeft', offset: 14, fontSize: 11, fill: '#636E72' }}
-            />
+            <XAxis type="number" dataKey="x" domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 11, fill: '#636E72' }}
+              label={{ value: '掌握率', position: 'insideBottom', offset: -14, fontSize: 11, fill: '#636E72' }} />
+            <YAxis type="number" dataKey="y" domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 11, fill: '#636E72' }}
+              label={{ value: '完成率', angle: -90, position: 'insideLeft', offset: 14, fontSize: 11, fill: '#636E72' }} />
             <ZAxis range={[100, 100]} />
             <Tooltip content={<CustomTooltip />} />
-            <ReferenceLine x={50} stroke="#95A5A6" strokeDasharray="4 4"
-              label={{ value: '50%', position: 'top', fontSize: 10, fill: '#95A5A6' }} />
-            <ReferenceLine y={60} stroke="#95A5A6" strokeDasharray="4 4"
-              label={{ value: '60%', position: 'right', fontSize: 10, fill: '#95A5A6' }} />
+            <ReferenceLine x={50} stroke="#95A5A6" strokeDasharray="4 4" label={{ value: '50%', position: 'top', fontSize: 10, fill: '#95A5A6' }} />
+            <ReferenceLine y={60} stroke="#95A5A6" strokeDasharray="4 4" label={{ value: '60%', position: 'right', fontSize: 10, fill: '#95A5A6' }} />
             <Scatter data={scatterData} shape={<CustomDot />} />
           </ScatterChart>
         </ResponsiveContainer>
       </div>
-
-      <InfoDrawer
-        isOpen={infoOpen}
-        onClose={() => setInfoOpen(false)}
-        config={CHART_INFO['class-scatter-chart']}
-      />
+      <InfoDrawer isOpen={infoOpen} onClose={() => setInfoOpen(false)} config={CHART_INFO['class-scatter-chart']} />
     </div>
   );
 }
 
-// ─── 全部班級總覽 ─────────────────────────────────────────────────────────────
-function AllClassesOverview({ classes, assignments, quizzes, onSelectClass }) {
+// ─── 全部班級總覽（支援考卷切換）────────────────────────────────────────────
+function AllClassesOverview({ classes, assignments, quizzes, selectedQuizId, onSelectClassWithQuiz }) {
   const [completionInfoOpen, setCompletionInfoOpen] = useState(false);
-  const { classStats } = OVERVIEW_MOCK_DATA;
+
+  const overviewData = selectedQuizId
+    ? computeOverviewForQuiz(selectedQuizId, classes, assignments)
+    : null;
+
+  if (!overviewData || overviewData.classStats.length === 0) {
+    return (
+      <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-12 shadow-[0_2px_12px_rgba(0,0,0,0.06)] text-center">
+        <div className="w-16 h-16 bg-[#EEF5E6] rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg className="w-8 h-8 text-[#95A5A6]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        </div>
+        <p className="text-[#636E72] font-medium mb-1">此考卷尚無派題資料</p>
+        <p className="text-sm text-[#95A5A6]">請先至派題管理將此考卷派發給班級</p>
+      </div>
+    );
+  }
+
+  const { classStats } = overviewData;
   const avgCompletion = Math.round(classStats.reduce((s, c) => s + c.completionRate, 0) / classStats.length);
   const avgPassRate   = Math.round(classStats.reduce((s, c) => s + c.avgPassRate,   0) / classStats.length);
   const riskCount     = classStats.filter(c => c.completionRate < 60 || c.avgPassRate < 50).length;
 
+  const filteredAssignments = selectedQuizId
+    ? assignments.filter(a => a.quizId === selectedQuizId)
+    : assignments;
+
   return (
     <div className="space-y-6">
-      {/* 全年級診斷總覽 */}
-      <OverallAIDiagnosisSummary />
+      <OverallAIDiagnosisSummary overviewData={overviewData} />
 
-      {/* 統計卡片（4 張） */}
       <div className="grid grid-cols-4 gap-4">
         {[
-          { label: '管理班級',      value: `${classes.length} 個`,                                          sub: '目前所有班級',         color: 'text-[#3D5A3E]', bg: 'bg-[#C8EAAE]' },
-          { label: '全年級平均完成率', value: `${avgCompletion}%`,                                            sub: '各班作答完成率平均',    color: avgCompletion >= 80 ? 'text-[#3D5A3E]' : avgCompletion >= 60 ? 'text-[#B7950B]' : 'text-[#E74C5E]', bg: avgCompletion >= 80 ? 'bg-[#C8EAAE]' : avgCompletion >= 60 ? 'bg-[#FCF0C2]' : 'bg-[#FAC8CC]' },
-          { label: '全年級平均掌握率', value: `${avgPassRate}%`,                                              sub: '各班概念平均通過率',    color: avgPassRate  >= 70 ? 'text-[#3D5A3E]' : avgPassRate  >= 50 ? 'text-[#B7950B]' : 'text-[#E74C5E]', bg: avgPassRate  >= 70 ? 'bg-[#C8EAAE]' : avgPassRate  >= 50 ? 'bg-[#FCF0C2]' : 'bg-[#FAC8CC]' },
-          { label: '需關注班級',     value: `${riskCount} 班`,                                               sub: '完成率<60% 或掌握率<50%', color: riskCount === 0 ? 'text-[#3D5A3E]' : riskCount <= 1 ? 'text-[#B7950B]' : 'text-[#E74C5E]', bg: riskCount === 0 ? 'bg-[#C8EAAE]' : riskCount <= 1 ? 'bg-[#FCF0C2]' : 'bg-[#FAC8CC]' },
+          { label: '涵蓋班級', value: `${classStats.length} 個`, sub: '已派發此考卷的班級', color: 'text-[#3D5A3E]', bg: 'bg-[#C8EAAE]' },
+          { label: '平均完成率', value: `${avgCompletion}%`, sub: '各班作答完成率平均', color: avgCompletion >= 80 ? 'text-[#3D5A3E]' : avgCompletion >= 60 ? 'text-[#B7950B]' : 'text-[#E74C5E]', bg: avgCompletion >= 80 ? 'bg-[#C8EAAE]' : avgCompletion >= 60 ? 'bg-[#FCF0C2]' : 'bg-[#FAC8CC]' },
+          { label: '平均掌握率', value: `${avgPassRate}%`, sub: '各班概念平均通過率', color: avgPassRate >= 70 ? 'text-[#3D5A3E]' : avgPassRate >= 50 ? 'text-[#B7950B]' : 'text-[#E74C5E]', bg: avgPassRate >= 70 ? 'bg-[#C8EAAE]' : avgPassRate >= 50 ? 'bg-[#FCF0C2]' : 'bg-[#FAC8CC]' },
+          { label: '需關注班級', value: `${riskCount} 班`, sub: '完成率<60% 或掌握率<50%', color: riskCount === 0 ? 'text-[#3D5A3E]' : riskCount <= 1 ? 'text-[#B7950B]' : 'text-[#E74C5E]', bg: riskCount === 0 ? 'bg-[#C8EAAE]' : riskCount <= 1 ? 'bg-[#FCF0C2]' : 'bg-[#FAC8CC]' },
         ].map(s => (
           <div key={s.label} className={`rounded-2xl border border-[#BDC3C7] p-4 ${s.bg} shadow-[0_2px_12px_rgba(0,0,0,0.06)]`}>
             <p className={`text-2xl font-bold ${s.color} mb-0.5`}>{s.value}</p>
@@ -1139,32 +1011,30 @@ function AllClassesOverview({ classes, assignments, quizzes, onSelectClass }) {
         ))}
       </div>
 
-      {/* 各班學習狀況總覽（卡片） */}
       <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-        <ClassStatusCards onSelectClass={onSelectClass} />
+        <ClassStatusCards overviewData={overviewData} onSelectClass={(classId) => {
+          const latestQuizId = getLatestQuizIdForClass(assignments.filter(a => selectedQuizId ? a.quizId === selectedQuizId : true), classId);
+          onSelectClassWithQuiz(classId, latestQuizId ?? selectedQuizId);
+        }} />
       </div>
 
-      {/* 知識節點跨班比較圖 */}
       <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-        <CrossClassNodeChart />
+        <CrossClassNodeChart overviewData={overviewData} />
       </div>
 
-      {/* 跨班高頻迷思 + 完成率 × 掌握率散佈圖 並排 */}
       <div className="grid grid-cols-2 gap-6">
         <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-          <TopMisconceptionsChart />
+          <TopMisconceptionsChart overviewData={overviewData} />
         </div>
         <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-          <ClassScatterChart />
+          <ClassScatterChart overviewData={overviewData} />
         </div>
       </div>
 
-      {/* 班級 × 迷思熱力圖 */}
       <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-        <ClassMisconceptionHeatmap />
+        <ClassMisconceptionHeatmap overviewData={overviewData} />
       </div>
 
-      {/* 各班派題完成率列表（原有） */}
       <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
         <div className="flex items-start justify-between mb-1">
           <h3 className="text-base font-bold text-[#2D3436]">各班派題完成率</h3>
@@ -1173,14 +1043,14 @@ function AllClassesOverview({ classes, assignments, quizzes, onSelectClass }) {
         <p className="text-sm text-[#636E72] mb-5">點擊班級名稱可查看該班詳細診斷報告</p>
         <div className="space-y-4">
           {classes.map(cls => {
-            const clsAssignments = assignments.filter(a => a.classId === cls.id);
+            const clsAssignments = filteredAssignments.filter(a => a.classId === cls.id);
             if (clsAssignments.length === 0) {
               return (
                 <div key={cls.id} className="flex items-center gap-4 p-4 rounded-2xl border border-[#D5D8DC] bg-[#EEF5E6]">
                   <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: cls.color }} />
                   <div className="flex-1">
                     <p className="text-sm font-semibold text-[#2D3436]">{cls.name}</p>
-                    <p className="text-xs text-[#95A5A6] mt-0.5">尚未有派題記錄</p>
+                    <p className="text-xs text-[#95A5A6] mt-0.5">尚未派發此考卷</p>
                   </div>
                   <span className="text-xs text-[#95A5A6] border border-[#D5D8DC] px-2 py-1 rounded-full">未派題</span>
                 </div>
@@ -1195,10 +1065,8 @@ function AllClassesOverview({ classes, assignments, quizzes, onSelectClass }) {
                     <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: cls.color }} />
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => onSelectClass(cls.id)}
-                          className="text-sm font-semibold text-[#2D3436] hover:text-[#3D5A3E] hover:underline transition-colors"
-                        >
+                        <button onClick={() => onSelectClassWithQuiz(cls.id, a.quizId)}
+                          className="text-sm font-semibold text-[#2D3436] hover:text-[#3D5A3E] hover:underline transition-colors">
                           {cls.name}
                         </button>
                         <span className="text-xs text-[#95A5A6]">·</span>
@@ -1219,22 +1087,23 @@ function AllClassesOverview({ classes, assignments, quizzes, onSelectClass }) {
             });
           })}
         </div>
-        <InfoDrawer
-          isOpen={completionInfoOpen}
-          onClose={() => setCompletionInfoOpen(false)}
-          config={CHART_INFO['all-classes-completion']}
-        />
+        <InfoDrawer isOpen={completionInfoOpen} onClose={() => setCompletionInfoOpen(false)} config={CHART_INFO['all-classes-completion']} />
       </div>
     </div>
   );
 }
 
-// ─── 單一班級報告 ─────────────────────────────────────────────────────────────
-function SingleClassReport({ cls, assignments }) {
-  const clsAssignments = assignments.filter(a => a.classId === cls.id);
-  const hasData = clsAssignments.some(a => a.completionRate > 0);
+// ─── 單一班級報告（嚴格使用當前 quizId + classId 的 assignment）──────────────
+function SingleClassReport({ cls, assignments, quizzes, quizId }) {
+  const classId = cls.id;
+  const classAnswersData = getClassAnswers(quizId, classId);
+  const totalStudents = classAnswersData.length;
+
+  const selectedAssignment = getAssignment(assignments, classId, quizId);
+  const hasData = selectedAssignment && selectedAssignment.completionRate > 0 && totalStudents > 0;
 
   if (!hasData) {
+    const quizTitle = quizzes.find(q => q.id === quizId)?.title ?? '此考卷';
     return (
       <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-12 shadow-[0_2px_12px_rgba(0,0,0,0.06)] text-center">
         <div className="w-16 h-16 bg-[#EEF5E6] rounded-full flex items-center justify-center mx-auto mb-4">
@@ -1244,74 +1113,47 @@ function SingleClassReport({ cls, assignments }) {
           </svg>
         </div>
         <p className="text-[#636E72] font-medium mb-1">尚無作答資料</p>
-        <p className="text-sm text-[#95A5A6]">{cls.name} 目前沒有學生已完成作答，請至派題管理確認派題狀態</p>
+        <p className="text-sm text-[#95A5A6]">{cls.name}「{quizTitle}」目前沒有學生已完成作答，請至派題管理確認派題狀態</p>
       </div>
     );
   }
 
-  // 統計卡片計算
   const [statInfoKey, setStatInfoKey] = useState(null);
-  const misconStudents = getMisconceptionStudents();
-  const passRates = getNodePassRates();
-  const avgPassRate = Math.round(
-    Object.values(passRates).reduce((s, v) => s + v, 0) / Object.values(passRates).length
-  );
+  const misconStudents = getMisconceptionStudents(quizId, classId);
+  const passRates = getNodePassRates(quizId, classId);
+  const avgPassRate = Math.round(Object.values(passRates).reduce((s, v) => s + v, 0) / Object.values(passRates).length);
+
   const topMisconEntry = Object.entries(misconStudents)
-    .map(([id, s]) => ({ id, pct: Math.round((s.length / TOTAL_STUDENTS) * 100) }))
+    .map(([id, s]) => ({ id, pct: Math.round((s.length / totalStudents) * 100) }))
     .sort((a, b) => b.pct - a.pct)[0];
   const topMisconNode = knowledgeNodes.find(n => n.misconceptions.find(m => m.id === topMisconEntry?.id));
   const topMisconLabel = topMisconNode?.misconceptions.find(m => m.id === topMisconEntry?.id)?.label;
 
-  // 計算作答完成率
-  const completionRate = clsAssignments.length > 0
-    ? Math.round(clsAssignments.reduce((s, a) => s + a.completionRate, 0) / clsAssignments.length)
-    : 0;
-  const submittedCount = clsAssignments.reduce((s, a) => s + a.submittedCount, 0);
-  const totalStudents  = clsAssignments.reduce((s, a) => s + a.totalStudents, 0);
+  const completionRate = selectedAssignment.completionRate;
+  const submittedCount = selectedAssignment.submittedCount;
+  const totalStudentsAssign = selectedAssignment.totalStudents;
 
   return (
     <div className="space-y-6">
-      {/* 1. 統計摘要（4 張卡片） */}
       <div className="grid grid-cols-4 gap-4">
         {[
-          {
-            label: '參與學生',
-            value: `${TOTAL_STUDENTS} 人`,
-            sub: '已完成診斷測驗',
-            color: 'text-[#3D5A3E]',
-            bg: 'bg-[#C8EAAE]',
-            infoKey: 'stat-card-participants',
-            dynamicStatus: `目前有 ${TOTAL_STUDENTS} 位學生已完成本次診斷測驗並提交作答。`,
-          },
-          {
-            label: '作答完成率',
-            value: `${completionRate}%`,
-            sub: `${submittedCount} / ${totalStudents} 人已提交`,
+          { label: '參與學生', value: `${totalStudents} 人`, sub: '已完成診斷測驗', color: 'text-[#3D5A3E]', bg: 'bg-[#C8EAAE]',
+            infoKey: 'stat-card-participants', dynamicStatus: `目前有 ${totalStudents} 位學生已完成本次診斷測驗並提交作答。` },
+          { label: '作答完成率', value: `${completionRate}%`, sub: `${submittedCount} / ${totalStudentsAssign} 人已提交`,
             color: completionRate === 100 ? 'text-[#3D5A3E]' : completionRate >= 60 ? 'text-[#B7950B]' : 'text-[#E74C5E]',
-            bg:    completionRate === 100 ? 'bg-[#C8EAAE]'   : completionRate >= 60 ? 'bg-[#FCF0C2]'   : 'bg-[#FAC8CC]',
-            infoKey: 'stat-card-completion',
-            dynamicStatus: `目前班級作答完成率為 ${completionRate}%（${submittedCount}/${totalStudents} 人已提交）。${completionRate < 80 ? '完成率偏低，建議補齊作答後再解讀診斷報告。' : '完成率良好，診斷結果具代表性。'}`,
-          },
-          {
-            label: '概念平均掌握率',
-            value: `${avgPassRate}%`,
-            sub: '全班各概念平均答對率',
+            bg: completionRate === 100 ? 'bg-[#C8EAAE]' : completionRate >= 60 ? 'bg-[#FCF0C2]' : 'bg-[#FAC8CC]',
+            infoKey: 'stat-card-completion', dynamicStatus: `目前班級作答完成率為 ${completionRate}%（${submittedCount}/${totalStudentsAssign} 人已提交）。${completionRate < 80 ? '完成率偏低，建議補齊作答後再解讀診斷報告。' : '完成率良好，診斷結果具代表性。'}` },
+          { label: '概念平均掌握率', value: `${avgPassRate}%`, sub: '全班各概念平均答對率',
             color: avgPassRate >= 70 ? 'text-[#3D5A3E]' : avgPassRate >= 50 ? 'text-[#B7950B]' : 'text-[#E74C5E]',
-            bg:    avgPassRate >= 70 ? 'bg-[#C8EAAE]'   : avgPassRate >= 50 ? 'bg-[#FCF0C2]'   : 'bg-[#FAC8CC]',
-            infoKey: 'stat-card-mastery',
-            dynamicStatus: `目前班級 5 個知識節點的平均答對率為 ${avgPassRate}%。${avgPassRate >= 70 ? '整體表現良好。' : avgPassRate >= 50 ? '整體表現中等，建議針對低答對率節點進行補強。' : '整體掌握不足，建議安排系統性補救教學。'}`,
-          },
-          {
-            label: '最高風險迷思',
-            value: topMisconEntry ? `${topMisconEntry.pct}%` : '—',
-            sub: topMisconLabel ?? '無高頻迷思',
+            bg: avgPassRate >= 70 ? 'bg-[#C8EAAE]' : avgPassRate >= 50 ? 'bg-[#FCF0C2]' : 'bg-[#FAC8CC]',
+            infoKey: 'stat-card-mastery', dynamicStatus: `目前班級 5 個知識節點的平均答對率為 ${avgPassRate}%。${avgPassRate >= 70 ? '整體表現良好。' : avgPassRate >= 50 ? '整體表現中等，建議針對低答對率節點進行補強。' : '整體掌握不足，建議安排系統性補救教學。'}` },
+          { label: '最高風險迷思', value: topMisconEntry ? `${topMisconEntry.pct}%` : '—', sub: topMisconLabel ?? '無高頻迷思',
             color: topMisconEntry && topMisconEntry.pct >= 30 ? 'text-[#E74C5E]' : 'text-[#3D5A3E]',
-            bg:    topMisconEntry && topMisconEntry.pct >= 30 ? 'bg-[#FAC8CC]'   : 'bg-[#C8EAAE]',
+            bg: topMisconEntry && topMisconEntry.pct >= 30 ? 'bg-[#FAC8CC]' : 'bg-[#C8EAAE]',
             infoKey: 'stat-card-top-misconception',
             dynamicStatus: topMisconEntry
-              ? `目前持有率最高的迷思為「${topMisconLabel}」，持有率 ${topMisconEntry.pct}%（${Math.round(topMisconEntry.pct / 100 * TOTAL_STUDENTS)} 位學生）。${topMisconEntry.pct >= 30 ? '已達高頻迷思門檻，建議優先安排補救。' : '持有率低於 30%，暫不需要緊急介入。'}`
-              : '目前無偵測到任何迷思。',
-          },
+              ? `目前持有率最高的迷思為「${topMisconLabel}」，持有率 ${topMisconEntry.pct}%（${Math.round(topMisconEntry.pct / 100 * totalStudents)} 位學生）。${topMisconEntry.pct >= 30 ? '已達高頻迷思門檻，建議優先安排補救。' : '持有率低於 30%，暫不需要緊急介入。'}`
+              : '目前無偵測到任何迷思。' },
         ].map(s => (
           <div key={s.label} className={`rounded-2xl border border-[#BDC3C7] p-4 ${s.bg} shadow-[0_2px_12px_rgba(0,0,0,0.06)]`}>
             <div className="flex items-start justify-between mb-0.5">
@@ -1323,43 +1165,27 @@ function SingleClassReport({ cls, assignments }) {
           </div>
         ))}
       </div>
-      <InfoDrawer
-        isOpen={statInfoKey !== null}
-        onClose={() => setStatInfoKey(null)}
+      <InfoDrawer isOpen={statInfoKey !== null} onClose={() => setStatInfoKey(null)}
         config={statInfoKey ? CHART_INFO[statInfoKey] : null}
-        dynamicStatus={
-          statInfoKey
-            ? [
-                { infoKey: 'stat-card-participants', dynamicStatus: `目前有 ${TOTAL_STUDENTS} 位學生已完成本次診斷測驗並提交作答。` },
-                { infoKey: 'stat-card-completion', dynamicStatus: `目前班級作答完成率為 ${completionRate}%（${submittedCount}/${totalStudents} 人已提交）。${completionRate < 80 ? '完成率偏低，建議補齊作答後再解讀診斷報告。' : '完成率良好，診斷結果具代表性。'}` },
-                { infoKey: 'stat-card-mastery', dynamicStatus: `目前班級 5 個知識節點的平均答對率為 ${avgPassRate}%。${avgPassRate >= 70 ? '整體表現良好。' : avgPassRate >= 50 ? '整體表現中等，建議針對低答對率節點進行補強。' : '整體掌握不足，建議安排系統性補救教學。'}` },
-                { infoKey: 'stat-card-top-misconception', dynamicStatus: topMisconEntry ? `目前持有率最高的迷思為「${topMisconLabel}」，持有率 ${topMisconEntry.pct}%。${topMisconEntry.pct >= 30 ? '已達高頻迷思門檻，建議優先安排補救。' : '持有率低於 30%，暫不需要緊急介入。'}` : '目前無偵測到任何迷思。' },
-              ].find(item => item.infoKey === statInfoKey)?.dynamicStatus
-            : undefined
-        }
-      />
+        dynamicStatus={statInfoKey ? [
+          { infoKey: 'stat-card-participants', dynamicStatus: `目前有 ${totalStudents} 位學生已完成本次診斷測驗並提交作答。` },
+          { infoKey: 'stat-card-completion', dynamicStatus: `目前班級作答完成率為 ${completionRate}%（${submittedCount}/${totalStudentsAssign} 人已提交）。${completionRate < 80 ? '完成率偏低，建議補齊作答後再解讀診斷報告。' : '完成率良好，診斷結果具代表性。'}` },
+          { infoKey: 'stat-card-mastery', dynamicStatus: `目前班級 5 個知識節點的平均答對率為 ${avgPassRate}%。${avgPassRate >= 70 ? '整體表現良好。' : avgPassRate >= 50 ? '整體表現中等，建議針對低答對率節點進行補強。' : '整體掌握不足，建議安排系統性補救教學。'}` },
+          { infoKey: 'stat-card-top-misconception', dynamicStatus: topMisconEntry ? `目前持有率最高的迷思為「${topMisconLabel}」，持有率 ${topMisconEntry.pct}%。${topMisconEntry.pct >= 30 ? '已達高頻迷思門檻，建議優先安排補救。' : '持有率低於 30%，暫不需要緊急介入。'}` : '目前無偵測到任何迷思。' },
+        ].find(item => item.infoKey === statInfoKey)?.dynamicStatus : undefined} />
 
-      {/* 2. 班級診斷摘要 */}
-      <AIDiagnosisSummary />
-
-      {/* 3. 本週行動清單 */}
+      <AIDiagnosisSummary quizId={quizId} classId={classId} totalStudents={totalStudents} />
       <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-        <WeeklyActionChecklist />
+        <WeeklyActionChecklist quizId={quizId} classId={classId} totalStudents={totalStudents} />
       </div>
-
-      {/* 4. 各概念掌握程度圖 */}
       <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-        <BreakdownChart />
+        <BreakdownChart quizId={quizId} classId={classId} />
       </div>
-
-      {/* 5. 迷思概念分佈（含可展開學生名單） */}
       <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-        <MisconceptionDistribution />
+        <MisconceptionDistribution quizId={quizId} classId={classId} totalStudents={totalStudents} />
       </div>
-
-      {/* 6. 題目明細矩陣（預設收合） */}
       <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-        <HeatmapView />
+        <HeatmapView quizId={quizId} classId={classId} totalStudents={totalStudents} />
       </div>
     </div>
   );
@@ -1367,48 +1193,92 @@ function SingleClassReport({ cls, assignments }) {
 
 // ─── 主頁面 ───────────────────────────────────────────────────────────────────
 export default function DashboardReport() {
-  const { classes, currentClassId, setCurrentClassId, assignments, quizzes } = useApp();
+  const { classes, currentClassId, setCurrentClassId, currentQuizId, setCurrentQuizId, assignments, quizzes } = useApp();
   const [localClassId, setLocalClassId] = useState(currentClassId);
+  const [localQuizId, setLocalQuizId] = useState(currentQuizId);
 
   const currentClass = classes.find(c => c.id === localClassId) ?? null;
+
+  const availableQuizzes = localClassId
+    ? getAvailableQuizzesForClass(assignments, quizzes, localClassId)
+    : getAllAssignedQuizzes(assignments, quizzes);
+
+  const effectiveQuizId = localQuizId && availableQuizzes.some(q => q.id === localQuizId)
+    ? localQuizId
+    : availableQuizzes[0]?.id ?? null;
 
   const handleClassChange = (classId) => {
     setLocalClassId(classId || null);
     setCurrentClassId(classId || null);
+    if (classId) {
+      const latestQuiz = getLatestQuizIdForClass(assignments, classId);
+      setLocalQuizId(latestQuiz);
+      setCurrentQuizId(latestQuiz);
+    } else {
+      const firstQuiz = availableQuizzes[0]?.id ?? null;
+      setLocalQuizId(firstQuiz);
+      setCurrentQuizId(firstQuiz);
+    }
   };
+
+  const handleQuizChange = (quizId) => {
+    setLocalQuizId(quizId || null);
+    setCurrentQuizId(quizId || null);
+  };
+
+  const handleSelectClassWithQuiz = (classId, quizId) => {
+    setLocalClassId(classId);
+    setCurrentClassId(classId);
+    setLocalQuizId(quizId);
+    setCurrentQuizId(quizId);
+  };
+
+  const selectedQuizTitle = quizzes.find(q => q.id === effectiveQuizId)?.title;
 
   return (
     <TeacherLayout>
       <div className="p-8">
-        {/* 頁首 + 班級切換器 */}
         <div className="flex items-start justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold text-[#2D3436]">診斷結果</h1>
             <p className="text-[#636E72] mt-1 text-sm">
               {currentClass
-                ? `${currentClass.name} · 溫度與熱單元 · 迷思概念診斷`
+                ? `${currentClass.name} · ${selectedQuizTitle ?? '迷思概念診斷'}`
+                : selectedQuizTitle
+                ? `全部班級 · ${selectedQuizTitle}`
                 : '全部班級 · 派題完成率與診斷總覽'}
             </p>
           </div>
 
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <span className="text-sm text-[#636E72] font-medium">查看班級</span>
-            <div className="relative">
-              <select
-                value={localClassId ?? ''}
-                onChange={e => handleClassChange(e.target.value)}
-                className="appearance-none bg-white border border-[#BDC3C7] rounded-xl pl-3 pr-8 py-2 text-sm font-medium text-[#2D3436] focus:outline-none focus:ring-2 focus:ring-[#8FC87A] shadow-[0_2px_8px_rgba(0,0,0,0.04)] cursor-pointer"
-              >
-                <option value="">全部班級</option>
-                {classes.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-              <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#636E72] pointer-events-none"
-                fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
+          <div className="flex items-center gap-4 flex-shrink-0">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-[#636E72] font-medium">查看班級</span>
+              <div className="relative">
+                <select value={localClassId ?? ''} onChange={e => handleClassChange(e.target.value)}
+                  className="appearance-none bg-white border border-[#BDC3C7] rounded-xl pl-3 pr-8 py-2 text-sm font-medium text-[#2D3436] focus:outline-none focus:ring-2 focus:ring-[#8FC87A] shadow-[0_2px_8px_rgba(0,0,0,0.04)] cursor-pointer">
+                  <option value="">全部班級</option>
+                  {classes.map(c => (<option key={c.id} value={c.id}>{c.name}</option>))}
+                </select>
+                <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#636E72] pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
             </div>
+
+            {availableQuizzes.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-[#636E72] font-medium">查看考卷</span>
+                <div className="relative">
+                  <select value={effectiveQuizId ?? ''} onChange={e => handleQuizChange(e.target.value)}
+                    className="appearance-none bg-white border border-[#BDC3C7] rounded-xl pl-3 pr-8 py-2 text-sm font-medium text-[#2D3436] focus:outline-none focus:ring-2 focus:ring-[#8FC87A] shadow-[0_2px_8px_rgba(0,0,0,0.04)] cursor-pointer">
+                    {availableQuizzes.map(q => (<option key={q.id} value={q.id}>{q.title}</option>))}
+                  </select>
+                  <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#636E72] pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -1417,13 +1287,15 @@ export default function DashboardReport() {
             classes={classes}
             assignments={assignments}
             quizzes={quizzes}
-            onSelectClass={handleClassChange}
+            selectedQuizId={effectiveQuizId}
+            onSelectClassWithQuiz={handleSelectClassWithQuiz}
           />
         ) : (
           <SingleClassReport
             cls={currentClass}
             assignments={assignments}
             quizzes={quizzes}
+            quizId={effectiveQuizId}
           />
         )}
       </div>

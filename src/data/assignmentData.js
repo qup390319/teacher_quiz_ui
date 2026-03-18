@@ -32,4 +32,15 @@ export const ASSIGNMENTS_DATA = [
     submittedCount: 10,
     totalStudents: 22,
   },
+  {
+    id: 'assign-004',
+    quizId: 'quiz-002',
+    classId: 'class-A',
+    assignedAt: '2024-03-20',
+    dueDate: '2024-03-27',
+    status: 'active',
+    completionRate: 85,
+    submittedCount: 17,
+    totalStudents: 20,
+  },
 ];
