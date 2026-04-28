@@ -1,8 +1,8 @@
 export const CLASSES_DATA = [
   {
     id: 'class-A',
-    name: '三年甲班',
-    grade: '三年級',
+    name: '五年甲班',
+    grade: '五年級',
     subject: '自然科學',
     color: '#C8EAAE',
     textColor: '#3D5A3E',
@@ -31,8 +31,8 @@ export const CLASSES_DATA = [
   },
   {
     id: 'class-B',
-    name: '三年乙班',
-    grade: '三年級',
+    name: '五年乙班',
+    grade: '五年級',
     subject: '自然科學',
     color: '#BADDF4',
     textColor: '#2E86C1',
@@ -59,8 +59,8 @@ export const CLASSES_DATA = [
   },
   {
     id: 'class-C',
-    name: '三年丙班',
-    grade: '三年級',
+    name: '五年丙班',
+    grade: '五年級',
     subject: '自然科學',
     color: '#FCF0C2',
     textColor: '#B7950B',

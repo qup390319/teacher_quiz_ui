@@ -84,14 +84,15 @@ export default function TeacherLayout({ children }) {
         <div className="px-5 py-5 border-b border-[#D5D8DC]">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-[#C8EAAE] border border-[#BDC3C7] rounded-xl flex items-center justify-center flex-shrink-0">
-              <svg className="w-5 h-5 text-[#3D5A3E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.347.35A3.001 3.001 0 0112 20.4a3.001 3.001 0 01-2.121-.872l-.347-.347z" />
+              <svg className="w-5 h-5 text-[#3D5A3E]" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} viewBox="0 0 24 24">
+                <circle cx="10.5" cy="10.5" r="6.5" />
+                <path d="m21 21-5.5-5.5" />
+                <circle cx="10.5" cy="10.5" r="1.4" fill="currentColor" stroke="none" />
               </svg>
             </div>
             <div>
-              <p className="text-sm font-bold leading-tight text-[#2D3436]">迷思概念診斷</p>
-              <p className="text-xs text-[#5A8A5C] leading-tight font-medium">教師端</p>
+              <p className="text-sm font-bold leading-tight text-[#2D3436] tracking-tight">SciLens</p>
+              <p className="text-xs text-[#5A8A5C] leading-tight font-medium">迷思概念診斷 · 教師端</p>
             </div>
           </div>
         </div>

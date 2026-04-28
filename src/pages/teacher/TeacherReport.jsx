@@ -232,7 +232,7 @@ export default function TeacherReport() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-[#2D3436] mb-1">班級診斷報告</h1>
           <p className="text-[#636E72] text-sm">
-            20 位學生已完成「溫度與熱」診斷測驗 · 測驗日期：2026/02/23
+            20 位學生已完成「水溶液」診斷測驗 · 測驗日期：2026/02/23
           </p>
         </div>
 

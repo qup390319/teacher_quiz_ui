@@ -3,12 +3,32 @@ import TeacherLayout from '../../components/TeacherLayout';
 import { knowledgeNodes } from '../../data/knowledgeGraph';
 
 const STAGE_COLORS = {
-  group1:   { bg: 'bg-[#BADDF4]', text: 'text-[#2E86C1]', border: 'border-[#BDC3C7]' },
-  single04: { bg: 'bg-[#FAC8CC]', text: 'text-[#E74C5E]', border: 'border-[#BDC3C7]' },
-  single05: { bg: 'bg-[#C8EAAE]', text: 'text-[#3D5A3E]', border: 'border-[#BDC3C7]' },
-  group2:   { bg: 'bg-[#FCF0C2]', text: 'text-[#B7950B]', border: 'border-[#BDC3C7]' },
-  single08: { bg: 'bg-[#F3E5F5]', text: 'text-[#7D3C98]', border: 'border-[#BDC3C7]' },
+  blue:   { bg: 'bg-[#BADDF4]', text: 'text-[#2E86C1]', border: 'border-[#BDC3C7]' },
+  pink:   { bg: 'bg-[#FAC8CC]', text: 'text-[#E74C5E]', border: 'border-[#BDC3C7]' },
+  green:  { bg: 'bg-[#C8EAAE]', text: 'text-[#3D5A3E]', border: 'border-[#BDC3C7]' },
+  yellow: { bg: 'bg-[#FCF0C2]', text: 'text-[#B7950B]', border: 'border-[#BDC3C7]' },
+  mint:   { bg: 'bg-[#A8E6CF]', text: 'text-[#1E8449]', border: 'border-[#BDC3C7]' },
+  purple: { bg: 'bg-[#F3E5F5]', text: 'text-[#7D3C98]', border: 'border-[#BDC3C7]' },
 };
+
+// 子主題 A：水溶液中的變化（溶解）— 5 個節點，5 個階段（線性）
+const SUBTOPIC_A_STAGES = [
+  { ids: ['INe-II-3-01'], color: 'blue',   nextArrow: 'single' },
+  { ids: ['INe-II-3-02'], color: 'pink',   nextArrow: 'single' },
+  { ids: ['INe-II-3-03'], color: 'green',  nextArrow: 'single' },
+  { ids: ['INe-II-3-05'], color: 'yellow', nextArrow: 'single' },
+  { ids: ['INe-II-3-04'], color: 'purple', nextArrow: null },
+];
+
+// 子主題 B：酸鹼反應 — 7 個節點，6 個階段（5-5、5-6 為平行階段）
+const SUBTOPIC_B_STAGES = [
+  { ids: ['INe-Ⅲ-5-1'], color: 'blue',   nextArrow: 'single' },
+  { ids: ['INe-Ⅲ-5-2'], color: 'pink',   nextArrow: 'single' },
+  { ids: ['INe-Ⅲ-5-3'], color: 'green',  nextArrow: 'single' },
+  { ids: ['INe-Ⅲ-5-4'], color: 'yellow', nextArrow: 'multi' },
+  { ids: ['INe-Ⅲ-5-5', 'INe-Ⅲ-5-6'], color: 'mint', nextArrow: 'multi' },
+  { ids: ['INe-Ⅲ-5-7'], color: 'purple', nextArrow: null },
+];
 
 function Arrow({ multi = false }) {
   if (multi) {
@@ -39,6 +59,21 @@ function NodePill({ node, colorClass }) {
       <p className="text-xs font-mono text-[#95A5A6] leading-tight">{node.id}</p>
       <p className={`text-sm font-semibold leading-snug ${colorClass.text}`}>{node.name}</p>
     </div>
+  );
+}
+
+function PathStage({ stage, nodes }) {
+  const colorClass = STAGE_COLORS[stage.color];
+  return (
+    <>
+      <div className="flex-shrink-0 flex flex-col gap-1.5">
+        {nodes(stage.ids).map((node) => (
+          <NodePill key={node.id} node={node} colorClass={colorClass} />
+        ))}
+      </div>
+      {stage.nextArrow === 'multi' && <Arrow multi />}
+      {stage.nextArrow === 'single' && <Arrow />}
+    </>
   );
 }
 
@@ -80,46 +115,31 @@ export default function KnowledgeMap() {
             <h1 className="text-2xl font-bold text-[#2D3436]">知識節點與迷思概念總覽</h1>
           </div>
           <p className="text-sm text-[#636E72] ml-8">
-            溫度與熱單元 · 因材網對應節點 INa-Ⅲ-8-01 至 INa-Ⅲ-8-08 ·
+            水溶液單元 · 因材網對應節點 INe-II-3-01 至 INe-Ⅲ-5-7 ·
             <span className="ml-2 font-medium text-[#2D3436]">{knowledgeNodes.length} 個知識節點</span>
             <span className="mx-1 text-[#BDC3C7]">·</span>
             <span className="font-medium text-[#2D3436]">{totalMisconceptions} 個迷思概念</span>
           </p>
         </div>
 
-        {/* A 區：知識路徑圖 */}
+        {/* A 區：知識路徑圖（兩個子主題各一條） */}
         <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-5 mb-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
           <p className="text-xs font-semibold text-[#95A5A6] uppercase tracking-wide mb-4">知識學習路徑</p>
+
+          {/* 子主題 A */}
+          <p className="text-sm font-semibold text-[#2D3436] mb-2">子主題 A：水溶液中的變化（溶解）</p>
+          <div className="flex items-center gap-0 overflow-x-auto pb-3 mb-4">
+            {SUBTOPIC_A_STAGES.map((stage, idx) => (
+              <PathStage key={`A-${idx}`} stage={stage} nodes={nodes} />
+            ))}
+          </div>
+
+          {/* 子主題 B */}
+          <p className="text-sm font-semibold text-[#2D3436] mb-2 pt-3 border-t border-[#D5D8DC]">子主題 B：酸鹼反應</p>
           <div className="flex items-center gap-0 overflow-x-auto pb-1">
-            <div className="flex-shrink-0 flex flex-col gap-1.5">
-              {nodes(['INa-Ⅲ-8-01', 'INa-Ⅲ-8-02', 'INa-Ⅲ-8-03']).map((node) => (
-                <NodePill key={node.id} node={node} colorClass={STAGE_COLORS.group1} />
-              ))}
-            </div>
-            <Arrow multi />
-            <div className="flex-shrink-0 flex flex-col gap-1.5">
-              {nodes(['INa-Ⅲ-8-04']).map((node) => (
-                <NodePill key={node.id} node={node} colorClass={STAGE_COLORS.single04} />
-              ))}
-            </div>
-            <Arrow />
-            <div className="flex-shrink-0 flex flex-col gap-1.5">
-              {nodes(['INa-Ⅲ-8-05']).map((node) => (
-                <NodePill key={node.id} node={node} colorClass={STAGE_COLORS.single05} />
-              ))}
-            </div>
-            <Arrow multi />
-            <div className="flex-shrink-0 flex flex-col gap-1.5">
-              {nodes(['INa-Ⅲ-8-06', 'Na-Ⅲ-8-07']).map((node) => (
-                <NodePill key={node.id} node={node} colorClass={STAGE_COLORS.group2} />
-              ))}
-            </div>
-            <Arrow multi />
-            <div className="flex-shrink-0 flex flex-col gap-1.5">
-              {nodes(['INa-Ⅲ-8-08']).map((node) => (
-                <NodePill key={node.id} node={node} colorClass={STAGE_COLORS.single08} />
-              ))}
-            </div>
+            {SUBTOPIC_B_STAGES.map((stage, idx) => (
+              <PathStage key={`B-${idx}`} stage={stage} nodes={nodes} />
+            ))}
           </div>
         </div>
 

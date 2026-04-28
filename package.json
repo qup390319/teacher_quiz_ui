@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "pptxgenjs": "^4.0.1",
+    "puppeteer": "^24.39.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.13.1",

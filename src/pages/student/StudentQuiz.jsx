@@ -7,7 +7,7 @@ import { getMisconceptionById, knowledgeNodes } from '../../data/knowledgeGraph'
 const nodeOrder = Object.fromEntries(knowledgeNodes.map((n, i) => [n.id, i]));
 const INTRO_MESSAGES = [
   { id: 'intro-1', text: '你好！我是「科學偵探」系統 🔍', type: 'system' },
-  { id: 'intro-2', text: '今天我們要一起探索關於「溫度與熱」的科學思維。', type: 'system' },
+  { id: 'intro-2', text: '今天我們要一起探索關於「水溶液」的科學思維。', type: 'system' },
   { id: 'intro-3', text: '沒有對錯評分，只是想了解你目前的想法。請輕鬆選出你覺得最合理的答案！', type: 'system' },
 ];
 

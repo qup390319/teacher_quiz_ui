@@ -1,117 +1,117 @@
-// ═══ 考卷一：溫度與熱 · 迷思診斷（第一次）═══════════════════════════════════
+// ═══ 考卷一：水溶液 · 迷思診斷（第一次）═══════════════════════════════════
 export const defaultQuestions = [
   {
     id: 1,
-    stem: '冬天摸公園的鐵椅覺得很冰，摸木頭長椅卻不會，是因為？',
-    knowledgeNodeId: 'INa-Ⅲ-8-01',
+    stem: '媽媽把一匙糖加入熱開水並攪拌，糖看不見了，這時候糖到哪裡去了？',
+    knowledgeNodeId: 'INe-II-3-02',
     options: [
-      { tag: 'A', content: '鐵椅的溫度本來就比木頭低。', diagnosis: 'M01-1' },
-      { tag: 'B', content: '鐵的熱傳導速度較快，帶走手的熱較快。', diagnosis: 'CORRECT' },
-      { tag: 'C', content: '鐵會產生冷氣並傳遞給手。', diagnosis: 'M01-3' },
-      { tag: 'D', content: '「冷」在鐵中傳播的速度比木頭快。', diagnosis: 'M01-2' },
+      { tag: 'A', content: '糖變成肉眼看不見的小粒子分散在水裡，仍然存在於水中。', diagnosis: 'CORRECT' },
+      { tag: 'B', content: '糖完全消失了，已經不在水裡。', diagnosis: 'M02-1' },
+      { tag: 'C', content: '糖像冰塊一樣融化了，已經變成水的一部分。', diagnosis: 'M02-2' },
+      { tag: 'D', content: '糖蒸發到空氣中了，所以看不見。', diagnosis: 'M02-3' },
     ],
   },
   {
     id: 2,
-    stem: '在冷氣房內，冷風通常會從上方吹出，主要是因為冷空氣會？',
-    knowledgeNodeId: 'INa-Ⅲ-8-03',
+    stem: '小明在 100 毫升的水中加入很多糖，攪拌一陣子後杯底仍有糖沒溶完。下列敘述何者最正確？',
+    knowledgeNodeId: 'INe-II-3-03',
     options: [
-      { tag: 'A', content: '受熱脹冷縮影響向上升。', diagnosis: 'M03-1' },
-      { tag: 'B', content: '密度較大而向下沉。', diagnosis: 'CORRECT' },
-      { tag: 'C', content: '停留在原處直到變熱。', diagnosis: 'M03-3' },
-      { tag: 'D', content: '沿著牆壁水平移動。', diagnosis: 'M03-2' },
+      { tag: 'A', content: '只要攪拌得更用力、攪久一點，剩下的糖就一定能全部溶解。', diagnosis: 'M03-1' },
+      { tag: 'B', content: '攪拌只能加快糖溶解的速度，無法讓更多的糖溶進這杯水裡。', diagnosis: 'CORRECT' },
+      { tag: 'C', content: '沒有攪拌的話，糖根本不會溶解。', diagnosis: 'M03-2' },
+      { tag: 'D', content: '持續攪拌，沉在杯底的糖也會跟著重新溶解進水裡。', diagnosis: 'M03-3' },
     ],
   },
   {
     id: 3,
-    stem: '陽光下撐一把淺色的雨傘，感覺比直接曬太陽涼快，是因為？',
-    knowledgeNodeId: 'INa-Ⅲ-8-05',
+    stem: '小華把鹽一直加進一杯水中，加到最後杯底開始有鹽溶不掉。下列哪個說法最正確？',
+    knowledgeNodeId: 'INe-II-3-05',
     options: [
-      { tag: 'A', content: '淺色傘阻擋了太陽的熱輻射。', diagnosis: 'CORRECT' },
-      { tag: 'B', content: '傘面會主動釋放出冷氣。', diagnosis: 'M05-1' },
-      { tag: 'C', content: '淺色傘會吸收所有的熱輻射。', diagnosis: 'M05-2' },
-      { tag: 'D', content: '傘下的空氣不會產生對流。', diagnosis: 'M05-4' },
+      { tag: 'A', content: '一杯水能溶解的鹽量有上限，超過就會沉澱。', diagnosis: 'CORRECT' },
+      { tag: 'B', content: '鹽沉到杯底是因為鹽比水重，與溶解量上限無關。', diagnosis: 'M05-2' },
+      { tag: 'C', content: '只要不斷加熱與加水，這杯水可以溶解任何量的鹽。', diagnosis: 'M05-3' },
+      { tag: 'D', content: '鹽是破碎狀比較輕會浮上來，沒看到就是已經溶完了。', diagnosis: 'M05-4' },
     ],
   },
   {
     id: 4,
-    stem: '為什麼保溫杯的夾層通常會抽成真空？',
-    knowledgeNodeId: 'INa-Ⅲ-8-06',
+    stem: '要判斷一杯透明的水溶液是酸性、中性還是鹼性，最適合的方法是？',
+    knowledgeNodeId: 'INe-Ⅲ-5-4',
     options: [
-      { tag: 'A', content: '為了減輕保溫杯的總重量。', diagnosis: 'M06-4' },
-      { tag: 'B', content: '真空能阻斷熱傳導與熱對流。', diagnosis: 'CORRECT' },
-      { tag: 'C', content: '真空層能主動產生熱能保溫。', diagnosis: 'M06-1' },
-      { tag: 'D', content: '真空可以把冷氣封在裡面。', diagnosis: 'M06-2' },
+      { tag: 'A', content: '用嘴巴嚐看看，鹹的就是鹼性。', diagnosis: 'M09-1' },
+      { tag: 'B', content: '聞看看，沒有刺鼻味就是中性。', diagnosis: 'M09-2' },
+      { tag: 'C', content: '用石蕊試紙浸入水溶液中，依顏色變化判斷。', diagnosis: 'CORRECT' },
+      { tag: 'D', content: '看名稱中有沒有「酸」字，沒有就一定不是酸性。', diagnosis: 'M09-3' },
     ],
   },
   {
     id: 5,
-    stem: '電腦主機後面安裝風扇向外吹，主要是為了？',
-    knowledgeNodeId: 'Na-Ⅲ-8-07',
+    stem: '水管被堵住時，可以倒入鹼性的通樂（含氫氧化鈉）來通水管。下列敘述何者最正確？',
+    knowledgeNodeId: 'INe-Ⅲ-5-7',
     options: [
-      { tag: 'A', content: '讓外面的新鮮空氣進入內部。', diagnosis: 'M07-3' },
-      { tag: 'B', content: '加快對流運動將內部熱能帶走。', diagnosis: 'CORRECT' },
-      { tag: 'C', content: '風扇轉動時會產生冷風。', diagnosis: 'M07-1' },
-      { tag: 'D', content: '防止熱輻射擴散到外面。', diagnosis: 'M07-4' },
+      { tag: 'A', content: '鹼性物質都有毒，絕對不能拿來做家庭清潔。', diagnosis: 'M12-1' },
+      { tag: 'B', content: '通樂能把水管裡的油脂等阻塞物分解掉。', diagnosis: 'CORRECT' },
+      { tag: 'C', content: '通樂越濃就一定越強鹼，越稀就是弱鹼。', diagnosis: 'M12-2' },
+      { tag: 'D', content: '鹼性遇到酸性會把彼此完全消滅變成虛無。', diagnosis: 'M12-3' },
     ],
   },
 ];
 
-// ═══ 考卷二：溫度與熱 · 迷思診斷（第二次）═══════════════════════════════════
+// ═══ 考卷二：水溶液 · 迷思診斷（第二次）═══════════════════════════════════
 export const quiz002Questions = [
   {
     id: 1,
-    stem: '將一根鐵湯匙和一根木筷子同時放入熱水中，過一會兒握住末端，你會發現？',
-    knowledgeNodeId: 'INa-Ⅲ-8-01',
+    stem: '把鹽放進水裡攪一攪後鹽看不見了，過一會兒水嚐起來仍是鹹的。這代表？',
+    knowledgeNodeId: 'INe-II-3-02',
     options: [
-      { tag: 'A', content: '鐵湯匙的末端明顯變燙，因為鐵的熱傳導速度較快。', diagnosis: 'CORRECT' },
-      { tag: 'B', content: '兩者末端溫度一樣，因為都泡在同一杯水中。', diagnosis: 'M01-1' },
-      { tag: 'C', content: '木筷子末端比較燙，因為木頭會吸收更多熱。', diagnosis: 'M01-3' },
-      { tag: 'D', content: '鐵湯匙會把「冷」傳到手上，所以感覺涼涼的。', diagnosis: 'M01-2' },
+      { tag: 'A', content: '鹽已經不是原來的鹽，溶解過程把鹽變成另一種物質。', diagnosis: 'M02-4' },
+      { tag: 'B', content: '鹽變成肉眼看不見的小粒子均勻分散在水中。', diagnosis: 'CORRECT' },
+      { tag: 'C', content: '鹽真的不見了，只是水的味道剛好變鹹。', diagnosis: 'M02-1' },
+      { tag: 'D', content: '鹽蒸發了，鹹味是水自己變的。', diagnosis: 'M02-3' },
     ],
   },
   {
     id: 2,
-    stem: '在一間關閉門窗的房間中，點燃一根蚊香放在地板上，煙會先往哪個方向飄？',
-    knowledgeNodeId: 'INa-Ⅲ-8-03',
+    stem: '兩杯一樣的水各加入 5 公克糖，A 杯不攪拌、B 杯快速攪拌。最後比較兩杯，會發現？',
+    knowledgeNodeId: 'INe-II-3-03',
     options: [
-      { tag: 'A', content: '往上飄，因為蚊香周圍的空氣受熱上升。', diagnosis: 'CORRECT' },
-      { tag: 'B', content: '往下沉，因為煙的密度比空氣大。', diagnosis: 'M03-2' },
-      { tag: 'C', content: '水平擴散，因為室內沒有風。', diagnosis: 'M03-3' },
-      { tag: 'D', content: '停在原處不動，因為門窗關閉沒有對流。', diagnosis: 'M03-1' },
+      { tag: 'A', content: '兩杯能溶解的糖量相同，只是 B 杯溶解得比較快。', diagnosis: 'CORRECT' },
+      { tag: 'B', content: 'B 杯能溶解的糖比 A 杯多，因為攪拌會讓水容納更多糖。', diagnosis: 'M03-1' },
+      { tag: 'C', content: 'A 杯的糖完全沒有溶解，因為沒攪拌就不會溶解。', diagnosis: 'M03-2' },
+      { tag: 'D', content: '兩杯溶解情況完全一樣，攪拌不會加快也不會增加。', diagnosis: 'M03-4' },
     ],
   },
   {
     id: 3,
-    stem: '夏天時，穿深色衣服比穿淺色衣服更容易覺得熱，主要原因是？',
-    knowledgeNodeId: 'INa-Ⅲ-8-05',
+    stem: '在室溫下，把糖一直加入同一杯水並攪拌。當水中已經溶不下時你會看到？',
+    knowledgeNodeId: 'INe-II-3-05',
     options: [
-      { tag: 'A', content: '深色衣服本身會產生熱能。', diagnosis: 'M05-1' },
-      { tag: 'B', content: '深色衣服吸收較多太陽的熱輻射。', diagnosis: 'CORRECT' },
-      { tag: 'C', content: '深色衣服會阻止身體散熱。', diagnosis: 'M05-4' },
-      { tag: 'D', content: '淺色衣服會主動製造涼爽感。', diagnosis: 'M05-2' },
+      { tag: 'A', content: '多餘的糖會沉到杯底，因為水能溶解的糖量有極限。', diagnosis: 'CORRECT' },
+      { tag: 'B', content: '多餘的糖只是因為比較重而沉底，再攪拌、加熱還會繼續溶。', diagnosis: 'M05-2' },
+      { tag: 'C', content: '水可以無限溶解糖，看到沉澱代表還沒攪拌均勻。', diagnosis: 'M05-3' },
+      { tag: 'D', content: '加熱可以讓糖暫時全溶，但放一段時間後又會全部沉澱出來。', diagnosis: 'M05-1' },
     ],
   },
   {
     id: 4,
-    stem: '冬天穿羽絨外套會感覺溫暖，主要是因為？',
-    knowledgeNodeId: 'INa-Ⅲ-8-06',
+    stem: '將紫色石蕊試紙浸入小蘇打水中，試紙變成藍色。這代表小蘇打水是？',
+    knowledgeNodeId: 'INe-Ⅲ-5-4',
     options: [
-      { tag: 'A', content: '羽絨外套會自己產生熱量。', diagnosis: 'M06-1' },
-      { tag: 'B', content: '羽絨外套很重，壓力讓身體發熱。', diagnosis: 'M06-4' },
-      { tag: 'C', content: '羽絨中的空氣層能減少體熱散失。', diagnosis: 'CORRECT' },
-      { tag: 'D', content: '羽絨外套能把外面的冷空氣吸收掉。', diagnosis: 'M06-2' },
+      { tag: 'A', content: '酸性，因為「小蘇打」這個名稱沒有「酸」字。', diagnosis: 'M09-3' },
+      { tag: 'B', content: '鹼性，因為紫色石蕊試紙在鹼性溶液中會變成藍色。', diagnosis: 'CORRECT' },
+      { tag: 'C', content: '中性，因為小蘇打水沒有刺鼻味。', diagnosis: 'M09-2' },
+      { tag: 'D', content: '鹼性，因為小蘇打水嚐起來不是酸的也不是鹹的。', diagnosis: 'M09-4' },
     ],
   },
   {
     id: 5,
-    stem: '散熱片通常設計成有很多鰭片（fin），主要目的是？',
-    knowledgeNodeId: 'Na-Ⅲ-8-07',
+    stem: '被蜜蜂叮咬時皮膚會痛癢，這是因為蜜蜂的毒液偏酸性。下列建議何者最合適？',
+    knowledgeNodeId: 'INe-Ⅲ-5-7',
     options: [
-      { tag: 'A', content: '增加接觸空氣的表面積，加速散熱。', diagnosis: 'CORRECT' },
-      { tag: 'B', content: '鰭片會產生冷風來降溫。', diagnosis: 'M07-1' },
-      { tag: 'C', content: '鰭片能阻擋熱輻射向外傳播。', diagnosis: 'M07-4' },
-      { tag: 'D', content: '增加重量讓熱量更快沉到底部。', diagnosis: 'M07-3' },
+      { tag: 'A', content: '不要碰它，所有酸都很危險、有毒，碰了會更糟。', diagnosis: 'M12-1' },
+      { tag: 'B', content: '塗一點偏鹼性的小蘇打水，可以幫助緩解。', diagnosis: 'CORRECT' },
+      { tag: 'C', content: '馬上塗檸檬汁，因為酸與酸可以互相消滅。', diagnosis: 'M12-3' },
+      { tag: 'D', content: '因為有「酸」字，皮膚一定會被腐蝕壞死，要立刻送醫。', diagnosis: 'M12-4' },
     ],
   },
 ];
@@ -148,38 +148,59 @@ const CLASS_STUDENTS = {
 };
 
 // ═══ 各 quiz×class 的作答分佈 ════════════════════════════════════════════════
+// 分佈樣態維持原本「五年甲班中等／五年乙班略低／五年丙班最低／第二次施測甲班進步」的劇情。
 const ANSWER_DISTRIBUTIONS_MAP = {
-  // ── quiz-001 × class-A（20 人）──
+  // ── quiz-001 × class-A（20 人）── 整體中等表現
   'quiz-001__class-A': [
-    ['A','A','A','A','A','A','B','B','B','B','B','B','B','B','C','C','C','C','D','D'],
+    // Q1 correct=A：8A, 6B, 4C, 2D（40%）
+    ['A','A','A','A','A','A','A','A','B','B','B','B','B','B','C','C','C','C','D','D'],
+    // Q2 correct=B：7A, 7B, 4C, 2D（35%）
     ['A','A','A','A','A','A','A','B','B','B','B','B','B','B','C','C','C','C','D','D'],
+    // Q3 correct=A：9A, 5B, 4C, 2D（45%）
     ['A','A','A','A','A','A','A','A','A','B','B','B','B','B','C','C','C','C','D','D'],
-    ['A','A','A','B','B','B','B','B','B','C','C','C','C','D','D','D','D','D','D','D'],
+    // Q4 correct=C：3A, 4B, 6C, 7D（30%）
+    ['A','A','A','B','B','B','B','C','C','C','C','C','C','D','D','D','D','D','D','D'],
+    // Q5 correct=B：4A, 10B, 4C, 2D（50%）
     ['A','A','A','A','B','B','B','B','B','B','B','B','B','B','C','C','C','C','D','D'],
   ],
-  // ── quiz-001 × class-B（18 人）──
+  // ── quiz-001 × class-B（18 人）── 略低於甲班
   'quiz-001__class-B': [
+    // Q1 correct=A：6A, 5B, 4C, 3D（33%）
+    ['A','A','A','A','A','A','B','B','B','B','B','C','C','C','C','D','D','D'],
+    // Q2 correct=B：5A, 6B, 4C, 3D（33%）
     ['A','A','A','A','A','B','B','B','B','B','B','C','C','C','C','D','D','D'],
-    ['A','A','A','A','A','A','B','B','B','B','B','C','C','C','C','C','D','D'],
+    // Q3 correct=A：8A, 4B, 4C, 2D（44%）
     ['A','A','A','A','A','A','A','A','B','B','B','B','C','C','C','C','D','D'],
-    ['A','A','A','A','B','B','B','B','B','C','C','C','D','D','D','D','D','D'],
-    ['A','A','A','B','B','B','B','B','B','B','B','B','C','C','C','C','D','D'],
+    // Q4 correct=C：3A, 5B, 4C, 6D（22%）
+    ['A','A','A','B','B','B','B','B','C','C','C','C','D','D','D','D','D','D'],
+    // Q5 correct=B：4A, 8B, 4C, 2D（44%）
+    ['A','A','A','A','B','B','B','B','B','B','B','B','C','C','C','C','D','D'],
   ],
-  // ── quiz-001 × class-C（22 人）──
+  // ── quiz-001 × class-C（22 人）── 最低，需要關注
   'quiz-001__class-C': [
-    ['A','A','A','A','A','A','A','A','B','B','B','B','B','C','C','C','C','C','D','D','D','D'],
-    ['A','A','A','A','A','A','A','A','A','B','B','B','B','C','C','C','C','C','D','D','D','D'],
-    ['A','A','A','A','A','A','A','B','B','B','B','B','B','C','C','C','C','C','D','D','D','D'],
+    // Q1 correct=A：7A, 5B, 5C, 5D（32%）
+    ['A','A','A','A','A','A','A','B','B','B','B','B','C','C','C','C','C','D','D','D','D','D'],
+    // Q2 correct=B：8A, 6B, 4C, 4D（27%）
+    ['A','A','A','A','A','A','A','A','B','B','B','B','B','B','C','C','C','C','D','D','D','D'],
+    // Q3 correct=A：9A, 6B, 4C, 3D（41%）
+    ['A','A','A','A','A','A','A','A','A','B','B','B','B','B','B','C','C','C','C','D','D','D'],
+    // Q4 correct=C：5A, 5B, 4C, 8D（18%）
     ['A','A','A','A','A','B','B','B','B','B','C','C','C','C','D','D','D','D','D','D','D','D'],
-    ['A','A','A','A','A','B','B','B','B','B','B','B','B','C','C','C','C','C','D','D','D','D'],
+    // Q5 correct=B：5A, 9B, 4C, 4D（41%）
+    ['A','A','A','A','A','B','B','B','B','B','B','B','B','B','C','C','C','C','D','D','D','D'],
   ],
   // ── quiz-002 × class-A（20 人）── 第二次施測，掌握率有改善
   'quiz-002__class-A': [
-    ['A','A','A','A','A','A','A','A','A','A','A','A','B','B','B','B','C','C','D','D'],
-    ['A','A','A','A','A','A','A','A','A','A','B','B','B','C','C','C','C','D','D','D'],
-    ['A','A','A','A','B','B','B','B','B','B','B','B','B','B','B','C','C','C','D','D'],
-    ['A','A','A','B','B','B','C','C','C','C','C','C','C','C','C','C','D','D','D','D'],
+    // Q1 correct=B：4A, 12B, 2C, 2D（60%）
+    ['A','A','A','A','B','B','B','B','B','B','B','B','B','B','B','B','C','C','D','D'],
+    // Q2 correct=A：12A, 3B, 3C, 2D（60%）
     ['A','A','A','A','A','A','A','A','A','A','A','A','B','B','B','C','C','C','D','D'],
+    // Q3 correct=A：10A, 4B, 3C, 3D（50%）
+    ['A','A','A','A','A','A','A','A','A','A','B','B','B','B','C','C','C','D','D','D'],
+    // Q4 correct=B：3A, 11B, 3C, 3D（55%）
+    ['A','A','A','B','B','B','B','B','B','B','B','B','B','B','C','C','C','D','D','D'],
+    // Q5 correct=B：3A, 12B, 3C, 2D（60%）
+    ['A','A','A','B','B','B','B','B','B','B','B','B','B','B','B','C','C','C','D','D'],
   ],
 };
 
@@ -256,19 +277,19 @@ export const getNodePassRates = (quizId = 'quiz-001', classId = 'class-A') => {
 export const QUIZZES_DATA = [
   {
     id: 'quiz-001',
-    title: '溫度與熱 · 迷思診斷（第一次）',
+    title: '水溶液 · 迷思診斷（第一次）',
     status: 'published',
     questionCount: 5,
-    knowledgeNodeIds: ['INa-Ⅲ-8-01', 'INa-Ⅲ-8-03', 'INa-Ⅲ-8-05', 'INa-Ⅲ-8-06', 'Na-Ⅲ-8-07'],
+    knowledgeNodeIds: ['INe-II-3-02', 'INe-II-3-03', 'INe-II-3-05', 'INe-Ⅲ-5-4', 'INe-Ⅲ-5-7'],
     questions: defaultQuestions,
     createdAt: '2024-03-01',
   },
   {
     id: 'quiz-002',
-    title: '溫度與熱 · 迷思診斷（第二次）',
+    title: '水溶液 · 迷思診斷（第二次）',
     status: 'published',
     questionCount: 5,
-    knowledgeNodeIds: ['INa-Ⅲ-8-01', 'INa-Ⅲ-8-03', 'INa-Ⅲ-8-05', 'INa-Ⅲ-8-06', 'Na-Ⅲ-8-07'],
+    knowledgeNodeIds: ['INe-II-3-02', 'INe-II-3-03', 'INe-II-3-05', 'INe-Ⅲ-5-4', 'INe-Ⅲ-5-7'],
     questions: quiz002Questions,
     createdAt: '2024-03-20',
   },

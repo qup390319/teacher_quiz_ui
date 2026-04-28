@@ -16,13 +16,17 @@ export default function LoginPage() {
       {/* Header */}
       <div className="text-center mb-12">
         <div className="inline-flex items-center justify-center w-20 h-20 bg-[#8FC87A] border border-[#BDC3C7] rounded-[32px] mb-5 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-          <svg className="w-10 h-10 text-[#2D3436]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.347.35A3.001 3.001 0 0112 20.4a3.001 3.001 0 01-2.121-.872l-.347-.347z" />
+          <svg className="w-10 h-10 text-[#2D3436]" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} viewBox="0 0 24 24">
+            <circle cx="10.5" cy="10.5" r="6.5" />
+            <path d="m21 21-5.5-5.5" />
+            <circle cx="10.5" cy="10.5" r="1.4" fill="currentColor" stroke="none" />
+            <circle cx="8.2" cy="8.2" r="0.9" fill="currentColor" stroke="none" />
+            <circle cx="12.8" cy="8.2" r="0.9" fill="currentColor" stroke="none" />
           </svg>
         </div>
-        <h1 className="text-3xl font-bold text-[#2D3436] mb-2">迷思概念診斷系統</h1>
-        <p className="text-lg text-[#636E72]">以「溫度與熱」單元為例</p>
+        <h1 className="text-5xl font-bold text-[#2D3436] mb-2 tracking-tight">SciLens</h1>
+        <p className="text-lg text-[#3D5A3E] font-semibold mb-1">迷思概念診斷系統</p>
+        <p className="text-base text-[#636E72]">以「水溶液」單元為例</p>
         <div className="mt-3 inline-block bg-[#C8EAAE] border border-[#BDC3C7] text-[#3D5A3E] text-sm px-4 py-1 rounded-full font-medium">
           國小自然科學 · 因材網對應
         </div>
@@ -93,7 +97,7 @@ export default function LoginPage() {
         </button>
       </div>
 
-      <p className="mt-10 text-[#95A5A6] text-sm">溫度與熱單元 · INa-Ⅲ-8-01 至 INa-Ⅲ-8-08</p>
+      <p className="mt-10 text-[#95A5A6] text-sm">水溶液單元 · INe-II-3-01 至 INe-Ⅲ-5-7（共 12 個知識節點）</p>
     </div>
   );
 }

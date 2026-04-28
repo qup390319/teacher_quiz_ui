@@ -12,7 +12,7 @@ export function AppProvider({ children }) {
   // 教師出題狀態（出題精靈用）
   const [quizQuestions, setQuizQuestions] = useState([...defaultQuestions]);
   const [selectedNodeIds, setSelectedNodeIds] = useState([
-    'INa-Ⅲ-8-01', 'INa-Ⅲ-8-03', 'INa-Ⅲ-8-05', 'INa-Ⅲ-8-06', 'Na-Ⅲ-8-07',
+    'INe-II-3-02', 'INe-II-3-03', 'INe-II-3-05', 'INe-Ⅲ-5-4', 'INe-Ⅲ-5-7',
   ]);
 
   // 班級資料

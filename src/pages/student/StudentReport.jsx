@@ -23,7 +23,7 @@ export default function StudentReport() {
   const displayCorrect = hasAnswers ? (activeStudentReport?.correctCount ?? correctCount) : 2;
   const displayWrong = hasAnswers ? totalQuestions - displayCorrect : 3;
 
-  const misconDetails = (hasAnswers ? misconceptionSource : ['M01-2', 'M01-3', 'M06-2'])
+  const misconDetails = (hasAnswers ? misconceptionSource : ['M02-2', 'M03-1', 'M09-1'])
     .map((mId) => {
       const node = knowledgeNodes.find((n) => n.misconceptions.find((m) => m.id === mId));
       const miscon = node?.misconceptions.find((m) => m.id === mId);
@@ -40,7 +40,7 @@ export default function StudentReport() {
 
   const wrongNodeIds = (hasAnswers
     ? answerSource.filter((a) => a.diagnosis !== 'CORRECT').map((a) => reportQuestions.find((q) => q.id === a.questionId)?.knowledgeNodeId)
-    : ['INa-Ⅲ-8-01', 'INa-Ⅲ-8-06']
+    : ['INe-II-3-02', 'INe-Ⅲ-5-4']
   ).filter(Boolean);
 
   const uniqueWrongNodes = [...new Set(wrongNodeIds)];
@@ -52,7 +52,7 @@ export default function StudentReport() {
   const needsPrereqReview = wrongNodesWithPrereqs.length > 0;
 
   const remedialNodeIds = needsPrereqReview
-    ? ['INa-Ⅲ-8-01', 'INa-Ⅲ-8-02', 'INa-Ⅲ-8-03']
+    ? ['INe-II-3-01', 'INe-II-3-02', 'INe-Ⅲ-5-1']
     : uniqueWrongNodes;
 
   const remedialNodes = remedialNodeIds
@@ -174,7 +174,7 @@ export default function StudentReport() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <p className="text-sm text-[#B7950B] leading-relaxed">
-                你在較後段的概念有些疑惑，建議先回頭複習基礎的「熱傳導與對流」概念，打穩基礎後再往後學習會更有效喔！
+                你在較後段的概念有些疑惑，建議先回頭複習基礎的「溶解現象」與「水溶液組成」概念，打穩基礎後再往後學習會更有效喔！
               </p>
             </div>
           )}

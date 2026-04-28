@@ -22,7 +22,7 @@ export default function QuizCreateWizard() {
         {/* Page Header */}
         <div className="mb-7">
           <h1 className="text-2xl font-bold text-[#2D3436] mb-1">建立考卷</h1>
-          <p className="text-[#636E72] text-sm">溫度與熱單元 · 迷思概念診斷測驗</p>
+          <p className="text-[#636E72] text-sm">水溶液單元 · 迷思概念診斷測驗</p>
         </div>
 
         {/* Step Indicator */}

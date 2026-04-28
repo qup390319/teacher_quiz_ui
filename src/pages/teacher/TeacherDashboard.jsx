@@ -10,7 +10,7 @@ export default function TeacherDashboard() {
 
   const handleUsePreset = () => {
     setQuizQuestions([...defaultQuestions]);
-    setSelectedNodeIds(['INa-Ⅲ-8-01', 'INa-Ⅲ-8-03', 'INa-Ⅲ-8-05', 'INa-Ⅲ-8-06', 'Na-Ⅲ-8-07']);
+    setSelectedNodeIds(['INe-II-3-02', 'INe-II-3-03', 'INe-II-3-05', 'INe-Ⅲ-5-4', 'INe-Ⅲ-5-7']);
     navigate('/teacher/quiz/create?step=2');
   };
 
@@ -134,7 +134,7 @@ export default function TeacherDashboard() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-base font-bold text-[#2D3436] mb-1">知識節點與迷思概念總覽</h2>
-              <p className="text-sm text-[#636E72]">溫度與熱單元 · 因材網對應節點 INa-Ⅲ-8-01 至 INa-Ⅲ-8-08</p>
+              <p className="text-sm text-[#636E72]">水溶液單元 · 因材網對應節點 INe-II-3-01 至 INe-Ⅲ-5-7</p>
               <div className="flex items-center gap-4 mt-3">
                 <span className="flex items-center gap-1.5 text-sm text-[#636E72]">
                   <span className="w-2 h-2 rounded-full bg-[#5DADE2] inline-block"></span>
