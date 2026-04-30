@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useState } from 'react';
 import { defaultQuestions, QUIZZES_DATA } from '../data/quizData';
 import { CLASSES_DATA } from '../data/classData';
 import { ASSIGNMENTS_DATA } from '../data/assignmentData';
+import { SCENARIO_QUIZZES_DATA } from '../data/scenarioQuizData';
 
 const AppContext = createContext(null);
 
@@ -25,8 +26,15 @@ export function AppProvider({ children }) {
   // 考卷庫
   const [quizzes, setQuizzes] = useState(QUIZZES_DATA);
 
-  // 派題記錄
+  // 派題記錄（Assignment.type 為 'diagnosis' | 'scenario'，舊資料預設 'diagnosis'）
   const [assignments, setAssignments] = useState(ASSIGNMENTS_DATA);
+
+  // 情境考卷庫（治療模組，spec-08）
+  const [scenarioQuizzes, setScenarioQuizzes] = useState(SCENARIO_QUIZZES_DATA);
+
+  // 治療對話 sessions：以 `${scenarioQuizId}__${studentId}` 為 key，值為 TreatmentSession
+  // TreatmentSession: { id, scenarioQuizId, studentId, currentQuestionIndex, perQuestion: { [index]: TreatmentQuestionState }, status, startedAt, completedAt }
+  const [treatmentSessions, setTreatmentSessions] = useState({});
 
   // 衍生值
   const currentClass = classes.find((c) => c.id === currentClassId) ?? null;
@@ -47,13 +55,151 @@ export function AppProvider({ children }) {
     );
   }, []);
 
-  // 新增派題記錄
+  // 新增派題記錄（type 缺省為 'diagnosis' 以保向下相容）
   const addAssignment = useCallback((assignment) => {
     setAssignments((prev) => [
       ...prev,
-      { ...assignment, id: `assign-${Date.now()}` },
+      { type: 'diagnosis', ...assignment, id: `assign-${Date.now()}` },
     ]);
   }, []);
+
+  // ── 情境考卷管理 (spec-08) ───────────────────────────────────
+  const saveScenarioQuiz = useCallback((scenarioQuiz) => {
+    setScenarioQuizzes((prev) =>
+      prev.some((q) => q.id === scenarioQuiz.id)
+        ? prev.map((q) => (q.id === scenarioQuiz.id ? scenarioQuiz : q))
+        : [...prev, scenarioQuiz]
+    );
+  }, []);
+
+  // ── 治療 session 管理 (spec-08) ──────────────────────────────
+  const sessionKey = (scenarioQuizId, studentId) =>
+    `${scenarioQuizId}__${studentId}`;
+
+  /** 啟動或取得既有的治療 session（同一 student × scenarioQuiz 共用） */
+  const startTreatmentSession = useCallback((scenarioQuizId, studentId) => {
+    const key = sessionKey(scenarioQuizId, studentId);
+    setTreatmentSessions((prev) => {
+      if (prev[key]) return prev;
+      return {
+        ...prev,
+        [key]: {
+          id: `session-${Date.now()}`,
+          scenarioQuizId,
+          studentId,
+          currentQuestionIndex: 1,
+          perQuestion: {},
+          status: 'active',
+          startedAt: new Date().toISOString(),
+          completedAt: null,
+        },
+      };
+    });
+    return key;
+  }, []);
+
+  /** 在某題追加一則訊息 */
+  const appendTreatmentMessage = useCallback(
+    (scenarioQuizId, studentId, questionIndex, message) => {
+      const key = sessionKey(scenarioQuizId, studentId);
+      setTreatmentSessions((prev) => {
+        const session = prev[key];
+        if (!session) return prev;
+        const qState = session.perQuestion[questionIndex] ?? {
+          messages: [],
+          phase: 'diagnosis',
+          step: 0,
+          stage: 'claim',
+          hintLevel: 0,
+          requiresRestatement: false,
+        };
+        return {
+          ...prev,
+          [key]: {
+            ...session,
+            perQuestion: {
+              ...session.perQuestion,
+              [questionIndex]: {
+                ...qState,
+                messages: [...qState.messages, message],
+              },
+            },
+          },
+        };
+      });
+    },
+    []
+  );
+
+  /** 更新某題的對話狀態（phase/step/stage/hintLevel/requiresRestatement） */
+  const updateTreatmentQuestionState = useCallback(
+    (scenarioQuizId, studentId, questionIndex, patch) => {
+      const key = sessionKey(scenarioQuizId, studentId);
+      setTreatmentSessions((prev) => {
+        const session = prev[key];
+        if (!session) return prev;
+        const qState = session.perQuestion[questionIndex] ?? {
+          messages: [],
+          phase: 'diagnosis',
+          step: 0,
+          stage: 'claim',
+          hintLevel: 0,
+          requiresRestatement: false,
+        };
+        return {
+          ...prev,
+          [key]: {
+            ...session,
+            perQuestion: {
+              ...session.perQuestion,
+              [questionIndex]: { ...qState, ...patch },
+            },
+          },
+        };
+      });
+    },
+    []
+  );
+
+  /** 切到下一題 */
+  const advanceTreatmentQuestion = useCallback(
+    (scenarioQuizId, studentId, nextIndex) => {
+      const key = sessionKey(scenarioQuizId, studentId);
+      setTreatmentSessions((prev) => {
+        const session = prev[key];
+        if (!session) return prev;
+        return {
+          ...prev,
+          [key]: { ...session, currentQuestionIndex: nextIndex },
+        };
+      });
+    },
+    []
+  );
+
+  /** 標記 session 完成 */
+  const completeTreatmentSession = useCallback((scenarioQuizId, studentId) => {
+    const key = sessionKey(scenarioQuizId, studentId);
+    setTreatmentSessions((prev) => {
+      const session = prev[key];
+      if (!session) return prev;
+      return {
+        ...prev,
+        [key]: {
+          ...session,
+          status: 'completed',
+          completedAt: new Date().toISOString(),
+        },
+      };
+    });
+  }, []);
+
+  /** 取得某 student × scenarioQuiz 的 session（教師端紀錄頁、學生端對話頁共用） */
+  const getTreatmentSession = useCallback(
+    (scenarioQuizId, studentId) =>
+      treatmentSessions[sessionKey(scenarioQuizId, studentId)] ?? null,
+    [treatmentSessions]
+  );
 
   // 更新派題記錄
   const updateAssignment = useCallback((assignmentId, updates) => {
@@ -118,6 +264,11 @@ export function AppProvider({ children }) {
       currentQuizId, setCurrentQuizId,
       // 派題
       assignments, addAssignment, updateAssignment, removeAssignment,
+      // 情境考卷與治療 sessions（spec-08）
+      scenarioQuizzes, saveScenarioQuiz,
+      treatmentSessions, startTreatmentSession, appendTreatmentMessage,
+      updateTreatmentQuestionState, advanceTreatmentQuestion,
+      completeTreatmentSession, getTreatmentSession,
       // 學生作答
       studentAnswers, recordAnswer, removeMisconception, resetStudentAnswers,
       studentMisconceptions, correctCount,
