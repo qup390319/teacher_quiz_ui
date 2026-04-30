@@ -3,60 +3,27 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { getQuizQuestions } from '../../data/quizData';
 import { getMisconceptionById, knowledgeNodes } from '../../data/knowledgeGraph';
+import {
+  Icon,
+  WOOD_OUTER,
+  WOOD_INNER_CREAM,
+  WoodIconButton,
+} from '../../components/ui/woodKit';
+import WoodenProgressBar from '../../components/student/WoodenProgressBar';
+import { Bubble, ThinkingBubble } from '../../components/student/ChatStream';
+import bgImg from '../../assets/backgrounds/bg_chiheisen_green.jpg';
+import mascotImg from '../../assets/illustrations/scilens_mascot.png';
 
 const nodeOrder = Object.fromEntries(knowledgeNodes.map((n, i) => [n.id, i]));
 const INTRO_MESSAGES = [
-  { id: 'intro-1', text: '你好！我是「科學偵探」系統 🔍', type: 'system' },
-  { id: 'intro-2', text: '今天我們要一起探索關於「水溶液」的科學思維。', type: 'system' },
-  { id: 'intro-3', text: '沒有對錯評分，只是想了解你目前的想法。請輕鬆選出你覺得最合理的答案！', type: 'system' },
+  { id: 'intro-1', text: '你好！我是「科學偵探」，今天我們要一起探索關於「水溶液」的科學思維。' },
+  { id: 'intro-2', text: '沒有對錯評分，只是想了解你目前的想法。請輕鬆選出你覺得最合理的答案！' },
 ];
 
-const sortQuestionsByNodeOrder = (questions) => (
-  [...questions].sort((a, b) => (nodeOrder[a.knowledgeNodeId] ?? 99) - (nodeOrder[b.knowledgeNodeId] ?? 99))
-);
-
-function ThinkingBubble() {
-  return (
-    <div className="flex items-end gap-2 mb-4 chat-bubble-in">
-      <div className="w-8 h-8 bg-[#C8EAAE] border border-[#BDC3C7] rounded-full flex items-center justify-center flex-shrink-0">
-        <span className="text-sm">🤖</span>
-      </div>
-      <div className="bg-white border border-[#BDC3C7] rounded-2xl rounded-bl-none px-4 py-3 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
-        <div className="flex gap-1 items-center h-5">
-          <span className="w-2 h-2 bg-[#95A5A6] rounded-full dot-1 inline-block"></span>
-          <span className="w-2 h-2 bg-[#95A5A6] rounded-full dot-2 inline-block"></span>
-          <span className="w-2 h-2 bg-[#95A5A6] rounded-full dot-3 inline-block"></span>
-        </div>
-      </div>
-    </div>
+const sortQuestionsByNodeOrder = (questions) =>
+  [...questions].sort(
+    (a, b) => (nodeOrder[a.knowledgeNodeId] ?? 99) - (nodeOrder[b.knowledgeNodeId] ?? 99)
   );
-}
-
-function SystemBubble({ text }) {
-  return (
-    <div className="flex items-end gap-2 mb-3 chat-bubble-in">
-      <div className="w-8 h-8 bg-[#C8EAAE] border border-[#BDC3C7] rounded-full flex items-center justify-center flex-shrink-0">
-        <span className="text-sm">🤖</span>
-      </div>
-      <div className="bg-white border border-[#BDC3C7] rounded-2xl rounded-bl-none px-4 py-3 shadow-[0_2px_8px_rgba(0,0,0,0.06)] max-w-xs sm:max-w-sm">
-        <p className="text-sm text-[#2D3436] leading-relaxed">{text}</p>
-      </div>
-    </div>
-  );
-}
-
-function StudentBubble({ text }) {
-  return (
-    <div className="flex items-end justify-end gap-2 mb-3 chat-bubble-in">
-      <div className="bg-[#8FC87A] border border-[#BDC3C7] text-[#2D3436] rounded-2xl rounded-br-none px-4 py-3 shadow-[0_2px_8px_rgba(0,0,0,0.06)] max-w-xs sm:max-w-sm">
-        <p className="text-sm leading-relaxed">{text}</p>
-      </div>
-      <div className="w-8 h-8 bg-[#BADDF4] border border-[#BDC3C7] rounded-full flex items-center justify-center flex-shrink-0">
-        <span className="text-sm">👤</span>
-      </div>
-    </div>
-  );
-}
 
 export default function StudentQuiz() {
   const { quizId } = useParams();
@@ -98,12 +65,14 @@ function StudentQuizScreen({ quizId }) {
       navigate('/student', { replace: true });
       return;
     }
-
     answersRef.current = [];
     resetStudentAnswers();
     setCurrentQuizId(quizId);
     setActiveStudentReport(null);
-  }, [quizId, currentQuiz, sortedQuestions.length, navigate, resetStudentAnswers, setCurrentQuizId, setActiveStudentReport]);
+  }, [
+    quizId, currentQuiz, sortedQuestions.length, navigate,
+    resetStudentAnswers, setCurrentQuizId, setActiveStudentReport,
+  ]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -122,14 +91,14 @@ function StudentQuizScreen({ quizId }) {
         ...prev,
         {
           id: `q-${q.id}-node`,
-          text: `接下來我們來看看關於「${node?.name || '熱學'}」的問題（第 ${qIdx + 1}/${sortedQuestions.length} 題）`,
-          type: 'system',
+          role: 'ai',
+          text: `接下來我們來看看關於「${node?.name || '科學'}」的問題（第 ${qIdx + 1}/${sortedQuestions.length} 題）`,
         },
       ]);
       setTimeout(() => {
         setMessages((prev) => [
           ...prev,
-          { id: `q-${q.id}-stem`, text: q.stem, type: 'system', isQuestion: true },
+          { id: `q-${q.id}-stem`, role: 'ai', text: q.stem },
         ]);
         setOptionsEnabled(true);
       }, 600);
@@ -139,15 +108,18 @@ function StudentQuizScreen({ quizId }) {
   useEffect(() => {
     if (phase !== 'intro') return;
     if (introIdx >= INTRO_MESSAGES.length) {
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         setPhase('question');
         showNextQuestion(0);
       }, 500);
-      return;
+      return () => clearTimeout(timer);
     }
     const delay = introIdx === 0 ? 300 : 800;
     const timer = setTimeout(() => {
-      setMessages((prev) => [...prev, INTRO_MESSAGES[introIdx]]);
+      setMessages((prev) => [
+        ...prev,
+        { ...INTRO_MESSAGES[introIdx], role: 'ai' },
+      ]);
       setIntroIdx((i) => i + 1);
     }, delay);
     return () => clearTimeout(timer);
@@ -158,8 +130,12 @@ function StudentQuizScreen({ quizId }) {
       quizId,
       quizTitle: currentQuiz?.title ?? '科學診斷',
       completedAt: new Date().toLocaleString('zh-TW', { hour12: false }),
-      correctCount: finalAnswers.filter((answer) => answer.diagnosis === 'CORRECT').length,
-      misconceptions: [...new Set(finalAnswers.filter((answer) => answer.diagnosis !== 'CORRECT').map((answer) => answer.diagnosis))],
+      correctCount: finalAnswers.filter((a) => a.diagnosis === 'CORRECT').length,
+      misconceptions: [
+        ...new Set(
+          finalAnswers.filter((a) => a.diagnosis !== 'CORRECT').map((a) => a.diagnosis)
+        ),
+      ],
       answers: finalAnswers,
     };
 
@@ -168,8 +144,8 @@ function StudentQuizScreen({ quizId }) {
       setIsThinking(false);
       setMessages((prev) => [
         ...prev,
-        { id: `done-1-${Date.now()}`, text: leadText, type: 'system' },
-        { id: `done-2-${Date.now()}`, text: '讓我整理一份專屬於你的「學習體檢表」...', type: 'system' },
+        { id: `done-1-${Date.now()}`, role: 'ai', text: leadText },
+        { id: `done-2-${Date.now()}`, role: 'ai', text: '讓我整理一份專屬於你的「學習體檢表」...' },
       ]);
       setPhase('done');
       addToHistory(record);
@@ -180,7 +156,6 @@ function StudentQuizScreen({ quizId }) {
   const askConfirmationQuestion = (misconceptionIds, index) => {
     const currentMisconceptionId = misconceptionIds[index];
     const misconception = getMisconceptionById(currentMisconceptionId);
-
     if (!misconception) {
       finishQuiz(answersRef.current, '謝謝你的回答！我已經整理好你的診斷結果了。');
       return;
@@ -196,13 +171,13 @@ function StudentQuizScreen({ quizId }) {
         ...prev,
         {
           id: `confirm-intro-${currentMisconceptionId}`,
+          role: 'ai',
           text: '我想再確認一件事，看看我有沒有理解錯你的想法。',
-          type: 'system',
         },
         {
           id: `confirm-question-${currentMisconceptionId}`,
+          role: 'ai',
           text: misconception.confirmQuestion,
-          type: 'system',
         },
       ]);
       setConfirmActionsEnabled(true);
@@ -211,9 +186,10 @@ function StudentQuizScreen({ quizId }) {
 
   const startConfirmation = (finalAnswers) => {
     const misconceptionIds = [
-      ...new Set(finalAnswers.filter((answer) => answer.diagnosis !== 'CORRECT').map((answer) => answer.diagnosis)),
+      ...new Set(
+        finalAnswers.filter((a) => a.diagnosis !== 'CORRECT').map((a) => a.diagnosis)
+      ),
     ];
-
     if (misconceptionIds.length === 0) {
       finishQuiz(finalAnswers, '謝謝你的回答！我已經了解你目前的科學思維了。');
       return;
@@ -225,8 +201,8 @@ function StudentQuizScreen({ quizId }) {
       ...prev,
       {
         id: `confirm-start-${Date.now()}`,
+        role: 'ai',
         text: '謝謝你的回答！接下來我想再多確認幾個地方，看看我有沒有理解錯你的想法。',
-        type: 'system',
       },
     ]);
     askConfirmationQuestion(misconceptionIds, 0);
@@ -237,14 +213,16 @@ function StudentQuizScreen({ quizId }) {
     setOptionsEnabled(false);
     const q = sortedQuestions[currentQIndex];
     const nextAnswer = { questionId: q.id, selectedTag: opt.tag, diagnosis: opt.diagnosis };
-    const updatedAnswers = [...answersRef.current.filter((answer) => answer.questionId !== q.id), nextAnswer];
-
+    const updatedAnswers = [
+      ...answersRef.current.filter((a) => a.questionId !== q.id),
+      nextAnswer,
+    ];
     answersRef.current = updatedAnswers;
     recordAnswer(q.id, opt.tag, opt.diagnosis);
 
     setMessages((prev) => [
       ...prev,
-      { id: `ans-${q.id}`, text: opt.content, type: 'student' },
+      { id: `ans-${q.id}`, role: 'student', text: opt.content },
     ]);
 
     const nextIdx = currentQIndex + 1;
@@ -258,7 +236,6 @@ function StudentQuizScreen({ quizId }) {
 
   const handleConfirmResponse = (isConfirmed) => {
     if (!confirmActionsEnabled) return;
-
     const misconceptionId = pendingMisconceptions[currentConfirmIndex];
     let updatedAnswers = answersRef.current;
 
@@ -267,16 +244,14 @@ function StudentQuizScreen({ quizId }) {
       ...prev,
       {
         id: `confirm-answer-${misconceptionId}-${currentConfirmIndex}`,
+        role: 'student',
         text: isConfirmed ? '對，我是這樣想的。' : '不，我不這樣認為。',
-        type: 'student',
       },
     ]);
 
     if (!isConfirmed) {
-      updatedAnswers = answersRef.current.map((answer) =>
-        answer.diagnosis === misconceptionId
-          ? { ...answer, diagnosis: 'CORRECT' }
-          : answer
+      updatedAnswers = answersRef.current.map((a) =>
+        a.diagnosis === misconceptionId ? { ...a, diagnosis: 'CORRECT' } : a
       );
       answersRef.current = updatedAnswers;
       removeMisconception(misconceptionId);
@@ -287,7 +262,6 @@ function StudentQuizScreen({ quizId }) {
       finishQuiz(updatedAnswers, '謝謝你再幫我確認一次！我已經整理好你的診斷結果了。');
       return;
     }
-
     askConfirmationQuestion(pendingMisconceptions, nextIndex);
   };
 
@@ -295,120 +269,188 @@ function StudentQuizScreen({ quizId }) {
   const currentConfirmationId = pendingMisconceptions[currentConfirmIndex];
   const isQuestionPhase = phase === 'question';
   const isConfirmingPhase = phase === 'confirming';
-  const headerStatusText = isConfirmingPhase ? '迷思想法確認中' : `${currentQuiz?.title ?? '科學診斷'} 進行中`;
-  const headerProgress = isQuestionPhase
-    ? `${currentQIndex + 1} / ${sortedQuestions.length}`
+
+  /* 進度條 0~100 */
+  const progress = isQuestionPhase
+    ? Math.round(((currentQIndex + 1) / sortedQuestions.length) * 100)
     : isConfirmingPhase
-      ? `${currentConfirmIndex + 1} / ${pendingMisconceptions.length}`
-      : null;
+      ? Math.round(((currentConfirmIndex + 1) / pendingMisconceptions.length) * 100)
+      : phase === 'done'
+        ? 100
+        : 0;
+
+  const stepInfo = isQuestionPhase
+    ? `診斷・第 ${currentQIndex + 1}/${sortedQuestions.length} 題`
+    : isConfirmingPhase
+      ? `確認・${currentConfirmIndex + 1}/${pendingMisconceptions.length}`
+      : phase === 'done'
+        ? '整理結果中...'
+        : null;
 
   return (
-    <div className="min-h-screen bg-[#EEF5E6] flex flex-col">
-      {/* Header */}
-      <div className="bg-white border-b border-[#D5D8DC] px-4 py-3 flex items-center justify-between sticky top-0 z-10 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => navigate('/student')}
-            className="w-9 h-9 flex items-center justify-center rounded-full border border-[#BDC3C7] bg-[#EEF5E6] text-[#2D3436] hover:bg-[#D5D8DC] transition-colors"
-            aria-label="返回"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <div className="w-9 h-9 bg-[#C8EAAE] border border-[#BDC3C7] rounded-full flex items-center justify-center">
-            <span className="text-base">🤖</span>
-          </div>
-          <div>
-            <p className="text-sm font-bold text-[#2D3436]">科學偵探</p>
-            <p className="text-xs text-[#5A8A5C] flex items-center gap-1 font-medium">
-              <span className="w-1.5 h-1.5 bg-[#8FC87A] rounded-full inline-block"></span>
-              {headerStatusText}
+    <div
+      className="relative min-h-screen flex flex-col"
+      style={{
+        backgroundImage: `url(${bgImg})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center top',
+        backgroundAttachment: 'fixed',
+      }}
+    >
+      {/* HUD：返回 + 進度條 */}
+      <header className="relative z-10 flex items-center gap-3 px-3 sm:px-5 pt-3 sm:pt-4 pb-3 animate-fade-up">
+        <WoodIconButton
+          icon="arrow_back"
+          ariaLabel="返回"
+          size="sm"
+          onClick={() => navigate('/student')}
+        />
+        <WoodenProgressBar progress={progress} stepInfo={stepInfo} />
+      </header>
+
+      {/* 標題列 */}
+      <div className="relative z-10 px-3 sm:px-5 pb-2 animate-fade-up">
+        <div className="max-w-3xl mx-auto flex items-center gap-2">
+          <img
+            src={mascotImg}
+            alt="吉祥物"
+            className="w-10 h-10 sm:w-12 sm:h-12 object-contain animate-breath
+                       drop-shadow-[0_3px_3px_rgba(91,66,38,0.3)]"
+          />
+          <div className="leading-tight">
+            <p className="font-game text-sm sm:text-base font-black text-[#5A3E22]
+                          drop-shadow-[0_2px_0_rgba(255,255,255,0.6)]">
+              {currentQuiz?.title ?? '科學偵探'}
+            </p>
+            <p className="text-xs text-[#7A5232] font-bold drop-shadow-[0_1px_0_rgba(255,255,255,0.6)]">
+              迷思診斷
             </p>
           </div>
         </div>
-        {headerProgress && (
-          <div className="text-right">
-            <p className="text-xs text-[#95A5A6]">{isConfirmingPhase ? '確認進度' : '進度'}</p>
-            <p className="text-sm font-bold text-[#2D3436]">{headerProgress}</p>
-          </div>
+      </div>
+
+      {/* 對話氣泡列表 */}
+      <main className="relative z-10 flex-1 flex flex-col px-3 sm:px-5">
+        <div className="max-w-3xl mx-auto w-full flex-1 flex flex-col gap-3 pb-4 overflow-y-auto">
+          {messages.map((m) => (
+            <Bubble key={m.id} role={m.role} text={m.text} />
+          ))}
+          {isThinking && <ThinkingBubble />}
+          <div ref={bottomRef} />
+        </div>
+      </main>
+
+      {/* 底部選項區（米紙木框 panel） */}
+      <BottomPanel>
+        {isQuestionPhase && optionsEnabled && currentQ && (
+          <OptionsPanel options={currentQ.options} onSelect={handleSelectOption} />
         )}
-      </div>
+        {isConfirmingPhase && confirmActionsEnabled && currentConfirmationId && (
+          <ConfirmPanel onConfirm={handleConfirmResponse} />
+        )}
+        {phase === 'done' && <DonePanel />}
+      </BottomPanel>
+    </div>
+  );
+}
 
-      {/* Progress Bar */}
-      {(isQuestionPhase || isConfirmingPhase) && (
-        <div className="bg-white border-b border-[#D5D8DC] px-4 py-2.5">
-          <div className="w-full bg-[#D5D8DC] rounded-full h-2">
-            <div
-              className="bg-[#8FC87A] h-2 rounded-full transition-all duration-500"
-              style={{
-                width: `${isQuestionPhase
-                  ? (((currentQIndex + 1) / sortedQuestions.length) * 100)
-                  : (((currentConfirmIndex + 1) / pendingMisconceptions.length) * 100)}%`,
-              }}
-            ></div>
-          </div>
+/* ── 底部 panel 包裝（米紙 + 木紋邊）─────────────── */
+function BottomPanel({ children }) {
+  if (!children) return null;
+  return (
+    <div className="relative z-10 px-3 sm:px-5 pb-4 sm:pb-6 animate-fade-up">
+      <div className="max-w-3xl mx-auto">
+        <div className={WOOD_OUTER}>
+          <div className={WOOD_INNER_CREAM + ' p-3 sm:p-4'}>{children}</div>
         </div>
-      )}
+      </div>
+    </div>
+  );
+}
 
-      {/* Chat area */}
-      <div className="flex-1 overflow-y-auto px-4 py-5 max-w-2xl mx-auto w-full">
-        {messages.map((msg) => (
-          msg.type === 'system'
-            ? <SystemBubble key={msg.id} text={msg.text} />
-            : <StudentBubble key={msg.id} text={msg.text} />
+/* ── 4 選 1 選項清單 ───────────────────────────── */
+function OptionsPanel({ options, onSelect }) {
+  return (
+    <>
+      <p className="text-xs sm:text-sm text-[#7A5232] mb-2 sm:mb-3 text-center font-bold">
+        請選擇你覺得最合理的答案
+      </p>
+      <div className="grid grid-cols-1 gap-2">
+        {options.map((opt) => (
+          <button
+            key={opt.tag}
+            type="button"
+            onClick={() => onSelect(opt)}
+            className="text-left flex items-start gap-2 px-4 py-3 rounded-2xl border-2 border-[#C19A6B]
+                       bg-white hover:bg-[#FFF1D8] hover:border-[#D08B2E]
+                       text-sm leading-relaxed text-[#5A3E22]
+                       shadow-[0_2px_0_-1px_#8B5E3C] hover:translate-y-0.5
+                       transition-all duration-200"
+          >
+            <span className="shrink-0 inline-flex w-6 h-6 rounded-full
+                             bg-gradient-to-b from-[#F4D58A] to-[#F0B962]
+                             border-2 border-[#9B5E18] text-[#7A4A18]
+                             font-game font-black text-xs items-center justify-center
+                             shadow-[0_2px_0_#9B5E18]">
+              {opt.tag}
+            </span>
+            <span className="flex-1">{opt.content}</span>
+          </button>
         ))}
-        {isThinking && <ThinkingBubble />}
-        <div ref={bottomRef}></div>
       </div>
+    </>
+  );
+}
 
-      {/* Options Panel */}
-      {isQuestionPhase && optionsEnabled && currentQ && (
-        <div className="bg-white border-t border-[#D5D8DC] px-4 py-4 max-w-2xl mx-auto w-full">
-          <p className="text-xs text-[#95A5A6] mb-3 text-center">請選擇你覺得最合理的答案</p>
-          <div className="grid grid-cols-1 gap-2">
-            {currentQ.options.map((opt) => (
-              <button
-                key={opt.tag}
-                onClick={() => handleSelectOption(opt)}
-                className="text-left px-4 py-3 rounded-2xl bg-[#C8EAAE] border border-[#BDC3C7] hover:bg-[#8FC87A] text-sm text-[#2D3436] transition-all leading-relaxed shadow-[0_1px_4px_rgba(0,0,0,0.02)]"
-              >
-                {opt.content}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+/* ── 確認題 2 選 1 ─────────────────────────────── */
+function ConfirmPanel({ onConfirm }) {
+  return (
+    <>
+      <p className="text-xs sm:text-sm text-[#7A5232] mb-2 sm:mb-3 text-center font-bold">
+        請選擇比較接近你真正想法的回答
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={() => onConfirm(true)}
+          className="px-4 py-3 rounded-2xl border-2
+                     bg-gradient-to-b from-[#B8DC83] to-[#7DB044] border-[#5C8A2E] text-[#2F4A1A]
+                     font-game font-black text-sm
+                     shadow-[0_4px_0_#3D5A1A] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3D5A1A]
+                     transition-all duration-200"
+        >
+          對，我是這樣想的
+        </button>
+        <button
+          type="button"
+          onClick={() => onConfirm(false)}
+          className="px-4 py-3 rounded-2xl border-2
+                     bg-gradient-to-b from-[#8AC0D8] to-[#5293B4] border-[#3A7397] text-white
+                     font-game font-black text-sm
+                     shadow-[0_4px_0_#3A7397] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A7397]
+                     transition-all duration-200"
+        >
+          不，我不這樣認為
+        </button>
+      </div>
+    </>
+  );
+}
 
-      {isConfirmingPhase && confirmActionsEnabled && currentConfirmationId && (
-        <div className="bg-white border-t border-[#D5D8DC] px-4 py-4 max-w-2xl mx-auto w-full">
-          <p className="text-xs text-[#95A5A6] mb-3 text-center">請選擇比較接近你真正想法的回答</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <button
-              onClick={() => handleConfirmResponse(true)}
-              className="px-4 py-3 rounded-2xl bg-[#C8EAAE] border border-[#BDC3C7] hover:bg-[#8FC87A] text-sm font-medium text-[#2D3436] transition-all"
-            >
-              對，我是這樣想的
-            </button>
-            <button
-              onClick={() => handleConfirmResponse(false)}
-              className="px-4 py-3 rounded-2xl bg-[#BADDF4] border border-[#BDC3C7] hover:bg-[#8BC8EE] text-sm font-medium text-[#2D3436] transition-all"
-            >
-              不，我不這樣認為
-            </button>
-          </div>
-        </div>
-      )}
-
-      {phase === 'done' && (
-        <div className="bg-white border-t border-[#D5D8DC] px-4 py-4 text-center">
-          <p className="text-sm text-[#636E72]">正在前往您的學習體檢表...</p>
-          <div className="mt-2 flex justify-center">
-            <div className="w-5 h-5 border-2 border-[#8FC87A] border-t-transparent rounded-full animate-spin"></div>
-          </div>
-        </div>
-      )}
+/* ── 完成畫面 loading ──────────────────────────── */
+function DonePanel() {
+  return (
+    <div className="text-center py-3">
+      <p className="text-sm font-bold text-[#5A3E22]">
+        正在前往你的學習體檢表...
+      </p>
+      <div className="mt-2 flex justify-center">
+        <Icon
+          name="autorenew"
+          filled
+          className="text-2xl text-[#5C8A2E] animate-spin"
+        />
+      </div>
     </div>
   );
 }

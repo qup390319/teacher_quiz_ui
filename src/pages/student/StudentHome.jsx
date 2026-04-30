@@ -1,135 +1,424 @@
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
+import { getQuizQuestions } from '../../data/quizData';
+import { knowledgeNodes } from '../../data/knowledgeGraph';
+import {
+  Icon,
+  WOOD_OUTER,
+  WOOD_INNER_CREAM,
+  WoodIconButton,
+} from '../../components/ui/woodKit';
+import TaskCard from '../../components/student/TaskCard';
+import Section from '../../components/student/StudentHomeSection';
+import bgImg from '../../assets/backgrounds/bg_chiheisen_green.jpg';
+import studentImg from '../../assets/illustrations/irasutoya_student_clean.png';
+import mascotImg from '../../assets/illustrations/scilens_mascot.png';
+import settingsIcon from '../../assets/icons/settings_wood.png';
+
+/* 暫定：本原型假設目前登入學生為五年甲班 1 號王小明；
+ * 未來接後端後，從 AppContext 注入 currentStudentId / classId / studentName。 */
+const STUDENT_CLASS_ID = 'class-A';
+const STUDENT_SEAT = 1;
+const TOTAL_NODES = knowledgeNodes.length; // 12
+
+/* 把正確率映射為 1~3 顆星 */
+const calcStars = (correctCount, totalCount) => {
+  if (!totalCount) return 0;
+  const ratio = correctCount / totalCount;
+  if (ratio >= 0.8) return 3;
+  if (ratio >= 0.5) return 2;
+  if (ratio > 0)    return 1;
+  return 0;
+};
+
+const todayString = () => new Date().toISOString().slice(0, 10);
 
 export default function StudentHome() {
   const navigate = useNavigate();
   const {
     quizzes,
+    scenarioQuizzes,
+    classes,
+    assignments,
     studentHistory,
+    treatmentSessions,
     setCurrentQuizId,
     setActiveStudentReport,
   } = useApp();
 
-  const publishedQuizzes = quizzes.filter((quiz) => quiz.status === 'published');
+  const [diagnosisHistoryOpen, setDiagnosisHistoryOpen] = useState(false);
+  const [scenarioHistoryOpen, setScenarioHistoryOpen] = useState(false);
 
-  const handleStartQuiz = (quizId) => {
-    setCurrentQuizId(quizId);
+  const currentClass = classes.find((c) => c.id === STUDENT_CLASS_ID);
+  const studentName =
+    currentClass?.students?.find((s) => s.seat === STUDENT_SEAT)?.name ?? '探險者';
+
+  /* 將派題 enriched 為任務卡資料 */
+  const { diagnosisTasks, scenarioTasks } = useMemo(() => {
+    const today = todayString();
+    const myAssignments = assignments.filter((a) => a.classId === STUDENT_CLASS_ID);
+
+    const diag = [];
+    const sce = [];
+
+    myAssignments.forEach((assignment) => {
+      const taskType = assignment.type ?? 'diagnosis';
+
+      if (taskType === 'scenario') {
+        const sq = scenarioQuizzes.find((q) => q.id === assignment.scenarioQuizId);
+        const totalQuestions = sq?.questions?.length ?? 0;
+        const sessionKey = `${assignment.scenarioQuizId}__${STUDENT_SEAT}`;
+        const session = treatmentSessions[sessionKey];
+        const sessionCompleted = session?.status === 'completed';
+
+        let status;
+        if (sessionCompleted) status = 'completed';
+        else if (assignment.dueDate < today) status = 'expired';
+        else status = 'next';
+
+        sce.push({
+          assignmentId: assignment.id,
+          taskType: 'scenario',
+          scenarioQuizId: assignment.scenarioQuizId,
+          quizId: assignment.scenarioQuizId,
+          title: sq?.title ?? assignment.scenarioQuizId,
+          questionCount: totalQuestions,
+          dueDate: assignment.dueDate,
+          assignedAt: assignment.assignedAt,
+          status,
+          stars: sessionCompleted ? 3 : 0,
+          completedAt: session?.completedAt?.split('T')[0] ?? null,
+          bestRecord: null,
+          session,
+        });
+        return;
+      }
+
+      const quiz = quizzes.find((q) => q.id === assignment.quizId);
+      const totalQuestions = quiz?.questionCount ?? getQuizQuestions(assignment.quizId).length;
+      const myRecords = studentHistory.filter((h) => h.quizId === assignment.quizId);
+      const bestRecord = myRecords.reduce(
+        (best, cur) => (best == null || cur.correctCount > best.correctCount ? cur : best),
+        null,
+      );
+
+      let status;
+      if (bestRecord) status = 'completed';
+      else if (assignment.dueDate < today) status = 'expired';
+      else status = 'next';
+
+      diag.push({
+        assignmentId: assignment.id,
+        taskType: 'diagnosis',
+        quizId: assignment.quizId,
+        title: quiz?.title ?? assignment.quizId,
+        questionCount: totalQuestions,
+        dueDate: assignment.dueDate,
+        assignedAt: assignment.assignedAt,
+        status,
+        stars: bestRecord ? calcStars(bestRecord.correctCount, totalQuestions) : 0,
+        completedAt: bestRecord?.completedAt?.split(' ')[0] ?? null,
+        bestRecord,
+      });
+    });
+
+    const splitGroup = (list) => {
+      const pending = list
+        .filter((t) => t.status === 'next')
+        .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+      const expired = list
+        .filter((t) => t.status === 'expired')
+        .sort((a, b) => b.dueDate.localeCompare(a.dueDate));
+      const completed = list
+        .filter((t) => t.status === 'completed')
+        .sort((a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? ''));
+      return { pending: [...pending, ...expired], completed };
+    };
+
+    return {
+      diagnosisTasks: splitGroup(diag),
+      scenarioTasks: splitGroup(sce),
+    };
+  }, [assignments, quizzes, scenarioQuizzes, studentHistory, treatmentSessions]);
+
+  const stats = useMemo(() => {
+    const allPending = diagnosisTasks.pending.length + scenarioTasks.pending.length;
+    const allCompleted = diagnosisTasks.completed.length + scenarioTasks.completed.length;
+    const totalAssignments = allPending + allCompleted;
+    return {
+      completedAssignments: allCompleted,
+      totalAssignments,
+      pending: allPending,
+    };
+  }, [diagnosisTasks, scenarioTasks]);
+
+  const handleStartQuiz = (task) => {
+    if (task.taskType === 'scenario') {
+      navigate(`/student/scenario/${task.scenarioQuizId}`);
+      return;
+    }
+    setCurrentQuizId(task.quizId);
     setActiveStudentReport(null);
-    navigate(`/student/quiz/${quizId}`);
+    navigate(`/student/quiz/${task.quizId}`);
   };
 
-  const handleOpenReport = (record) => {
+  const handleViewReport = (record) => {
     setActiveStudentReport(record);
     setCurrentQuizId(record.quizId);
     navigate('/student/report');
   };
 
+  const handleViewTaskReport = (task) => {
+    if (task.taskType === 'scenario') {
+      // 治療紀錄 view（暫時導去 ScenarioChat — 後續可加專屬報告頁）
+      navigate(`/student/scenario/${task.scenarioQuizId}`);
+      return;
+    }
+    if (task.bestRecord) handleViewReport(task.bestRecord);
+  };
+
+  const hasDiagnosis = diagnosisTasks.pending.length + diagnosisTasks.completed.length > 0;
+  const hasScenario = scenarioTasks.pending.length + scenarioTasks.completed.length > 0;
+  const hasTasks = hasDiagnosis || hasScenario;
+  const pendingCount =
+    diagnosisTasks.pending.filter((t) => t.status !== 'expired').length +
+    scenarioTasks.pending.filter((t) => t.status !== 'expired').length;
+
   return (
-    <div className="min-h-screen bg-[#EEF5E6]">
-      <div className="bg-white border-b border-[#D5D8DC] px-6 py-8 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-        <div className="max-w-3xl mx-auto">
-          <div className="flex items-center gap-3 mb-3">
+    <div
+      className="relative min-h-screen overflow-x-hidden flex flex-col"
+      style={{
+        backgroundImage: `url(${bgImg})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center top',
+        backgroundAttachment: 'fixed',
+      }}
+    >
+      {/* ═══ 上半 HUD 區（透明 overlay，背景為 sky+grass） ═══════ */}
+      <div className="relative z-10 flex flex-col">
+        {/* HUD 一條：返回 + avatar pill + stats pill + 設定 */}
+        <div className="flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-5 pt-3 sm:pt-4 animate-fade-up">
+          <div className="flex items-center gap-2 min-w-0">
+            <WoodIconButton icon="arrow_back" ariaLabel="返回登入" onClick={() => navigate('/')} size="sm" />
+            <AvatarPill studentName={studentName} />
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            <CombinedStats stats={stats} />
             <button
               type="button"
-              onClick={() => navigate('/')}
-              className="w-9 h-9 flex items-center justify-center rounded-full border border-[#BDC3C7] bg-[#EEF5E6] text-[#2D3436] hover:bg-[#D5D8DC] transition-colors flex-shrink-0"
-              aria-label="返回"
+              aria-label="設定"
+              className="hover:rotate-90 hover:scale-110 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]
+                         cursor-pointer flex items-center justify-center flex-shrink-0
+                         drop-shadow-[0_3px_3px_rgba(91,66,38,0.35)]"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
+              <img src={settingsIcon} alt="設定" className="w-10 h-10 sm:w-12 sm:h-12 object-contain" />
             </button>
-            <div className="w-12 h-12 bg-[#BADDF4] border border-[#BDC3C7] rounded-2xl flex items-center justify-center">
-              <span className="text-2xl">🧑</span>
-            </div>
-            <div>
-              <p className="text-sm text-[#636E72]">嗨！</p>
-              <h1 className="text-2xl font-bold text-[#2D3436]">今天想先做什麼呢？</h1>
-            </div>
           </div>
-          <p className="text-sm text-[#636E72] leading-relaxed">
-            你可以先選一張考卷開始作答，或回頭看看之前的診斷結果。
-          </p>
+        </div>
+
+        {/* 吉祥物對話列（置中） */}
+        <div className="flex items-center justify-center gap-3 px-4 sm:px-6 pt-3 pb-3 animate-fade-up-delay-1">
+          <img
+            src={mascotImg}
+            alt="吉祥物"
+            className="w-14 h-14 sm:w-16 sm:h-16 object-contain animate-breath flex-shrink-0
+                       drop-shadow-[0_4px_4px_rgba(91,66,38,0.3)]"
+          />
+          <div className="leading-tight">
+            {hasTasks ? (
+              pendingCount > 0 ? (
+                <>
+                  <p className="font-game text-lg sm:text-xl font-black text-[#5A3E22] drop-shadow-[0_2px_0_rgba(255,255,255,0.6)]">
+                    你有 <span className="text-[#D08B2E]">{pendingCount}</span> 個任務要挑戰！
+                  </p>
+                  <p className="text-sm sm:text-base font-bold text-[#7A5232] mt-1 drop-shadow-[0_1px_0_rgba(255,255,255,0.6)]">
+                    完成後可在「已完成」區查看你的學習報告
+                  </p>
+                </>
+              ) : (
+                <p className="font-game text-lg sm:text-xl font-black text-[#5A3E22] drop-shadow-[0_2px_0_rgba(255,255,255,0.6)]">
+                  目前沒有待挑戰任務 · 你做得很棒！
+                </p>
+              )
+            ) : (
+              <p className="font-game text-lg sm:text-xl font-black text-[#5A3E22] drop-shadow-[0_2px_0_rgba(255,255,255,0.6)]">
+                老師還沒派任務給你～
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
-        <section>
-          <div className="flex items-center gap-2 mb-3">
-            <span className="w-6 h-6 bg-[#C8EAAE] border border-[#BDC3C7] rounded-full flex items-center justify-center text-sm">1</span>
-            <h2 className="text-base font-bold text-[#2D3436]">選擇要作答的考卷</h2>
+      {/* ═══ 下半米紙 panel（圓角頂、淡斜紋） ═══════════════════ */}
+      <main className="relative z-10 flex-1 flex flex-col mt-2 animate-fade-up-delay-2">
+        {/* 米紙 panel 容器 */}
+        <div className="relative flex-1 bg-gradient-to-b from-[#FFF8E7] to-[#FBE9C7]
+                        rounded-t-[32px] border-t-[3px] border-[#C19A6B]
+                        shadow-[0_-4px_12px_-2px_rgba(91,66,38,0.15)]">
+          {/* 淡斜紋 overlay */}
+          <div
+            className="absolute inset-0 pointer-events-none rounded-t-[32px] opacity-30"
+            style={{
+              backgroundImage:
+                'repeating-linear-gradient(45deg, #F4D58A 0px, #F4D58A 2px, transparent 2px, transparent 16px)',
+            }}
+          />
+
+          {/* 內容 — 兩種派題分區（spec-08 §6 / spec-07 §12.1） */}
+          <div className="relative max-w-2xl mx-auto px-4 sm:px-6 pt-6 pb-10">
+            {hasTasks ? (
+              <>
+                {/* ── 診斷測驗區 ──────────────────── */}
+                {hasDiagnosis && (
+                  <>
+                    {diagnosisTasks.pending.length > 0 && (
+                      <Section
+                        title="迷思診斷"
+                        subtitle="先測驗找出你對科學概念的迷思"
+                        accentColor="#D08B2E"
+                        icon="quiz"
+                      >
+                        <div className="space-y-3 sm:space-y-4">
+                          {diagnosisTasks.pending.map((task) => (
+                            <TaskCard
+                              key={task.assignmentId}
+                              {...task}
+                              onStart={() => handleStartQuiz(task)}
+                            />
+                          ))}
+                        </div>
+                      </Section>
+                    )}
+
+                    {diagnosisTasks.completed.length > 0 && (
+                      <Section
+                        title="已完成的診斷"
+                        count={diagnosisTasks.completed.length}
+                        collapsible
+                        open={diagnosisHistoryOpen}
+                        onToggle={() => setDiagnosisHistoryOpen((v) => !v)}
+                        className="mt-4"
+                      >
+                        <div className="space-y-3 sm:space-y-4">
+                          {diagnosisTasks.completed.map((task) => (
+                            <TaskCard
+                              key={task.assignmentId}
+                              {...task}
+                              onStart={() => handleStartQuiz(task)}
+                              onViewReport={() => handleViewTaskReport(task)}
+                            />
+                          ))}
+                        </div>
+                      </Section>
+                    )}
+                  </>
+                )}
+
+                {/* ── 情境治療區（spec-08）──────── */}
+                {hasScenario && (
+                  <>
+                    {scenarioTasks.pending.length > 0 && (
+                      <Section
+                        title="情境治療"
+                        subtitle="與 AI 對話練習科學論證，治療你的迷思"
+                        accentColor="#3F8B5E"
+                        icon="forum"
+                        className={hasDiagnosis ? 'mt-6' : ''}
+                      >
+                        <div className="space-y-3 sm:space-y-4">
+                          {scenarioTasks.pending.map((task) => (
+                            <TaskCard
+                              key={task.assignmentId}
+                              {...task}
+                              onStart={() => handleStartQuiz(task)}
+                            />
+                          ))}
+                        </div>
+                      </Section>
+                    )}
+
+                    {scenarioTasks.completed.length > 0 && (
+                      <Section
+                        title="已完成的治療"
+                        count={scenarioTasks.completed.length}
+                        collapsible
+                        open={scenarioHistoryOpen}
+                        onToggle={() => setScenarioHistoryOpen((v) => !v)}
+                        className="mt-4"
+                      >
+                        <div className="space-y-3 sm:space-y-4">
+                          {scenarioTasks.completed.map((task) => (
+                            <TaskCard
+                              key={task.assignmentId}
+                              {...task}
+                              onStart={() => handleStartQuiz(task)}
+                              onViewReport={() => handleViewTaskReport(task)}
+                            />
+                          ))}
+                        </div>
+                      </Section>
+                    )}
+                  </>
+                )}
+              </>
+            ) : (
+              <EmptyBoard />
+            )}
           </div>
+        </div>
+      </main>
+    </div>
+  );
+}
 
-          <div className="space-y-3">
-            {publishedQuizzes.map((quiz) => {
-              const latestRecord = studentHistory.find((item) => item.quizId === quiz.id);
+/* ═════════════════════════════════════════════════════════════════
+ * 子元件
+ * ═════════════════════════════════════════════════════════════════ */
 
-              return (
-                <div
-                  key={quiz.id}
-                  className="bg-white border border-[#BDC3C7] rounded-[28px] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.06)]"
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div>
-                      <p className="text-xs font-medium text-[#95A5A6] mb-1">{quiz.id}</p>
-                      <h3 className="text-lg font-bold text-[#2D3436]">{quiz.title}</h3>
-                      <p className="text-sm text-[#636E72] mt-1">
-                        共 {quiz.questionCount} 題
-                        {latestRecord ? ' · 你之前做過這份考卷' : ' · 尚未作答'}
-                      </p>
-                    </div>
-
-                    <button
-                      onClick={() => handleStartQuiz(quiz.id)}
-                      className="px-5 py-3 rounded-2xl bg-[#8FC87A] border border-[#BDC3C7] text-sm font-semibold text-[#2D3436] hover:bg-[#76B563] transition-colors"
-                    >
-                      {latestRecord ? '再次作答' : '開始作答'}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        <section>
-          <div className="flex items-center gap-2 mb-3">
-            <span className="w-6 h-6 bg-[#BADDF4] border border-[#BDC3C7] rounded-full flex items-center justify-center text-sm">2</span>
-            <h2 className="text-base font-bold text-[#2D3436]">觀看歷史診斷紀錄</h2>
-          </div>
-
-          {studentHistory.length > 0 ? (
-            <div className="space-y-3">
-              {studentHistory.map((record, index) => (
-                <button
-                  key={`${record.quizId}-${record.completedAt}-${index}`}
-                  onClick={() => handleOpenReport(record)}
-                  className="w-full text-left bg-white border border-[#BDC3C7] rounded-[28px] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.06)] hover:bg-[#F7FBF3] transition-colors"
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div>
-                      <h3 className="text-base font-bold text-[#2D3436]">{record.quizTitle}</h3>
-                      <p className="text-sm text-[#636E72] mt-1">完成時間：{record.completedAt}</p>
-                      <p className="text-sm text-[#636E72] mt-1">
-                        掌握 {record.correctCount} 題
-                        {record.misconceptions.length > 0
-                          ? ` · 發現 ${record.misconceptions.length} 個需要再確認的想法`
-                          : ' · 沒有發現明顯迷思'}
-                      </p>
-                    </div>
-                    <span className="text-sm font-semibold text-[#2E86C1]">查看結果</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="bg-white border border-[#BDC3C7] rounded-[28px] p-6 text-center shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-              <p className="text-base font-bold text-[#2D3436]">還沒有診斷紀錄</p>
-              <p className="text-sm text-[#636E72] mt-2">先完成一張考卷，就能在這裡看到你的學習體檢表。</p>
-            </div>
-          )}
-        </section>
+/* avatar pill：學生 avatar + 姓名 */
+function AvatarPill({ studentName }) {
+  return (
+    <div className={`${WOOD_OUTER} flex-shrink-0`}>
+      <div className={`${WOOD_INNER_CREAM} pl-1 pr-1 sm:pr-3 py-1 flex items-center gap-1.5`}>
+        <img src={studentImg} alt={studentName} className="w-7 h-7 sm:w-8 sm:h-8 object-contain" />
+        <p className="hidden sm:flex font-game text-base sm:text-lg font-bold text-[#5A3E22] items-center leading-none">
+          {studentName}
+        </p>
       </div>
+    </div>
+  );
+}
+
+/* 兩項統計合併進一個木框 pill：已完成 / 待完成 */
+function CombinedStats({ stats }) {
+  const items = [
+    { icon: 'check_circle',    value: `${stats.completedAssignments}/${stats.totalAssignments}`, color: 'text-[#5C8A2E]', label: '已完成派題' },
+    { icon: 'pending_actions', value: stats.pending,                                             color: 'text-[#D08B2E]', label: '待完成派題' },
+  ];
+  return (
+    <div className={WOOD_OUTER}>
+      <div className={`${WOOD_INNER_CREAM} px-2 py-1 flex items-center divide-x divide-[#C19A6B]/40`}>
+        {items.map((item) => (
+          <div key={item.icon} title={item.label} className="flex items-center gap-1.5 px-2.5 sm:px-3">
+            <Icon name={item.icon} filled className={`text-lg sm:text-xl ${item.color}`} />
+            <span className="font-game text-base sm:text-lg font-black text-[#5A3E22] leading-none">
+              {item.value}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function EmptyBoard() {
+  return (
+    <div className="flex flex-col items-center text-center py-10">
+      <Icon name="inventory_2" filled className="text-6xl text-[#C19A6B]" />
+      <p className="font-game text-xl font-black text-[#5A3E22] mt-3 mb-1">看板還是空的</p>
+      <p className="text-base text-[#7A5232]">老師還沒派任務給你 · 等老師派題後就會出現在這裡</p>
     </div>
   );
 }
