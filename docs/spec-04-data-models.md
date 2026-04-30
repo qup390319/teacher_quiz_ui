@@ -18,7 +18,9 @@
 | `currentClass` | `Class \| null` | 衍生值 | 當前選中的班級物件 |
 | `quizzes` | `Quiz[]` | `QUIZZES_DATA` | 所有考卷 |
 | `currentQuizId` | `string \| null` | `null` | 當前選中的考卷 ID |
-| `assignments` | `Assignment[]` | `ASSIGNMENTS_DATA` | 所有派題記錄 |
+| `assignments` | `Assignment[]` | `ASSIGNMENTS_DATA` | 所有派題記錄（含 `type: 'diagnosis' \| 'scenario'`） |
+| `scenarioQuizzes` | `ScenarioQuiz[]` | `SCENARIO_QUIZZES_DATA` | 所有情境考卷（治療模組，spec-08） |
+| `treatmentSessions` | `Record<string, TreatmentSession>` | `{}` | 治療對話 sessions，key = ``${scenarioQuizId}__${studentId}`` |
 | `studentAnswers` | `StudentAnswer[]` | `[]` | 當前學生的作答記錄 |
 | `studentName` | `string` | `'學生'` | 學生名稱（固定值） |
 | `studentHistory` | `HistoryRecord[]` | `[]` | 學生過去的作答歷史 |
@@ -43,9 +45,16 @@
 | `setCurrentQuizId(id)` | `string \| null` | 切換當前考卷 |
 | `updateClassStudents(classId, students)` | `string, Student[]` | 更新班級學生名單 |
 | `saveQuiz(quiz)` | `Quiz` | 新增或更新考卷（以 `id` 判斷） |
-| `addAssignment(assignment)` | `Assignment` (不含 id) | 新增派題記錄（自動生成 `assign-{timestamp}` ID） |
+| `addAssignment(assignment)` | `Assignment` (不含 id) | 新增派題記錄（自動生成 `assign-{timestamp}` ID，`type` 缺省為 `'diagnosis'`） |
 | `updateAssignment(id, updates)` | `string, Partial<Assignment>` | 部分更新派題記錄 |
 | `removeAssignment(id)` | `string` | 刪除派題記錄 |
+| `saveScenarioQuiz(scenarioQuiz)` | `ScenarioQuiz` | 新增或更新情境考卷（以 `id` 判斷，spec-08） |
+| `startTreatmentSession(scenarioQuizId, studentId)` | `string, number` | 啟動或取得既有治療 session（key 以 `${scenarioQuizId}__${studentId}` 形成） |
+| `appendTreatmentMessage(scenarioQuizId, studentId, questionIndex, message)` | `string, number, number, TreatmentMessage` | 追加一則對話訊息至指定題目 |
+| `updateTreatmentQuestionState(scenarioQuizId, studentId, questionIndex, patch)` | `string, number, number, Partial` | 更新某題的 phase/step/stage/hintLevel/requiresRestatement |
+| `advanceTreatmentQuestion(scenarioQuizId, studentId, nextIndex)` | `string, number, number` | 切換到下一題 |
+| `completeTreatmentSession(scenarioQuizId, studentId)` | `string, number` | 標記 session 完成 |
+| `getTreatmentSession(scenarioQuizId, studentId)` | `string, number` | 讀取單一 session |
 | `recordAnswer(questionId, selectedTag, diagnosis)` | `number, string, string` | 記錄/更新學生作答（同題覆蓋） |
 | `removeMisconception(diagnosisId)` | `string` | 將指定迷思診斷改為 'CORRECT'（學生否認後） |
 | `resetStudentAnswers()` | — | 清空學生作答記錄 |
@@ -129,7 +138,9 @@ interface Student {
 ```typescript
 interface Assignment {
   id: string;             // 派題 ID（如 'assign-001'，新增時自動生成 'assign-{timestamp}'）
-  quizId: string;         // 考卷 ID
+  type?: 'diagnosis' | 'scenario'; // 派題類型，缺省為 'diagnosis'（spec-08）
+  quizId?: string;        // 診斷考卷 ID（type='diagnosis' 時必填）
+  scenarioQuizId?: string;// 情境考卷 ID（type='scenario' 時必填）
   classId: string;        // 班級 ID
   assignedAt: string;     // 指派日期（YYYY-MM-DD）
   dueDate: string;        // 截止日期（YYYY-MM-DD）
@@ -139,6 +150,10 @@ interface Assignment {
   totalStudents: number;  // 班級總人數
 }
 ```
+
+**注意**：
+- 既有 `ASSIGNMENTS_DATA` 中所有資料 `type` 欄位為 `undefined`（視為 `'diagnosis'`，向下相容）
+- 治療派題透過 `addAssignment({ type: 'scenario', scenarioQuizId, classId, ... })` 新增
 
 **預設資料**:
 | ID | 考卷 | 班級 | 完成率 |
@@ -222,6 +237,89 @@ interface HistoryRecord {
 }
 ```
 
+### 2.8 ScenarioQuestion（情境題，治療模組）
+**來源**: `src/data/scenarioQuizData.js`
+
+```typescript
+interface ScenarioQuestion {
+  index: number;                    // 題目順序（1-based）
+  title: string;                    // 標題（如 '論證議題 1'）
+  scenarioText: string;             // 情境敘述（多行，\n 為段落分隔）
+  scenarioImages?: string[];        // 情境圖片 import 路徑（0~2 張）
+  scenarioImageZoomable?: boolean;  // 是否可點擊放大
+  initialMessage: string;           // AI 開場提問（對應 stage=claim, step=1）
+  targetMisconceptions: string[];   // 本題針對的迷思 ID（如 ['M02-1']）
+  expertModel: string;              // 專家示範範文（apprenticeship modeling 用）
+}
+```
+
+### 2.9 ScenarioQuiz（情境考卷，治療模組）
+**來源**: `src/data/scenarioQuizData.js` (`SCENARIO_QUIZZES_DATA`)
+
+```typescript
+interface ScenarioQuiz {
+  id: string;                       // 'scenario-001' 格式
+  title: string;                    // 考卷標題
+  status: 'draft' | 'published';
+  targetNodeId: string;             // 主目標節點 ID
+  targetMisconceptions: string[];   // 全部目標迷思 ID 集合
+  createdAt: string;                // YYYY-MM-DD
+  questions: ScenarioQuestion[];
+}
+```
+
+**預設資料**：5 份 demo 情境考卷（spec-08 §10）
+
+| ID | 標題 | 目標節點 | 題數 |
+|----|------|---------|------|
+| `scenario-001` | 情境治療 · 溶解現象判斷 | INe-II-3-02 | 2 |
+| `scenario-002` | 情境治療 · 飽和糖水甜度 | INe-II-3-03 | 2 |
+| `scenario-003` | 情境治療 · 重量守恆與圖表判讀 | INe-II-3-05 | 2 |
+| `scenario-004` | 情境治療 · 酸鹼中和與生活應用 | INe-Ⅲ-5-4 | 3 |
+| `scenario-005` | 情境治療 · 水在酸鹼反應的角色 | INe-Ⅲ-5-7 | 3 |
+
+### 2.10 TreatmentMessage / TreatmentSession（治療對話狀態）
+**來源**: AppContext 內部 state（不存於資料檔）
+
+```typescript
+interface TreatmentMessage {
+  id: string;
+  role: 'ai' | 'student';
+  text: string;
+  // 若 role='ai'，可附加該回合的 bot response 標註：
+  phase?: 'diagnosis' | 'apprenticeship' | 'completed';
+  step?: number;
+  stage?: 'claim' | 'evidence' | 'reasoning' | 'revise' | 'complete';
+  hintLevel?: 0 | 1 | 2 | 3;
+  feedback?: string;
+  requiresRestatement?: boolean;
+  createdAt: string;                // ISO timestamp
+}
+
+interface TreatmentQuestionState {
+  messages: TreatmentMessage[];
+  phase: 'diagnosis' | 'apprenticeship' | 'completed';
+  step: number;                     // 0~7（0 表示尚未開始）
+  stage: 'claim' | 'evidence' | 'reasoning' | 'revise' | 'complete';
+  hintLevel: 0 | 1 | 2 | 3;
+  requiresRestatement: boolean;
+}
+
+interface TreatmentSession {
+  id: string;                       // 'session-{timestamp}'
+  scenarioQuizId: string;
+  studentId: number;
+  currentQuestionIndex: number;     // 1-based
+  perQuestion: { [index: number]: TreatmentQuestionState };
+  status: 'active' | 'completed';
+  startedAt: string;                // ISO timestamp
+  completedAt: string | null;
+}
+```
+
+**儲存方式**：AppContext 中以 `treatmentSessions: { [key]: TreatmentSession }` 字典存放，
+key 為 ``${scenarioQuizId}__${studentId}``（同一學生對同一情境考卷 → 同一 session 累積）。
+
 ---
 
 ## 3. 資料存取函式
@@ -242,6 +340,24 @@ interface HistoryRecord {
 |------|------|--------|------|
 | `getNodeById(id)` | `string` | `KnowledgeNode \| undefined` | 依 ID 取得知識節點 |
 | `getMisconceptionById(mid)` | `string` | `Misconception & {nodeId, nodeName} \| null` | 依 ID 取得迷思概念及所屬節點 |
+
+### 3.3 情境考卷相關（檔案: `src/data/scenarioQuizData.js`，spec-08）
+
+| 函式 | 參數 | 回傳值 | 說明 |
+|------|------|--------|------|
+| `getScenarioQuiz(scenarioQuizId)` | `string` | `ScenarioQuiz \| null` | 依 ID 取得情境考卷 |
+| `getScenarioQuestions(scenarioQuizId)` | `string` | `ScenarioQuestion[]` | 取得情境考卷的題目陣列 |
+| `getScenarioQuizzesByNode(nodeId)` | `string` | `ScenarioQuiz[]` | 依目標節點推薦情境考卷 |
+| `getScenarioQuizzesByMisconception(misconceptionId)` | `string` | `ScenarioQuiz[]` | 依目標迷思推薦情境考卷 |
+
+### 3.4 治療 Bot（檔案: `src/data/treatmentBot.js`，spec-08 §2）
+
+| 函式 | 參數 | 回傳值 | 說明 |
+|------|------|--------|------|
+| `runTreatmentTurn(state, userMessage)` | `TreatmentState, string` | `BotResponse` | 推進一輪對話（mock，未來換真 LLM 切換點） |
+| `makeInitialTurn(scenarioQuizId, questionIndex)` | `string, number` | 初始 state + 開場 message | 學生切到該題時呼叫 |
+
+**常數**：`STEPS_PER_QUESTION = 7`、`PHASE_LABEL`、`STAGE_LABEL`
 
 ### ClassAnswer 結構
 ```typescript

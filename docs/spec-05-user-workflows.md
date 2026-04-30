@@ -69,30 +69,47 @@
 
 ### 1.4 診斷結果查看流程
 
+「診斷結果」拆為 5 個子分頁，由 `DashboardLayout` 共用「考卷選擇器」+ tab 列。
+進入 `/teacher/dashboard` 自動 redirect 到 `/teacher/dashboard/overview`，並從 `?quizId=` 載入考卷（無則 fallback 到最近檢視 / 第一張可用考卷）。
+
 ```
 教師進入 /teacher/dashboard
     │
-    ├─ 選擇考卷（下拉選單）
-    ├─ 選擇班級（下拉選單，可選「全部班級」）
+    ├─（自動 redirect → /teacher/dashboard/overview?quizId=...）
     │
-    ├─ 檢視概念掌握長條圖
-    │   ├─ X 軸：知識節點名稱
-    │   ├─ Y 軸：通過率 (%)
-    │   └─ InfoButton → 資料說明面板
+    ├─ 頂部考卷選擇器（DashboardLayout 共用，切換時保留所在子分頁）
     │
-    ├─ 檢視迷思概念分佈
-    │   ├─ 各迷思概念的學生人數
-    │   └─ 可展開查看持有該迷思的學生名單
+    ├─ 子分頁：全年級總覽（/overview）
+    │   ├─ 全年級 AI 診斷摘要（年級健康狀態 + 跨班診斷句 + 優先介入順序 + 行動建議）
+    │   ├─ 4 個指標卡：涵蓋班級 / 平均完成率 / 平均掌握率 / 需關注班級
+    │   └─ 完成率 × 掌握率班級分布散佈圖
     │
-    ├─ 檢視散佈圖
-    │   ├─ X 軸：完成率
-    │   ├─ Y 軸：正確率
-    │   └─ 各班級以不同顏色表示
+    ├─ 子分頁：各班學習狀況（/classes）
+    │   ├─ 每班三項核心指標卡片（完成率、掌握率、高頻迷思數）
+    │   └─ 點擊卡片 → 導航到 /class-detail?classId=...&quizId=...
     │
-    └─ 檢視各題選項分佈
-        ├─ 每題顯示 A/B/C/D 選項的選答人數
-        └─ 正確選項以綠色標示
+    ├─ 子分頁：知識節點跨班比較（/nodes）
+    │   └─ 同一概念節點各班通過率並排長條（70% 掌握門檻參考線）
+    │
+    ├─ 子分頁：跨班高頻迷思（/misconceptions）
+    │   ├─ Top 6 高頻迷思橫條圖（依全年級平均持有率排序）
+    │   └─ 班級 × 迷思熱力圖（顏色越深表持有率越高）
+    │
+    └─ 子分頁：各班詳細報告（/class-detail）
+        ├─ 上方：各班派題完成率清單（被選中的班級顯示綠框）
+        │   └─ 點擊任一班級 → 更新 ?classId=
+        └─ 下方：依 ?classId 渲染該班 SingleClassReport
+            ├─ 4 個指標卡（參與學生 / 完成率 / 平均掌握率 / 最高風險迷思）
+            ├─ 班級 AI 診斷摘要 + 本週行動清單
+            ├─ 各概念掌握程度長條圖
+            ├─ 迷思概念分佈（可展開學生名單）
+            └─ 題目明細矩陣（每題 A/B/C/D 選答分佈 + 對應迷思）
 ```
+
+**URL query 規則**:
+- `?quizId=` 由 `DashboardLayout` 跨 5 個子分頁共用，切換 tab 時保留
+- `?classId=` 僅 `class-detail` 使用
+- 兩者都同步寫入 `AppContext.currentQuizId / currentClassId` 作「最近檢視」記憶
 
 ### 1.5 班級管理流程
 
@@ -207,7 +224,86 @@
 
 ---
 
-## 3. 跨角色交互
+## 3. 治療模組工作流（spec-08，波次 2/3 實作）
+
+> 完整規格見 `docs/spec-08-treatment-cognitive-apprenticeship.md`。本節僅勾勒流程接點。
+
+### 3.1 教師端：建立 / 編輯情境考卷
+
+```
+教師進入 /teacher/scenarios（情境考卷庫）
+    │
+    ├─ 瀏覽既有 5 份 demo（scenario-001 ~ 005）+ 自製
+    ├─ 點擊「新增」 → /teacher/scenarios/create
+    │   ├─ 步驟一：選目標節點 + 標目標迷思
+    │   ├─ 步驟二：撰寫情境敘述（textarea）+ 上傳圖片
+    │   ├─ 步驟三：撰寫每題 initialMessage + expertModel
+    │   └─ 儲存 → saveScenarioQuiz()
+    │
+    └─ 點擊既有卡 → /teacher/scenarios/:scenarioQuizId/edit
+        └─ 同上，預填現有資料
+```
+
+### 3.2 教師端：派發治療任務
+
+```
+教師查看診斷結果（DashboardReport / StudentReport）
+    │
+    ├─ 在班級／個人迷思列表旁 → 點「📤 派發情境考卷」
+    │
+    ├─ 跳轉至 TreatmentAssignment（合併進 AssignmentManagement 的 'scenario' tab）
+    │   ├─ 預填當前學生／班級的迷思清單
+    │   ├─ 教師勾選想治療的迷思（MisconceptionPicker）
+    │   ├─ 系統依 getScenarioQuizzesByMisconception() 推薦對應情境考卷
+    │   ├─ 教師選定情境考卷 + 班級 + 截止日
+    │   └─ 確認派發 → addAssignment({ type: 'scenario', scenarioQuizId, classId, dueDate, ... })
+    │
+    └─ 完成派發後，學生端 StudentHome 的「情境治療」區塊就會出現此任務
+```
+
+### 3.3 學生端：情境對話流程（spec-08 §6）
+
+```
+學生在 StudentHome 點擊「情境治療」任務卡
+    │
+    ├─ 進入 /student/scenario/:scenarioQuizId (ScenarioChat)
+    │
+    ├─ entryStage = 'intro'（吉祥物開場）
+    │   └─ 點擊「開始挑戰」 → entryStage='scenario'
+    │
+    ├─ entryStage = 'scenario'（情境敘述頁，含可放大圖）
+    │   └─ 點擊「我已閱讀完成，開始挑戰」 → entryStage='chat'
+    │       同時 startTreatmentSession(scenarioQuizId, studentId)
+    │
+    ├─ entryStage = 'chat'（AI 對話），flowStage 多階段切換：
+    │   ├─ 'chat'：runTreatmentTurn() 推進，每輪 appendTreatmentMessage()
+    │   ├─ 'between-questions'：該題完成 → 顯示「下一題」按鈕
+    │   ├─ 'next-scenario'：下一題情境敘述頁 → advanceTreatmentQuestion()
+    │   ├─ 'settling'：結算動畫（dots 約 3 秒）
+    │   ├─ 'result'：過關木牌（含 StarRating） → completeTreatmentSession()
+    │   └─ 'reflection'：雙欄反思頁（左=回顧 Tabs / 右=反思對話）
+    │
+    └─ 退出 → 回 StudentHome（任務卡顯示已完成）
+```
+
+### 3.4 教師端：查看治療對話紀錄
+
+```
+教師進入 /teacher/treatment-logs
+    │
+    ├─ 列表：學生 × 情境考卷 × 完成狀態 × 最後 phase/stage × 開始時間
+    ├─ 篩選：依班級 / 情境考卷 / 完成狀態
+    │
+    └─ 點選任一列 → /teacher/treatment-logs/:sessionId (TreatmentLogDetail)
+        ├─ 左欄：情境考卷的題目列表（情境敘述 + 圖）
+        └─ 右欄：完整對話氣泡時序展開
+            └─ 每則 AI 訊息標註該回合的 phase / stage / step / hintLevel
+            （為教師提供「派發治療是否成功」的判斷依據）
+```
+
+---
+
+## 4. 跨角色交互
 
 ```
 教師 → 建立考卷 (saveQuiz)
@@ -217,6 +313,14 @@
 學生 → 作答考卷 (recordAnswer)
          ↓
 教師 → 檢視診斷結果 (getClassAnswers, getNodePassRates, etc.)
+         ↓ 若診斷出迷思
+教師 → 建立情境考卷 / 沿用 demo (saveScenarioQuiz)
+         ↓
+教師 → 派發情境考卷 (addAssignment with type='scenario')
+         ↓
+學生 → 與 AI 對話治療 (runTreatmentTurn / appendTreatmentMessage)
+         ↓
+教師 → 查看治療對話紀錄 (getTreatmentSession)
 ```
 
 **注意**: 目前為純前端原型，教師與學生的資料不互通。

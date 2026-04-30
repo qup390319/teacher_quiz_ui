@@ -93,7 +93,8 @@
 | `docs/spec-03-components.md` | 共用元件 | **修改共用元件時必讀** |
 | `docs/spec-04-data-models.md` | 資料模型 | **修改 AppContext 或資料結構時必讀** |
 | `docs/spec-05-user-workflows.md` | 使用者流程 | **修改互動邏輯時必讀** |
-| `docs/spec-06-deployment-and-config.md` | 部署與設定 | 修改配置、主題色彩時 |
+| `docs/spec-06-deployment-and-config.md` | 部署與設定 | 修改配置時（注意：主題色彩請以 spec-07 為準） |
+| `docs/spec-07-ui-design-system.md` | **UI 設計風格指南** | **任何頁面 / 元件視覺修改前必讀**（日系手遊冒險風 / 木框收集冊） |
 | `docs/deviations.md` | 規格偏離記錄 | 遇到 spec 與實作矛盾時 |
 
 ---
@@ -200,7 +201,8 @@ Claude Code 主會話（Opus）── Plan / Supervise / Review
 - 禁止修改程式碼後不更新 spec
 - 禁止 Class Components
 - 禁止 `import *`
-- 禁止在元件中硬編碼色彩值（必須使用 `theme.js` 常數或 Tailwind class）
+- 禁止在元件中硬編碼色彩值（必須使用 `theme.js` 常數、Tailwind class，或 `spec-07` 規範色票）
+- 禁止繞過 `spec-07-ui-design-system.md` 自創新風格元件（卡片、按鈕、徽章等）；如需新增元件，先更新 spec-07 再實作
 - 禁止繞過 ESLint 規則（`eslint-disable` 需有充分理由並註明）
 - 禁止在 Mock Data 函式中引入外部 API 呼叫（保持純前端可運行）
 - 禁止修改知識節點 ID 格式（特別注意 `INe-II-3-*` 與 `INe-Ⅲ-5-*` 兩種前綴並存，且 `Ⅲ` 為羅馬數字三、不是英文 III）
