@@ -248,31 +248,41 @@ function ManagePopover({ assignment, quiz, cls, onViewReport, onUpdateDueDate, o
 export default function AssignmentManagement() {
   const navigate = useNavigate();
   const {
-    assignments, quizzes, classes,
+    assignments, quizzes, scenarioQuizzes, classes,
     addAssignment, updateAssignment, removeAssignment,
     setCurrentClassId, setCurrentQuizId,
   } = useApp();
 
   const [popover, setPopover] = useState(null);
   const [managePopover, setManagePopover] = useState(null);
+  const [tab, setTab] = useState('diagnosis'); // 'diagnosis' | 'scenario'（spec-08）
 
-  const publishedQuizzes = quizzes.filter((q) => q.status === 'published');
+  const isScenarioTab = tab === 'scenario';
 
+  /* 兩種考卷的 published 列表 */
+  const publishedQuizzes = isScenarioTab
+    ? scenarioQuizzes.filter((q) => q.status === 'published')
+    : quizzes.filter((q) => q.status === 'published');
+
+  /* 矩陣：對 scenario tab 用 scenarioQuizId 對應，對 diagnosis tab 用 quizId */
   const matrix = publishedQuizzes.map((quiz) => ({
     quiz,
     cells: classes.map((cls) => ({
       cls,
-      assignment: assignments.find(
-        (a) => a.quizId === quiz.id && a.classId === cls.id
-      ) ?? null,
+      assignment: assignments.find((a) => {
+        if (isScenarioTab) {
+          return a.type === 'scenario' && a.scenarioQuizId === quiz.id && a.classId === cls.id;
+        }
+        return (a.type ?? 'diagnosis') === 'diagnosis' && a.quizId === quiz.id && a.classId === cls.id;
+      }) ?? null,
     })),
   }));
 
   const handleConfirm = (quizId, classId, dueDate) => {
     const cls = classes.find((c) => c.id === classId);
     const today = new Date().toISOString().slice(0, 10);
-    addAssignment({
-      quizId,
+    const base = {
+      type: isScenarioTab ? 'scenario' : 'diagnosis',
       classId,
       assignedAt: today,
       dueDate: dueDate || '',
@@ -280,7 +290,12 @@ export default function AssignmentManagement() {
       completionRate: 0,
       submittedCount: 0,
       totalStudents: cls?.students.length ?? 0,
-    });
+    };
+    if (isScenarioTab) {
+      addAssignment({ ...base, scenarioQuizId: quizId });
+    } else {
+      addAssignment({ ...base, quizId });
+    }
     setPopover(null);
   };
 
@@ -302,11 +317,36 @@ export default function AssignmentManagement() {
   return (
     <TeacherLayout>
       <div className="p-8">
-        <div className="mb-8">
+        <div className="mb-6">
           <h1 className="text-2xl font-bold text-[#2D3436]">派題管理</h1>
           <p className="text-[#636E72] mt-1 text-sm">
             點擊空格即可將考卷派發給班級，點擊已派格子可管理派發狀態或查看診斷報告
           </p>
+        </div>
+
+        {/* Tab 切換：診斷／情境（spec-08）*/}
+        <div className="mb-6 flex items-center gap-1.5 bg-white border border-[#BDC3C7] rounded-2xl p-1.5
+                        shadow-[0_2px_8px_rgba(0,0,0,0.04)] w-fit">
+          <button
+            type="button"
+            onClick={() => { setTab('diagnosis'); setPopover(null); setManagePopover(null); }}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-1.5 transition
+                       ${tab === 'diagnosis'
+                         ? 'bg-[#FFF1D8] border border-[#F0B962] text-[#7A4A18]'
+                         : 'text-[#636E72] hover:bg-[#EEF5E6]'}`}
+          >
+            📝 診斷考卷
+          </button>
+          <button
+            type="button"
+            onClick={() => { setTab('scenario'); setPopover(null); setManagePopover(null); }}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-1.5 transition
+                       ${tab === 'scenario'
+                         ? 'bg-[#E0F0E8] border border-[#3F8B5E] text-[#2E6B47]'
+                         : 'text-[#636E72] hover:bg-[#EEF5E6]'}`}
+          >
+            🌱 情境考卷
+          </button>
         </div>
 
         {publishedQuizzes.length === 0 ? (
@@ -317,13 +357,15 @@ export default function AssignmentManagement() {
                   d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </div>
-            <p className="text-[#636E72] font-medium mb-1">目前沒有已發佈的考卷</p>
+            <p className="text-[#636E72] font-medium mb-1">
+              目前沒有已發佈的{isScenarioTab ? '情境考卷' : '考卷'}
+            </p>
             <p className="text-sm text-[#95A5A6] mb-5">請先建立考卷，再回來進行派發</p>
             <button
-              onClick={() => navigate('/teacher/quizzes')}
+              onClick={() => navigate(isScenarioTab ? '/teacher/scenarios' : '/teacher/quizzes')}
               className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#8FC87A] text-[#2D3436] border border-[#BDC3C7] rounded-2xl text-sm font-semibold hover:bg-[#76B563] transition-colors"
             >
-              前往出題管理
+              前往{isScenarioTab ? '情境出題' : '出題管理'}
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
@@ -357,12 +399,21 @@ export default function AssignmentManagement() {
               >
                 <div className="px-5 py-4 flex flex-col justify-center">
                   <div className="flex items-center gap-1.5 mb-1">
-                    <span className="text-xs font-bold bg-[#C8EAAE] text-[#3D5A3E] border border-[#BDC3C7] px-2 py-0.5 rounded-full">
-                      已發佈
+                    <span
+                      className={`text-xs font-bold px-2 py-0.5 rounded-full border
+                                 ${isScenarioTab
+                                   ? 'bg-[#E0F0E8] text-[#2E6B47] border-[#3F8B5E]'
+                                   : 'bg-[#C8EAAE] text-[#3D5A3E] border-[#BDC3C7]'}`}
+                    >
+                      {isScenarioTab ? '🌱 情境' : '已發佈'}
                     </span>
                   </div>
                   <p className="text-sm font-semibold text-[#2D3436] leading-snug mb-1">{quiz.title}</p>
-                  <p className="text-xs text-[#95A5A6]">{quiz.questionCount} 題 · {quiz.knowledgeNodeIds.length} 個節點</p>
+                  <p className="text-xs text-[#95A5A6]">
+                    {isScenarioTab
+                      ? `${quiz.questions?.length ?? 0} 題情境 · 目標節點 ${quiz.targetNodeId}`
+                      : `${quiz.questionCount} 題 · ${quiz.knowledgeNodeIds.length} 個節點`}
+                  </p>
                 </div>
 
                 {cells.map(({ cls, assignment }) => (
