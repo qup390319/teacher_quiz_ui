@@ -78,3 +78,112 @@ td, th {
   word-break: break-word;
   white-space: normal;
 }
+
+/* ── Material Symbols 預設設定 ─────────────────────────────────── */
+.material-symbols-rounded {
+  font-variation-settings:
+    'FILL' 0,
+    'wght' 500,
+    'GRAD' 0,
+    'opsz' 24;
+  vertical-align: middle;
+  user-select: none;
+  font-size: inherit;
+  line-height: 1;
+}
+.material-symbols-rounded.filled {
+  font-variation-settings:
+    'FILL' 1,
+    'wght' 500,
+    'GRAD' 0,
+    'opsz' 24;
+}
+
+/* ── 可愛動畫集合（LoginPage 等場景）───────────────────────────── */
+
+/* 整體淡入上滑（卡片 / 區塊載入） */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up        { animation: fadeUp 0.6s ease-out both; }
+.animate-fade-up-delay-1 { animation: fadeUp 0.6s ease-out 0.15s both; }
+.animate-fade-up-delay-2 { animation: fadeUp 0.6s ease-out 0.30s both; }
+.animate-fade-up-delay-3 { animation: fadeUp 0.6s ease-out 0.45s both; }
+
+/* 上下飄浮（裝飾元素 / 吉祥物） */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-12px); }
+}
+.animate-float       { animation: float 4s ease-in-out infinite; }
+.animate-float-slow  { animation: float 6s ease-in-out infinite; }
+.animate-float-delay { animation: float 4s ease-in-out 1s infinite; }
+
+/* 左右搖擺（吉祥物探頭、Logo 標題） */
+@keyframes wiggle {
+  0%, 100% { transform: rotate(-3deg); }
+  50%      { transform: rotate(3deg); }
+}
+.animate-wiggle { animation: wiggle 3s ease-in-out infinite; transform-origin: bottom center; }
+
+/* 心跳脈衝（emphasis 元素，例如 CTA 提示） */
+@keyframes pulseSoft {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.04); }
+}
+.animate-pulse-soft { animation: pulseSoft 2.4s ease-in-out infinite; }
+
+/* 旋轉（背景裝飾用） */
+@keyframes spinSlow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.animate-spin-slow { animation: spinSlow 18s linear infinite; }
+
+/* 泡泡上升（背景效果） */
+@keyframes bubbleUp {
+  0%   { transform: translateY(20px) scale(0.8); opacity: 0; }
+  20%  { opacity: 0.7; }
+  100% { transform: translateY(-120px) scale(1.1); opacity: 0; }
+}
+.animate-bubble-1 { animation: bubbleUp 6s ease-in 0s    infinite; }
+.animate-bubble-2 { animation: bubbleUp 7s ease-in 1.5s  infinite; }
+.animate-bubble-3 { animation: bubbleUp 8s ease-in 3s    infinite; }
+.animate-bubble-4 { animation: bubbleUp 6.5s ease-in 4.5s infinite; }
+
+/* ── 動森 / Pokopia 風格動畫 ──────────────────────────────────── */
+
+/* Q 彈果凍 hover（彈簧曲線） */
+@keyframes jelly {
+  0%, 100% { transform: scale(1) translateY(0); }
+  30%      { transform: scale(1.04, 0.96) translateY(-2px); }
+  60%      { transform: scale(0.98, 1.02) translateY(0); }
+}
+.animate-jelly { animation: jelly 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.hover\:animate-jelly:hover { animation: jelly 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+/* 葉子緩慢搖擺（背景裝飾） */
+@keyframes leafSway {
+  0%, 100% { transform: rotate(-6deg) translateY(0); }
+  50%      { transform: rotate(6deg) translateY(-6px); }
+}
+.animate-leaf-sway { animation: leafSway 5s ease-in-out infinite; transform-origin: center; }
+
+/* 雲朵橫向飄移 */
+@keyframes cloudDrift {
+  0%   { transform: translateX(0); }
+  50%  { transform: translateX(20px); }
+  100% { transform: translateX(0); }
+}
+.animate-cloud-drift { animation: cloudDrift 12s ease-in-out infinite; }
+
+/* 蘑菇/花呼吸感（hover時呼喚） */
+@keyframes breath {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.08); }
+}
+.animate-breath { animation: breath 3s ease-in-out infinite; }
+
+/* 字體：英文 Fredoka */
+.font-game { font-family: 'Fredoka', 'Noto Sans TC', sans-serif; }
