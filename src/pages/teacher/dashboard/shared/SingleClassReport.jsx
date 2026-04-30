@@ -1,0 +1,112 @@
+import { useState } from 'react';
+import InfoButton from '../../../../components/InfoButton';
+import InfoDrawer from '../../../../components/InfoDrawer';
+import { CHART_INFO } from '../../../../data/chartInfoConfig';
+import { knowledgeNodes } from '../../../../data/knowledgeGraph';
+import {
+  getClassAnswers, getMisconceptionStudents, getNodePassRates,
+} from '../../../../data/quizData';
+import { getAssignment } from './helpers';
+import AIDiagnosisSummary from './AIDiagnosisSummary';
+import WeeklyActionChecklist from './WeeklyActionChecklist';
+import BreakdownChart from './BreakdownChart';
+import MisconceptionDistribution from './MisconceptionDistribution';
+import HeatmapView from './HeatmapView';
+
+export default function SingleClassReport({ cls, assignments, quizzes, quizId }) {
+  const classId = cls.id;
+  const classAnswersData = getClassAnswers(quizId, classId);
+  const totalStudents = classAnswersData.length;
+
+  const selectedAssignment = getAssignment(assignments, classId, quizId);
+  const hasData = selectedAssignment && selectedAssignment.completionRate > 0 && totalStudents > 0;
+
+  const [statInfoKey, setStatInfoKey] = useState(null);
+
+  if (!hasData) {
+    const quizTitle = quizzes.find(q => q.id === quizId)?.title ?? '此考卷';
+    return (
+      <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-12 shadow-[0_2px_12px_rgba(0,0,0,0.06)] text-center">
+        <div className="w-16 h-16 bg-[#EEF5E6] rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg className="w-8 h-8 text-[#95A5A6]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        </div>
+        <p className="text-[#636E72] font-medium mb-1">尚無作答資料</p>
+        <p className="text-sm text-[#95A5A6]">{cls.name}「{quizTitle}」目前沒有學生已完成作答，請至派題管理確認派題狀態</p>
+      </div>
+    );
+  }
+
+  const misconStudents = getMisconceptionStudents(quizId, classId);
+  const passRates = getNodePassRates(quizId, classId);
+  const avgPassRate = Math.round(Object.values(passRates).reduce((s, v) => s + v, 0) / Object.values(passRates).length);
+
+  const topMisconEntry = Object.entries(misconStudents)
+    .map(([id, s]) => ({ id, pct: Math.round((s.length / totalStudents) * 100) }))
+    .sort((a, b) => b.pct - a.pct)[0];
+  const topMisconNode = knowledgeNodes.find(n => n.misconceptions.find(m => m.id === topMisconEntry?.id));
+  const topMisconLabel = topMisconNode?.misconceptions.find(m => m.id === topMisconEntry?.id)?.label;
+
+  const completionRate = selectedAssignment.completionRate;
+  const submittedCount = selectedAssignment.submittedCount;
+  const totalStudentsAssign = selectedAssignment.totalStudents;
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-4 gap-4">
+        {[
+          { label: '參與學生', value: `${totalStudents} 人`, sub: '已完成診斷測驗', color: 'text-[#3D5A3E]', bg: 'bg-[#C8EAAE]',
+            infoKey: 'stat-card-participants', dynamicStatus: `目前有 ${totalStudents} 位學生已完成本次診斷測驗並提交作答。` },
+          { label: '作答完成率', value: `${completionRate}%`, sub: `${submittedCount} / ${totalStudentsAssign} 人已提交`,
+            color: completionRate === 100 ? 'text-[#3D5A3E]' : completionRate >= 60 ? 'text-[#B7950B]' : 'text-[#E74C5E]',
+            bg: completionRate === 100 ? 'bg-[#C8EAAE]' : completionRate >= 60 ? 'bg-[#FCF0C2]' : 'bg-[#FAC8CC]',
+            infoKey: 'stat-card-completion', dynamicStatus: `目前班級作答完成率為 ${completionRate}%（${submittedCount}/${totalStudentsAssign} 人已提交）。${completionRate < 80 ? '完成率偏低，建議補齊作答後再解讀診斷報告。' : '完成率良好，診斷結果具代表性。'}` },
+          { label: '概念平均掌握率', value: `${avgPassRate}%`, sub: '全班各概念平均答對率',
+            color: avgPassRate >= 70 ? 'text-[#3D5A3E]' : avgPassRate >= 50 ? 'text-[#B7950B]' : 'text-[#E74C5E]',
+            bg: avgPassRate >= 70 ? 'bg-[#C8EAAE]' : avgPassRate >= 50 ? 'bg-[#FCF0C2]' : 'bg-[#FAC8CC]',
+            infoKey: 'stat-card-mastery', dynamicStatus: `目前班級 5 個知識節點的平均答對率為 ${avgPassRate}%。${avgPassRate >= 70 ? '整體表現良好。' : avgPassRate >= 50 ? '整體表現中等，建議針對低答對率節點進行補強。' : '整體掌握不足，建議安排系統性補救教學。'}` },
+          { label: '最高風險迷思', value: topMisconEntry ? `${topMisconEntry.pct}%` : '—', sub: topMisconLabel ?? '無高頻迷思',
+            color: topMisconEntry && topMisconEntry.pct >= 30 ? 'text-[#E74C5E]' : 'text-[#3D5A3E]',
+            bg: topMisconEntry && topMisconEntry.pct >= 30 ? 'bg-[#FAC8CC]' : 'bg-[#C8EAAE]',
+            infoKey: 'stat-card-top-misconception',
+            dynamicStatus: topMisconEntry
+              ? `目前持有率最高的迷思為「${topMisconLabel}」，持有率 ${topMisconEntry.pct}%（${Math.round(topMisconEntry.pct / 100 * totalStudents)} 位學生）。${topMisconEntry.pct >= 30 ? '已達高頻迷思門檻，建議優先安排補救。' : '持有率低於 30%，暫不需要緊急介入。'}`
+              : '目前無偵測到任何迷思。' },
+        ].map(s => (
+          <div key={s.label} className={`rounded-2xl border border-[#BDC3C7] p-4 ${s.bg} shadow-[0_2px_12px_rgba(0,0,0,0.06)]`}>
+            <div className="flex items-start justify-between mb-0.5">
+              <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+              <InfoButton onClick={() => setStatInfoKey(s.infoKey)} />
+            </div>
+            <p className="text-sm font-semibold text-[#2D3436]">{s.label}</p>
+            <p className="text-xs text-[#636E72] mt-0.5 leading-snug">{s.sub}</p>
+          </div>
+        ))}
+      </div>
+      <InfoDrawer isOpen={statInfoKey !== null} onClose={() => setStatInfoKey(null)}
+        config={statInfoKey ? CHART_INFO[statInfoKey] : null}
+        dynamicStatus={statInfoKey ? [
+          { infoKey: 'stat-card-participants', dynamicStatus: `目前有 ${totalStudents} 位學生已完成本次診斷測驗並提交作答。` },
+          { infoKey: 'stat-card-completion', dynamicStatus: `目前班級作答完成率為 ${completionRate}%（${submittedCount}/${totalStudentsAssign} 人已提交）。${completionRate < 80 ? '完成率偏低，建議補齊作答後再解讀診斷報告。' : '完成率良好，診斷結果具代表性。'}` },
+          { infoKey: 'stat-card-mastery', dynamicStatus: `目前班級 5 個知識節點的平均答對率為 ${avgPassRate}%。${avgPassRate >= 70 ? '整體表現良好。' : avgPassRate >= 50 ? '整體表現中等，建議針對低答對率節點進行補強。' : '整體掌握不足，建議安排系統性補救教學。'}` },
+          { infoKey: 'stat-card-top-misconception', dynamicStatus: topMisconEntry ? `目前持有率最高的迷思為「${topMisconLabel}」，持有率 ${topMisconEntry.pct}%。${topMisconEntry.pct >= 30 ? '已達高頻迷思門檻，建議優先安排補救。' : '持有率低於 30%，暫不需要緊急介入。'}` : '目前無偵測到任何迷思。' },
+        ].find(item => item.infoKey === statInfoKey)?.dynamicStatus : undefined} />
+
+      <AIDiagnosisSummary quizId={quizId} classId={classId} totalStudents={totalStudents} />
+      <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+        <WeeklyActionChecklist quizId={quizId} classId={classId} totalStudents={totalStudents} />
+      </div>
+      <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+        <BreakdownChart quizId={quizId} classId={classId} />
+      </div>
+      <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+        <MisconceptionDistribution quizId={quizId} classId={classId} totalStudents={totalStudents} />
+      </div>
+      <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+        <HeatmapView quizId={quizId} classId={classId} totalStudents={totalStudents} />
+      </div>
+    </div>
+  );
+}
