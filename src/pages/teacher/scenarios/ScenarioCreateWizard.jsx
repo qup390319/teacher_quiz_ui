@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import TeacherLayout from '../../../components/TeacherLayout';
-import { useApp } from '../../../context/AppContext';
+import { useScenario, useSaveScenario } from '../../../hooks/useScenarios';
 import { knowledgeNodes, getNodeById } from '../../../data/knowledgeGraph';
 
 /* 情境考卷出題精靈（spec-08 §5.1）
@@ -24,23 +24,27 @@ export default function ScenarioCreateWizard() {
   const { scenarioQuizId } = useParams();
   const isEditing = Boolean(scenarioQuizId);
   const navigate = useNavigate();
-  const { scenarioQuizzes, saveScenarioQuiz } = useApp();
+  const { data: existing, isLoading: existingLoading } = useScenario(scenarioQuizId);
+  const saveScenarioMut = useSaveScenario();
 
-  const [draft, setDraft] = useState(() => {
-    if (scenarioQuizId) {
-      const existing = scenarioQuizzes.find((q) => q.id === scenarioQuizId);
-      if (existing) return structuredClone(existing);
+  const [draft, setDraft] = useState(() => ({
+    id: undefined,
+    title: '',
+    status: 'draft',
+    targetNodeId: '',
+    targetMisconceptions: [],
+    createdAt: TODAY,
+    questions: [blankQuestion(1)],
+  }));
+
+  // bootstrap edit mode once data arrives — sync external (server) data into local form draft.
+  // This is the documented "sync external state into form draft" pattern when data is lazy-loaded.
+  useEffect(() => {
+    if (isEditing && existing) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setDraft(structuredClone(existing));
     }
-    return {
-      id: `scenario-${Date.now()}`,
-      title: '',
-      status: 'draft',
-      targetNodeId: '',
-      targetMisconceptions: [],
-      createdAt: TODAY,
-      questions: [blankQuestion(1)],
-    };
-  });
+  }, [isEditing, existing]);
 
   const targetNode = getNodeById(draft.targetNodeId);
   const availableMisconceptions = targetNode?.misconceptions ?? [];
@@ -93,7 +97,7 @@ export default function ScenarioCreateWizard() {
     });
   };
 
-  const handleSave = (status) => {
+  const handleSave = async (status) => {
     if (!draft.title.trim()) {
       alert('請填寫考卷標題');
       return;
@@ -102,17 +106,30 @@ export default function ScenarioCreateWizard() {
       alert('請選擇目標節點');
       return;
     }
-    saveScenarioQuiz({ ...draft, status });
-    navigate('/teacher/scenarios');
+    try {
+      await saveScenarioMut.mutateAsync({ ...draft, status });
+      navigate('/teacher/scenarios');
+    } catch (err) {
+      console.error('[ScenarioCreateWizard] save failed', err);
+      alert('儲存失敗：' + (err?.message ?? '未知錯誤'));
+    }
   };
+
+  if (isEditing && existingLoading) {
+    return (
+      <TeacherLayout>
+        <div className="p-8 text-[#636E72]">載入中…</div>
+      </TeacherLayout>
+    );
+  }
 
   return (
     <TeacherLayout>
-      <div className="p-8 max-w-4xl">
+      <div className="p-4 sm:p-6 md:p-8 max-w-4xl">
         {/* 頁首 */}
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-4 sm:mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-[#2D3436]">
+            <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">
               {isEditing ? '編輯情境考卷' : '新增情境考卷'}
             </h1>
             <p className="text-[#636E72] mt-1 text-sm">

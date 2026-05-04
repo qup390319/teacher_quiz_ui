@@ -10,10 +10,10 @@ export default function ScenarioAssignments() {
 
   return (
     <TeacherLayout>
-      <div className="p-8">
+      <div className="p-4 sm:p-6 md:p-8">
         {/* 頁首 */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-[#2D3436]">派題管理 · 情境考卷</h1>
+        <div className="mb-4 sm:mb-6">
+          <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">派題管理 · 情境考卷</h1>
           <p className="text-[#636E72] mt-1 text-sm">
             將情境治療考卷指派給班級。學生會在學生端「情境治療」區看到任務。
           </p>

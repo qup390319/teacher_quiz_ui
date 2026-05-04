@@ -1,14 +1,61 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-scilens}
+      POSTGRES_USER: ${POSTGRES_USER:-scilens}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-scilens}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-scilens} -d ${POSTGRES_DB:-scilens}"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-scilens}:${POSTGRES_PASSWORD:-scilens}@postgres:5432/${POSTGRES_DB:-scilens}
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me-in-production-please-32chars}
+      JWT_EXPIRES_HOURS: ${JWT_EXPIRES_HOURS:-24}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      COOKIE_SAMESITE: ${COOKIE_SAMESITE:-lax}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      # P2 onwards
+      VLLM_BASE_URL: ${VLLM_BASE_URL:-}
+      VLLM_MODEL_NAME: ${VLLM_MODEL_NAME:-}
+      VLLM_API_KEY: ${VLLM_API_KEY:-}
+      RAGFLOW_MOCK: ${RAGFLOW_MOCK:-true}
+      RAGFLOW_ENDPOINT: ${RAGFLOW_ENDPOINT:-}
+      RAGFLOW_AGENT_ID: ${RAGFLOW_AGENT_ID:-}
+      RAGFLOW_API_KEY: ${RAGFLOW_API_KEY:-}
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
   frontend:
     build:
       context: .
       dockerfile: Dockerfile
+    depends_on:
+      - backend
     ports:
       - "3000:80"
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "wget", "-qO-", "http://localhost/health" ]
+      test: ["CMD", "wget", "-qO-", "http://localhost/health"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s
+
+volumes:
+  pgdata:

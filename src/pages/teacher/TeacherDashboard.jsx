@@ -16,16 +16,16 @@ export default function TeacherDashboard() {
 
   return (
     <TeacherLayout>
-      <div className="p-8">
+      <div className="p-4 sm:p-6 md:p-8">
         {/* Page Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-[#2D3436]">首頁</h1>
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">首頁</h1>
           <p className="text-[#636E72] mt-1">歡迎使用！以下是完成一次迷思診斷的三大步驟</p>
         </div>
 
         {/* 主流程導航條 */}
-        <div className="bg-white border border-[#BDC3C7] rounded-[32px] p-6 mb-8 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-          <div className="flex items-center justify-between gap-2">
+        <div className="bg-white border border-[#BDC3C7] rounded-[24px] sm:rounded-[32px] p-4 sm:p-6 mb-6 sm:mb-8 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+          <div className="flex flex-wrap items-stretch justify-between gap-2">
             {/* 步驟 1 */}
             <button
               onClick={() => navigate('/teacher/quizzes')}

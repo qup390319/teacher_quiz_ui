@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../../context/AppContext';
+import { useQuizzes, useSaveQuiz } from '../../../hooks/useQuizzes';
 import { knowledgeNodes, getNodeById } from '../../../data/knowledgeGraph';
+import DistractorSuggestPopover from '../../../components/teacher/DistractorSuggestPopover';
 
 // Coverage Panel
 function CoveragePanel({ questions, selectedNodeIds }) {
@@ -62,6 +64,7 @@ function EditModal({ question, selectedNodeIds, onSave, onClose }) {
   const [stem, setStem] = useState(question.stem);
   const [nodeId, setNodeId] = useState(question.knowledgeNodeId);
   const [options, setOptions] = useState(question.options.map((o) => ({ ...o })));
+  const [suggestForIdx, setSuggestForIdx] = useState(null); // 開啟 N6 popover 的 option index
 
   const currentNode = getNodeById(nodeId);
   const availableMisconceptions = currentNode ? currentNode.misconceptions : [];
@@ -69,6 +72,11 @@ function EditModal({ question, selectedNodeIds, onSave, onClose }) {
   const updateOption = (idx, field, value) => {
     setOptions((prev) => prev.map((o, i) => i === idx ? { ...o, [field]: value } : o));
   };
+
+  const suggestTarget = suggestForIdx !== null ? options[suggestForIdx] : null;
+  const suggestMisconception = suggestTarget && suggestTarget.diagnosis !== 'CORRECT'
+    ? availableMisconceptions.find((m) => m.id === suggestTarget.diagnosis)
+    : null;
 
   return (
     <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4">
@@ -119,6 +127,18 @@ function EditModal({ question, selectedNodeIds, onSave, onClose }) {
                       onChange={(e) => updateOption(idx, 'content', e.target.value)}
                       className="flex-1 border border-[#BDC3C7] rounded-xl px-3 py-2 text-sm text-[#2D3436] focus:outline-none focus:ring-2 focus:ring-[#8FC87A]"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setSuggestForIdx(idx)}
+                      disabled={opt.diagnosis === 'CORRECT'}
+                      className="flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold
+                                 text-[#7A5232] bg-[#FBE9C7] border border-[#D9C58E] rounded-lg
+                                 hover:bg-[#F4DDA8] disabled:opacity-40 disabled:cursor-not-allowed"
+                      title={opt.diagnosis === 'CORRECT' ? '正解選項不需建議' : '從文獻檢索 3 條學生真實說法（N6）'}
+                    >
+                      <span aria-hidden="true">✨</span>
+                      建議
+                    </button>
                   </div>
                   <div className="ml-9">
                     <label className="text-xs text-[#95A5A6] mb-1 block">答案判定</label>
@@ -153,6 +173,44 @@ function EditModal({ question, selectedNodeIds, onSave, onClose }) {
           </button>
         </div>
       </div>
+
+      {suggestForIdx !== null && suggestMisconception && currentNode && (
+        <DistractorSuggestPopover
+          nodeId={currentNode.id}
+          nodeName={currentNode.name}
+          misconceptionId={suggestMisconception.id}
+          misconceptionLabel={suggestMisconception.label}
+          misconceptionDetail={suggestMisconception.detail}
+          currentText={suggestTarget.content}
+          onAdopt={(text) => {
+            updateOption(suggestForIdx, 'content', text);
+            setSuggestForIdx(null);
+          }}
+          onClose={() => setSuggestForIdx(null)}
+        />
+      )}
+      {suggestForIdx !== null && !suggestMisconception && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setSuggestForIdx(null)}
+        >
+          <div
+            className="bg-white border border-[#BDC3C7] rounded-2xl p-6 max-w-sm text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-sm text-[#636E72] mb-4">
+              此選項目前對應「正確答案」，無法產生干擾選項建議。
+              <br />請先把「答案判定」改為某條迷思後再試。
+            </p>
+            <button
+              onClick={() => setSuggestForIdx(null)}
+              className="px-4 py-2 text-sm font-semibold bg-[#8FC87A] text-[#2D3436] border border-[#BDC3C7] rounded-xl hover:bg-[#76B563]"
+            >
+              知道了
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -276,7 +334,9 @@ function generateDefaultTitle(quizzes) {
 }
 
 export default function Step2Edit({ onBack }) {
-  const { quizQuestions, setQuizQuestions, selectedNodeIds, saveQuiz, quizzes } = useApp();
+  const { quizQuestions, setQuizQuestions, selectedNodeIds } = useApp();
+  const { data: quizzes = [] } = useQuizzes();
+  const saveQuizMut = useSaveQuiz();
   const navigate = useNavigate();
 
   const [quizTitle, setQuizTitle] = useState(() => generateDefaultTitle(quizzes));
@@ -329,14 +389,14 @@ export default function Step2Edit({ onBack }) {
 
       <CoveragePanel questions={quizQuestions} selectedNodeIds={selectedNodeIds} />
 
-      <div className="flex items-center justify-between mb-3 gap-4">
-        <div className="flex items-center gap-2 flex-1">
+      <div className="flex flex-wrap items-center justify-between mb-3 gap-3 sm:gap-4">
+        <div className="flex items-center gap-2 flex-1 min-w-[220px]">
           <label className="text-sm font-semibold text-[#2D3436] whitespace-nowrap">考卷名稱</label>
           <input
             value={quizTitle}
             onChange={(e) => setQuizTitle(e.target.value)}
             placeholder="請輸入考卷名稱"
-            className="flex-1 border border-[#BDC3C7] rounded-xl px-3 py-2 text-sm text-[#2D3436] focus:outline-none focus:ring-2 focus:ring-[#8FC87A]"
+            className="flex-1 min-w-0 border border-[#BDC3C7] rounded-xl px-3 py-2 text-sm text-[#2D3436] focus:outline-none focus:ring-2 focus:ring-[#8FC87A]"
           />
         </div>
         <button
@@ -469,21 +529,24 @@ export default function Step2Edit({ onBack }) {
             預覽學生端
           </button>
           <button
-            onClick={() => {
-              saveQuiz({
-                id: `quiz-${Date.now()}`,
-                title: quizTitle || generateDefaultTitle(quizzes),
-                status: 'published',
-                questions: quizQuestions,
-                knowledgeNodeIds: selectedNodeIds,
-                questionCount: quizQuestions.length,
-                createdAt: new Date().toISOString().slice(0, 10),
-              });
-              navigate('/teacher/quizzes');
+            onClick={async () => {
+              try {
+                await saveQuizMut.mutateAsync({
+                  title: quizTitle || generateDefaultTitle(quizzes),
+                  status: 'published',
+                  knowledgeNodeIds: selectedNodeIds,
+                  questions: quizQuestions,
+                });
+                navigate('/teacher/quizzes');
+              } catch (err) {
+                console.error('[Step2Edit] save failed', err);
+                alert('儲存考卷失敗：' + (err?.message ?? '未知錯誤'));
+              }
             }}
-            className="flex items-center gap-2 px-6 py-2.5 rounded-2xl font-semibold text-sm bg-[#8FC87A] text-[#2D3436] border border-[#BDC3C7] hover:bg-[#76B563] transition-all"
+            disabled={saveQuizMut.isPending}
+            className="flex items-center gap-2 px-6 py-2.5 rounded-2xl font-semibold text-sm bg-[#8FC87A] text-[#2D3436] border border-[#BDC3C7] hover:bg-[#76B563] transition-all disabled:opacity-50"
           >
-            儲存考卷
+            {saveQuizMut.isPending ? '儲存中…' : '儲存考卷'}
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>

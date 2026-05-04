@@ -1,23 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { getQuizQuestions } from '../../data/quizData';
-import { getMisconceptionById, knowledgeNodes } from '../../data/knowledgeGraph';
-import {
-  Icon,
-  WOOD_OUTER,
-  WOOD_INNER_CREAM,
-  WoodIconButton,
-} from '../../components/ui/woodKit';
+import { useQuiz } from '../../hooks/useQuizzes';
+import { useRecordAnswers, useRecordFollowups } from '../../hooks/useAnswers';
+import { knowledgeNodes } from '../../data/knowledgeGraph';
+import { WoodIconButton } from '../../components/ui/woodKit';
 import WoodenProgressBar from '../../components/student/WoodenProgressBar';
 import { Bubble, ThinkingBubble } from '../../components/student/ChatStream';
+import AIFollowUpPanel from './followUp/AIFollowUpPanel';
+import { buildRound1Message, processStudentReply } from './followUp/followUpEngine';
+import { BottomPanel, OptionsPanel, DonePanel } from './studentQuizPanels';
 import bgImg from '../../assets/backgrounds/bg_chiheisen_green.jpg';
 import mascotImg from '../../assets/illustrations/scilens_mascot.png';
 
 const nodeOrder = Object.fromEntries(knowledgeNodes.map((n, i) => [n.id, i]));
 const INTRO_MESSAGES = [
-  { id: 'intro-1', text: '你好！我是「科學偵探」，今天我們要一起探索關於「水溶液」的科學思維。' },
-  { id: 'intro-2', text: '沒有對錯評分，只是想了解你目前的想法。請輕鬆選出你覺得最合理的答案！' },
+  { id: 'intro-1', text: '你好！我是「科學偵探」' },
+  { id: 'intro-2', text: '今天我們要一起探索關於「水溶液」的科學思維。整個過程有兩個階段：先回答情境選擇題，然後我會跟你聊聊你的想法。' },
+  { id: 'intro-3', text: '沒有對錯評分，我只是想更深入了解你的思考方式。準備好了嗎？' },
 ];
 
 const sortQuestionsByNodeOrder = (questions) =>
@@ -32,52 +32,58 @@ export default function StudentQuiz() {
 
 function StudentQuizScreen({ quizId }) {
   const navigate = useNavigate();
-  const {
-    quizzes,
-    recordAnswer,
-    removeMisconception,
-    resetStudentAnswers,
-    addToHistory,
-    setCurrentQuizId,
-    setActiveStudentReport,
-  } = useApp();
+  const [searchParams] = useSearchParams();
+  const assignmentId = searchParams.get('assignmentId');
+  const { setCurrentQuizId, setActiveStudentReport, addToHistory } = useApp();
+  const { data: currentQuiz, isLoading: quizLoading, error: quizError } = useQuiz(quizId);
+  const recordAnswersMut = useRecordAnswers();
+  const recordFollowupsMut = useRecordFollowups();
   const bottomRef = useRef(null);
   const answersRef = useRef([]);
+  const followUpResultsRef = useRef([]);
+  // P4: keep server-returned answer IDs so we can attach followups
+  const answerIdByQuestionRef = useRef({});
 
-  const currentQuiz = quizzes.find((quiz) => quiz.id === quizId) ?? null;
   const sortedQuestions = useMemo(
-    () => sortQuestionsByNodeOrder(getQuizQuestions(quizId)),
-    [quizId]
+    () => sortQuestionsByNodeOrder(currentQuiz?.questions ?? []),
+    [currentQuiz]
   );
 
+  /* phase: intro → question → followUp → done */
   const [phase, setPhase] = useState('intro');
   const [messages, setMessages] = useState([]);
   const [currentQIndex, setCurrentQIndex] = useState(0);
   const [isThinking, setIsThinking] = useState(false);
   const [optionsEnabled, setOptionsEnabled] = useState(false);
-  const [confirmActionsEnabled, setConfirmActionsEnabled] = useState(false);
   const [introIdx, setIntroIdx] = useState(0);
-  const [pendingMisconceptions, setPendingMisconceptions] = useState([]);
-  const [currentConfirmIndex, setCurrentConfirmIndex] = useState(0);
+
+  /* 第二層追問狀態 */
+  const [followUpIndex, setFollowUpIndex] = useState(0); // 第幾題的追問
+  const [followUpCtx, setFollowUpCtx] = useState(null); // { round, strategy, isCorrect, misconceptionId, knowledgeNodeId }
+  const [followUpInput, setFollowUpInput] = useState('');
+  const [followUpEnabled, setFollowUpEnabled] = useState(false);
 
   useEffect(() => {
-    if (!currentQuiz || sortedQuestions.length === 0) {
+    if (quizLoading) return;
+    if (quizError || !currentQuiz || sortedQuestions.length === 0) {
       navigate('/student', { replace: true });
       return;
     }
     answersRef.current = [];
-    resetStudentAnswers();
+    followUpResultsRef.current = [];
+    answerIdByQuestionRef.current = {};
     setCurrentQuizId(quizId);
     setActiveStudentReport(null);
   }, [
     quizId, currentQuiz, sortedQuestions.length, navigate,
-    resetStudentAnswers, setCurrentQuizId, setActiveStudentReport,
+    quizLoading, quizError, setCurrentQuizId, setActiveStudentReport,
   ]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isThinking]);
 
+  /* ── 第一層：逐題出題 ────────────────────────────── */
   const showNextQuestion = useCallback((qIdx) => {
     const q = sortedQuestions[qIdx];
     if (!q) return;
@@ -125,7 +131,7 @@ function StudentQuizScreen({ quizId }) {
     return () => clearTimeout(timer);
   }, [phase, introIdx, showNextQuestion]);
 
-  const finishQuiz = (finalAnswers, leadText) => {
+  const finishQuiz = async (finalAnswers, leadText) => {
     const record = {
       quizId,
       quizTitle: currentQuiz?.title ?? '科學診斷',
@@ -137,77 +143,217 @@ function StudentQuizScreen({ quizId }) {
         ),
       ],
       answers: finalAnswers,
+      followUpResults: [...followUpResultsRef.current],
+    };
+
+    setIsThinking(true);
+    setMessages((prev) => [
+      ...prev,
+      { id: `done-1-${Date.now()}`, role: 'ai', text: leadText },
+      { id: `done-2-${Date.now()}`, role: 'ai', text: '讓我把所有對話整理一下，幫你做一份專屬的「學習體檢表」⋯' },
+    ]);
+    setPhase('done');
+
+    // P4: persist to backend if assignmentId is known
+    if (assignmentId) {
+      try {
+        // Submit all answers in one batch — server returns rows with IDs
+        const inserted = await recordAnswersMut.mutateAsync(
+          finalAnswers.map((a) => ({
+            assignmentId,
+            questionId: a.questionId,
+            selectedTag: a.selectedTag,
+            diagnosis: a.diagnosis,
+          })),
+        );
+        // Build map: questionId → answerId (for followups)
+        const idMap = {};
+        for (const row of inserted ?? []) idMap[row.questionId] = row.id;
+        answerIdByQuestionRef.current = idMap;
+
+        // Submit followups (if any)
+        const followupPayload = followUpResultsRef.current
+          .map((r) => ({
+            studentAnswerId: idMap[r.questionId],
+            conversationLog: r.conversationLog,
+            finalStatus: r.diagnosis.finalStatus,
+            misconceptionCode: r.diagnosis.misconceptionCode ?? null,
+            reasoningQuality: r.diagnosis.reasoningQuality,
+            statusChange: r.diagnosis.statusChange ?? {},
+            aiSummary: r.diagnosis.aiSummary ?? null,
+          }))
+          .filter((p) => p.studentAnswerId != null);
+        if (followupPayload.length > 0) {
+          await recordFollowupsMut.mutateAsync(followupPayload);
+        }
+      } catch (err) {
+        console.error('[StudentQuiz] persist failed', err);
+        // continue regardless — user-visible failure handled in report page
+      }
+    }
+
+    addToHistory(record);
+    setIsThinking(false);
+    setTimeout(() => navigate('/student/report'), 1200);
+  };
+
+  /* ── 第二層：AI 追問 ─────────────────────────────── */
+  const askFollowUpRound1 = (qIdx) => {
+    const q = sortedQuestions[qIdx];
+    if (!q) {
+      finishQuiz(answersRef.current, '謝謝你！我已經整理好你的診斷結果了。');
+      return;
+    }
+    const answer = answersRef.current.find((a) => a.questionId === q.id);
+    const selectedOption = q.options.find((o) => o.tag === answer?.selectedTag);
+    const isCorrect = answer?.diagnosis === 'CORRECT';
+    const node = knowledgeNodes.find((n) => n.id === q.knowledgeNodeId);
+
+    const ctx = {
+      round: 1,
+      strategy: null,
+      isCorrect,
+      misconceptionId: isCorrect ? null : answer?.diagnosis,
+      knowledgeNodeId: q.knowledgeNodeId,
+      conversationLog: [],
+      questionId: q.id,
+      selectedOption,
+    };
+    setFollowUpCtx(ctx);
+    setFollowUpEnabled(false);
+    setIsThinking(true);
+    setFollowUpInput('');
+
+    setTimeout(() => {
+      setIsThinking(false);
+      const headerText = `接下來想跟你聊聊第 ${qIdx + 1} 題（${node?.name || '科學'}）。`;
+      const askText = buildRound1Message(selectedOption, isCorrect);
+      setMessages((prev) => [
+        ...prev,
+        { id: `fu-${q.id}-header`, role: 'ai', text: headerText },
+        { id: `fu-${q.id}-r1`, role: 'ai', text: askText },
+      ]);
+      setFollowUpCtx((c) => c && {
+        ...c,
+        conversationLog: [{ role: 'ai', content: askText }],
+      });
+      setFollowUpEnabled(true);
+    }, 1100);
+  };
+
+  const startFollowUpPhase = (finalAnswers) => {
+    if (finalAnswers.length === 0) {
+      finishQuiz(finalAnswers, '謝謝你的回答！我已經整理好你的診斷結果了。');
+      return;
+    }
+    setPhase('followUp');
+    setFollowUpIndex(0);
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `fu-start-${Date.now()}`,
+        role: 'ai',
+        text: '選擇題的部分結束了！接下來想跟你聊聊剛才的幾道題，了解你更多的想法。',
+      },
+    ]);
+    askFollowUpRound1(0);
+  };
+
+  const handleFollowUpFinal = (finalDiagnosis, ctxAtFinal, replyForLog) => {
+    const updatedLog = [
+      ...ctxAtFinal.conversationLog,
+      { role: 'student', content: replyForLog },
+    ];
+    const result = {
+      questionId: ctxAtFinal.questionId,
+      followUpRounds: ctxAtFinal.round,
+      conversationLog: updatedLog,
+      diagnosis: finalDiagnosis,
+    };
+    followUpResultsRef.current = [...followUpResultsRef.current, result];
+
+    /* 依 statusChange 反向修正 answersRef.current（僅本地，最終 POST 時送修正後值） */
+    const change = finalDiagnosis.statusChange?.changeType;
+    if (change === 'UPGRADED' && ctxAtFinal.misconceptionId) {
+      answersRef.current = answersRef.current.map((a) =>
+        a.questionId === ctxAtFinal.questionId ? { ...a, diagnosis: 'CORRECT' } : a
+      );
+    } else if (change === 'DOWNGRADED' && finalDiagnosis.misconceptionCode) {
+      answersRef.current = answersRef.current.map((a) =>
+        a.questionId === ctxAtFinal.questionId
+          ? { ...a, diagnosis: finalDiagnosis.misconceptionCode }
+          : a
+      );
+    }
+
+    /* 進下一題或結束 */
+    const nextIdx = followUpIndex + 1;
+    setIsThinking(true);
+    setFollowUpEnabled(false);
+    setTimeout(() => {
+      setIsThinking(false);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `fu-${ctxAtFinal.questionId}-summary`,
+          role: 'ai',
+          text: finalDiagnosis.aiSummary,
+        },
+      ]);
+      if (nextIdx >= sortedQuestions.length) {
+        finishQuiz(answersRef.current, '謝謝你陪我聊完所有題目！');
+        return;
+      }
+      setFollowUpIndex(nextIdx);
+      setTimeout(() => askFollowUpRound1(nextIdx), 700);
+    }, 900);
+  };
+
+  const handleFollowUpSend = () => {
+    if (!followUpEnabled || !followUpCtx) return;
+    const reply = followUpInput.trim();
+    if (!reply) return;
+
+    setFollowUpEnabled(false);
+    setFollowUpInput('');
+    setMessages((prev) => [
+      ...prev,
+      { id: `fu-${followUpCtx.questionId}-r${followUpCtx.round}-s`, role: 'student', text: reply },
+    ]);
+
+    const ctxWithReply = {
+      ...followUpCtx,
+      conversationLog: [...followUpCtx.conversationLog, { role: 'student', content: reply }],
     };
 
     setIsThinking(true);
     setTimeout(() => {
       setIsThinking(false);
+      const result = processStudentReply(ctxWithReply, reply);
+
+      if (result.kind === 'final') {
+        handleFollowUpFinal(result.finalDiagnosis, ctxWithReply, reply);
+        return;
+      }
+
+      const nextRound = ctxWithReply.round + 1;
+      const aiMsg = result.aiMessage;
+      const updatedCtx = {
+        ...ctxWithReply,
+        round: nextRound,
+        strategy: result.strategy ?? ctxWithReply.strategy,
+        conversationLog: [...ctxWithReply.conversationLog, { role: 'ai', content: aiMsg }],
+      };
+      setFollowUpCtx(updatedCtx);
       setMessages((prev) => [
         ...prev,
-        { id: `done-1-${Date.now()}`, role: 'ai', text: leadText },
-        { id: `done-2-${Date.now()}`, role: 'ai', text: '讓我整理一份專屬於你的「學習體檢表」...' },
+        { id: `fu-${ctxWithReply.questionId}-r${nextRound}`, role: 'ai', text: aiMsg },
       ]);
-      setPhase('done');
-      addToHistory(record);
-      setTimeout(() => navigate('/student/report'), 1800);
-    }, 1200);
+      setFollowUpEnabled(true);
+    }, 900);
   };
 
-  const askConfirmationQuestion = (misconceptionIds, index) => {
-    const currentMisconceptionId = misconceptionIds[index];
-    const misconception = getMisconceptionById(currentMisconceptionId);
-    if (!misconception) {
-      finishQuiz(answersRef.current, '謝謝你的回答！我已經整理好你的診斷結果了。');
-      return;
-    }
-
-    setCurrentConfirmIndex(index);
-    setIsThinking(true);
-    setConfirmActionsEnabled(false);
-
-    setTimeout(() => {
-      setIsThinking(false);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `confirm-intro-${currentMisconceptionId}`,
-          role: 'ai',
-          text: '我想再確認一件事，看看我有沒有理解錯你的想法。',
-        },
-        {
-          id: `confirm-question-${currentMisconceptionId}`,
-          role: 'ai',
-          text: misconception.confirmQuestion,
-        },
-      ]);
-      setConfirmActionsEnabled(true);
-    }, 1000);
-  };
-
-  const startConfirmation = (finalAnswers) => {
-    const misconceptionIds = [
-      ...new Set(
-        finalAnswers.filter((a) => a.diagnosis !== 'CORRECT').map((a) => a.diagnosis)
-      ),
-    ];
-    if (misconceptionIds.length === 0) {
-      finishQuiz(finalAnswers, '謝謝你的回答！我已經了解你目前的科學思維了。');
-      return;
-    }
-
-    setPhase('confirming');
-    setPendingMisconceptions(misconceptionIds);
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: `confirm-start-${Date.now()}`,
-        role: 'ai',
-        text: '謝謝你的回答！接下來我想再多確認幾個地方，看看我有沒有理解錯你的想法。',
-      },
-    ]);
-    askConfirmationQuestion(misconceptionIds, 0);
-  };
-
+  /* ── 第一層選項處理 ───────────────────────────────── */
   const handleSelectOption = (opt) => {
     if (!optionsEnabled) return;
     setOptionsEnabled(false);
@@ -218,7 +364,7 @@ function StudentQuizScreen({ quizId }) {
       nextAnswer,
     ];
     answersRef.current = updatedAnswers;
-    recordAnswer(q.id, opt.tag, opt.diagnosis);
+    // P4: no longer call recordAnswer here — answers are POSTed in batch at finishQuiz
 
     setMessages((prev) => [
       ...prev,
@@ -227,65 +373,32 @@ function StudentQuizScreen({ quizId }) {
 
     const nextIdx = currentQIndex + 1;
     if (nextIdx >= sortedQuestions.length) {
-      startConfirmation(updatedAnswers);
+      startFollowUpPhase(updatedAnswers);
     } else {
       setCurrentQIndex(nextIdx);
       showNextQuestion(nextIdx);
     }
   };
 
-  const handleConfirmResponse = (isConfirmed) => {
-    if (!confirmActionsEnabled) return;
-    const misconceptionId = pendingMisconceptions[currentConfirmIndex];
-    let updatedAnswers = answersRef.current;
-
-    setConfirmActionsEnabled(false);
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: `confirm-answer-${misconceptionId}-${currentConfirmIndex}`,
-        role: 'student',
-        text: isConfirmed ? '對，我是這樣想的。' : '不，我不這樣認為。',
-      },
-    ]);
-
-    if (!isConfirmed) {
-      updatedAnswers = answersRef.current.map((a) =>
-        a.diagnosis === misconceptionId ? { ...a, diagnosis: 'CORRECT' } : a
-      );
-      answersRef.current = updatedAnswers;
-      removeMisconception(misconceptionId);
-    }
-
-    const nextIndex = currentConfirmIndex + 1;
-    if (nextIndex >= pendingMisconceptions.length) {
-      finishQuiz(updatedAnswers, '謝謝你再幫我確認一次！我已經整理好你的診斷結果了。');
-      return;
-    }
-    askConfirmationQuestion(pendingMisconceptions, nextIndex);
-  };
-
   const currentQ = phase === 'question' ? sortedQuestions[currentQIndex] : null;
-  const currentConfirmationId = pendingMisconceptions[currentConfirmIndex];
-  const isQuestionPhase = phase === 'question';
-  const isConfirmingPhase = phase === 'confirming';
+  const followUpQuestion = phase === 'followUp' ? sortedQuestions[followUpIndex] : null;
+  const followUpSelectedOption = followUpCtx?.selectedOption ?? null;
 
-  /* 進度條 0~100 */
+  const isQuestionPhase = phase === 'question';
+  const isFollowUpPhase = phase === 'followUp';
+
+  /* 進度條 0~100：分兩段顯示（第一階段 0~50%、第二階段 50~100%） */
   const progress = isQuestionPhase
-    ? Math.round(((currentQIndex + 1) / sortedQuestions.length) * 100)
-    : isConfirmingPhase
-      ? Math.round(((currentConfirmIndex + 1) / pendingMisconceptions.length) * 100)
-      : phase === 'done'
-        ? 100
-        : 0;
+    ? Math.round(((currentQIndex + 1) / sortedQuestions.length) * 50)
+    : isFollowUpPhase
+      ? 50 + Math.round(((followUpIndex + 1) / sortedQuestions.length) * 50)
+      : phase === 'done' ? 100 : 0;
 
   const stepInfo = isQuestionPhase
-    ? `診斷・第 ${currentQIndex + 1}/${sortedQuestions.length} 題`
-    : isConfirmingPhase
-      ? `確認・${currentConfirmIndex + 1}/${pendingMisconceptions.length}`
-      : phase === 'done'
-        ? '整理結果中...'
-        : null;
+    ? `第一階段・第 ${currentQIndex + 1}/${sortedQuestions.length} 題`
+    : isFollowUpPhase
+      ? `第二階段・想法探索 ${followUpIndex + 1}/${sortedQuestions.length}`
+      : phase === 'done' ? '整理結果中⋯' : null;
 
   return (
     <div
@@ -323,7 +436,7 @@ function StudentQuizScreen({ quizId }) {
               {currentQuiz?.title ?? '科學偵探'}
             </p>
             <p className="text-xs text-[#7A5232] font-bold drop-shadow-[0_1px_0_rgba(255,255,255,0.6)]">
-              迷思診斷
+              {isFollowUpPhase ? '想法探索' : '迷思診斷'}
             </p>
           </div>
         </div>
@@ -340,13 +453,24 @@ function StudentQuizScreen({ quizId }) {
         </div>
       </main>
 
-      {/* 底部選項區（米紙木框 panel） */}
+      {/* 底部 panel */}
       <BottomPanel>
         {isQuestionPhase && optionsEnabled && currentQ && (
           <OptionsPanel options={currentQ.options} onSelect={handleSelectOption} />
         )}
-        {isConfirmingPhase && confirmActionsEnabled && currentConfirmationId && (
-          <ConfirmPanel onConfirm={handleConfirmResponse} />
+        {isFollowUpPhase && followUpCtx && followUpQuestion && (
+          <AIFollowUpPanel
+            inputValue={followUpInput}
+            onChange={setFollowUpInput}
+            onSend={handleFollowUpSend}
+            disabled={!followUpEnabled}
+            round={followUpCtx.round}
+            totalRounds={3}
+            questionRecap={{
+              stem: followUpQuestion.stem,
+              selectedContent: followUpSelectedOption?.content ?? '',
+            }}
+          />
         )}
         {phase === 'done' && <DonePanel />}
       </BottomPanel>
@@ -354,103 +478,3 @@ function StudentQuizScreen({ quizId }) {
   );
 }
 
-/* ── 底部 panel 包裝（米紙 + 木紋邊）─────────────── */
-function BottomPanel({ children }) {
-  if (!children) return null;
-  return (
-    <div className="relative z-10 px-3 sm:px-5 pb-4 sm:pb-6 animate-fade-up">
-      <div className="max-w-3xl mx-auto">
-        <div className={WOOD_OUTER}>
-          <div className={WOOD_INNER_CREAM + ' p-3 sm:p-4'}>{children}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ── 4 選 1 選項清單 ───────────────────────────── */
-function OptionsPanel({ options, onSelect }) {
-  return (
-    <>
-      <p className="text-xs sm:text-sm text-[#7A5232] mb-2 sm:mb-3 text-center font-bold">
-        請選擇你覺得最合理的答案
-      </p>
-      <div className="grid grid-cols-1 gap-2">
-        {options.map((opt) => (
-          <button
-            key={opt.tag}
-            type="button"
-            onClick={() => onSelect(opt)}
-            className="text-left flex items-start gap-2 px-4 py-3 rounded-2xl border-2 border-[#C19A6B]
-                       bg-white hover:bg-[#FFF1D8] hover:border-[#D08B2E]
-                       text-sm leading-relaxed text-[#5A3E22]
-                       shadow-[0_2px_0_-1px_#8B5E3C] hover:translate-y-0.5
-                       transition-all duration-200"
-          >
-            <span className="shrink-0 inline-flex w-6 h-6 rounded-full
-                             bg-gradient-to-b from-[#F4D58A] to-[#F0B962]
-                             border-2 border-[#9B5E18] text-[#7A4A18]
-                             font-game font-black text-xs items-center justify-center
-                             shadow-[0_2px_0_#9B5E18]">
-              {opt.tag}
-            </span>
-            <span className="flex-1">{opt.content}</span>
-          </button>
-        ))}
-      </div>
-    </>
-  );
-}
-
-/* ── 確認題 2 選 1 ─────────────────────────────── */
-function ConfirmPanel({ onConfirm }) {
-  return (
-    <>
-      <p className="text-xs sm:text-sm text-[#7A5232] mb-2 sm:mb-3 text-center font-bold">
-        請選擇比較接近你真正想法的回答
-      </p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <button
-          type="button"
-          onClick={() => onConfirm(true)}
-          className="px-4 py-3 rounded-2xl border-2
-                     bg-gradient-to-b from-[#B8DC83] to-[#7DB044] border-[#5C8A2E] text-[#2F4A1A]
-                     font-game font-black text-sm
-                     shadow-[0_4px_0_#3D5A1A] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3D5A1A]
-                     transition-all duration-200"
-        >
-          對，我是這樣想的
-        </button>
-        <button
-          type="button"
-          onClick={() => onConfirm(false)}
-          className="px-4 py-3 rounded-2xl border-2
-                     bg-gradient-to-b from-[#8AC0D8] to-[#5293B4] border-[#3A7397] text-white
-                     font-game font-black text-sm
-                     shadow-[0_4px_0_#3A7397] hover:translate-y-0.5 hover:shadow-[0_2px_0_#3A7397]
-                     transition-all duration-200"
-        >
-          不，我不這樣認為
-        </button>
-      </div>
-    </>
-  );
-}
-
-/* ── 完成畫面 loading ──────────────────────────── */
-function DonePanel() {
-  return (
-    <div className="text-center py-3">
-      <p className="text-sm font-bold text-[#5A3E22]">
-        正在前往你的學習體檢表...
-      </p>
-      <div className="mt-2 flex justify-center">
-        <Icon
-          name="autorenew"
-          filled
-          className="text-2xl text-[#5C8A2E] animate-spin"
-        />
-      </div>
-    </div>
-  );
-}

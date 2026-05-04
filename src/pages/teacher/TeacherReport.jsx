@@ -107,6 +107,20 @@ function HeatmapView() {
 }
 
 // ─── Breakdown Chart ────────────────────────────────────────────────────────
+function BreakdownTooltip({ active, payload }) {
+  if (active && payload?.length) {
+    const d = payload[0].payload;
+    return (
+      <div className="bg-white border border-[#BDC3C7] rounded-xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] p-3 text-sm">
+        <p className="font-bold text-[#2D3436]">{d.name}</p>
+        <p className="text-xs text-[#636E72] mb-1">{d.id}</p>
+        <p className="font-semibold text-[#3D5A3E]">通過率：{d.passRate}%</p>
+      </div>
+    );
+  }
+  return null;
+}
+
 function BreakdownChart() {
   const passRates = getNodePassRates();
   const chartData = knowledgeNodes
@@ -116,20 +130,6 @@ function BreakdownChart() {
       id: node.id,
       passRate: passRates[node.id] || 0,
     }));
-
-  const CustomTooltip = ({ active, payload }) => {
-    if (active && payload?.length) {
-      const d = payload[0].payload;
-      return (
-        <div className="bg-white border border-[#BDC3C7] rounded-xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] p-3 text-sm">
-          <p className="font-bold text-[#2D3436]">{d.name}</p>
-          <p className="text-xs text-[#636E72] mb-1">{d.id}</p>
-          <p className="font-semibold text-[#3D5A3E]">通過率：{d.passRate}%</p>
-        </div>
-      );
-    }
-    return null;
-  };
 
   return (
     <div>
@@ -141,7 +141,7 @@ function BreakdownChart() {
             <CartesianGrid strokeDasharray="3 3" stroke="#C8EAAE" />
             <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#636E72' }} angle={-15} textAnchor="end" interval={0} />
             <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11, fill: '#636E72' }} />
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip content={<BreakdownTooltip />} />
             <Bar dataKey="passRate" radius={[8, 8, 0, 0]} fill={CHART_BAR_COLOR} />
           </BarChart>
         </ResponsiveContainer>
@@ -228,24 +228,24 @@ function TeachingActions() {
 export default function TeacherReport() {
   return (
     <TeacherLayout>
-      <div className="p-8">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-[#2D3436] mb-1">班級診斷報告</h1>
+      <div className="p-4 sm:p-6 md:p-8">
+        <div className="mb-4 sm:mb-6">
+          <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436] mb-1">班級診斷報告</h1>
           <p className="text-[#636E72] text-sm">
             20 位學生已完成「水溶液」診斷測驗 · 測驗日期：2026/02/23
           </p>
         </div>
 
         {/* Stats Bar */}
-        <div className="grid grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
           {[
             { label: '參與學生', value: '20 人', sub: '全班皆已完成', color: 'text-[#3D5A3E]', bg: 'bg-[#C8EAAE]' },
             { label: '診斷題目', value: '5 題', sub: '涵蓋 5 個知識節點', color: 'text-[#7D3C98]', bg: 'bg-[#F3E5F5]' },
             { label: '高頻迷思', value: `${Object.values(getMisconceptionStudents()).filter(s => s.length / TOTAL_STUDENTS >= 0.3).length} 個`, sub: '≥30% 學生持有', color: 'text-[#E74C5E]', bg: 'bg-[#FAC8CC]' },
             { label: '班級平均通過率', value: `${Math.round(Object.values(getNodePassRates()).reduce((s, v) => s + v, 0) / Object.values(getNodePassRates()).length)}%`, sub: '各節點通過率平均', color: 'text-[#2E86C1]', bg: 'bg-[#BADDF4]' },
           ].map((s) => (
-            <div key={s.label} className={`rounded-2xl border border-[#BDC3C7] p-4 ${s.bg} shadow-[0_2px_12px_rgba(0,0,0,0.06)]`}>
-              <p className={`text-2xl font-bold ${s.color} mb-0.5`}>{s.value}</p>
+            <div key={s.label} className={`rounded-2xl border border-[#BDC3C7] p-3 sm:p-4 ${s.bg} shadow-[0_2px_12px_rgba(0,0,0,0.06)]`}>
+              <p className={`text-xl sm:text-2xl font-bold ${s.color} mb-0.5`}>{s.value}</p>
               <p className="text-sm font-semibold text-[#2D3436]">{s.label}</p>
               <p className="text-xs text-[#636E72] mt-0.5">{s.sub}</p>
             </div>
@@ -253,14 +253,14 @@ export default function TeacherReport() {
         </div>
 
         {/* Main sections */}
-        <div className="space-y-8">
-          <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+        <div className="space-y-6 sm:space-y-8">
+          <div className="bg-white rounded-[24px] sm:rounded-[32px] border border-[#BDC3C7] p-4 sm:p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
             <HeatmapView />
           </div>
-          <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+          <div className="bg-white rounded-[24px] sm:rounded-[32px] border border-[#BDC3C7] p-4 sm:p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
             <BreakdownChart />
           </div>
-          <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+          <div className="bg-white rounded-[24px] sm:rounded-[32px] border border-[#BDC3C7] p-4 sm:p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
             <TeachingActions />
           </div>
         </div>

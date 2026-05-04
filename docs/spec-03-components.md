@@ -5,9 +5,13 @@
 | 元件名稱 | 檔案路徑 | 用途 |
 |----------|----------|------|
 | `TeacherLayout` | `src/components/TeacherLayout.jsx` | 教師端頁面佈局（側邊欄 + 內容區） |
+| `RequireAuth` | `src/components/RequireAuth.jsx` | 受保護路由 wrapper（spec-13 §8.2，P1） |
 | `StepIndicator` | `src/components/StepIndicator.jsx` | 多步驟精靈的進度指示器 |
 | `InfoButton` | `src/components/InfoButton.jsx` | 圓形資訊按鈕，觸發 InfoDrawer |
 | `InfoDrawer` | `src/components/InfoDrawer.jsx` | 側邊滑出面板，顯示資料計算說明 |
+| `DistractorSuggestPopover` | `src/components/teacher/DistractorSuggestPopover.jsx` | **N6** 干擾選項建議彈窗（出題精靈用，spec-12，P2） |
+| `AIFollowUpPanel` | `src/pages/student/followUp/AIFollowUpPanel.jsx` | 第二層 AI 追問底部面板（題目回顧 + 輪次 + 文字輸入框） |
+| `BottomPanel` / `OptionsPanel` / `DonePanel` | `src/pages/student/studentQuizPanels.jsx` | StudentQuiz 第一層選項面板與完成 loading |
 
 ### 1.1 治療模組元件（spec-08，波次 2/3 規劃）
 
@@ -104,6 +108,14 @@
 | 知識節點總覽 | `/teacher/knowledge-map` | Grid icon |
 
 ### 行為
+- **RWD（spec-07 §7.3）**：
+  - **`≥ md`（≥ 768px）**：固定側欄 `w-60`，左右兩欄 flex 佈局（既有行為）
+  - **`< md`（< 768px）**：側欄改成從左滑入的 drawer
+    - 主內容頂部顯示 sticky 漢堡列（左 menu icon、右 mini SciLens logo）
+    - 點漢堡開抽屜（`fixed inset-0 z-40`）+ 半透明 backdrop
+    - 抽屜寬 `w-72 max-w-[85vw]`，`-translate-x-full` ↔ `translate-x-0` 滑動
+    - 路由切換時自動關閉（`useEffect` 監聽 `location.pathname`）
+    - 開啟時 lock body scroll
 - 當前路由對應的選單項目以高亮色顯示（`bg-[#C8EAAE]` + `border-[#8FC87A]`）
 - 首頁路由使用 `end` 屬性避免子路由也高亮
 - **群組分兩類**（共用 `isGroupActive(children, pathname)` 判斷子項是否命中當前路徑）：
@@ -260,3 +272,42 @@
 - 各圖表的計算方式說明
 - 診斷方法論解釋
 - 學術參考來源列表
+
+---
+
+## 6. AIFollowUpPanel
+
+### 檔案
+`src/pages/student/followUp/AIFollowUpPanel.jsx`
+
+### 功能
+第二層 AI 開放式追問的底部互動面板，整合：
+- 題目回顧（摺疊 details，顯示題幹與學生先前的選項）
+- 輪次標示（「對話 X/3・說說你的想法」）
+- 多行 textarea 輸入框（Enter 送出、Shift+Enter 換行）
+- 送出按鈕（內容為空或 disabled 時禁用）
+
+### Props
+| Prop | 型別 | 說明 |
+|------|------|------|
+| `inputValue` | `string` | textarea 受控值 |
+| `onChange(value)` | `(string) => void` | 輸入變更 callback |
+| `onSend()` | `() => void` | 送出 callback |
+| `disabled` | `boolean` | 是否禁用（思考中或等待後端時） |
+| `round` | `number` | 當前輪次（1-3） |
+| `totalRounds` | `number` | 總輪次（預設 3） |
+| `questionRecap` | `{stem, selectedContent} \| null` | 題目回顧內容；null 不顯示 |
+
+### 配套引擎
+`src/pages/student/followUp/followUpEngine.js`
+
+純函式追問引擎（目前為前端模擬，未來接 LLM 後僅替換內部）。對外 API：
+- `buildRound1Message(option, isCorrect): string` 產生第一輪開場提問
+- `processStudentReply(ctx, reply): { kind: 'next' | 'final', aiMessage?, strategy?, finalDiagnosis? }`
+
+`ctx` 結構：`{ round, strategy, isCorrect, misconceptionId, knowledgeNodeId, questionId, selectedOption, conversationLog }`
+
+### 視覺規格
+- 沿用 spec-07 § 木框米紙風格（外層由 StudentQuiz 的 `BottomPanel` 包裹）
+- textarea 邊框 `#C19A6B`，focus ring `#5C8A2E`
+- 送出按鈕為綠色木質風格（同 ScenarioChat 送出鍵）

@@ -1,6 +1,10 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
+import { useAssignments } from '../../hooks/useAssignments';
+import { useQuizzes } from '../../hooks/useQuizzes';
+import { useScenarios } from '../../hooks/useScenarios';
 import { getQuizQuestions } from '../../data/quizData';
 import { knowledgeNodes } from '../../data/knowledgeGraph';
 import {
@@ -16,10 +20,8 @@ import studentImg from '../../assets/illustrations/irasutoya_student_clean.png';
 import mascotImg from '../../assets/illustrations/scilens_mascot.png';
 import settingsIcon from '../../assets/icons/settings_wood.png';
 
-/* 暫定：本原型假設目前登入學生為五年甲班 1 號王小明；
- * 未來接後端後，從 AppContext 注入 currentStudentId / classId / studentName。 */
-const STUDENT_CLASS_ID = 'class-A';
-const STUDENT_SEAT = 1;
+/* P3 起：學生 classId / seat / 姓名 由 AuthContext 提供（spec-13）。
+ * 若 user 不是 student（不應該到這頁）則 fallback 為 5甲1 號避免崩潰。 */
 const TOTAL_NODES = knowledgeNodes.length; // 12
 
 /* 把正確率映射為 1~3 顆星 */
@@ -36,23 +38,25 @@ const todayString = () => new Date().toISOString().slice(0, 10);
 
 export default function StudentHome() {
   const navigate = useNavigate();
+  const { currentUser, logout } = useAuth();
   const {
-    quizzes,
-    scenarioQuizzes,
-    classes,
-    assignments,
     studentHistory,
-    treatmentSessions,
     setCurrentQuizId,
     setActiveStudentReport,
   } = useApp();
 
+  // P4 起治療 session 改由 React Query 取得；此頁先以 assignment.status 推斷完成度，
+  // 真正完成判定由 ScenarioChat 在治療結束後 invalidate 並由 StudentReport 顯示。
+  const STUDENT_CLASS_ID = currentUser?.classId ?? 'class-A';
+  const studentName = currentUser?.name ?? '探險者';
+
+  // 後端會自動把學生過濾到自己的 classId
+  const { data: assignments = [] } = useAssignments();
+  const { data: quizzes = [] } = useQuizzes();
+  const { data: scenarioQuizzes = [] } = useScenarios();
+
   const [diagnosisHistoryOpen, setDiagnosisHistoryOpen] = useState(false);
   const [scenarioHistoryOpen, setScenarioHistoryOpen] = useState(false);
-
-  const currentClass = classes.find((c) => c.id === STUDENT_CLASS_ID);
-  const studentName =
-    currentClass?.students?.find((s) => s.seat === STUDENT_SEAT)?.name ?? '探險者';
 
   /* 將派題 enriched 為任務卡資料 */
   const { diagnosisTasks, scenarioTasks } = useMemo(() => {
@@ -67,10 +71,8 @@ export default function StudentHome() {
 
       if (taskType === 'scenario') {
         const sq = scenarioQuizzes.find((q) => q.id === assignment.scenarioQuizId);
-        const totalQuestions = sq?.questions?.length ?? 0;
-        const sessionKey = `${assignment.scenarioQuizId}__${STUDENT_SEAT}`;
-        const session = treatmentSessions[sessionKey];
-        const sessionCompleted = session?.status === 'completed';
+        const totalQuestions = sq?.questionCount ?? 0;
+        const sessionCompleted = assignment.status === 'completed';
 
         let status;
         if (sessionCompleted) status = 'completed';
@@ -88,9 +90,9 @@ export default function StudentHome() {
           assignedAt: assignment.assignedAt,
           status,
           stars: sessionCompleted ? 3 : 0,
-          completedAt: session?.completedAt?.split('T')[0] ?? null,
+          completedAt: null,
           bestRecord: null,
-          session,
+          session: null,
         });
         return;
       }
@@ -140,7 +142,7 @@ export default function StudentHome() {
       diagnosisTasks: splitGroup(diag),
       scenarioTasks: splitGroup(sce),
     };
-  }, [assignments, quizzes, scenarioQuizzes, studentHistory, treatmentSessions]);
+  }, [assignments, quizzes, scenarioQuizzes, studentHistory, STUDENT_CLASS_ID]);
 
   const stats = useMemo(() => {
     const allPending = diagnosisTasks.pending.length + scenarioTasks.pending.length;
@@ -160,7 +162,8 @@ export default function StudentHome() {
     }
     setCurrentQuizId(task.quizId);
     setActiveStudentReport(null);
-    navigate(`/student/quiz/${task.quizId}`);
+    // P4: pass assignmentId in query so StudentQuiz knows where to POST answers
+    navigate(`/student/quiz/${task.quizId}?assignmentId=${encodeURIComponent(task.assignmentId)}`);
   };
 
   const handleViewReport = (record) => {
@@ -200,7 +203,12 @@ export default function StudentHome() {
         {/* HUD 一條：返回 + avatar pill + stats pill + 設定 */}
         <div className="flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-5 pt-3 sm:pt-4 animate-fade-up">
           <div className="flex items-center gap-2 min-w-0">
-            <WoodIconButton icon="arrow_back" ariaLabel="返回登入" onClick={() => navigate('/')} size="sm" />
+            <WoodIconButton
+              icon="arrow_back"
+              ariaLabel="登出"
+              onClick={async () => { await logout(); navigate('/', { replace: true }); }}
+              size="sm"
+            />
             <AvatarPill studentName={studentName} />
           </div>
 

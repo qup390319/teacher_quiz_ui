@@ -1,35 +1,59 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import TeacherLayout from '../../components/TeacherLayout';
-import { useApp } from '../../context/AppContext';
+import { useScenario } from '../../hooks/useScenarios';
+import { useClasses } from '../../hooks/useClasses';
+import { useStudent } from '../../hooks/useStudents';
+import { useTreatmentLog } from '../../hooks/useTreatment';
 import { PHASE_LABEL, STAGE_LABEL } from '../../data/treatmentBot';
 import { knowledgeNodes } from '../../data/knowledgeGraph';
 
 /* 治療對話紀錄詳情頁（spec-08 §5.4）
- * 左欄：情境題目（情境敘述 + 圖）+ 題目切換 tab
- * 右欄：完整對話氣泡時序，每則 AI 訊息標註 phase / stage / step / hintLevel
+ * P4 起：直接從 /api/teachers/treatment-logs/{sessionId} 拉 session + messages
  */
 export default function TreatmentLogDetail() {
-  const { sessionId } = useParams();
+  const { sessionId: sessionIdParam } = useParams();
   const navigate = useNavigate();
-  const { treatmentSessions, scenarioQuizzes, classes } = useApp();
+  const sessionId = decodeURIComponent(sessionIdParam ?? '');
 
-  /* sessionId 是 URL encode 過的 sessionKey (`${scenarioQuizId}__${studentId}`) */
-  const sessionKey = decodeURIComponent(sessionId ?? '');
-  const session = treatmentSessions[sessionKey];
-  const scenarioQuiz = useMemo(() => {
-    if (!session) return null;
-    return scenarioQuizzes.find((q) => q.id === session.scenarioQuizId);
-  }, [session, scenarioQuizzes]);
+  const { data: session, isLoading: sessionLoading, error: sessionError } = useTreatmentLog(sessionId);
+  const { data: scenarioQuiz, isLoading: scenarioLoading } = useScenario(session?.scenarioQuizId);
+  const { data: studentRow } = useStudent(session?.studentId);
+  const { data: classes = [] } = useClasses();
 
   const [activeIndex, setActiveIndex] = useState(1);
 
-  if (!session || !scenarioQuiz) {
+  // 將 server messages 依 questionIndex 分組
+  const perQuestion = useMemo(() => {
+    const grouped = {};
+    for (const m of session?.messages ?? []) {
+      const qi = m.questionIndex;
+      if (!grouped[qi]) grouped[qi] = { messages: [], lastAi: null };
+      grouped[qi].messages.push({
+        id: `srv-${m.id}`, role: m.role, text: m.text,
+        phase: m.phase, stage: m.stage, step: m.step,
+        hintLevel: m.hintLevel, feedback: m.feedback,
+        requiresRestatement: m.requiresRestatement,
+      });
+      if (m.role === 'ai') grouped[qi].lastAi = m;
+    }
+    return grouped;
+  }, [session]);
+
+  if (sessionLoading || scenarioLoading) {
+    return (
+      <TeacherLayout>
+        <div className="p-8 text-[#636E72]">載入中…</div>
+      </TeacherLayout>
+    );
+  }
+
+  if (sessionError || !session || !scenarioQuiz) {
     return (
       <TeacherLayout>
         <div className="p-8 max-w-3xl">
           <div className="bg-white rounded-2xl border border-[#BDC3C7] p-8 text-center">
-            <p className="text-[#636E72] mb-4">找不到此治療紀錄（{sessionKey}）</p>
+            <p className="text-[#636E72] mb-4">找不到此治療紀錄（{sessionId}）</p>
             <button
               type="button"
               onClick={() => navigate('/teacher/treatment-logs')}
@@ -44,25 +68,22 @@ export default function TreatmentLogDetail() {
     );
   }
 
-  const studentClass = classes.find((c) =>
-    c.students.some((s) => s.seat === session.studentId)
-  );
-  const student =
-    studentClass?.students.find((s) => s.seat === session.studentId) ?? {
-      name: `學生 ${session.studentId}`,
-    };
+  const studentClass = studentRow
+    ? classes.find((c) => c.id === studentRow.classId)
+    : null;
+  const student = studentRow ?? { name: `學生 ${session.studentId}` };
   const targetNode = knowledgeNodes.find((n) => n.id === scenarioQuiz.targetNodeId);
 
   const activeQuestion = scenarioQuiz.questions.find((q) => q.index === activeIndex);
-  const activeState = session.perQuestion?.[activeIndex];
-  const activeMessages = activeState?.messages ?? [];
+  const activeGroup = perQuestion[activeIndex];
+  const activeMessages = activeGroup?.messages ?? [];
 
   return (
     <TeacherLayout>
-      <div className="p-8 max-w-7xl">
+      <div className="p-4 sm:p-6 md:p-8 max-w-7xl">
         {/* 頁首 */}
-        <div className="mb-6 flex items-start justify-between gap-4">
-          <div>
+        <div className="mb-4 sm:mb-6 flex flex-wrap items-start justify-between gap-3 sm:gap-4">
+          <div className="min-w-0">
             <button
               type="button"
               onClick={() => navigate('/teacher/treatment-logs')}
@@ -70,14 +91,14 @@ export default function TreatmentLogDetail() {
             >
               ← 回紀錄列表
             </button>
-            <h1 className="text-2xl font-bold text-[#2D3436]">{scenarioQuiz.title}</h1>
-            <div className="flex items-center gap-3 mt-2 text-sm text-[#636E72]">
+            <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">{scenarioQuiz.title}</h1>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-sm text-[#636E72]">
               <span>學生：<span className="font-bold text-[#2D3436]">{student.name}</span></span>
-              <span>·</span>
+              <span className="hidden sm:inline">·</span>
               <span>班級：{studentClass?.name ?? '—'}</span>
               {targetNode && (
                 <>
-                  <span>·</span>
+                  <span className="hidden sm:inline">·</span>
                   <span className="text-[#3F8B5E] font-semibold">
                     {targetNode.id}・{targetNode.name}
                   </span>
@@ -126,7 +147,7 @@ export default function TreatmentLogDetail() {
         </div>
 
         {/* 雙欄 */}
-        <div className="grid lg:grid-cols-[420px_1fr] gap-4">
+        <div className="grid md:grid-cols-[320px_1fr] lg:grid-cols-[420px_1fr] gap-4">
           {/* 左：題目情境 */}
           <aside className="bg-white rounded-2xl border border-[#BDC3C7] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] h-fit">
             <h2 className="text-sm font-bold text-[#2D3436] mb-2 flex items-center gap-2">

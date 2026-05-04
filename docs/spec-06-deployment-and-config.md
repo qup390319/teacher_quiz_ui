@@ -11,8 +11,14 @@
   server: {
     port: 3000,
     host: true,
-    allowedHosts: ['sci-diang.hsueh.tw']
-  }
+    allowedHosts: ['sci-diang.hsueh.tw'],
+    proxy: {
+      '/api': {                      // P1 起：把 /api/* 轉到後端
+        target: env.VITE_DEV_BACKEND_URL || 'http://localhost:8000',
+        changeOrigin: true,
+      },
+    },
+  },
 }
 ```
 
@@ -21,6 +27,7 @@
 | port | 3000 | 開發伺服器埠號 |
 | host | true | 允許外部存取（0.0.0.0） |
 | allowedHosts | `['sci-diang.hsueh.tw']` | 允許的主機名稱 |
+| proxy `/api` | → `VITE_DEV_BACKEND_URL` (預設 `http://localhost:8000`) | 前端走相對路徑 `/api/*`，dev 由此 proxy 轉到後端，避免 CORS |
 
 ### 1.2 ESLint 設定
 **檔案**: `eslint.config.js`
@@ -34,10 +41,37 @@
 ### 1.3 環境變數
 **檔案**: `.env.example`
 
+#### 前端
 | 變數 | 預設值 | 說明 |
 |------|--------|------|
 | `FRONTEND_URL` | `http://localhost:3000` | 前端 URL |
-| `VITE_BACKEND_URL` | `http://localhost:8000` | 後端 API URL（預留） |
+| `VITE_DEV_BACKEND_URL` | `http://localhost:8000` | dev 階段 vite proxy 目標（後端） |
+| `VITE_BACKEND_URL` | `http://localhost:8000` | 既有變數，P1 後不再使用（保留相容） |
+
+#### 後端：資料庫
+| 變數 | 預設值 | 說明 |
+|------|--------|------|
+| `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | `scilens` | docker compose postgres service 用 |
+| `DATABASE_URL` | `postgresql+asyncpg://scilens:scilens@localhost:5432/scilens` | 後端 asyncpg DSN |
+
+#### 後端：認證（spec-13）
+| 變數 | 預設值 | 說明 |
+|------|--------|------|
+| `JWT_SECRET` | dev 隨機 | JWT 簽章金鑰（prod 必改） |
+| `JWT_EXPIRES_HOURS` | `24` | JWT 有效期 |
+| `COOKIE_SECURE` | `false` (dev) / `true` (prod) | HttpOnly cookie 是否要求 HTTPS |
+| `COOKIE_SAMESITE` | `lax` (dev) / `strict` (prod) | SameSite 政策 |
+| `CORS_ORIGINS` | `http://localhost:3000` | dev 階段允許 origin（prod 經 nginx 反代可空） |
+
+#### 後端：LLM / RAGFlow（P2 起，**不可加 VITE_ 前綴**）
+| 變數 | 範例 | 說明 |
+|------|------|------|
+| `VLLM_BASE_URL` | `https://vllm-193.hsueh.tw/v1` | 後端代理呼叫 vLLM |
+| `VLLM_MODEL_NAME` | `/models/gemma-4-26B-A4B-it` | 模型 |
+| `VLLM_API_KEY` | `dummy` | vLLM key |
+| `RAGFLOW_ENDPOINT` | `https://ragflow-thesisflow.hsueh.tw` | RAGFlow 端點 |
+| `RAGFLOW_AGENT_ID` | `5f5cc79e3afb11f1b0be26501d5adb82` | Agent ID |
+| `RAGFLOW_API_KEY` | `ragflow-...` | RAGFlow key |
 
 ---
 
@@ -59,20 +93,33 @@
 - 暴露 port 80
 - 啟動命令：`nginx -g "daemon off;"`
 
-### 2.2 Docker Compose
+### 2.2 Docker Compose（P1 起：3 個 service）
 **檔案**: `docker-compose.yml`
 
-| 設定項 | 值 |
-|--------|-----|
-| 服務名稱 | `frontend` |
-| 端口映射 | `3000:80` |
-| 重啟策略 | `unless-stopped` |
-| 健康檢查 | `wget http://localhost/health` |
+| 服務 | 映像 / 來源 | 端口 | 健康檢查 | 依賴 |
+|------|-------------|------|---------|------|
+| `postgres` | `postgres:16-alpine` | （內網） | `pg_isready` | — |
+| `backend` | `./backend/Dockerfile`（python:3.12-slim + uv） | `8000:8000` | `GET /health` 200 | postgres healthy |
+| `frontend` | `./Dockerfile`（多階段：node 22 + nginx alpine） | `3000:80` | `wget /health` | backend |
 
-### 2.3 Nginx 設定
+`backend` container 啟動時自動執行：
+1. `alembic upgrade head`
+2. `python -m app.seed.seed --if-empty`
+3. `uvicorn app.main:app --host 0.0.0.0 --port 8000`
+
+### 2.3 後端 Dockerfile
+**檔案**: `backend/Dockerfile`
+
+多階段：
+- **Builder**：`python:3.12-slim` + `uv`（從 `ghcr.io/astral-sh/uv` copy 進來），`uv sync --no-dev` 建 venv
+- **Runtime**：另一個 slim image，copy venv + source，內建 entrypoint script 執行 migration → seed → uvicorn
+
+### 2.4 Nginx 設定
 **檔案**: `nginx.conf`
 
 **核心設定**:
+- **後端 API 反向代理（P1 新增）**：`location /api/ { proxy_pass http://backend:8000; }`
+  - SSE 友善：`proxy_buffering off`、`proxy_read_timeout 600s`（給 P2 串流用）
 - React Router SPA 支援：`try_files $uri $uri/ /index.html`
 - 靜態資源快取：js/css/images 設 1 年到期
 - 健康檢查端點：`/health` → 回傳 200 "ok"

@@ -7,9 +7,9 @@
 
 ## 🎯 你是誰、你在做什麼
 
-你是本專案的 Senior Frontend Engineer。這個專案採用 **Spec-Driven Development（SDD）**——所有設計決策已在 `docs/` 目錄完成，你的工作是**嚴格依據規格文件實作**。
+你是本專案的 Senior Full-Stack Engineer（前端 React、後端 FastAPI）。這個專案採用 **Spec-Driven Development（SDD）**——所有設計決策已在 `docs/` 目錄完成，你的工作是**嚴格依據規格文件實作**。
 
-本系統是一套國小自然科學「水溶液」單元的迷思概念診斷平台，分為教師端（出題、派題、診斷報告）與學生端（對話式測驗、學習報告）。目前為純前端原型（Mock Data），未來將接上後端 API。
+本系統是一套國小自然科學「水溶液」單元的迷思概念診斷平台，分為教師端（出題、派題、診斷報告）與學生端（對話式測驗、學習報告）。**目前狀態：P1（後端骨架 + 認證）已完成；P2（LLM proxy + RAGFlow N6）為下一階段。** 詳見 `docs/spec-10-backend-architecture.md` §7。
 
 ---
 
@@ -17,7 +17,7 @@
 
 1. **規格文件是唯一真理來源。** 路由定義、資料結構、元件 Props、使用者流程——全部以 `docs/spec-*.md` 為準。不確定就去查，不要猜。
 2. **先 Plan 再 Execute。** 每個任務開始前，先輸出你的實作計畫（要建/改哪些檔案、每個檔案的核心邏輯、依賴什麼模組），等確認後再動手寫程式碼。
-3. **每個任務完成後必須驗證。** 確認 `npm run build` 無錯誤、`npm run lint` 通過，才能回報完成。
+3. **每個任務完成後必須驗證。** 前端：`npm run build` + `npm run lint` 通過；後端（若有改動）：`uv run ruff check .` + `uv run pytest` 通過，才能回報完成。
 4. **規格偏離必須記錄。** 如果實作中發現 specs 有矛盾或不可行的地方，記錄在 `docs/deviations.md` 中，說明原因和你的替代方案，**同時更新對應的 spec 文件**。
 5. **改了程式就改 spec。** 任何影響到路由、資料結構、元件介面、使用者流程的程式碼變更，**必須同步更新對應的 spec 文件**。Spec 與程式碼永遠保持一致。
 6. **改了 spec 就驗證。** spec 文件更新後，spawn sub-agent 驗證修改的 spec 區段與程式碼是否一致。
@@ -70,6 +70,7 @@
 
 ## 🏗 技術棧
 
+### 前端
 | 類別 | 技術 | 版本 |
 |------|------|------|
 | UI 框架 | React | ^19.2.0 |
@@ -78,9 +79,27 @@
 | CSS 框架 | Tailwind CSS | ^4.2.1 |
 | 圖表庫 | Recharts | ^3.7.0 |
 | 簡報匯出 | pptxgenjs | ^4.0.1 |
-| 部署 | Docker + Nginx |  |
 
-**後端整合狀態：** 目前為純前端原型，使用 Mock Data。後端 API URL 預留於 `.env` 的 `VITE_BACKEND_URL`。
+### 後端（P1 起）
+| 類別 | 技術 | 版本 |
+|------|------|------|
+| 語言 | Python | 3.12 |
+| Web 框架 | FastAPI | latest |
+| ORM | SQLAlchemy 2.0 (async) + Alembic | latest |
+| DB driver | asyncpg | latest |
+| 資料庫 | PostgreSQL | 16-alpine |
+| 認證 | PyJWT (HttpOnly Cookie) | latest |
+| 套件管理 | uv | latest |
+| Lint | ruff | latest |
+| 部署 | Docker compose + Nginx |  |
+
+**後端整合狀態：所有 4 階段已完成 ✅**
+- **P1**：認證 + 學生帳密管理（教師可看明文密碼）
+- **P2**：後端 LLM proxy（前端 `src/llm/` 改走 `/api/llm/*`）+ RAGFlow N6 出題輔助
+- **P3**：classes / quizzes / scenarios / assignments 全部 API 化 + N1/N2 摘要 + React Query
+- **P4**：學生作答 / 追問結果 / 治療對話 全部 DB 化、N1/N2 統計改為後端從 DB 計算
+
+詳見 `docs/spec-10-backend-architecture.md`、`docs/spec-11-database-schema.md`、`docs/spec-12-ragflow-integration.md`、`docs/spec-13-auth.md`。
 
 ---
 
@@ -95,6 +114,12 @@
 | `docs/spec-05-user-workflows.md` | 使用者流程 | **修改互動邏輯時必讀** |
 | `docs/spec-06-deployment-and-config.md` | 部署與設定 | 修改配置時（注意：主題色彩請以 spec-07 為準） |
 | `docs/spec-07-ui-design-system.md` | **UI 設計風格指南** | **任何頁面 / 元件視覺修改前必讀**（日系手遊冒險風 / 木框收集冊） |
+| `docs/spec-09-llm-integration.md` | LLM 整合接口 | **修改 `src/llm/` 時必讀**（P2 起一律走後端 proxy） |
+| `docs/spec-10-backend-architecture.md` | **後端架構** | **修改 backend/ 或新增 router/service 時必讀** |
+| `docs/spec-11-database-schema.md` | **DB schema** | **修改 ORM model 或新增 migration 時必讀** |
+| `docs/spec-12-ragflow-integration.md` | **RAGFlow 整合** | **修改 `/api/ai/*` router 或 RAGFlow service 時必讀** |
+| `docs/spec-13-auth.md` | **認證機制** | **修改登入流程、JWT、密碼處理時必讀** |
+| `docs/workflow.md` | 業務工作流（純邏輯，不含技術） | 設計階段 / 對齊使用者預期 |
 | `docs/deviations.md` | 規格偏離記錄 | 遇到 spec 與實作矛盾時 |
 
 ---
@@ -102,24 +127,35 @@
 ## 📂 目錄結構慣例
 
 ```
-src/
-├── main.jsx              # 進入點（勿改動）
-├── App.jsx               # 路由定義（對應 spec-02）
+src/                            # 前端 (React + Vite)
+├── main.jsx                    # 進入點
+├── App.jsx                     # 路由定義（對應 spec-02）
 ├── context/
-│   └── AppContext.jsx     # 全域狀態（對應 spec-04）
-├── constants/
-│   └── theme.js           # 色彩常數（對應 spec-06 §3）
-├── data/
-│   ├── quizData.js        # 考卷與作答資料
-│   ├── classData.js       # 班級資料
-│   ├── assignmentData.js  # 派題資料
-│   ├── knowledgeGraph.js  # 知識節點與迷思概念
-│   └── chartInfoConfig.js # 圖表說明設定
-├── components/            # 共用元件（對應 spec-03）
+│   ├── AppContext.jsx          # 全域狀態（對應 spec-04）
+│   └── AuthContext.jsx         # 登入狀態（對應 spec-13 §8）
+├── lib/
+│   └── api.js                  # 統一後端呼叫包裝（fetch + cookie）
+├── constants/theme.js          # 色彩常數
+├── data/                       # P3 之前仍是 mock 資料來源
+├── components/                 # 共用元件（對應 spec-03，含 RequireAuth）
+├── llm/                        # spec-09（P2 改走後端 proxy）
 └── pages/
-    ├── teacher/           # 教師端頁面
-    │   └── quiz/          # 出題精靈
-    └── student/           # 學生端頁面
+    ├── teacher/                # 教師端
+    └── student/                # 學生端
+
+backend/                        # 後端 (FastAPI)
+├── pyproject.toml              # uv 管理
+├── Dockerfile
+├── alembic.ini + alembic/      # migration
+└── app/
+    ├── main.py                 # FastAPI 啟動
+    ├── config.py               # pydantic-settings
+    ├── db/{base,session}.py + db/models/   # ORM (對應 spec-11)
+    ├── schemas/                # Pydantic（API 邊界）
+    ├── auth/                   # password, jwt, deps
+    ├── routers/                # /api/* 端點
+    ├── services/               # 業務邏輯（vLLM/RAGFlow proxy 等）
+    └── seed/                   # mock data → DB
 ```
 
 ---
@@ -204,5 +240,10 @@ Claude Code 主會話（Opus）── Plan / Supervise / Review
 - 禁止在元件中硬編碼色彩值（必須使用 `theme.js` 常數、Tailwind class，或 `spec-07` 規範色票）
 - 禁止繞過 `spec-07-ui-design-system.md` 自創新風格元件（卡片、按鈕、徽章等）；如需新增元件，先更新 spec-07 再實作
 - 禁止繞過 ESLint 規則（`eslint-disable` 需有充分理由並註明）
-- 禁止在 Mock Data 函式中引入外部 API 呼叫（保持純前端可運行）
+- 禁止在 Mock Data 函式中引入外部 API 呼叫（保持純前端可運行；P3 後 mock 將逐步退場）
 - 禁止修改知識節點 ID 格式（特別注意 `INe-II-3-*` 與 `INe-Ⅲ-5-*` 兩種前綴並存，且 `Ⅲ` 為羅馬數字三、不是英文 III）
+- 禁止前端直接呼叫 vLLM / RAGFlow（P2 起一律走後端 `/api/llm/*` 與 `/api/ai/*`）
+- 禁止把任何後端 secret 加 `VITE_` 前綴（會被打包到 bundle、瀏覽器可看到）
+- 禁止在 router 寫業務邏輯（一律進 `app/services/`）
+- 禁止 SQLAlchemy 用同步介面（必須 async 全程）
+- 禁止把 `/api/students/{id}` 端點開放給學生角色（僅 `require_teacher`）

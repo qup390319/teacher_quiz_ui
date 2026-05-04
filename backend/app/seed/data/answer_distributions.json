@@ -1,0 +1,53 @@
+{
+  "_doc": "Mock answer distributions per spec-11 §4.1. One row per (assignment, student, question). Used to seed student_answers so the dashboard demo has data without students needing to take the quizzes manually.",
+  "distributions": [
+    {
+      "assignmentId": "assign-001",
+      "quizId": "quiz-001",
+      "classId": "class-A",
+      "perQuestion": [
+        ["A","A","A","A","A","A","A","A","B","B","B","B","B","B","C","C","C","C","D","D"],
+        ["A","A","A","A","A","A","A","B","B","B","B","B","B","B","C","C","C","C","D","D"],
+        ["A","A","A","A","A","A","A","A","A","B","B","B","B","B","C","C","C","C","D","D"],
+        ["A","A","A","B","B","B","B","C","C","C","C","C","C","D","D","D","D","D","D","D"],
+        ["A","A","A","A","B","B","B","B","B","B","B","B","B","B","C","C","C","C","D","D"]
+      ]
+    },
+    {
+      "assignmentId": "assign-002",
+      "quizId": "quiz-001",
+      "classId": "class-B",
+      "perQuestion": [
+        ["A","A","A","A","A","A","B","B","B","B","B","C","C","C","C","D","D","D"],
+        ["A","A","A","A","A","B","B","B","B","B","B","C","C","C","C","D","D","D"],
+        ["A","A","A","A","A","A","A","A","B","B","B","B","C","C","C","C","D","D"],
+        ["A","A","A","B","B","B","B","B","C","C","C","C","D","D","D","D","D","D"],
+        ["A","A","A","A","B","B","B","B","B","B","B","B","C","C","C","C","D","D"]
+      ]
+    },
+    {
+      "assignmentId": "assign-003",
+      "quizId": "quiz-001",
+      "classId": "class-C",
+      "perQuestion": [
+        ["A","A","A","A","A","A","A","B","B","B","B","B","C","C","C","C","C","D","D","D","D","D"],
+        ["A","A","A","A","A","A","A","A","B","B","B","B","B","B","C","C","C","C","D","D","D","D"],
+        ["A","A","A","A","A","A","A","A","A","B","B","B","B","B","B","C","C","C","C","D","D","D"],
+        ["A","A","A","A","A","B","B","B","B","B","C","C","C","C","D","D","D","D","D","D","D","D"],
+        ["A","A","A","A","A","B","B","B","B","B","B","B","B","B","C","C","C","C","D","D","D","D"]
+      ]
+    },
+    {
+      "assignmentId": "assign-004",
+      "quizId": "quiz-002",
+      "classId": "class-A",
+      "perQuestion": [
+        ["A","A","A","A","B","B","B","B","B","B","B","B","B","B","B","B","C","C","D","D"],
+        ["A","A","A","A","A","A","A","A","A","A","A","A","B","B","B","C","C","C","D","D"],
+        ["A","A","A","A","A","A","A","A","A","A","B","B","B","B","C","C","C","D","D","D"],
+        ["A","A","A","B","B","B","B","B","B","B","B","B","B","B","C","C","C","D","D","D"],
+        ["A","A","A","B","B","B","B","B","B","B","B","B","B","B","B","C","C","C","D","D"]
+      ]
+    }
+  ]
+}

@@ -1,9 +1,11 @@
 import { useOutletContext } from 'react-router-dom';
 import OverallAIDiagnosisSummary from './shared/OverallAIDiagnosisSummary';
 import ClassScatterChart from './shared/ClassScatterChart';
+import RagflowSummaryPanel from '../../../components/teacher/RagflowSummaryPanel';
+import { buildGradeSummaryPayload } from './shared/summaryPayload';
 
 export default function OverviewPage() {
-  const { overviewData } = useOutletContext();
+  const { overviewData, quizId, quizzes, classes } = useOutletContext();
 
   if (!overviewData || overviewData.classStats.length === 0) {
     return (
@@ -32,21 +34,30 @@ export default function OverviewPage() {
       bg:    riskCount === 0 ? 'bg-[#C8EAAE]'   : riskCount <= 1 ? 'bg-[#FCF0C2]'   : 'bg-[#FAC8CC]' },
   ];
 
+  const quizTitle = quizzes.find((q) => q.id === quizId)?.title ?? '本次考卷';
+  const ragflowPayload = buildGradeSummaryPayload(quizId, quizTitle, classes);
+
   return (
     <div className="space-y-6">
+      <RagflowSummaryPanel
+        scope="grade"
+        payload={ragflowPayload}
+        title="全年級 AI 診斷摘要（文獻引用版 · N1）"
+      />
+
       <OverallAIDiagnosisSummary overviewData={overviewData} />
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {cards.map(s => (
-          <div key={s.label} className={`rounded-2xl border border-[#BDC3C7] p-4 ${s.bg} shadow-[0_2px_12px_rgba(0,0,0,0.06)]`}>
-            <p className={`text-2xl font-bold ${s.color} mb-0.5`}>{s.value}</p>
+          <div key={s.label} className={`rounded-2xl border border-[#BDC3C7] p-3 sm:p-4 ${s.bg} shadow-[0_2px_12px_rgba(0,0,0,0.06)]`}>
+            <p className={`text-xl sm:text-2xl font-bold ${s.color} mb-0.5`}>{s.value}</p>
             <p className="text-sm font-semibold text-[#2D3436]">{s.label}</p>
             <p className="text-xs text-[#636E72] mt-0.5 leading-snug">{s.sub}</p>
           </div>
         ))}
       </div>
 
-      <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+      <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-4 sm:p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
         <ClassScatterChart overviewData={overviewData} />
       </div>
     </div>

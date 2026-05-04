@@ -1,10 +1,14 @@
 import { useNavigate } from 'react-router-dom';
 import TeacherLayout from '../../components/TeacherLayout';
-import { useApp } from '../../context/AppContext';
+import { useClasses } from '../../hooks/useClasses';
+import { useAssignments } from '../../hooks/useAssignments';
+import { useQuizzes } from '../../hooks/useQuizzes';
 
 export default function ClassManagement() {
   const navigate = useNavigate();
-  const { classes, assignments, quizzes } = useApp();
+  const { data: classes = [], isLoading: classesLoading } = useClasses();
+  const { data: assignments = [] } = useAssignments();
+  const { data: quizzes = [] } = useQuizzes();
 
   const getLastAssignment = (classId) => {
     const clsAssignments = assignments.filter((a) => a.classId === classId);
@@ -16,17 +20,21 @@ export default function ClassManagement() {
 
   return (
     <TeacherLayout>
-      <div className="p-8">
+      <div className="p-4 sm:p-6 md:p-8">
         {/* 頁首 */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-6 sm:mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-[#2D3436]">班級管理</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">班級管理</h1>
             <p className="text-[#636E72] mt-1 text-sm">管理各班級的學生名單與相關資訊</p>
           </div>
         </div>
 
+        {classesLoading && (
+          <div className="text-[#636E72] text-sm">載入中…</div>
+        )}
+
         {/* 班級卡片列表 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
           {classes.map((cls) => {
             const lastAssignment = getLastAssignment(cls.id);
             const lastQuiz = lastAssignment ? quizzes.find((q) => q.id === lastAssignment.quizId) : null;
@@ -60,7 +68,7 @@ export default function ClassManagement() {
                   {/* 統計 */}
                   <div className="grid grid-cols-2 gap-3 mb-5">
                     <div className="bg-[#EEF5E6] rounded-2xl border border-[#D5D8DC] p-3 text-center">
-                      <p className="text-xl font-bold text-[#2D3436]">{cls.students.length}</p>
+                      <p className="text-xl font-bold text-[#2D3436]">{cls.studentCount}</p>
                       <p className="text-xs text-[#636E72] mt-0.5">位學生</p>
                     </div>
                     <div className="bg-[#EEF5E6] rounded-2xl border border-[#D5D8DC] p-3 text-center">
@@ -77,7 +85,7 @@ export default function ClassManagement() {
                       <div className="bg-[#EEF5E6] rounded-xl border border-[#D5D8DC] px-3 py-2.5">
                         <p className="text-xs text-[#95A5A6] mb-0.5">最近派題</p>
                         <p className="text-xs font-medium text-[#2D3436] truncate">{lastQuiz?.title ?? lastAssignment.quizId}</p>
-                        <p className="text-xs text-[#636E72] mt-0.5">{lastAssignment.assignedAt} · 完成率 {lastAssignment.completionRate}%</p>
+                        <p className="text-xs text-[#636E72] mt-0.5">{lastAssignment.assignedAt}</p>
                       </div>
                     ) : (
                       <div className="bg-[#EEF5E6] rounded-xl border border-[#D5D8DC] px-3 py-2.5">

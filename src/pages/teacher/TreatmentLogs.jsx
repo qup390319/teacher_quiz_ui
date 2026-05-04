@@ -1,73 +1,64 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TeacherLayout from '../../components/TeacherLayout';
-import { useApp } from '../../context/AppContext';
+import { useScenarios } from '../../hooks/useScenarios';
+import { useClasses } from '../../hooks/useClasses';
+import { useTreatmentLogs } from '../../hooks/useTreatment';
 import { PHASE_LABEL, STAGE_LABEL } from '../../data/treatmentBot';
 
+const CLASS_COLORS = {
+  'class-A': { bg: '#C8EAAE', fg: '#3D5A3E' },
+  'class-B': { bg: '#BADDF4', fg: '#2E86C1' },
+  'class-C': { bg: '#FCF0C2', fg: '#B7950B' },
+};
+
 /* 治療對話紀錄總覽（spec-08 §5.4 / §3.4）
- * 列出所有 student × scenarioQuiz 的 treatment sessions，可點進去看完整對話。
+ * P4 起：直接從 /api/teachers/treatment-logs 拉取。
  */
 export default function TreatmentLogs() {
   const navigate = useNavigate();
-  const { treatmentSessions, scenarioQuizzes, classes } = useApp();
+  const { data: scenarioQuizzes = [] } = useScenarios();
+  const { data: classes = [] } = useClasses();
   const [classFilter, setClassFilter] = useState('all');
   const [scenarioFilter, setScenarioFilter] = useState('all');
+  const { data: logs = [], isLoading } = useTreatmentLogs({
+    classId: classFilter,
+    scenarioQuizId: scenarioFilter,
+  });
 
-  /* 將 sessions 字典攤平成陣列，並補上學生資訊 */
   const rows = useMemo(() => {
-    return Object.values(treatmentSessions).map((s) => {
-      const sq = scenarioQuizzes.find((q) => q.id === s.scenarioQuizId);
-      // 暫定：所有 session 都假設來自 class-A（因為原型只支援單一學生）
-      const cls = classes.find((c) =>
-        c.students.some((stu) => stu.seat === s.studentId)
-      );
-      const student =
-        cls?.students.find((stu) => stu.seat === s.studentId) ?? {
-          name: `學生 ${s.studentId}`,
-        };
-      const totalQuestions = sq?.questions?.length ?? 0;
-      const answered = Object.keys(s.perQuestion ?? {}).length;
-      // 取最後一題的最終 phase/stage 作為摘要
-      const indices = Object.keys(s.perQuestion ?? {})
-        .map(Number)
-        .sort((a, b) => a - b);
-      const lastIdx = indices[indices.length - 1];
-      const lastState = s.perQuestion?.[lastIdx];
+    return logs.map((l) => {
+      const palette = CLASS_COLORS[l.classId ?? ''] ?? { bg: '#EEF5E6', fg: '#636E72' };
       return {
-        sessionId: s.id,
-        sessionKey: `${s.scenarioQuizId}__${s.studentId}`,
-        scenarioQuizId: s.scenarioQuizId,
-        scenarioTitle: sq?.title ?? s.scenarioQuizId,
-        classId: cls?.id ?? '',
-        className: cls?.name ?? '—',
-        classColor: cls?.color ?? '#EEF5E6',
-        classTextColor: cls?.textColor ?? '#636E72',
-        studentName: student.name,
-        studentSeat: s.studentId,
-        status: s.status,
-        startedAt: s.startedAt,
-        completedAt: s.completedAt,
-        totalQuestions,
-        answeredQuestions: answered,
-        lastPhase: lastState?.phase ?? null,
-        lastStage: lastState?.stage ?? null,
-        lastStep: lastState?.step ?? 0,
+        sessionId: l.sessionId,
+        scenarioQuizId: l.scenarioQuizId,
+        scenarioTitle: l.scenarioTitle,
+        classId: l.classId,
+        className: l.className ?? '—',
+        classColor: palette.bg,
+        classTextColor: palette.fg,
+        studentName: l.studentName,
+        studentSeat: l.studentId,
+        status: l.status,
+        startedAt: l.startedAt,
+        completedAt: l.completedAt,
+        totalQuestions: l.totalQuestions,
+        answeredQuestions: Math.max(l.currentQuestionIndex - 1, 0),
+        lastPhase: null,  // backend doesn't aggregate; future enhancement
+        lastStage: null,
+        lastStep: 0,
       };
     });
-  }, [treatmentSessions, scenarioQuizzes, classes]);
+  }, [logs]);
 
-  const filtered = rows.filter((r) => {
-    if (classFilter !== 'all' && r.classId !== classFilter) return false;
-    if (scenarioFilter !== 'all' && r.scenarioQuizId !== scenarioFilter) return false;
-    return true;
-  });
+  const filtered = rows;
 
   return (
     <TeacherLayout>
-      <div className="p-8">
+      <div className="p-4 sm:p-6 md:p-8">
         {/* 頁首 */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-[#2D3436]">治療對話紀錄</h1>
+        <div className="mb-4 sm:mb-6">
+          <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">治療對話紀錄</h1>
           <p className="text-[#636E72] mt-1 text-sm">
             檢視學生與 AI 的治療對話內容，作為派發治療成效的判斷依據（spec-08 §5.4）
           </p>
@@ -104,11 +95,13 @@ export default function TreatmentLogs() {
               ))}
             </select>
           </div>
-          <span className="ml-auto text-xs text-[#95A5A6]">共 {filtered.length} 筆紀錄</span>
+          <span className="ml-auto text-xs text-[#95A5A6]">
+            {isLoading ? '載入中…' : `共 ${filtered.length} 筆紀錄`}
+          </span>
         </div>
 
         {/* 紀錄表 */}
-        {filtered.length === 0 ? (
+        {!isLoading && filtered.length === 0 ? (
           <div className="bg-white rounded-2xl border border-[#BDC3C7] p-12 text-center">
             <div className="w-14 h-14 bg-[#E0F0E8] rounded-full flex items-center justify-center mx-auto mb-3">
               <svg className="w-7 h-7 text-[#5BA47A]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -121,7 +114,8 @@ export default function TreatmentLogs() {
           </div>
         ) : (
           <div className="bg-white rounded-2xl border border-[#BDC3C7] overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
-            <table className="w-full text-sm">
+           <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[860px]">
               <thead className="bg-[#EEF5E6] text-xs text-[#636E72] uppercase tracking-wider">
                 <tr>
                   <th className="px-4 py-3 text-left font-semibold">班級</th>
@@ -136,7 +130,7 @@ export default function TreatmentLogs() {
               </thead>
               <tbody className="divide-y divide-[#EEF5E6]">
                 {filtered.map((r) => (
-                  <tr key={r.sessionKey} className="hover:bg-[#F9FBF7] transition">
+                  <tr key={r.sessionId} className="hover:bg-[#F9FBF7] transition">
                     <td className="px-4 py-3">
                       <span
                         className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border"
@@ -176,7 +170,7 @@ export default function TreatmentLogs() {
                       <button
                         type="button"
                         onClick={() =>
-                          navigate(`/teacher/treatment-logs/${encodeURIComponent(r.sessionKey)}`)
+                          navigate(`/teacher/treatment-logs/${encodeURIComponent(r.sessionId)}`)
                         }
                         className="px-3 py-1 text-xs font-semibold text-white bg-[#5BA47A] border border-[#3F8B5E]
                                    rounded-lg hover:bg-[#3F8B5E] transition"
@@ -188,6 +182,7 @@ export default function TreatmentLogs() {
                 ))}
               </tbody>
             </table>
+           </div>
           </div>
         )}
       </div>

@@ -180,7 +180,7 @@ export default function InfoDrawer({ isOpen, onClose, config, dynamicStatus }) {
 
       {/* Drawer 面板 */}
       <div
-        className={`fixed inset-y-0 right-0 z-50 w-[460px] max-w-full bg-white shadow-2xl flex flex-col transform transition-transform duration-300 ease-in-out ${
+        className={`fixed inset-y-0 right-0 z-50 w-full sm:w-[420px] md:w-[460px] max-w-full bg-white shadow-2xl flex flex-col transform transition-transform duration-300 ease-in-out ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
         role="dialog"

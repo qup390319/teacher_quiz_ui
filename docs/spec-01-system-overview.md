@@ -51,10 +51,33 @@
 - **對外端口**: 3000 (映射至容器內 80)
 - **健康檢查**: `GET /health` → 200 "ok"
 
-### 3.4 後端整合狀態
-- **目前**: 純前端原型 (Prototype)，使用 Mock Data
-- **預留**: `.env.example` 中定義 `VITE_BACKEND_URL=http://localhost:8000`
-- **資料函式**: 已抽象為可替換的資料存取函式（如 `getClassAnswers`, `getNodePassRates`）
+### 3.4 後端整合狀態（P1 起）
+
+| 階段 | 範圍 | 狀態 |
+|------|------|------|
+| **P1** | 後端骨架（FastAPI + PostgreSQL）、認證（帳密 + JWT cookie）、學生帳密管理 | ✅ 已完成 |
+| **P2** | LLM proxy（取代前端直呼 vLLM）、RAGFlow N6 出題輔助 | ⏳ 規劃中 |
+| **P3** | classes / quizzes / scenarios / assignments 全部 API 化、N1/N2 摘要（RAGFlow） | ⏳ 規劃中 |
+| **P4** | 學生作答 / 追問 / 治療對話 DB 化 | ⏳ 規劃中 |
+
+詳見：
+- `docs/spec-10-backend-architecture.md` — 後端整體架構
+- `docs/spec-11-database-schema.md` — DB schema（15 張表）
+- `docs/spec-13-auth.md` — 認證機制（含明文密碼決策說明）
+
+### 3.5 後端技術棧
+
+| 類別 | 技術 |
+|------|------|
+| 語言 | Python 3.12 |
+| Web 框架 | FastAPI |
+| ORM | SQLAlchemy 2.0 (async) + Alembic |
+| DB driver | asyncpg |
+| 資料庫 | PostgreSQL 16-alpine |
+| 認證 | PyJWT + HttpOnly Cookie |
+| 套件管理 | uv |
+| Lint / Format | ruff |
+| 測試 | pytest + pytest-asyncio |
 
 ## 4. 專案結構
 

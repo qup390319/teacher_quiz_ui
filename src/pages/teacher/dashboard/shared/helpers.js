@@ -52,14 +52,19 @@ export function computeOverviewForQuiz(quizId, classes, assignments) {
           .filter(students => Math.round((students.length / totalStudents) * 100) >= 30).length
       : 0;
 
+    // P3 過渡：assignment 不再帶 completion stats，從 mock 推導（所有 mock 學生都已作答）
+    const completionRate = assignment.completionRate ?? 100;
+    const submittedCount = assignment.submittedCount ?? totalStudents;
+    const totalRoster = assignment.totalStudents ?? totalStudents;
+
     classStats.push({
       id: cls.id,
       name: cls.name,
       color: CLASS_CHART_COLORS[cls.id] || '#BDC3C7',
-      completionRate: assignment.completionRate,
+      completionRate,
       avgPassRate,
       highFreqMisconCount,
-      pendingStudents: assignment.totalStudents - assignment.submittedCount,
+      pendingStudents: totalRoster - submittedCount,
     });
   });
 

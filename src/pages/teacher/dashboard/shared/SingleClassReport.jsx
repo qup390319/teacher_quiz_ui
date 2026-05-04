@@ -7,6 +7,8 @@ import {
   getClassAnswers, getMisconceptionStudents, getNodePassRates,
 } from '../../../../data/quizData';
 import { getAssignment } from './helpers';
+import { buildClassSummaryPayload } from './summaryPayload';
+import RagflowSummaryPanel from '../../../../components/teacher/RagflowSummaryPanel';
 import AIDiagnosisSummary from './AIDiagnosisSummary';
 import WeeklyActionChecklist from './WeeklyActionChecklist';
 import BreakdownChart from './BreakdownChart';
@@ -19,7 +21,9 @@ export default function SingleClassReport({ cls, assignments, quizzes, quizId })
   const totalStudents = classAnswersData.length;
 
   const selectedAssignment = getAssignment(assignments, classId, quizId);
-  const hasData = selectedAssignment && selectedAssignment.completionRate > 0 && totalStudents > 0;
+  // P3 過渡：assignment 不再帶 completion stats（P4 才從 DB 算）。把 mock 學生視為「全部已提交」。
+  const completionRate = selectedAssignment?.completionRate ?? (totalStudents > 0 ? 100 : 0);
+  const hasData = !!selectedAssignment && totalStudents > 0;
 
   const [statInfoKey, setStatInfoKey] = useState(null);
 
@@ -49,9 +53,8 @@ export default function SingleClassReport({ cls, assignments, quizzes, quizId })
   const topMisconNode = knowledgeNodes.find(n => n.misconceptions.find(m => m.id === topMisconEntry?.id));
   const topMisconLabel = topMisconNode?.misconceptions.find(m => m.id === topMisconEntry?.id)?.label;
 
-  const completionRate = selectedAssignment.completionRate;
-  const submittedCount = selectedAssignment.submittedCount;
-  const totalStudentsAssign = selectedAssignment.totalStudents;
+  const submittedCount = selectedAssignment.submittedCount ?? totalStudents;
+  const totalStudentsAssign = selectedAssignment.totalStudents ?? totalStudents;
 
   return (
     <div className="space-y-6">
@@ -94,6 +97,11 @@ export default function SingleClassReport({ cls, assignments, quizzes, quizId })
           { infoKey: 'stat-card-top-misconception', dynamicStatus: topMisconEntry ? `目前持有率最高的迷思為「${topMisconLabel}」，持有率 ${topMisconEntry.pct}%。${topMisconEntry.pct >= 30 ? '已達高頻迷思門檻，建議優先安排補救。' : '持有率低於 30%，暫不需要緊急介入。'}` : '目前無偵測到任何迷思。' },
         ].find(item => item.infoKey === statInfoKey)?.dynamicStatus : undefined} />
 
+      <RagflowSummaryPanel
+        scope="class"
+        payload={buildClassSummaryPayload(quizId, quizzes.find((q) => q.id === quizId)?.title ?? '本次考卷', cls)}
+        title={`${cls.name} AI 診斷摘要（文獻引用版 · N2）`}
+      />
       <AIDiagnosisSummary quizId={quizId} classId={classId} totalStudents={totalStudents} />
       <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
         <WeeklyActionChecklist quizId={quizId} classId={classId} totalStudents={totalStudents} />

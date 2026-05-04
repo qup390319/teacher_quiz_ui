@@ -2,6 +2,15 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TeacherLayout from '../../components/TeacherLayout';
 import { useApp } from '../../context/AppContext';
+import { useClasses } from '../../hooks/useClasses';
+import { useQuizzes } from '../../hooks/useQuizzes';
+import { useScenarios } from '../../hooks/useScenarios';
+import {
+  useAddAssignment,
+  useAssignments,
+  useRemoveAssignment,
+  useUpdateAssignment,
+} from '../../hooks/useAssignments';
 
 // ─── 格子：未派發 ─────────────────────────────────────────────────────────────
 function CellEmpty({ onClick }) {
@@ -247,11 +256,14 @@ function ManagePopover({ assignment, quiz, cls, onViewReport, onUpdateDueDate, o
 // ─── 主頁面 ───────────────────────────────────────────────────────────────────
 export default function AssignmentManagement() {
   const navigate = useNavigate();
-  const {
-    assignments, quizzes, scenarioQuizzes, classes,
-    addAssignment, updateAssignment, removeAssignment,
-    setCurrentClassId, setCurrentQuizId,
-  } = useApp();
+  const { setCurrentClassId, setCurrentQuizId } = useApp();
+  const { data: assignments = [] } = useAssignments();
+  const { data: quizzes = [] } = useQuizzes();
+  const { data: scenarioQuizzes = [] } = useScenarios();
+  const { data: classes = [] } = useClasses();
+  const addAssignmentMut = useAddAssignment();
+  const updateAssignmentMut = useUpdateAssignment();
+  const removeAssignmentMut = useRemoveAssignment();
 
   const [popover, setPopover] = useState(null);
   const [managePopover, setManagePopover] = useState(null);
@@ -278,25 +290,26 @@ export default function AssignmentManagement() {
     })),
   }));
 
-  const handleConfirm = (quizId, classId, dueDate) => {
-    const cls = classes.find((c) => c.id === classId);
-    const today = new Date().toISOString().slice(0, 10);
-    const base = {
-      type: isScenarioTab ? 'scenario' : 'diagnosis',
-      classId,
-      assignedAt: today,
-      dueDate: dueDate || '',
-      status: 'active',
-      completionRate: 0,
-      submittedCount: 0,
-      totalStudents: cls?.students.length ?? 0,
-    };
-    if (isScenarioTab) {
-      addAssignment({ ...base, scenarioQuizId: quizId });
-    } else {
-      addAssignment({ ...base, quizId });
+  const handleConfirm = async (quizId, classId, dueDate) => {
+    if (!dueDate) {
+      alert('請選擇截止日期');
+      return;
     }
-    setPopover(null);
+    try {
+      const base = {
+        type: isScenarioTab ? 'scenario' : 'diagnosis',
+        classId,
+        dueDate,
+        status: 'active',
+      };
+      await addAssignmentMut.mutateAsync(
+        isScenarioTab ? { ...base, scenarioQuizId: quizId } : { ...base, quizId },
+      );
+      setPopover(null);
+    } catch (err) {
+      console.error('[AssignmentManagement] add failed', err);
+      alert('派發失敗：' + (err?.message ?? '未知錯誤'));
+    }
   };
 
   const handleViewReport = (classId, quizId) => {
@@ -305,28 +318,36 @@ export default function AssignmentManagement() {
     navigate('/teacher/dashboard');
   };
 
-  const handleUpdateDueDate = (assignmentId, dueDate) => {
-    updateAssignment(assignmentId, { dueDate });
+  const handleUpdateDueDate = async (assignmentId, dueDate) => {
+    try {
+      await updateAssignmentMut.mutateAsync({ id: assignmentId, dueDate });
+    } catch (err) {
+      alert('更新失敗：' + (err?.message ?? '未知錯誤'));
+    }
   };
 
-  const handleRemove = (assignmentId) => {
-    removeAssignment(assignmentId);
-    setManagePopover(null);
+  const handleRemove = async (assignmentId) => {
+    try {
+      await removeAssignmentMut.mutateAsync(assignmentId);
+      setManagePopover(null);
+    } catch (err) {
+      alert('刪除失敗：' + (err?.message ?? '未知錯誤'));
+    }
   };
 
   return (
     <TeacherLayout>
-      <div className="p-8">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-[#2D3436]">派題管理</h1>
+      <div className="p-4 sm:p-6 md:p-8">
+        <div className="mb-4 sm:mb-6">
+          <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">派題管理</h1>
           <p className="text-[#636E72] mt-1 text-sm">
             點擊空格即可將考卷派發給班級，點擊已派格子可管理派發狀態或查看診斷報告
           </p>
         </div>
 
         {/* Tab 切換：診斷／情境（spec-08）*/}
-        <div className="mb-6 flex items-center gap-1.5 bg-white border border-[#BDC3C7] rounded-2xl p-1.5
-                        shadow-[0_2px_8px_rgba(0,0,0,0.04)] w-fit">
+        <div className="mb-4 sm:mb-6 flex flex-wrap items-center gap-1.5 bg-white border border-[#BDC3C7] rounded-2xl p-1.5
+                        shadow-[0_2px_8px_rgba(0,0,0,0.04)] w-fit max-w-full">
           <button
             type="button"
             onClick={() => { setTab('diagnosis'); setPopover(null); setManagePopover(null); }}
@@ -372,12 +393,85 @@ export default function AssignmentManagement() {
             </button>
           </div>
         ) : (
-          <div className="bg-white rounded-[32px] border border-[#BDC3C7] shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+          <>
+          {/* 手機版：每張考卷一張卡片，班級狀態垂直堆疊（不需橫向卷軸） */}
+          <div className="md:hidden space-y-4">
+            {matrix.map(({ quiz, cells }) => (
+              <div key={quiz.id} className="bg-white rounded-2xl border border-[#BDC3C7] shadow-[0_2px_12px_rgba(0,0,0,0.06)] overflow-hidden">
+                {/* 考卷標頭 */}
+                <div className="px-4 py-3 bg-[#EEF5E6] border-b border-[#D5D8DC]">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span
+                      className={`text-xs font-bold px-2 py-0.5 rounded-full border
+                                 ${isScenarioTab
+                                   ? 'bg-[#E0F0E8] text-[#2E6B47] border-[#3F8B5E]'
+                                   : 'bg-[#C8EAAE] text-[#3D5A3E] border-[#BDC3C7]'}`}
+                    >
+                      {isScenarioTab ? '🌱 情境' : '已發佈'}
+                    </span>
+                  </div>
+                  <p className="text-sm font-semibold text-[#2D3436] leading-snug">{quiz.title}</p>
+                  <p className="text-xs text-[#95A5A6] mt-0.5">
+                    {isScenarioTab
+                      ? `${quiz.questions?.length ?? 0} 題情境 · 目標節點 ${quiz.targetNodeId}`
+                      : `${quiz.questionCount} 題 · ${quiz.knowledgeNodeIds.length} 個節點`}
+                  </p>
+                </div>
+                {/* 各班狀態：一班一列 */}
+                <div className="divide-y divide-[#D5D8DC]">
+                  {cells.map(({ cls, assignment }) => (
+                    <div key={cls.id} className="p-3 relative">
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: cls.color }} />
+                        <span className="text-sm font-semibold text-[#2D3436]">{cls.name}</span>
+                        <span className="text-xs text-[#95A5A6]">· {cls.studentCount} 人</span>
+                      </div>
+                      {assignment === null ? (
+                        <>
+                          <CellEmpty onClick={() => { setPopover({ quizId: quiz.id, classId: cls.id }); setManagePopover(null); }} />
+                          {popover?.quizId === quiz.id && popover?.classId === cls.id && (
+                            <AssignPopover
+                              quiz={quiz}
+                              cls={cls}
+                              onConfirm={(dueDate) => handleConfirm(quiz.id, cls.id, dueDate)}
+                              onClose={() => setPopover(null)}
+                            />
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <CellActive
+                            assignment={assignment}
+                            onClick={() => { setManagePopover({ assignmentId: assignment.id, quizId: quiz.id, classId: cls.id }); setPopover(null); }}
+                          />
+                          {managePopover?.assignmentId === assignment.id && (
+                            <ManagePopover
+                              assignment={assignment}
+                              quiz={quiz}
+                              cls={cls}
+                              onViewReport={handleViewReport}
+                              onUpdateDueDate={handleUpdateDueDate}
+                              onRemove={handleRemove}
+                              onClose={() => setManagePopover(null)}
+                            />
+                          )}
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* 桌機版（≥ md）：考卷 × 班級 矩陣表格 */}
+          <div className="hidden md:block bg-white rounded-[32px] border border-[#BDC3C7] shadow-[0_2px_12px_rgba(0,0,0,0.06)] overflow-hidden">
+            <div className="overflow-x-auto">
             <div
-              className="grid border-b border-[#D5D8DC] bg-[#EEF5E6] rounded-t-[32px]"
-              style={{ gridTemplateColumns: `280px repeat(${classes.length}, 1fr)` }}
+              className="grid border-b border-[#D5D8DC] bg-[#EEF5E6]"
+              style={{ gridTemplateColumns: `220px repeat(${classes.length}, minmax(140px, 1fr))` }}
             >
-              <div className="px-5 py-3 flex items-center">
+              <div className="px-4 sm:px-5 py-3 flex items-center">
                 <span className="text-xs font-bold text-[#636E72] uppercase tracking-wide">考卷</span>
               </div>
               {classes.map((cls) => (
@@ -386,7 +480,7 @@ export default function AssignmentManagement() {
                     <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: cls.color }} />
                     <span className="text-sm font-semibold text-[#2D3436]">{cls.name}</span>
                   </div>
-                  <p className="text-xs text-[#95A5A6] mt-0.5">{cls.students.length} 人</p>
+                  <p className="text-xs text-[#95A5A6] mt-0.5">{cls.studentCount} 人</p>
                 </div>
               ))}
             </div>
@@ -395,7 +489,7 @@ export default function AssignmentManagement() {
               <div
                 key={quiz.id}
                 className={`grid ${rowIdx < matrix.length - 1 ? 'border-b border-[#D5D8DC]' : ''}`}
-                style={{ gridTemplateColumns: `280px repeat(${classes.length}, 1fr)` }}
+                style={{ gridTemplateColumns: `220px repeat(${classes.length}, minmax(140px, 1fr))` }}
               >
                 <div className="px-5 py-4 flex flex-col justify-center">
                   <div className="flex items-center gap-1.5 mb-1">
@@ -454,21 +548,25 @@ export default function AssignmentManagement() {
               </div>
             ))}
 
-            <div className="px-5 py-3 border-t border-[#D5D8DC] bg-[#EEF5E6] rounded-b-[32px] flex items-center gap-6">
-              <span className="text-xs text-[#95A5A6] font-medium">圖例：</span>
-              {[
-                { color: 'border-dashed border-[#D5D8DC] bg-white', label: '未派發', textColor: 'text-[#95A5A6]' },
-                { color: 'bg-[#EEF5E6] border-[#D5D8DC]', label: '待作答', textColor: 'text-[#95A5A6]' },
-                { color: 'bg-[#FCF0C2] border-[#F5D669]', label: '進行中', textColor: 'text-[#B7950B]' },
-                { color: 'bg-[#C8EAAE] border-[#8FC87A]', label: '已完成', textColor: 'text-[#3D5A3E]' },
-              ].map((item) => (
-                <div key={item.label} className="flex items-center gap-1.5">
-                  <div className={`w-4 h-4 rounded border ${item.color}`} />
-                  <span className={`text-xs ${item.textColor}`}>{item.label}</span>
-                </div>
-              ))}
             </div>
           </div>
+
+          {/* 圖例（手機 / 桌機共用） */}
+          <div className="mt-4 px-4 py-3 bg-white border border-[#BDC3C7] rounded-2xl flex flex-wrap items-center gap-x-4 gap-y-2 sm:gap-6 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+            <span className="text-xs text-[#95A5A6] font-medium">圖例：</span>
+            {[
+              { color: 'border-dashed border-[#D5D8DC] bg-white', label: '未派發', textColor: 'text-[#95A5A6]' },
+              { color: 'bg-[#EEF5E6] border-[#D5D8DC]', label: '待作答', textColor: 'text-[#95A5A6]' },
+              { color: 'bg-[#FCF0C2] border-[#F5D669]', label: '進行中', textColor: 'text-[#B7950B]' },
+              { color: 'bg-[#C8EAAE] border-[#8FC87A]', label: '已完成', textColor: 'text-[#3D5A3E]' },
+            ].map((item) => (
+              <div key={item.label} className="flex items-center gap-1.5">
+                <div className={`w-4 h-4 rounded border ${item.color}`} />
+                <span className={`text-xs ${item.textColor}`}>{item.label}</span>
+              </div>
+            ))}
+          </div>
+          </>
         )}
       </div>
     </TeacherLayout>

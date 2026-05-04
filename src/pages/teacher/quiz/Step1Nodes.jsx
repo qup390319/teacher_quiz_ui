@@ -153,7 +153,7 @@ export default function Step1Nodes({ onNext }) {
       </div>
 
       {/* Sticky 摘要列 */}
-      <div className="sticky top-0 z-10 bg-[#C8EAAE] border border-[#BDC3C7] rounded-2xl px-4 py-3 mb-5 flex items-center justify-between shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+      <div className="sticky top-0 z-10 bg-[#C8EAAE] border border-[#BDC3C7] rounded-2xl px-4 py-3 mb-5 flex flex-wrap items-center justify-between gap-3 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
         <div className="text-sm text-[#2D3436]">
           {selectedNodeIds.length > 0 ? (
             <>
@@ -211,8 +211,9 @@ export default function Step1Nodes({ onNext }) {
       )}
 
       {/* 知識節點 × 迷思概念表格 */}
-      <div className="bg-white rounded-[32px] border border-[#BDC3C7] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-        <table className="w-full border-collapse text-sm">
+      <div className="bg-white rounded-[24px] sm:rounded-[32px] border border-[#BDC3C7] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+       <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-sm min-w-[640px]">
           <thead>
             <tr className="bg-white border-b-2 border-[#BDC3C7]">
               <th className="border-r border-[#BDC3C7] px-2 py-3 text-center font-semibold text-[#2D3436] w-10">選取</th>
@@ -279,6 +280,7 @@ export default function Step1Nodes({ onNext }) {
             })}
           </tbody>
         </table>
+       </div>
       </div>
     </div>
   );

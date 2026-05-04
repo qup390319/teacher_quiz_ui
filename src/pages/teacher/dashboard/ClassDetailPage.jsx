@@ -72,7 +72,11 @@ export default function ClassDetailPage() {
             }
             return clsAssignments.map(a => {
               const quiz = quizzes.find(q => q.id === a.quizId);
-              const barColor = a.completionRate === 100 ? '#8FC87A' : a.completionRate >= 50 ? '#F4D03F' : '#F28B95';
+              // P3 過渡：assignment 不再帶 completion stats（P4 才從 DB 算）
+              const completionRate = a.completionRate ?? 100;
+              const submittedCount = a.submittedCount ?? cls.studentCount ?? 0;
+              const totalStudents = a.totalStudents ?? cls.studentCount ?? 0;
+              const barColor = completionRate === 100 ? '#8FC87A' : completionRate >= 50 ? '#F4D03F' : '#F28B95';
               const isActive = effectiveClassId === cls.id && quizId === a.quizId;
               return (
                 <button
@@ -96,12 +100,12 @@ export default function ClassDetailPage() {
                       <p className="text-xs text-[#95A5A6] mt-0.5">派題日：{a.assignedAt} · 截止日：{a.dueDate}</p>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <p className="text-lg font-bold text-[#2D3436]">{a.completionRate}%</p>
-                      <p className="text-xs text-[#95A5A6]">{a.submittedCount}/{a.totalStudents} 人</p>
+                      <p className="text-lg font-bold text-[#2D3436]">{completionRate}%</p>
+                      <p className="text-xs text-[#95A5A6]">{submittedCount}/{totalStudents} 人</p>
                     </div>
                   </div>
                   <div className="w-full bg-[#D5D8DC] rounded-full h-2">
-                    <div className="h-2 rounded-full transition-all" style={{ width: `${a.completionRate}%`, backgroundColor: barColor }} />
+                    <div className="h-2 rounded-full transition-all" style={{ width: `${completionRate}%`, backgroundColor: barColor }} />
                   </div>
                 </button>
               );

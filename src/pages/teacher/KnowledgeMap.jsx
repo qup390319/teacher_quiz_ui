@@ -100,9 +100,9 @@ export default function KnowledgeMap() {
 
   return (
     <TeacherLayout>
-      <div className="p-8">
+      <div className="p-4 sm:p-6 md:p-8">
         {/* 頁面標題 */}
-        <div className="mb-6">
+        <div className="mb-4 sm:mb-6">
           <div className="flex items-center gap-3 mb-1">
             <button
               onClick={() => navigate('/teacher')}
@@ -112,7 +112,7 @@ export default function KnowledgeMap() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
-            <h1 className="text-2xl font-bold text-[#2D3436]">知識節點與迷思概念總覽</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">知識節點與迷思概念總覽</h1>
           </div>
           <p className="text-sm text-[#636E72] ml-8">
             水溶液單元 · 因材網對應節點 INe-II-3-01 至 INe-Ⅲ-5-7 ·

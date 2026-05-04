@@ -31,3 +31,15 @@ coverage/
 
 # Claude Code local artifacts
 .claude/
+
+# Generated artifacts (regenerate via scripts/export-backend-plan-pdf.py)
+docs/backend-plan.pdf
+
+# Python (backend)
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/

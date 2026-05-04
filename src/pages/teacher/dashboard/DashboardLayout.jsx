@@ -2,6 +2,9 @@ import { useEffect, useMemo } from 'react';
 import { NavLink, Outlet, useSearchParams } from 'react-router-dom';
 import TeacherLayout from '../../../components/TeacherLayout';
 import { useApp } from '../../../context/AppContext';
+import { useClasses } from '../../../hooks/useClasses';
+import { useQuizzes } from '../../../hooks/useQuizzes';
+import { useAssignments } from '../../../hooks/useAssignments';
 import { computeOverviewForQuiz, getAllAssignedQuizzes } from './shared/helpers';
 
 const TABS = [
@@ -13,7 +16,10 @@ const TABS = [
 ];
 
 export default function DashboardLayout() {
-  const { classes, assignments, quizzes, currentQuizId, setCurrentQuizId } = useApp();
+  const { currentQuizId, setCurrentQuizId } = useApp();
+  const { data: classes = [] } = useClasses();
+  const { data: assignments = [] } = useAssignments();
+  const { data: quizzes = [] } = useQuizzes();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const availableQuizzes = useMemo(
@@ -58,10 +64,10 @@ export default function DashboardLayout() {
 
   return (
     <TeacherLayout>
-      <div className="p-8">
-        <div className="flex items-start justify-between mb-6 gap-4">
+      <div className="p-4 sm:p-6 md:p-8">
+        <div className="flex flex-wrap items-start justify-between mb-4 sm:mb-6 gap-3 sm:gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-[#2D3436]">診斷結果</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">診斷結果</h1>
             <p className="text-[#636E72] mt-1 text-sm">
               {selectedQuizTitle ? `全部班級 · ${selectedQuizTitle}` : '全部班級 · 派題完成率與診斷總覽'}
             </p>

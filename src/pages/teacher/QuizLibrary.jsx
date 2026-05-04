@@ -1,16 +1,30 @@
 import { useNavigate } from 'react-router-dom';
 import TeacherLayout from '../../components/TeacherLayout';
 import { useApp } from '../../context/AppContext';
+import { useClasses } from '../../hooks/useClasses';
+import { useAssignments } from '../../hooks/useAssignments';
+import { useQuizzes } from '../../hooks/useQuizzes';
+import { api } from '../../lib/api';
 import { knowledgeNodes } from '../../data/knowledgeGraph';
 
 export default function QuizLibrary() {
   const navigate = useNavigate();
-  const { quizzes, classes, assignments, setQuizQuestions, setSelectedNodeIds } = useApp();
+  const { setQuizQuestions, setSelectedNodeIds } = useApp();
+  const { data: quizzes = [], isLoading } = useQuizzes();
+  const { data: classes = [] } = useClasses();
+  const { data: assignments = [] } = useAssignments();
 
-  const handleEdit = (quiz) => {
-    setQuizQuestions([...quiz.questions]);
-    setSelectedNodeIds([...quiz.knowledgeNodeIds]);
-    navigate('/teacher/quiz/create');
+  const handleEdit = async (quiz) => {
+    // Fetch full detail (questions + options) before navigating
+    try {
+      const detail = await api.get(`/quizzes/${quiz.id}`);
+      setQuizQuestions([...detail.questions]);
+      setSelectedNodeIds([...detail.knowledgeNodeIds]);
+      navigate('/teacher/quiz/create');
+    } catch (err) {
+      console.error('[QuizLibrary] failed to load quiz', err);
+      alert('載入考卷失敗');
+    }
   };
 
   const getAssignedClasses = (quizId) => {
@@ -20,16 +34,16 @@ export default function QuizLibrary() {
 
   return (
     <TeacherLayout>
-      <div className="p-8">
+      <div className="p-4 sm:p-6 md:p-8">
         {/* 頁首 */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-wrap items-start justify-between mb-6 sm:mb-8 gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-[#2D3436]">出題管理</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">出題管理</h1>
             <p className="text-[#636E72] mt-1 text-sm">這裡是您所有的考卷。出題流程：選擇出題範圍 → 編輯考卷內容 → 儲存 → 到「派題管理」發給班級</p>
           </div>
           <button
             onClick={() => navigate('/teacher/quiz/create')}
-            className="flex items-center gap-2 px-5 py-2.5 bg-[#8FC87A] text-[#2D3436] border border-[#BDC3C7] rounded-2xl text-sm font-semibold hover:bg-[#76B563] transition-colors shadow-[0_2px_8px_rgba(0,0,0,0.06)]"
+            className="flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 bg-[#8FC87A] text-[#2D3436] border border-[#BDC3C7] rounded-2xl text-sm font-semibold hover:bg-[#76B563] transition-colors shadow-[0_2px_8px_rgba(0,0,0,0.06)] flex-shrink-0"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -39,7 +53,10 @@ export default function QuizLibrary() {
         </div>
 
         {/* 考卷列表 */}
-        {quizzes.length === 0 ? (
+        {isLoading && (
+          <div className="text-[#636E72] text-sm mb-4">載入中…</div>
+        )}
+        {!isLoading && quizzes.length === 0 ? (
           <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-12 text-center shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
             <div className="w-14 h-14 bg-[#EEF5E6] rounded-full flex items-center justify-center mx-auto mb-4">
               <svg className="w-7 h-7 text-[#95A5A6]" fill="none" stroke="currentColor" viewBox="0 0 24 24">

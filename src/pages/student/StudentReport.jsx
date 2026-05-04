@@ -5,23 +5,34 @@ import { knowledgeNodes } from '../../data/knowledgeGraph';
 
 export default function StudentReport() {
   const navigate = useNavigate();
-  const {
-    studentAnswers,
-    correctCount,
-    studentMisconceptions,
-    resetStudentAnswers,
-    currentQuizId,
-    activeStudentReport,
-  } = useApp();
+  const { currentQuizId, activeStudentReport } = useApp();
 
+  // P4: canonical 來源是 DB（useStudentHistory），但「剛剛完成的測驗」走 in-memory
+  // 暫存路徑（activeStudentReport），避免 race condition + 不必要的 server 來回。
   const reportQuizId = activeStudentReport?.quizId || currentQuizId || 'quiz-001';
   const reportQuestions = getQuizQuestions(reportQuizId);
-  const answerSource = activeStudentReport?.answers || studentAnswers;
-  const misconceptionSource = activeStudentReport?.misconceptions || studentMisconceptions;
+  const answerSource = activeStudentReport?.answers || [];
+  const misconceptionSource = activeStudentReport?.misconceptions || [];
+  const followUpResults = activeStudentReport?.followUpResults || [];
   const hasAnswers = answerSource.length > 0;
   const totalQuestions = reportQuestions.length || 5;
-  const displayCorrect = hasAnswers ? (activeStudentReport?.correctCount ?? correctCount) : 2;
+  const displayCorrect = hasAnswers ? (activeStudentReport?.correctCount ?? 0) : 2;
   const displayWrong = hasAnswers ? totalQuestions - displayCorrect : 3;
+
+  /* 答對但 reasoningQuality 為 WEAK / GUESSING 的題目（spec §3.7 黃色標記） */
+  const weakCorrectResults = followUpResults.filter((r) =>
+    r.diagnosis?.finalStatus === 'CORRECT'
+    && (r.diagnosis?.reasoningQuality === 'WEAK' || r.diagnosis?.reasoningQuality === 'GUESSING')
+  );
+
+  /* 取得單一迷思相關的學生對話引用 */
+  const getStudentQuote = (questionId) => {
+    const result = followUpResults.find((r) => r.questionId === questionId);
+    if (!result?.conversationLog) return null;
+    const studentMsgs = result.conversationLog.filter((m) => m.role === 'student');
+    if (studentMsgs.length === 0) return null;
+    return studentMsgs[0].content; // 第一則學生回覆，最能代表初始想法
+  };
 
   const misconDetails = (hasAnswers ? misconceptionSource : ['M02-2', 'M03-1', 'M09-1'])
     .map((mId) => {
@@ -60,7 +71,6 @@ export default function StudentReport() {
     .filter(Boolean);
 
   const handleRetry = () => {
-    resetStudentAnswers();
     navigate(`/student/quiz/${reportQuizId}`);
   };
 
@@ -85,16 +95,16 @@ export default function StudentReport() {
               <p className="text-[#3D5A3E] text-sm font-semibold">學習體檢表</p>
             </div>
           </div>
-          <h1 className="text-2xl font-bold text-[#2D3436] mb-4">你的科學思維診斷結果</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436] mb-3 sm:mb-4">你的科學思維診斷結果</h1>
 
-          <div className="bg-white border border-[#BDC3C7] rounded-[32px] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-            <div className="grid grid-cols-2 gap-4">
+          <div className="bg-white border border-[#BDC3C7] rounded-[24px] sm:rounded-[32px] p-4 sm:p-5 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <div className="text-center">
-                <div className="text-4xl font-bold text-[#3D5A3E] mb-1">{displayCorrect}</div>
+                <div className="text-3xl sm:text-4xl font-bold text-[#3D5A3E] mb-1">{displayCorrect}</div>
                 <div className="text-sm text-[#636E72]">個核心概念已掌握 ✓</div>
               </div>
               <div className="text-center">
-                <div className="text-4xl font-bold text-[#D4AC0D] mb-1">{displayWrong}</div>
+                <div className="text-3xl sm:text-4xl font-bold text-[#D4AC0D] mb-1">{displayWrong}</div>
                 <div className="text-sm text-[#636E72]">個科學觀念待更新 ✧</div>
               </div>
             </div>
@@ -118,39 +128,49 @@ export default function StudentReport() {
 
           {misconDetails.length > 0 ? (
             <div className="space-y-4">
-              {misconDetails.map(({ node, miscon, relatedQs }) => (
-                <div key={miscon.id} className="rounded-[32px] border border-[#BDC3C7] p-5 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-                  <div className="flex items-start gap-3 mb-3">
-                    <span className="text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 bg-[#EEF5E6] border border-[#BDC3C7] text-[#636E72]">
-                      {node.name}
-                    </span>
-                  </div>
-
-                  <div className="bg-[#FAC8CC] border border-[#F5B8BA] rounded-2xl p-4 mb-3">
-                    <p className="text-xs font-semibold text-[#E74C5E] mb-1.5">💡 你目前的想法</p>
-                    <p className="text-sm text-[#2D3436] font-medium leading-relaxed">「{miscon.label}」</p>
-                    <p className="text-sm text-[#636E72] mt-1 leading-relaxed">{miscon.studentDetail || miscon.detail}</p>
-                  </div>
-
-                  {relatedQs.length > 0 && (
-                    <div className="bg-[#EEF5E6] border border-[#D5D8DC] rounded-2xl p-3 mb-3">
-                      <p className="text-xs font-semibold text-[#95A5A6] mb-2">這個想法出現在以下情境：</p>
-                      {relatedQs.map((q) => (
-                        <p key={q.id} className="text-xs text-[#636E72] leading-relaxed mb-1">
-                          • {q.stem}
-                        </p>
-                      ))}
+              {misconDetails.map(({ node, miscon, relatedQs }) => {
+                const quote = relatedQs.length > 0 ? getStudentQuote(relatedQs[0].id) : null;
+                return (
+                  <div key={miscon.id} className="rounded-[32px] border border-[#BDC3C7] p-5 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+                    <div className="flex items-start gap-3 mb-3">
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 bg-[#EEF5E6] border border-[#BDC3C7] text-[#636E72]">
+                        {node.name}
+                      </span>
                     </div>
-                  )}
 
-                  <div className="bg-[#BADDF4] border border-[#BDC3C7] rounded-2xl p-3.5">
-                    <p className="text-xs font-semibold text-[#2E86C1] mb-1.5">🧪 科學上是這樣的</p>
-                    <p className="text-sm text-[#2471A3] leading-relaxed">
-                      {node.studentHint || `${node.teachingStrategy.split('。')[0]}。`}
-                    </p>
+                    <div className="bg-[#FAC8CC] border border-[#F5B8BA] rounded-2xl p-4 mb-3">
+                      <p className="text-xs font-semibold text-[#E74C5E] mb-1.5">💡 你目前的想法</p>
+                      <p className="text-sm text-[#2D3436] font-medium leading-relaxed">「{miscon.label}」</p>
+                      <p className="text-sm text-[#636E72] mt-1 leading-relaxed">{miscon.studentDetail || miscon.detail}</p>
+                    </div>
+
+                    {quote && (
+                      <div className="bg-[#FFF6E0] border border-[#F0CFA4] rounded-2xl p-3 mb-3">
+                        <p className="text-xs font-semibold text-[#B9770E] mb-1.5">💬 你在對話中提到</p>
+                        <p className="text-sm text-[#7A5232] leading-relaxed italic">「{quote}」</p>
+                      </div>
+                    )}
+
+                    {relatedQs.length > 0 && (
+                      <div className="bg-[#EEF5E6] border border-[#D5D8DC] rounded-2xl p-3 mb-3">
+                        <p className="text-xs font-semibold text-[#95A5A6] mb-2">這個想法出現在以下情境：</p>
+                        {relatedQs.map((q) => (
+                          <p key={q.id} className="text-xs text-[#636E72] leading-relaxed mb-1">
+                            • {q.stem}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="bg-[#BADDF4] border border-[#BDC3C7] rounded-2xl p-3.5">
+                      <p className="text-xs font-semibold text-[#2E86C1] mb-1.5">🧪 科學上是這樣的</p>
+                      <p className="text-sm text-[#2471A3] leading-relaxed">
+                        {node.studentHint || `${node.teachingStrategy.split('。')[0]}。`}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="bg-[#C8EAAE] border border-[#BDC3C7] rounded-[32px] p-6 text-center shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
@@ -160,6 +180,41 @@ export default function StudentReport() {
             </div>
           )}
         </div>
+
+        {/* Section 1.5: Correct but Weak Reasoning（答對但可深入理解） */}
+        {weakCorrectResults.length > 0 && (
+          <div>
+            <h2 className="text-base font-bold text-[#2D3436] mb-3 flex items-center gap-2">
+              <span className="w-6 h-6 bg-[#FCF0C2] border border-[#BDC3C7] text-[#B9770E] rounded-full flex items-center justify-center text-sm font-bold">?</span>
+              答對了，但可以更深入理解
+            </h2>
+            <div className="space-y-3">
+              {weakCorrectResults.map((r) => {
+                const q = reportQuestions.find((qq) => qq.id === r.questionId);
+                const node = q ? knowledgeNodes.find((n) => n.id === q.knowledgeNodeId) : null;
+                const studentMsg = r.conversationLog?.find((m) => m.role === 'student');
+                return (
+                  <div key={r.questionId} className="rounded-2xl border border-[#F5D669] p-4 bg-[#FFFBF0] shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-[#FCF0C2] border border-[#F5D669] text-[#B9770E]">
+                        {node?.name || '科學概念'}
+                      </span>
+                      <span className="text-xs text-[#B9770E] font-semibold">答對了，但可以更深入理解</span>
+                    </div>
+                    {studentMsg && (
+                      <p className="text-sm text-[#7A5232] mb-2 leading-relaxed italic">
+                        你的回答：「{studentMsg.content}」
+                      </p>
+                    )}
+                    <p className="text-sm text-[#5A3E22] leading-relaxed">
+                      {r.diagnosis?.aiSummary || '建議再花點時間想想：這個現象背後的原理是什麼？'}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Section 2: Remedial Path */}
         <div>

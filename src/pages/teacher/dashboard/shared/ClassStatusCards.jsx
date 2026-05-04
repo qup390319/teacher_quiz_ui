@@ -30,12 +30,15 @@ export default function ClassStatusCards({ overviewData, onSelectClass }) {
         </div>
         <InfoButton onClick={() => setInfoOpen(true)} />
       </div>
-      <div className={`grid gap-4 mt-4`} style={{ gridTemplateColumns: `repeat(${classStats.length}, 1fr)` }}>
+      <div
+        className="grid gap-3 sm:gap-4 mt-4 grid-cols-1 sm:grid-cols-2 lg:[grid-template-columns:var(--cols-lg)]"
+        style={{ ['--cols-lg']: `repeat(${classStats.length}, minmax(0,1fr))` }}
+      >
         {classStats.map((cls) => {
           const status = getStatus(cls);
           return (
             <div key={cls.id} onClick={() => onSelectClass(cls.id)}
-              className="bg-white rounded-2xl border border-[#BDC3C7] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.06)] cursor-pointer hover:border-[#8FC87A] hover:shadow-md transition-all">
+              className="bg-white rounded-2xl border border-[#BDC3C7] p-4 sm:p-5 shadow-[0_2px_12px_rgba(0,0,0,0.06)] cursor-pointer hover:border-[#8FC87A] hover:shadow-md transition-all">
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: cls.color }} />
                 <span className="text-base font-bold text-[#2D3436]">{cls.name}</span>

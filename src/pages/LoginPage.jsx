@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
+import { ApiError } from '../lib/api';
 import bgImg from '../assets/backgrounds/bg_chiheisen_green.jpg';
 import mascotImg from '../assets/illustrations/scilens_mascot.png';
 import teacherImg from '../assets/illustrations/irasutoya_teacher_boy.png';
@@ -31,21 +32,7 @@ const WOOD_OUTER =
 const WOOD_INNER_CREAM =
   'bg-gradient-to-b from-[#FFF8E7] to-[#FBE9C7] rounded-[22px] border-2 border-[#FFFFFF]/70';
 
-/* ── 木質頂部標籤（角色名招牌） ───────────────────────────────── */
-const SignBoard = ({ children, color = 'green' }) => {
-  const palette = color === 'green'
-    ? 'bg-gradient-to-b from-[#B8DC83] to-[#7DB044] text-[#2F4A1A] border-[#5C8A2E]'
-    : 'bg-gradient-to-b from-[#86CEF5] to-[#4A9FD8] text-[#1A3A5C] border-[#2E6FA0]';
-  return (
-    <div className={`relative inline-flex items-center justify-center px-5 py-1.5 rounded-full border-2 ${palette}
-                     shadow-[0_3px_0_-1px_rgba(0,0,0,0.25),0_5px_8px_-3px_rgba(0,0,0,0.3)]
-                     font-game text-base font-bold tracking-wide`}>
-      {children}
-    </div>
-  );
-};
-
-/* ── 星等（⭐⭐⭐） ───────────────────────────────────────────── */
+/* ── 星等 ───────────────────────────────────────────── */
 const StarRating = ({ count = 3 }) => (
   <div className="inline-flex items-center gap-0.5">
     {[0, 1, 2].map((i) => (
@@ -61,22 +48,16 @@ const StarRating = ({ count = 3 }) => (
   </div>
 );
 
-/* ── 角色選擇卡（木框收集冊風格） ─────────────────────────────── */
+/* ── 角色選擇卡 ───────────────────────────────────────── */
 function RoleCard({ variant, open, onToggleInfo, onSelect }) {
   const isTeacher = variant === 'teacher';
-  // 角色色僅用於 CTA 按鈕（其餘元件統一木紋色，避免次要元素搶走視覺焦點）
-  // CTA 配色（v2.5 / 2026-04-29）：對齊日系手遊雙按鈕參考（やめとく 鮮綠 + 光りものGET 飽和藍）
   const palette = isTeacher
     ? {
-        signColor: 'green',
-        // 教師 CTA：鮮綠（やめとく 風）
         ctaBg: 'from-[#A2D550] to-[#65A626]',
         ctaShadow: 'shadow-[0_5px_0_#3E7818,0_8px_14px_-3px_rgba(62,120,24,0.5)] group-hover:shadow-[0_3px_0_#3E7818]',
         ctaBorder: 'border-[#3E7818]',
       }
     : {
-        signColor: 'blue',
-        // 學生 CTA：飽和天藍（光りものGET 風）
         ctaBg: 'from-[#5BA8DC] to-[#2D8AC4]',
         ctaShadow: 'shadow-[0_5px_0_#1A5F94,0_8px_14px_-3px_rgba(26,95,148,0.5)] group-hover:shadow-[0_3px_0_#1A5F94]',
         ctaBorder: 'border-[#1A5F94]',
@@ -87,12 +68,10 @@ function RoleCard({ variant, open, onToggleInfo, onSelect }) {
   const tagline   = isTeacher
     ? '出題、查看班級迷思、獲得教學建議'
     : '對話式診斷，獲得個人學習體檢';
-  const ctaText   = isTeacher ? 'GO' : 'GO';
   const fadeDelay = isTeacher ? 'animate-fade-up-delay-1' : 'animate-fade-up-delay-2';
 
   return (
     <div className={`relative flex-1 ${fadeDelay}`}>
-      {/* 主卡片：木框外殼 */}
       <button
         onClick={onSelect}
         className={`group block w-full ${WOOD_OUTER}
@@ -101,12 +80,9 @@ function RoleCard({ variant, open, onToggleInfo, onSelect }) {
                    text-left`}
       >
         <div className={`relative ${WOOD_INNER_CREAM} px-5 pt-5 pb-5`}>
-          {/* 角色名標題（純文字，加大顯眼） */}
           <h2 className="text-center mb-3 text-[#5A3E22] font-black text-2xl tracking-wide drop-shadow-[0_2px_0_rgba(193,154,107,0.4)]">
             {heading}
           </h2>
-
-          {/* 角色插圖（無方框，直接呈現） */}
           <div className="flex justify-center items-end h-32 mb-3">
             <img
               src={isTeacher ? teacherImg : studentImg}
@@ -114,24 +90,17 @@ function RoleCard({ variant, open, onToggleInfo, onSelect }) {
               className="max-h-32 object-contain group-hover:scale-110 transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] drop-shadow-[0_4px_4px_rgba(91,66,38,0.25)]"
             />
           </div>
-
-          {/* 星等 */}
           <div className="flex justify-center mb-2"><StarRating count={3} /></div>
-
-          {/* 副標 */}
           <p className="text-center text-[#7A5232] text-sm leading-relaxed mb-4 font-medium">
             {tagline}
           </p>
-
-          {/* CTA 按鈕：肥大圓角 + 木紋邊 */}
           <div className={`relative flex items-center justify-center gap-1.5 bg-gradient-to-b ${palette.ctaBg} text-white py-3 rounded-full border-2 ${palette.ctaBorder} ${palette.ctaShadow} group-hover:translate-y-0.5 transition-all duration-200`}>
-            <span className="font-game text-2xl font-bold tracking-wider drop-shadow-[0_2px_0_rgba(0,0,0,0.25)]">{ctaText}</span>
+            <span className="font-game text-2xl font-bold tracking-wider drop-shadow-[0_2px_0_rgba(0,0,0,0.25)]">GO</span>
             <Icon name="play_arrow" filled className="text-2xl drop-shadow-[0_2px_0_rgba(0,0,0,0.25)] group-hover:translate-x-1 transition-transform" />
           </div>
         </div>
       </button>
 
-      {/* ⓘ 資訊按鈕（圓木紐扣） */}
       <button
         type="button"
         aria-label="顯示功能說明"
@@ -150,12 +119,8 @@ function RoleCard({ variant, open, onToggleInfo, onSelect }) {
         <Icon name="info" filled className="text-xl" />
       </button>
 
-      {/* Popover */}
       {open && (
-        <div
-          role="tooltip"
-          className={`absolute top-12 right-0 z-20 w-64 ${WOOD_OUTER} animate-fade-up`}
-        >
+        <div role="tooltip" className={`absolute top-12 right-0 z-20 w-64 ${WOOD_OUTER} animate-fade-up`}>
           <div className={`${WOOD_INNER_CREAM} p-4`}>
             <div className="absolute -top-2 right-6 w-4 h-4 bg-[#C19A6B] rotate-45 rounded-sm" />
             <div className="text-xs font-bold text-[#5A3E22] mb-3 flex items-center gap-1">
@@ -177,11 +142,154 @@ function RoleCard({ variant, open, onToggleInfo, onSelect }) {
   );
 }
 
+/* ── 登入彈窗（spec-13 §8.3） ─────────────────────────────── */
+function LoginModal({ variant, onClose, onSuccess }) {
+  const { login } = useAuth();
+  const [account, setAccount] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPwd, setShowPwd] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const inputRef = useRef(null);
+
+  useEffect(() => { inputRef.current?.focus(); }, []);
+
+  const isTeacher = variant === 'teacher';
+  const heading = isTeacher ? '老師登入' : '學生登入';
+  const hintAccount = isTeacher ? '範例：aaa001' : '範例：115001';
+  const ctaBg = isTeacher
+    ? 'from-[#A2D550] to-[#65A626] border-[#3E7818] shadow-[0_4px_0_#3E7818]'
+    : 'from-[#5BA8DC] to-[#2D8AC4] border-[#1A5F94] shadow-[0_4px_0_#1A5F94]';
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (submitting) return;
+    setError('');
+    setSubmitting(true);
+    try {
+      const user = await login(account.trim(), password);
+      if (variant && user.role !== variant) {
+        setError(`此帳號不是${isTeacher ? '老師' : '學生'}，請確認後再試。`);
+        return;
+      }
+      onSuccess(user);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        setError('帳號或密碼錯誤，請再試一次。');
+      } else {
+        setError('登入失敗，請稍後再試。');
+        console.error('[login]', err);
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        className={`w-full max-w-sm ${WOOD_OUTER} animate-fade-up`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className={`${WOOD_INNER_CREAM} p-6`}>
+          <h3 className="text-center text-2xl font-black text-[#5A3E22] mb-1 drop-shadow-[0_2px_0_rgba(193,154,107,0.4)]">
+            {heading}
+          </h3>
+          <p className="text-center text-sm text-[#7A5232] mb-5">請輸入帳號與密碼</p>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-[#5A3E22] mb-1">帳號</label>
+              <input
+                ref={inputRef}
+                type="text"
+                value={account}
+                onChange={(e) => setAccount(e.target.value)}
+                placeholder={hintAccount}
+                autoComplete="username"
+                className="w-full px-4 py-2.5 rounded-xl border-2 border-[#C19A6B] bg-white/80
+                           text-[#5A3E22] placeholder:text-[#B6A284]
+                           focus:outline-none focus:border-[#8B5E3C] focus:bg-white"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-[#5A3E22] mb-1">密碼</label>
+              <div className="relative">
+                <input
+                  type={showPwd ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                  className="w-full px-4 py-2.5 pr-11 rounded-xl border-2 border-[#C19A6B] bg-white/80
+                             text-[#5A3E22] placeholder:text-[#B6A284]
+                             focus:outline-none focus:border-[#8B5E3C] focus:bg-white"
+                  required
+                />
+                <button
+                  type="button"
+                  aria-label={showPwd ? '隱藏密碼' : '顯示密碼'}
+                  onClick={() => setShowPwd((v) => !v)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center
+                             text-[#7A5232] hover:text-[#5A3E22]"
+                >
+                  <Icon name={showPwd ? 'visibility_off' : 'visibility'} className="text-lg" />
+                </button>
+              </div>
+              <p className="mt-1 text-[11px] text-[#9B7A4F]">預設密碼與帳號相同</p>
+            </div>
+
+            {error && (
+              <div className="px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
+                {error}
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 py-2.5 rounded-full border-2 border-[#C19A6B] bg-white/70 text-[#5A3E22] font-bold hover:bg-white"
+              >
+                取消
+              </button>
+              <button
+                type="submit"
+                disabled={submitting}
+                className={`flex-[1.4] py-2.5 rounded-full border-2 bg-gradient-to-b ${ctaBg}
+                           text-white font-game text-lg font-bold tracking-wide
+                           disabled:opacity-60 disabled:cursor-not-allowed
+                           hover:translate-y-0.5 transition-transform`}
+              >
+                {submitting ? '登入中…' : '登入'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function LoginPage() {
-  const { setRole } = useApp();
+  const { currentUser, loading } = useAuth();
   const navigate = useNavigate();
   const [openInfo, setOpenInfo] = useState(null);
+  const [loginVariant, setLoginVariant] = useState(null); // 'teacher' | 'student' | null
   const containerRef = useRef(null);
+
+  // 已登入者直接導向對應頁
+  useEffect(() => {
+    if (loading) return;
+    if (currentUser?.role === 'teacher') navigate('/teacher', { replace: true });
+    else if (currentUser?.role === 'student') navigate('/student', { replace: true });
+  }, [currentUser, loading, navigate]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -193,14 +301,13 @@ export default function LoginPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleSelect = (selectedRole) => {
-    setRole(selectedRole);
-    if (selectedRole === 'teacher') navigate('/teacher');
-    else navigate('/student');
-  };
-
+  const handleSelect = (variant) => () => setLoginVariant(variant);
   const handleToggleInfo = (variant) => () => {
     setOpenInfo((prev) => (prev === variant ? null : variant));
+  };
+  const handleLoginSuccess = (user) => {
+    setLoginVariant(null);
+    navigate(user.role === 'teacher' ? '/teacher' : '/student', { replace: true });
   };
 
   return (
@@ -213,11 +320,8 @@ export default function LoginPage() {
         backgroundRepeat: 'no-repeat',
       }}
     >
-      {/* ── 上方狀態列（手遊風） ──────────────────────────────── */}
       <div className="relative z-10 flex items-center justify-between mb-4 sm:mb-6 animate-fade-up">
-        {/* 左：吉祥物頭像 + 品牌字 */}
         <div className="flex items-center gap-3">
-          {/* 貓頭鷹吉祥物：直接顯示，僅柔軟落地陰影 */}
           <img
             src={mascotImg}
             alt="SciLens 吉祥物"
@@ -227,8 +331,6 @@ export default function LoginPage() {
             SciLens
           </span>
         </div>
-
-        {/* 右：木質齒輪設定按鈕（自製插圖，無外框） */}
         <button
           type="button"
           aria-label="設定"
@@ -237,17 +339,11 @@ export default function LoginPage() {
                      cursor-pointer flex items-center justify-center
                      drop-shadow-[0_4px_4px_rgba(91,66,38,0.35)]"
         >
-          <img
-            src={settingsIcon}
-            alt="設定"
-            className="w-16 h-16 sm:w-20 sm:h-20 object-contain"
-          />
+          <img src={settingsIcon} alt="設定" className="w-16 h-16 sm:w-20 sm:h-20 object-contain" />
         </button>
       </div>
 
-      {/* ── 主內容（垂直置中） ───────────────────────────────── */}
       <div className="relative z-10 flex-1 flex flex-col items-center justify-center">
-        {/* 中央標題（純文字，非互動不套框） */}
         <div className="text-center mb-12 sm:mb-16 animate-fade-up">
           <h1 className="font-game text-4xl sm:text-5xl font-black text-[#5A3E22] tracking-tight leading-none mb-2 drop-shadow-[0_3px_0_rgba(193,154,107,0.5)]">
             迷思概念診斷
@@ -257,30 +353,36 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* 兩個角色卡 */}
         <div ref={containerRef} className="w-full max-w-3xl flex flex-col sm:flex-row gap-6 sm:gap-12">
           <RoleCard
             variant="teacher"
             open={openInfo === 'teacher'}
             onToggleInfo={handleToggleInfo('teacher')}
-            onSelect={() => handleSelect('teacher')}
+            onSelect={handleSelect('teacher')}
           />
           <RoleCard
             variant="student"
             open={openInfo === 'student'}
             onToggleInfo={handleToggleInfo('student')}
-            onSelect={() => handleSelect('student')}
+            onSelect={handleSelect('student')}
           />
         </div>
       </div>
 
-      {/* ── 底部資訊（純文字，非互動不套框） ─────────────────── */}
       <div className="relative z-10 flex justify-center mt-4 sm:mt-6 animate-fade-up-delay-3">
         <p className="text-xs sm:text-sm font-medium text-[#5A3E22] flex items-center gap-1.5 drop-shadow-[0_1px_0_rgba(255,255,255,0.5)]">
           <Icon name="account_tree" filled className="text-[#7A5232] text-base" />
           水溶液單元 · INe-II-3-01 至 INe-Ⅲ-5-7（共 12 個知識節點）
         </p>
       </div>
+
+      {loginVariant && (
+        <LoginModal
+          variant={loginVariant}
+          onClose={() => setLoginVariant(null)}
+          onSuccess={handleLoginSuccess}
+        />
+      )}
     </div>
   );
 }

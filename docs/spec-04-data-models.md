@@ -1,65 +1,142 @@
 # SPEC-04: Data Models / 資料模型規格
 
+## 0. 全域狀態總覽
+
+| 來源 | 檔案 | 用途 | 起始版本 |
+|------|------|------|---------|
+| `AuthContext` | `src/context/AuthContext.jsx` | 當前登入者（role / name / id 等）+ login/logout | P1 |
+| `AppContext` | `src/context/AppContext.jsx` | UI 狀態（出題精靈、目前選中的 quiz/class）+ 治療 sessions（P4 前用 in-memory） | 既有；**P3 大幅瘦身** |
+| **React Query hooks** | `src/hooks/*.js` | classes / quizzes / scenarios / assignments / N1+N2 摘要的 fetch + cache + mutation | **P3 新增** |
+
+> **P1 重要變更**：原先 `AppContext.role / setRole` 已移除。任何元件需要當前角色，請改用 `useAuth().role`。
+>
+> **P3 重要變更**：原先 AppContext 直接持有的 `classes / quizzes / scenarioQuizzes / assignments` 與所有對應的 setters / save / add / update / remove 函式**全部移除**。改由 React Query hooks 提供：
+> - `useClasses()` / `useClass(classId)` / `useUpdateClassStudents()`
+> - `useQuizzes()` / `useQuiz(quizId)` / `useSaveQuiz()` / `useDeleteQuiz()`
+> - `useScenarios()` / `useScenario(id)` / `useSaveScenario()` / `useDeleteScenario()`
+> - `useAssignments(filters)` / `useAddAssignment()` / `useUpdateAssignment()` / `useRemoveAssignment()`
+> - `useStudent(studentId)` / `useResetStudentPassword()`
+> - `useGradeSummary()` / `useClassSummary()` — N1 / N2 mutation
+
+### 0.1 AuthContext（spec-13 §8）
+
+```js
+const { currentUser, loading, role, login, logout } = useAuth();
+```
+
+| 欄位 | 型別 | 說明 |
+|------|------|------|
+| `currentUser` | `{ id, account, role, name?, classId?, seat?, passwordWasDefault } \| null` | 由 `GET /api/auth/me` 帶回 |
+| `loading` | `boolean` | bootstrap 中（首次嘗試從 cookie 還原） |
+| `role` | `'teacher' \| 'student' \| null` | `currentUser?.role` 的捷徑 |
+| `login(account, password)` | `async → user` | 呼叫 `POST /api/auth/login`，set HttpOnly cookie，回傳 user |
+| `logout()` | `async` | 呼叫 `POST /api/auth/logout`，清 state |
+
+`AuthProvider` 必須包在 `AppProvider` 之外（見 `src/App.jsx`）。
+
+---
+
 ## 1. 全域狀態 (AppContext)
 
 **檔案**: `src/context/AppContext.jsx`
 
 使用 React Context API (`createContext` + `useContext`)，提供 `useApp()` Hook 存取全域狀態。
 
-### 1.1 狀態欄位
+### 1.1 狀態欄位（P3 後）
 
 | 欄位 | 型別 | 初始值 | 說明 |
 |------|------|--------|------|
-| `role` | `'teacher' \| 'student' \| null` | `null` | 當前使用者角色 |
-| `quizQuestions` | `Question[]` | `[...defaultQuestions]` | 出題精靈中正在編輯的題目 |
+| ~~`role`~~ | — | — | **P1 移除**：改由 `useAuth().role` 提供 |
+| `quizQuestions` | `Question[]` | `[...defaultQuestions]` | 出題精靈中正在編輯的題目（純 UI 狀態） |
 | `selectedNodeIds` | `string[]` | `['INe-II-3-02', 'INe-II-3-03', 'INe-II-3-05', 'INe-Ⅲ-5-4', 'INe-Ⅲ-5-7']` | 出題精靈中選定的知識節點 |
-| `classes` | `Class[]` | `CLASSES_DATA` | 所有班級資料 |
-| `currentClassId` | `string \| null` | `null` | 當前篩選的班級 ID（null = 全部） |
-| `currentClass` | `Class \| null` | 衍生值 | 當前選中的班級物件 |
-| `quizzes` | `Quiz[]` | `QUIZZES_DATA` | 所有考卷 |
-| `currentQuizId` | `string \| null` | `null` | 當前選中的考卷 ID |
-| `assignments` | `Assignment[]` | `ASSIGNMENTS_DATA` | 所有派題記錄（含 `type: 'diagnosis' \| 'scenario'`） |
-| `scenarioQuizzes` | `ScenarioQuiz[]` | `SCENARIO_QUIZZES_DATA` | 所有情境考卷（治療模組，spec-08） |
-| `treatmentSessions` | `Record<string, TreatmentSession>` | `{}` | 治療對話 sessions，key = ``${scenarioQuizId}__${studentId}`` |
-| `studentAnswers` | `StudentAnswer[]` | `[]` | 當前學生的作答記錄 |
-| `studentName` | `string` | `'學生'` | 學生名稱（固定值） |
-| `studentHistory` | `HistoryRecord[]` | `[]` | 學生過去的作答歷史 |
-| `activeStudentReport` | `HistoryRecord \| null` | `null` | 當前查看的學生報告 |
+| ~~`classes`~~ | — | — | **P3 移除**：改用 `useClasses()` |
+| `currentClassId` | `string \| null` | `null` | 當前篩選的班級 ID（純 UI 狀態，配合 dashboard URL query 同步） |
+| ~~`currentClass`~~ | — | — | **P3 移除**：用 `useClass(currentClassId).data` |
+| ~~`quizzes`~~ | — | — | **P3 移除**：改用 `useQuizzes()` |
+| `currentQuizId` | `string \| null` | `null` | 當前選中的考卷 ID（純 UI 狀態） |
+| ~~`assignments`~~ | — | — | **P3 移除**：改用 `useAssignments()` |
+| ~~`scenarioQuizzes`~~ | — | — | **P3 移除**：改用 `useScenarios()` |
+| ~~`treatmentSessions`~~ | — | — | **P4 移除**：改用 `useTreatmentSession() / useStartTreatmentSession() / useAppendTreatmentMessage()` 等 |
+| ~~`studentAnswers`~~ | — | — | **P4 移除**：作答即時 POST 至 `/api/answers`，dashboard 從 DB 拉 |
+| `studentName` | `string` | `'學生'` | 已被 `useAuth().currentUser.name` 取代，但保留相容 |
+| ~~`studentHistory`~~ | — | — | **P4 移除**：改用 `useStudentHistory(studentId)` 從 DB 拉 |
+| `activeStudentReport` | `HistoryRecord \| null` | `null` | 當前查看的學生報告（仍用 in-memory 暫存當前報告） |
 
 ### 1.2 衍生值
 
 | 欄位 | 型別 | 計算邏輯 |
 |------|------|----------|
-| `currentClass` | `Class \| null` | `classes.find(c => c.id === currentClassId) ?? null` |
 | `studentMisconceptions` | `string[]` | `studentAnswers.filter(a => a.diagnosis !== 'CORRECT').map(a => a.diagnosis)` |
 | `correctCount` | `number` | `studentAnswers.filter(a => a.diagnosis === 'CORRECT').length` |
 
-### 1.3 操作函式
+### 1.3 操作函式（P3 後保留的）
 
 | 函式 | 參數 | 說明 |
 |------|------|------|
-| `setRole(role)` | `'teacher' \| 'student' \| null` | 設定使用者角色 |
 | `setQuizQuestions(questions)` | `Question[]` | 更新精靈中的題目 |
 | `setSelectedNodeIds(ids)` | `string[]` | 更新精靈中選定的節點 |
 | `setCurrentClassId(id)` | `string \| null` | 切換篩選班級 |
 | `setCurrentQuizId(id)` | `string \| null` | 切換當前考卷 |
-| `updateClassStudents(classId, students)` | `string, Student[]` | 更新班級學生名單 |
-| `saveQuiz(quiz)` | `Quiz` | 新增或更新考卷（以 `id` 判斷） |
-| `addAssignment(assignment)` | `Assignment` (不含 id) | 新增派題記錄（自動生成 `assign-{timestamp}` ID，`type` 缺省為 `'diagnosis'`） |
-| `updateAssignment(id, updates)` | `string, Partial<Assignment>` | 部分更新派題記錄 |
-| `removeAssignment(id)` | `string` | 刪除派題記錄 |
-| `saveScenarioQuiz(scenarioQuiz)` | `ScenarioQuiz` | 新增或更新情境考卷（以 `id` 判斷，spec-08） |
-| `startTreatmentSession(scenarioQuizId, studentId)` | `string, number` | 啟動或取得既有治療 session（key 以 `${scenarioQuizId}__${studentId}` 形成） |
-| `appendTreatmentMessage(scenarioQuizId, studentId, questionIndex, message)` | `string, number, number, TreatmentMessage` | 追加一則對話訊息至指定題目 |
-| `updateTreatmentQuestionState(scenarioQuizId, studentId, questionIndex, patch)` | `string, number, number, Partial` | 更新某題的 phase/step/stage/hintLevel/requiresRestatement |
-| `advanceTreatmentQuestion(scenarioQuizId, studentId, nextIndex)` | `string, number, number` | 切換到下一題 |
-| `completeTreatmentSession(scenarioQuizId, studentId)` | `string, number` | 標記 session 完成 |
-| `getTreatmentSession(scenarioQuizId, studentId)` | `string, number` | 讀取單一 session |
-| `recordAnswer(questionId, selectedTag, diagnosis)` | `number, string, string` | 記錄/更新學生作答（同題覆蓋） |
-| `removeMisconception(diagnosisId)` | `string` | 將指定迷思診斷改為 'CORRECT'（學生否認後） |
-| `resetStudentAnswers()` | — | 清空學生作答記錄 |
-| `addToHistory(record)` | `HistoryRecord` | 新增歷史記錄並設為 activeStudentReport |
-| `setActiveStudentReport(record)` | `HistoryRecord \| null` | 設定當前查看的報告 |
+| `startTreatmentSession` / `appendTreatmentMessage` / `updateTreatmentQuestionState` / `advanceTreatmentQuestion` / `completeTreatmentSession` / `getTreatmentSession` | — | 治療 session 管理（P4 才搬 DB） |
+| `recordAnswer` / `removeMisconception` / `resetStudentAnswers` / `addToHistory` / `setActiveStudentReport` | — | 學生作答相關（P4 才搬 DB） |
+
+**P3 移除的 AppContext 函式（請改用 hooks）**：
+- `updateClassStudents` → `useUpdateClassStudents().mutate({ classId, students })`
+- `saveQuiz` → `useSaveQuiz().mutate(quiz)`
+- `addAssignment` / `updateAssignment` / `removeAssignment` → `useAddAssignment / useUpdateAssignment / useRemoveAssignment`
+- `saveScenarioQuiz` → `useSaveScenario().mutate(scenario)`
+
+### 1.4 React Query Hooks（P3 新增）
+
+**檔案位置**：`src/hooks/`
+
+統一使用 `@tanstack/react-query` v5。`QueryClientProvider` 在 `src/main.jsx` 包覆 `<App />` 之外。
+
+```jsx
+// src/hooks/useClasses.js
+export function useClasses() {
+  return useQuery({
+    queryKey: ['classes'],
+    queryFn: () => api.get('/classes'),
+  });
+}
+```
+
+| Hook | 對應 API | Cache key | 備註 |
+|------|---------|-----------|------|
+| `useClasses()` | `GET /api/classes` | `['classes']` | **教師專屬**。回傳 `ClassBrief[]`：`{ id, name, grade, subject, color, textColor, studentCount }` — **不包含** `students` 陣列 |
+| `useClass(classId)` | `GET /api/classes/{id}` | `['classes', classId]` | **教師專屬**。`ClassDetail` = `ClassBrief` + `students: StudentBrief[]` |
+| `useUpdateClassStudents()` | `PUT /api/classes/{id}/students` | invalidate `['classes']` | mutation |
+| `useStudent(studentId)` | `GET /api/students/{id}` | `['students', id]` | **教師**：含明文密碼 |
+| `useResetStudentPassword()` | `POST /api/students/{id}/reset-password` | invalidate `['students', id]` | mutation |
+| `useQuizzes()` | `GET /api/quizzes` | `['quizzes']` | 教師看全部；學生只回自己班級已被派發的 |
+| `useQuiz(quizId)` | `GET /api/quizzes/{id}` | `['quizzes', id]` | 含 questions + options；學生需該 quiz 已派至自己班級 |
+| `useSaveQuiz()` | `POST` 或 `PUT /api/quizzes[/{id}]` | invalidate `['quizzes']` | upsert（教師） |
+| `useDeleteQuiz()` | `DELETE /api/quizzes/{id}` | invalidate `['quizzes']` | （教師） |
+| `useScenarios()` | `GET /api/scenarios` | `['scenarios']` | 教師看全部；學生只回自己班級已被派發的 |
+| `useScenario(id)` | `GET /api/scenarios/{id}` | `['scenarios', id]` | 學生需該 scenario 已派至自己班級 |
+| `useSaveScenario()` | `POST` 或 `PUT /api/scenarios[/{id}]` | invalidate `['scenarios']` | upsert（教師） |
+| `useDeleteScenario()` | `DELETE /api/scenarios/{id}` | invalidate `['scenarios']` | （教師） |
+| `useAssignments(filters?)` | `GET /api/assignments?...` | `['assignments', filters]` | filters: `{ type, classId, quizId }`；學生隱式只看自己班；回傳含 `completionRate / submittedCount / totalStudents` 即時統計 |
+| `useAddAssignment()` | `POST /api/assignments` | invalidate `['assignments']` | |
+| `useUpdateAssignment()` | `PATCH /api/assignments/{id}` | invalidate `['assignments']` | |
+| `useRemoveAssignment()` | `DELETE /api/assignments/{id}` | invalidate `['assignments']` | |
+| `useGradeSummary()` | `POST /api/ai/grade-summary` | mutation only | N1，每次點擊重新呼叫；P4 後端從 DB 算統計 |
+| `useClassSummary()` | `POST /api/ai/class-summary` | mutation only | N2；P4 後端從 DB 算統計 |
+| **P4** ↓ | | | |
+| `useClassAnswers(quizId, classId)` | `GET /api/quizzes/{id}/answers?classId=` | `['answers', quizId, classId]` | 教師端查班級作答 |
+| `useQuizStats(quizId, classId?)` | `GET /api/quizzes/{id}/stats?classId=` | `['quiz-stats', quizId, classId]` | 取代 mock `getNodePassRates / getMisconceptionStudents` |
+| `useStudentHistory(studentId)` | `GET /api/students/{id}/history` | `['student-history', studentId]` | 學生個人作答歷史 |
+| `useRecordAnswer()` | `POST /api/answers` | invalidate stats / answers / history | 一次接受陣列 |
+| `useRecordFollowups()` | `POST /api/answers/{id}/followup` 一次多筆 | invalidate stats / answers / history | |
+| `useStartTreatmentSession()` | `POST /api/treatment/sessions/start` | mutation | 回傳 sessionId（已存在則拿既有） |
+| `useTreatmentSession(sessionId)` | `GET /api/treatment/sessions/{id}` | `['treatment-sessions', id]` | 完整 session + messages |
+| `useTreatmentSessionByKey(scenarioQuizId, studentId)` | `GET /api/treatment/sessions/by-key/...` | `['treatment-sessions', scenarioQuizId, studentId]` | 學生端 ScenarioChat 用 |
+| `useAppendTreatmentMessage()` | `POST /api/treatment/sessions/{id}/messages` | invalidate session | optimistic-friendly |
+| `useAdvanceTreatmentQuestion()` | `PATCH /api/treatment/sessions/{id}/advance` | invalidate session | |
+| `useCompleteTreatmentSession()` | `POST /api/treatment/sessions/{id}/complete` | invalidate session + treatment-logs | |
+| `useTreatmentLogs(filters)` | `GET /api/teachers/treatment-logs?...` | `['treatment-logs', filters]` | 教師端列表 |
+| `useTreatmentLog(sessionId)` | `GET /api/teachers/treatment-logs/{id}` | `['treatment-logs', sessionId]` | 教師端詳情 |
 
 ---
 
@@ -226,16 +303,56 @@ interface StudentAnswer {
 ### 2.7 HistoryRecord（學生歷史記錄）
 ```typescript
 interface HistoryRecord {
-  // 結構由 addToHistory() 呼叫者決定
-  // 通常包含：
+  // 結構由 addToHistory() 呼叫者決定，目前 StudentQuiz 寫入內容如下：
   quizId: string;
   quizTitle: string;
-  date: string;
-  correctCount: number;
-  totalQuestions: number;
-  misconceptions: string[];
+  completedAt: string;             // 'YYYY/M/D HH:mm:ss'（zh-TW 格式）
+  correctCount: number;            // 第二層診斷後的最終正確題數
+  misconceptions: string[];        // 最終確認的迷思 ID 清單（去重）
+  answers: StudentAnswer[];        // 各題作答（diagnosis 已依 statusChange 修正）
+  followUpResults: FollowUpResult[]; // 第二層追問完整記錄
 }
 ```
+
+### 2.7.1 FollowUpResult（第二層 AI 追問結果）
+
+每題追問完成後產出一筆 `FollowUpResult`，存於 `HistoryRecord.followUpResults`。
+
+```typescript
+interface FollowUpResult {
+  questionId: number;            // 對應題號
+  followUpRounds: number;        // 實際追問輪數（1-3）
+  conversationLog: ConversationMessage[]; // AI/學生交替的完整對話
+  diagnosis: FollowUpDiagnosis;
+}
+
+interface ConversationMessage {
+  role: 'ai' | 'student';
+  content: string;
+}
+
+interface FollowUpDiagnosis {
+  finalStatus: 'CORRECT' | 'MISCONCEPTION' | 'UNCERTAIN';
+  misconceptionCode: string | null;        // 確認的迷思 ID（如 'M02-1'）
+  misconceptionSource: string | null;      // 學生在 R3 source 策略中陳述的來源
+  reasoningQuality: 'SOLID' | 'PARTIAL' | 'WEAK' | 'GUESSING';
+  aiSummary: string;                       // AI 對該題的摘要說明
+  statusChange: {
+    from: string;                          // 第一層判定（'CORRECT' 或迷思 ID）
+    to: string | null;                     // 第二層判定
+    changeType: 'CONFIRMED' | 'UPGRADED' | 'DOWNGRADED' | 'DISCOVERED';
+  };
+}
+```
+
+**狀態變更說明**：
+
+| changeType | 觸發情境 | 對 answers 的影響 |
+|-----------|---------|------------------|
+| CONFIRMED | 第一層與第二層判定一致 | 不變 |
+| UPGRADED | 第一層判迷思但追問顯示正確理解 | 該題 diagnosis 改為 'CORRECT'（呼叫 removeMisconception） |
+| DOWNGRADED | 第一層答對但追問顯示猜測／迷思 | 該題 diagnosis 改為 misconceptionCode |
+| DISCOVERED | 追問中浮現第一層未偵測的新迷思 | 暫未實作（保留欄位） |
 
 ### 2.8 ScenarioQuestion（情境題，治療模組）
 **來源**: `src/data/scenarioQuizData.js`

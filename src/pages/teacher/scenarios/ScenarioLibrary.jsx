@@ -1,6 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import TeacherLayout from '../../../components/TeacherLayout';
-import { useApp } from '../../../context/AppContext';
+import { useScenarios } from '../../../hooks/useScenarios';
+import { useAssignments } from '../../../hooks/useAssignments';
+import { useClasses } from '../../../hooks/useClasses';
 import { knowledgeNodes } from '../../../data/knowledgeGraph';
 
 /* 情境考卷庫（spec-08 §5.1）
@@ -8,7 +10,9 @@ import { knowledgeNodes } from '../../../data/knowledgeGraph';
  */
 export default function ScenarioLibrary() {
   const navigate = useNavigate();
-  const { scenarioQuizzes, assignments, classes } = useApp();
+  const { data: scenarioQuizzes = [], isLoading } = useScenarios();
+  const { data: assignments = [] } = useAssignments();
+  const { data: classes = [] } = useClasses();
 
   const getAssignedClasses = (scenarioQuizId) => {
     const classIds = [
@@ -23,11 +27,11 @@ export default function ScenarioLibrary() {
 
   return (
     <TeacherLayout>
-      <div className="p-8">
+      <div className="p-4 sm:p-6 md:p-8">
         {/* 頁首 */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-wrap items-start justify-between mb-6 sm:mb-8 gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-[#2D3436]">情境出題</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">情境出題</h1>
             <p className="text-[#636E72] mt-1 text-sm">
               情境考卷以「論證情境 + AI 對話治療」進行（認知師徒制）。流程：建立情境考卷 → 派發給班級 → 學生與 AI 對話 → 教師查紀錄。
             </p>
@@ -45,7 +49,10 @@ export default function ScenarioLibrary() {
         </div>
 
         {/* 情境考卷列表 */}
-        {scenarioQuizzes.length === 0 ? (
+        {isLoading && (
+          <div className="text-[#636E72] text-sm mb-4">載入中…</div>
+        )}
+        {!isLoading && scenarioQuizzes.length === 0 ? (
           <EmptyState onCreate={() => navigate('/teacher/scenarios/create')} />
         ) : (
           <div className="space-y-4">
@@ -77,7 +84,7 @@ export default function ScenarioLibrary() {
                       </div>
                       <h3 className="text-lg font-bold text-[#2D3436] mb-1">{sq.title}</h3>
                       <p className="text-xs text-[#95A5A6] mb-3">
-                        建立於 {sq.createdAt} · 共 {sq.questions.length} 題情境
+                        建立於 {sq.createdAt} · 共 {sq.questionCount} 題情境
                       </p>
 
                       {/* 目標節點 */}

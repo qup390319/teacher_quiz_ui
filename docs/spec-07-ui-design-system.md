@@ -539,6 +539,44 @@ ease-[cubic-bezier(0.34,1.56,0.64,1)]
 - **`md:`**：（≥ 768px），更多 padding
 - **`lg:`**：desktop（≥ 1024px）
 
+#### RWD 共通慣例（必遵守）
+
+> **目標**：手機 / 平板 / 桌機都不破版。修改任何頁面 / 元件 visual 時務必檢查以下五點。
+
+1. **頁面外層 padding**：教師端頁面一律用 `p-4 sm:p-6 md:p-8`，學生端頁面用 `p-3 sm:p-4 md:p-5`。**禁止**單寫 `p-8`。
+2. **頁面標題大小**：`text-xl sm:text-2xl`（H1）或 `text-lg sm:text-xl`（H2）。**禁止**單寫 `text-2xl`。
+3. **多欄統計卡 / 知識卡**：手機強制兩欄或單欄。
+   - 4 欄 stat → `grid-cols-2 lg:grid-cols-4`
+   - 3 欄列表 → `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`
+   - 動態欄數（按班級數）→ `grid-cols-1 sm:grid-cols-2 lg:[grid-template-columns:var(--cols-lg)]` + CSS variable 注入
+4. **寬表格**：超過 7 欄或 fixed 寬度的 table / grid，**必須**包 `overflow-x-auto` 並在 child 設 `min-w-[Npx]` 維持可讀寬度。
+5. **頁首 / Tab 列 / 表單列**：用 `flex flex-wrap` + `gap-y` 讓元素在窄螢幕自動換行；標題 + 按鈕並列時加 `flex-wrap`。
+
+#### 教師端側欄抽屜模式（TeacherLayout）
+
+- `< md`（< 768px）：側欄改成從左滑入的 drawer。
+  - 主內容區頂部出現 sticky 漢堡列（左：menu icon、右：縮小版 SciLens logo）
+  - 點漢堡開抽屜（`fixed inset-0 z-40`），有半透明 backdrop 可點擊關閉
+  - 抽屜寬 `w-72 max-w-[85vw]`、`-translate-x-full` ↔ `translate-x-0` 滑動
+  - 路由切換時自動關閉
+  - 開啟時 lock body scroll
+- `≥ md`：抽屜隱藏，回到 `w-60` 固定側欄
+
+實作參考：`src/components/TeacherLayout.jsx`
+
+#### 表格 overflow 範例
+
+```jsx
+<div className="bg-white rounded-[24px] sm:rounded-[32px] border ... overflow-hidden">
+  <div className="overflow-x-auto">
+    <table className="w-full text-sm min-w-[760px]">
+      ...
+    </table>
+  </div>
+  {/* 表格外的 footer / form 不需放在 overflow-x-auto 內 */}
+</div>
+```
+
 ---
 
 ## 8. 套用到新頁面的 Checklist

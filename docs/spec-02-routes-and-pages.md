@@ -3,7 +3,18 @@
 ## 1. 路由架構
 
 所有路由定義於 `src/App.jsx`，使用 `react-router-dom` 的 `BrowserRouter` + `Routes` + `Route`。
-全域狀態透過 `AppProvider` 包裹所有路由。
+全域狀態以 `<AuthProvider> > <AppProvider>` 巢狀包裹所有路由。
+
+### 1.0 受保護路由（P1 起）
+
+`src/components/RequireAuth.jsx` 提供 `<RequireAuth role="teacher|student">` wrapper：
+- bootstrap 中（`useAuth().loading=true`）顯示「載入中…」
+- 未登入 → `<Navigate to="/" replace />`
+- role 不符 → `<Navigate to="/" replace />`
+
+所有 `/teacher/*` 路由由 `<RequireAuth role="teacher">` 包起，所有 `/student/*` 路由由 `<RequireAuth role="student">` 包起。`/` 與 `*`（404）不受保護。
+
+詳見 spec-13 §8。
 
 ### 1.1 路由對照表
 
@@ -394,7 +405,7 @@
 - 進入 panel 的視覺過渡靠米紙圓角頂 + 上邊木紋色邊（取代複雜 SVG 波浪）
 
 **2. HUD 一條**：
-- 左：返回 `WoodIconButton size="sm"` + `AvatarPill`
+- 左：登出 `WoodIconButton size="sm"`（`arrow_back` 圖示，`aria-label="登出"`，點擊呼叫 `useAuth().logout()` 後 `navigate('/', { replace: true })`，避免 LoginPage auto-redirect 反彈回 `/student`） + `AvatarPill`
   - AvatarPill = 木框內 [avatar img] + 「🎓 班級名」+ **學習進度條**（探索的概念 % + 數字）
   - mobile (`<sm`)：只顯示 avatar 圖示，隱藏文字 + 進度條
 - 右：合併三項統計 pill（`CombinedStats`，木框內 3 cell 用直線分隔，每 cell = icon + 數字無 label）+ 設定齒輪

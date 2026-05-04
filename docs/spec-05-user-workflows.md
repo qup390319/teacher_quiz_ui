@@ -1,5 +1,29 @@
 # SPEC-05: User Workflows / 使用者操作流程規格
 
+## 0. 認證流程（P1 起）
+
+```
+使用者打開 / → LoginPage
+    │
+    ├─ 點教師卡 / 學生卡 → 彈出 LoginModal
+    │   ├─ 輸入帳號 + 密碼
+    │   ├─ 提交 → 呼叫 useAuth().login() → POST /api/auth/login
+    │   ├─ 401 → 顯示「帳號或密碼錯誤」
+    │   ├─ 成功 → 後端 set HttpOnly cookie (JWT) + 回傳 user
+    │   └─ 依 user.role 導向 /teacher 或 /student
+    │
+    ├─ 受保護路由由 <RequireAuth role="..."> 把關
+    │   ├─ 未登入 → Navigate 到 /
+    │   ├─ role 不符 → Navigate 到 /
+    │   └─ role 相符 → 渲染目標頁
+    │
+    └─ TeacherLayout 側邊欄「登出」按鈕 → useAuth().logout() → /
+```
+
+詳見 spec-13。
+
+---
+
 ## 1. 教師端工作流程
 
 ### 1.1 核心三步驟流程
@@ -39,6 +63,9 @@
         ├─ 系統根據選定節點載入對應預設題目
         ├─ 可編輯題幹 (stem)
         ├─ 可編輯各選項內容 (content)
+        │    └─ 每個非正解選項旁有「✨ 建議」按鈕（N6, spec-12 §7）
+        │         開啟 DistractorSuggestPopover → 後端呼叫 RAGFlow
+        │         取得文獻檢索的真實學生說法 3 條，可一鍵採用 / 再來 3 條
         ├─ 可調整各選項的迷思對應 (diagnosis)
         ├─ 點擊「儲存」→ 呼叫 saveQuiz()
         └─ 儲存成功後導航至考卷庫
@@ -152,7 +179,7 @@
 
 ### 2.1 完整作答流程
 
-作答流程分為三個階段（Phase）：`intro` → `question` → `confirming` → `done`
+作答流程分為四個階段（Phase）：`intro` → `question` → `followUp` → `done`
 
 ```
 學生從首頁選擇「學生端」
@@ -165,62 +192,90 @@
     ├─ 進入 /student/quiz/:quizId (StudentQuiz)
     │   │
     │   ├─ Phase: intro
-    │   │   ├─ 逐條顯示 3 則歡迎訊息（SystemBubble）
+    │   │   ├─ 逐條顯示 3 則歡迎訊息（科學偵探開場、預告兩階段流程、降低壓力）
     │   │   └─ 完成後自動進入 question phase
     │   │
-    │   ├─ Phase: question（逐題作答，無即時對錯回饋）
+    │   ├─ Phase: question（第一階段：逐題作答，無即時對錯回饋）
     │   │   ├─ SystemBubble 顯示知識節點名稱 + 題號
     │   │   ├─ SystemBubble 顯示題幹
     │   │   ├─ 學生選擇選項（底部面板顯示 4 個選項按鈕）
     │   │   ├─ StudentBubble 顯示學生選擇的選項內容
     │   │   ├─ 呼叫 recordAnswer(q.id, opt.tag, opt.diagnosis)
     │   │   ├─ **不顯示對錯回饋**，直接進入下一題
-    │   │   └─ 最後一題完成後 → 進入 confirming phase
+    │   │   └─ 最後一題完成後 → 進入 followUp phase
     │   │
-    │   ├─ Phase: confirming（批次迷思確認）
-    │   │   ├─ 收集所有不重複的迷思概念 ID（diagnosis !== 'CORRECT'）
-    │   │   ├─ 若無迷思概念 → 直接進入 done phase
-    │   │   ├─ 若有迷思概念 → 逐一確認：
-    │   │   │   ├─ SystemBubble：「我想再確認一件事，看看我有沒有理解錯你的想法。」
-    │   │   │   ├─ SystemBubble：顯示 confirmQuestion
-    │   │   │   ├─ 底部面板顯示兩個按鈕：
-    │   │   │   │   ├─ 「對，我是這樣想的」→ 保留迷思診斷
-    │   │   │   │   └─ 「不，我不這樣認為」→ removeMisconception(id) 改為 CORRECT
-    │   │   │   └─ 進入下一個迷思確認（或結束）
-    │   │   └─ 所有確認完成 → 進入 done phase
+    │   ├─ Phase: followUp（第二階段：AI 開放式追問）
+    │   │   ├─ 過渡訊息：「選擇題的部分結束了！接下來想跟你聊聊剛才的幾道題⋯」
+    │   │   ├─ **所有題目皆進入第二層**（不論答對答錯）
+    │   │   ├─ 對每一題執行 1～3 輪追問迴圈：
+    │   │   │   ├─ Round 1：AI 以開放式問句問學生選擇理由
+    │   │   │   │   - buildRound1Message(option, isCorrect) 產生模板
+    │   │   │   │   - 答對：「能跟老師說說你是怎麼想的嗎？」
+    │   │   │   │   - 答錯：「為什麼覺得這個最合理？」
+    │   │   │   ├─ 學生在底部 textarea 自由文字回覆 → 觸發 processStudentReply()
+    │   │   │   ├─ AI 引擎依學生回覆動態決定四種策略之一：
+    │   │   │   │   - deepen（情境 C：答對且呼應正確概念，延伸確認）
+    │   │   │   │   - guess（情境 D：答對但理由模糊，遷移情境釐清）
+    │   │   │   │   - fuzzy（情境 A：模糊回覆，提供具體情境引導）
+    │   │   │   │   - contrast（情境 B：呼應迷思推理，提供對比情境）
+    │   │   │   ├─ Round 2：依策略發出對應追問
+    │   │   │   ├─ Round 3：必要時觸發
+    │   │   │   │   - source（探究迷思來源）
+    │   │   │   │   - ab（二選一比較，降低開放度）
+    │   │   │   │   - transfer（遷移測試）
+    │   │   │   ├─ 任一輪達成終止條件 → 產出 finalDiagnosis
+    │   │   │   │   { finalStatus, misconceptionCode, reasoningQuality, aiSummary, statusChange }
+    │   │   │   ├─ 依 statusChange 反向修正 answers：
+    │   │   │   │   - UPGRADED → 呼叫 removeMisconception() 將該題改為 CORRECT
+    │   │   │   │   - DOWNGRADED → 將該題改為 misconceptionCode
+    │   │   │   ├─ AI 摘要訊息送出後切到下一題的 Round 1
+    │   │   │   └─ **學生不可跳過追問**，至少完成 1 輪
+    │   │   └─ 所有題目追問完成 → 進入 done phase
     │   │
     │   └─ Phase: done
     │       ├─ 顯示完成訊息
-    │       ├─ addToHistory(record) 記錄至歷史
+    │       ├─ addToHistory(record)（含 followUpResults）
     │       └─ 自動導航至 /student/report（延遲 1800ms）
     │
     └─ 進入 /student/report (StudentReport)
-        ├─ 顯示正確率統計
-        ├─ 列出被診斷的迷思概念
+        ├─ 顯示掌握 / 待更新概念數
+        ├─ 列出被確認的迷思概念
         │   ├─ 迷思標籤 (label)
         │   ├─ 學生端說明 (studentDetail)
+        │   ├─ **「你在對話中提到」引用**（取自 followUpResults.conversationLog 的第一則學生回覆）
         │   └─ 學習提示 (studentHint)
+        ├─ **「答對了，但可以更深入理解」黃色區塊**（reasoningQuality 為 WEAK / GUESSING 的題目）
+        ├─ 下一步學習建議
         └─ 返回首頁按鈕
 ```
 
 ### 2.2 迷思概念診斷機制
 
-診斷流程為兩階段制，兩階段分開執行：
+診斷流程為兩層次制：
 
-**第一階段：作答自動診斷（question phase 中）**
+**第一層：作答自動診斷（question phase 中）**
 - 每題作答時，根據選項的 `diagnosis` 欄位即時記錄：
   - `'CORRECT'` → 記錄為正確
   - 迷思概念 ID（如 `'M02-1'`）→ 記錄為該迷思概念
 - 此階段**不給予任何對錯回饋**，學生不知道自己答對或答錯
-- 所有題目作答完成後，才進入第二階段
+- 所有題目作答完成後，才進入第二層
 
-**第二階段：批次迷思確認（confirming phase）**
-- 從所有作答記錄中收集不重複的迷思概念 ID
-- 逐一向學生展示 `confirmQuestion`（確認問題）
-- 學生可選擇：
-  - **「對，我是這樣想的」**→ 保留迷思診斷記錄
-  - **「不，我不這樣認為」**→ 呼叫 `removeMisconception(misconceptionId)` 將相關作答的 diagnosis 改為 `'CORRECT'`
-- **注意**: `studentDetail` 和 `studentHint` 不在此階段顯示，僅在最終的 StudentReport 頁面中呈現
+**第二層：AI 開放式追問（followUp phase）**
+- 由 `followUpEngine.processStudentReply()` 模擬 AI 動態決定追問策略
+- **對所有題目進行追問**（不論答對答錯），每題 1～3 輪
+- 學生以自由文字回覆，AI 依文字長度＋關鍵詞匹配判讀：
+  - 模糊關鍵詞（不知道／猜的／感覺等）→ 觸發具體情境引導或二選一
+  - 知識節點正確概念關鍵詞 → 確認 reasoningQuality 為 SOLID／PARTIAL
+  - 對應迷思的關鍵詞 → 確認迷思並探究來源
+- 終止後產出 `finalDiagnosis`：
+  - `finalStatus`: `'CORRECT' | 'MISCONCEPTION' | 'UNCERTAIN'`
+  - `reasoningQuality`: `'SOLID' | 'PARTIAL' | 'WEAK' | 'GUESSING'`
+  - `statusChange.changeType`: `'CONFIRMED' | 'UPGRADED' | 'DOWNGRADED' | 'DISCOVERED'`
+- 依 statusChange 自動修正第一層作答記錄：
+  - **UPGRADED**（學生選錯但追問展現正確理解）→ `removeMisconception(id)` 改為 CORRECT
+  - **DOWNGRADED**（學生選對但追問顯示猜測或迷思）→ 將 diagnosis 改為迷思碼
+- **注意**: `studentDetail`、`studentHint` 不在此階段顯示，僅在最終 StudentReport 中呈現
+- **目前實作備註**: 因尚未接後端 LLM，`followUpEngine` 為純前端模板＋啟發式判讀模擬；未來接上 LLM 後僅替換引擎內部，對外 API 不變
 
 ---
 
