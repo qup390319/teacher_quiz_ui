@@ -181,7 +181,16 @@ export default function StudentHome() {
       navigate(`/student/scenario/${task.scenarioQuizId}`);
       return;
     }
-    if (task.bestRecord) handleViewReport(task.bestRecord);
+    // 在記憶體中有剛剛完成的快照 → 直接用，最完整（含 conversationLog 等）。
+    // 否則（先前 session 完成、或才剛重新登入）→ 改由 StudentReport 透過
+    // /api/students/{id}/history 撈摘要顯示。
+    if (task.bestRecord) {
+      handleViewReport(task.bestRecord);
+    } else {
+      setActiveStudentReport(null);
+      setCurrentQuizId(task.quizId);
+      navigate(`/student/report?quizId=${encodeURIComponent(task.quizId)}`);
+    }
   };
 
   const hasDiagnosis = diagnosisTasks.pending.length + diagnosisTasks.completed.length > 0;

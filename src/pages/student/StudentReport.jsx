@@ -1,23 +1,36 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
+import { useStudentHistory } from '../../hooks/useStudents';
 import { getQuizQuestions } from '../../data/quizData';
 import { knowledgeNodes } from '../../data/knowledgeGraph';
 
 export default function StudentReport() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { currentQuizId, activeStudentReport } = useApp();
+  const { currentUser } = useAuth();
 
-  // P4: canonical 來源是 DB（useStudentHistory），但「剛剛完成的測驗」走 in-memory
-  // 暫存路徑（activeStudentReport），避免 race condition + 不必要的 server 來回。
-  const reportQuizId = activeStudentReport?.quizId || currentQuizId || 'quiz-001';
+  // P4: canonical 來源是 DB（/api/students/{id}/history），但「剛剛完成的測驗」
+  // 走 in-memory 暫存路徑（activeStudentReport），避免 race condition + 不必要
+  // 的 server 來回。重新登入後沒有 in-memory 快照時 fall back 撈 DB 摘要。
+  const queryQuizId = searchParams.get('quizId');
+  const reportQuizId = activeStudentReport?.quizId || queryQuizId || currentQuizId || 'quiz-001';
+  const needBackend = !activeStudentReport;
+  const { data: history = [] } = useStudentHistory(currentUser?.id, { enabled: needBackend });
+  const backendRow = needBackend ? history.find((h) => h.quizId === reportQuizId) : null;
+
   const reportQuestions = getQuizQuestions(reportQuizId);
   const answerSource = activeStudentReport?.answers || [];
-  const misconceptionSource = activeStudentReport?.misconceptions || [];
+  const misconceptionSource =
+    activeStudentReport?.misconceptions || backendRow?.misconceptions || [];
   const followUpResults = activeStudentReport?.followUpResults || [];
-  const hasAnswers = answerSource.length > 0;
-  const totalQuestions = reportQuestions.length || 5;
-  const displayCorrect = hasAnswers ? (activeStudentReport?.correctCount ?? 0) : 2;
-  const displayWrong = hasAnswers ? totalQuestions - displayCorrect : 3;
+  const hasFullAnswers = answerSource.length > 0;            // in-memory detailed
+  const hasAnswers = hasFullAnswers || !!backendRow;         // any source has data
+  const totalQuestions =
+    activeStudentReport?.totalQuestions ?? backendRow?.totalQuestions ?? reportQuestions.length ?? 5;
+  const displayCorrect = activeStudentReport?.correctCount ?? backendRow?.correctCount ?? (hasAnswers ? 0 : 2);
+  const displayWrong = totalQuestions - displayCorrect;
 
   /* 答對但 reasoningQuality 為 WEAK / GUESSING 的題目（spec §3.7 黃色標記） */
   const weakCorrectResults = followUpResults.filter((r) =>
@@ -39,7 +52,8 @@ export default function StudentReport() {
       const node = knowledgeNodes.find((n) => n.misconceptions.find((m) => m.id === mId));
       const miscon = node?.misconceptions.find((m) => m.id === mId);
       if (!node || !miscon) return null;
-      const relatedQs = hasAnswers
+      // 有完整作答快照（剛做完那次）→ 對到該題；只有 DB 摘要 → 列出該迷思可能對應的題目。
+      const relatedQs = hasFullAnswers
         ? answerSource
             .filter((a) => a.diagnosis === mId)
             .map((a) => reportQuestions.find((q) => q.id === a.questionId))
@@ -49,9 +63,15 @@ export default function StudentReport() {
     })
     .filter(Boolean);
 
-  const wrongNodeIds = (hasAnswers
+  // 從迷思清單反查涉及的知識節點（in-memory 快照可從 answerSource 直接拿，
+  // DB 摘要則靠迷思 → 節點對應）。
+  const wrongNodeIds = (hasFullAnswers
     ? answerSource.filter((a) => a.diagnosis !== 'CORRECT').map((a) => reportQuestions.find((q) => q.id === a.questionId)?.knowledgeNodeId)
-    : ['INe-II-3-02', 'INe-Ⅲ-5-4']
+    : hasAnswers
+      ? misconceptionSource
+          .map((mId) => knowledgeNodes.find((n) => n.misconceptions.find((m) => m.id === mId))?.id)
+          .filter(Boolean)
+      : ['INe-II-3-02', 'INe-Ⅲ-5-4']
   ).filter(Boolean);
 
   const uniqueWrongNodes = [...new Set(wrongNodeIds)];

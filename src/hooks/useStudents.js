@@ -21,3 +21,13 @@ export function useResetStudentPassword() {
     },
   });
 }
+
+/** Aggregated quiz history for a student (one row per quiz, latest attempt). */
+export function useStudentHistory(studentId, opts = {}) {
+  return useQuery({
+    queryKey: ['students', studentId, 'history'],
+    queryFn: () => api.get(`/students/${studentId}/history`),
+    enabled: !!studentId && (opts.enabled ?? true),
+    ...opts,
+  });
+}

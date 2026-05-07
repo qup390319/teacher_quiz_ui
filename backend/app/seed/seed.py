@@ -22,6 +22,7 @@ from app.db.models import (
     Assignment,
     AssignmentStudent,
     Class,
+    FollowupResult,
     Quiz,
     QuizOption,
     QuizQuestion,
@@ -287,6 +288,53 @@ async def seed_student_answers(db: AsyncSession) -> int:
     return inserted
 
 
+async def seed_followups(db: AsyncSession) -> int:
+    """Mock N3 follow-up dialogues for non-CORRECT answers.
+
+    Each StudentAnswer whose diagnosis is a misconception code (M??-?) gets a
+    FollowupResult with a 4-message conversation_log so the dashboard shows
+    something when teachers click into followup conversations and so the
+    student's own report has chat content.
+
+    Idempotent: skips any answer that already has a follow-up.
+    """
+    res = await db.execute(
+        select(StudentAnswer).where(StudentAnswer.diagnosis != "CORRECT"),
+    )
+    answers = list(res.scalars().all())
+    if not answers:
+        return 0
+
+    have_res = await db.execute(
+        select(FollowupResult.student_answer_id)
+        .where(FollowupResult.student_answer_id.in_([a.id for a in answers])),
+    )
+    have = {row[0] for row in have_res.all()}
+
+    inserted = 0
+    for a in answers:
+        if a.id in have:
+            continue
+        m = a.diagnosis  # e.g. "M02-4"
+        convo = [
+            {"role": "assistant", "content": f"我注意到你選了 {a.selected_tag}。可以說說你為什麼這樣想嗎？"},
+            {"role": "student",   "content": f"我覺得這選項看起來最合理，所以選 {a.selected_tag}。"},
+            {"role": "assistant", "content": "很好，那我們來想想看：如果把溶液繼續加水稀釋，那些溶質會發生什麼變化？"},
+            {"role": "student",   "content": "嗯…我想可能會慢慢消失，因為溶解就是不見了。"},
+        ]
+        db.add(FollowupResult(
+            student_answer_id=a.id,
+            conversation_log=convo,
+            final_status="MISCONCEPTION",
+            misconception_code=m,
+            reasoning_quality="WEAK",
+            status_change={},
+            ai_summary=f"學生對 {m} 的概念仍有迷思，傾向把溶解視為物質消失。建議從重量守恆切入再次討論。",
+        ))
+        inserted += 1
+    return inserted
+
+
 async def run_seed(*, if_empty: bool, reset: bool) -> None:
     async with AsyncSessionLocal() as db:
         if reset:
@@ -303,11 +351,13 @@ async def run_seed(*, if_empty: bool, reset: bool) -> None:
         await db.commit()  # commit so seed_student_answers can query above rows
         n_ans = await seed_student_answers(db)
         await db.commit()
+        n_fup = await seed_followups(db)
+        await db.commit()
         print(
             f"[seed] done — teachers {TEACHER_ACCOUNT} (demo) + {PROD_TEACHER_ACCOUNT} ({PROD_TEACHER_NAME}, empty), "
             f"{sum(len(c['students']) for c in CLASSES)} students across {len(CLASSES)} classes, "
             f"{n_quiz} quizzes, {n_scen} scenarios, {n_asg} assignments, "
-            f"{n_ans} student answers.",
+            f"{n_ans} student answers, {n_fup} follow-up conversations.",
         )
 
 
