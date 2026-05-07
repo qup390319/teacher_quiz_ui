@@ -293,6 +293,7 @@ async def get_student(
 - state: `currentUser`（`null` 或 `{id, role, name, ...}`）+ `loading`（bootstrap 中）
 - 啟動時呼叫 `GET /api/auth/me` 嘗試從 cookie 還原
 - 提供 `login(account, password)` / `logout()`
+- **`login` 與 `logout` 都必須呼叫 `queryClient.clear()`**：每位老師看到的 `/api/classes` / `/api/assignments` / `/api/students/{id}` 等資料都不同；若不清 React Query cache，新登入者在 staleTime（30s）內會看到上一位老師的列表，點進去 detail 才 404 NOT_FOUND。
 
 ### 8.2 受保護路由
 

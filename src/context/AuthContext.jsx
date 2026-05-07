@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from '../lib/api';
 
 const AuthContext = createContext(null);
@@ -16,6 +17,7 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true); // bootstrap 中
+  const queryClient = useQueryClient();
 
   // bootstrap：嘗試還原 session
   useEffect(() => {
@@ -37,14 +39,19 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(async (account, password) => {
     const { user } = await api.post('/auth/login', { account, password });
+    // Drop any cached data from the previous session — different teachers see
+    // different rows (classes/assignments/students/...). Without this, the new
+    // user briefly sees the prior user's lists from React Query's cache.
+    queryClient.clear();
     setCurrentUser(user);
     return user;
-  }, []);
+  }, [queryClient]);
 
   const logout = useCallback(async () => {
     try { await api.post('/auth/logout'); } catch {/* ignore */}
+    queryClient.clear();
     setCurrentUser(null);
-  }, []);
+  }, [queryClient]);
 
   const value = {
     currentUser,

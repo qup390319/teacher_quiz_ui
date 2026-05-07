@@ -8,7 +8,6 @@ import {
   buildClassAnswerRows,
   buildMisconceptionStudents,
   buildPassRates,
-  buildQuestionStats,
 } from './classReportData';
 import { getAssignment } from './helpers';
 import { buildClassSummaryPayload } from './summaryPayload';
@@ -28,7 +27,6 @@ export default function SingleClassReport({ cls, assignments, quizzes, quizId })
   // 從後端 API 派生出舊版 mock 介面 shape，子元件不需重寫
   const passRates = buildPassRates(stats);
   const misconStudents = buildMisconceptionStudents(stats, classAnswers);
-  const questionStats = buildQuestionStats(stats);
   const classAnswerRows = buildClassAnswerRows(classAnswers);
 
   // 該班的學生人數：以 stats.studentCount 為準（DB students 表）
