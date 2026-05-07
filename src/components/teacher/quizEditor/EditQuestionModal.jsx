@@ -10,6 +10,7 @@ export default function EditQuestionModal({ question, selectedNodeIds, onSave, o
 
   const currentNode = getNodeById(nodeId);
   const availableMisconceptions = currentNode ? currentNode.misconceptions : [];
+  const hasStem = stem.trim().length > 0;
 
   const updateOption = (idx, field, value) => {
     setOptions((prev) => prev.map((o, i) => i === idx ? { ...o, [field]: value } : o));
@@ -33,7 +34,10 @@ export default function EditQuestionModal({ question, selectedNodeIds, onSave, o
         </div>
         <div className="p-6 space-y-5">
           <div>
-            <label className="block text-sm font-semibold text-[#2D3436] mb-2">題幹內容</label>
+            <label className="block text-sm font-semibold text-[#2D3436] mb-2">
+              題幹內容
+              <span className="text-xs font-normal text-[#95A5A6] ml-2">（請先輸入題幹再產生選項建議）</span>
+            </label>
             <textarea
               value={stem}
               onChange={(e) => setStem(e.target.value)}
@@ -72,11 +76,17 @@ export default function EditQuestionModal({ question, selectedNodeIds, onSave, o
                     <button
                       type="button"
                       onClick={() => setSuggestForIdx(idx)}
-                      disabled={opt.diagnosis === 'CORRECT'}
+                      disabled={opt.diagnosis === 'CORRECT' || !hasStem}
                       className="flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold
                                  text-[#7A5232] bg-[#FBE9C7] border border-[#D9C58E] rounded-lg
                                  hover:bg-[#F4DDA8] disabled:opacity-40 disabled:cursor-not-allowed"
-                      title={opt.diagnosis === 'CORRECT' ? '正解選項不需建議' : '從文獻檢索 3 條學生真實說法（N6）'}
+                      title={
+                        opt.diagnosis === 'CORRECT'
+                          ? '正解選項不需建議'
+                          : !hasStem
+                            ? '請先填寫題幹，建議才能與題幹內容相關'
+                            : '從文獻檢索 3 條學生真實說法（N6）'
+                      }
                     >
                       <span aria-hidden="true">✨</span>
                       建議
@@ -124,6 +134,7 @@ export default function EditQuestionModal({ question, selectedNodeIds, onSave, o
           misconceptionLabel={suggestMisconception.label}
           misconceptionDetail={suggestMisconception.detail}
           currentText={suggestTarget.content}
+          stem={stem}
           onAdopt={(text) => {
             updateOption(suggestForIdx, 'content', text);
             setSuggestForIdx(null);

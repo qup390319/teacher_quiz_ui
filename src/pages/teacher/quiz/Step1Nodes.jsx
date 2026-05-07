@@ -52,25 +52,37 @@ function Arrow({ multi = false }) {
   );
 }
 
-function NodePill({ node, colorClass, isSelected }) {
+function NodePill({ node, colorClass, isSelected, onToggle }) {
   const bg = isSelected ? colorClass.bg : 'bg-[#EEF5E6]';
   const border = isSelected ? colorClass.border : 'border-[#D5D8DC]';
   const text = isSelected ? colorClass.text : 'text-[#95A5A6]';
+  const hoverBg = isSelected ? '' : 'hover:bg-white hover:border-[#BDC3C7]';
   return (
-    <div className={`rounded-xl border px-3 py-1.5 min-w-[128px] transition-colors ${bg} ${border}`}>
+    <button
+      type="button"
+      onClick={() => onToggle(node.id)}
+      aria-pressed={isSelected}
+      className={`rounded-xl border px-3 py-1.5 min-w-[128px] text-left transition-colors cursor-pointer ${bg} ${border} ${hoverBg}`}
+    >
       <p className="text-xs font-mono text-[#95A5A6] leading-tight">{node.id}</p>
       <p className={`text-sm font-semibold leading-snug ${text}`}>{node.name}</p>
-    </div>
+    </button>
   );
 }
 
-function PathStage({ stage, nodes, selectedNodeIds }) {
+function PathStage({ stage, nodes, selectedNodeIds, onToggle }) {
   const colorClass = STAGE_COLORS[stage.color];
   return (
     <>
       <div className="flex-shrink-0 flex flex-col gap-1.5">
         {nodes(stage.ids).map((node) => (
-          <NodePill key={node.id} node={node} colorClass={colorClass} isSelected={selectedNodeIds.includes(node.id)} />
+          <NodePill
+            key={node.id}
+            node={node}
+            colorClass={colorClass}
+            isSelected={selectedNodeIds.includes(node.id)}
+            onToggle={onToggle}
+          />
         ))}
       </div>
       {stage.nextArrow === 'multi' && <Arrow multi />}

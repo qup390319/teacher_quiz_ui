@@ -88,7 +88,10 @@
   - `WOOD_INNER_CREAM` — 內層米色頁面（`from-[#FFF8E7] to-[#FBE9C7]` 漸層 + 白色半透明細邊 + `rounded-[22px]`）
 - **頂部狀態列（手遊風）**：
   - **左**：吉祥物頭像（木框內嵌 `irasutoya_hero.png`，`animate-breath`）+ 品牌 pill（`science` icon + `SciLens` 字樣，Fredoka 字體）
-  - **右**：齒輪設定按鈕（木框 + Material Symbols `settings`），hover 旋轉 45deg
+  - **右**：齒輪設定按鈕（`settings_wood.png`），hover 旋轉 90deg；點擊後在按鈕下方彈出**設定 popover**（木框風 + 上方箭頭），目前僅提供「字體大小」三段切換（小 14px / 中 16px / 大 18px，預設「中」）。
+    - 切換時呼叫 `src/lib/fontSize.js` 的 `setFontSize(value)`，將 `<html>` 的 `font-size` 設為對應像素值，並寫入 `localStorage['scilens-font-size']`；由於 Tailwind 以 rem 為主，整體 UI 比例會等比縮放
+    - `applyFontSize()` 在 `src/main.jsx` 啟動時呼叫一次，確保重新整理後保留偏好
+    - 點擊 popover 外部會自動關閉（共用 LoginPage 的 `mousedown` outside-click 機制）
 - **中央標題木牌**：木框包覆，內含「迷思概念診斷」（Fredoka 大字深褐色）+ 副標「以『水溶液』單元為例 · 國小自然」
 - **兩個角色卡（教師橙木 / 學生藍木）**：
   - 結構：木框外殼 (`WOOD_OUTER`) + 米色頁面 (`WOOD_INNER_CREAM`) + 內容垂直排列
@@ -114,6 +117,7 @@
 - `SignBoard` — 角色名招牌（綠/藍漸層膠囊 + 立體陰影）
 - `StarRating` — 三星評等（黃星 + 底部投影）
 - `RoleCard` — 單張角色選擇卡（包含木框、招牌、頭像、星等、副標、CTA、ⓘ 紐扣、popover）
+- `SettingsPopover` — 齒輪按鈕點擊後的設定面板（字體大小三段切換）
 
 **素材依賴**:
 - 背景圖：`src/assets/backgrounds/bg_chiheisen_green.jpg`（irasutoya 草原藍天）
@@ -130,16 +134,17 @@
 **檔案**: `src/pages/teacher/TeacherDashboard.jsx`
 
 **功能描述**:
-- 教師端主頁，呈現三步驟工作流程概覽：
-  1. 選擇/建立考卷
-  2. 派發給班級
-  3. 查看診斷結果
-- 提供快速導航至各功能頁面
+- 教師端主頁，呈現兩條並列的工作流程：
+  - **流程一：迷思概念診斷** — 出題管理 → 派題管理 → 診斷結果
+  - **流程二：迷思概念治療** — 情境出題 → 情境派題 → 治療對話紀錄
+- 每個步驟卡片可點擊直接跳轉對應頁面
+- 提供快速操作按鈕（一鍵套用推薦題組、自訂出題）
 
 **UI 元素**:
-- 三步驟流程卡片
-- 快速操作按鈕（新增考卷、查看結果等）
-- 最近活動摘要
+- 兩個流程區塊（各帶 chip 標籤識別流程一／流程二）
+- 每流程三步驟卡片（編號＋圖標＋說明）
+- 快速操作 CTA 卡片
+- 知識節點與迷思概念總覽入口
 
 **佈局**: 使用 `TeacherLayout` 側邊欄
 
@@ -194,7 +199,7 @@
 
 **內容**:
 - 上方：各班派題完成率清單（每張卡片可點擊切換 `?classId=`，被選中的卡片顯示綠框）
-- 下方：依 `?classId=` 渲染對應班級的 `SingleClassReport`（4 個指標卡 + AI 診斷摘要 + 本週行動清單 + 各概念掌握程度 + 迷思概念分佈 + 題目明細矩陣）
+- 下方：依 `?classId=` 渲染對應班級的 `SingleClassReport`（4 個指標卡 + AI 診斷摘要 + 本週行動清單 + 各概念掌握程度 + 迷思概念分佈 + 題目明細矩陣 + **學生第二層追問對話完整紀錄**）
 - 無 `classId` 時顯示「請從上方清單選擇班級」空狀態
 
 **狀態依賴**:
@@ -204,7 +209,8 @@
 **共用元件**（位於 `src/pages/teacher/dashboard/shared/`）:
 - `helpers.js` — 常數（`CLASS_KEY_MAP`, `CLASS_CHART_COLORS`）與 `computeOverviewForQuiz`、`getAssignment`、`getAvailableQuizzesForClass`、`getAllAssignedQuizzes`、`getLatestQuizIdForClass`
 - `OverallAIDiagnosisSummary.jsx`、`ClassStatusCards.jsx`、`CrossClassNodeChart.jsx`、`TopMisconceptionsChart.jsx`、`ClassMisconceptionHeatmap.jsx`、`ClassScatterChart.jsx`
-- `SingleClassReport.jsx`（含 4 指標卡 + 子組件 `AIDiagnosisSummary.jsx`、`WeeklyActionChecklist.jsx`、`BreakdownChart.jsx`、`MisconceptionDistribution.jsx`、`HeatmapView.jsx`）
+- `SingleClassReport.jsx`（含 4 指標卡 + 子組件 `AIDiagnosisSummary.jsx`、`WeeklyActionChecklist.jsx`、`BreakdownChart.jsx`、`MisconceptionDistribution.jsx`、`HeatmapView.jsx`、`FollowupConversations.jsx`）
+- `FollowupConversations.jsx` — 透過 `useClassFollowups` 撈取該班所有學生在 N3 第二層追問的對話紀錄；以「學生 → 題目」兩層摺疊呈現，展開後以聊天泡泡顯示完整對話、AI 摘要與最終判定徽章。資料來源為後端 `GET /api/quizzes/{quizId}/followups?classId=`，撈 `FollowupResult.conversation_log` JSONB
 
 **資料來源**:
 - `getClassAnswers(quizId, classId)`
@@ -286,11 +292,14 @@
 
 > **路由說明**：舊路由 `/teacher/assignments` 已改為 redirect 至 `/teacher/assignments/diagnosis`，
 > 以維持與既有書籤、舊連結的相容性。Sidebar「派題」群組展開後，「step 1. 診斷考卷」即指向此頁。
+>
+> **Tab 切換**：頁面內的「📝 診斷考卷 / 🌱 情境考卷」按鈕直接呼叫 `useNavigate()` 切換到對應路由（`/diagnosis` ↔ `/scenarios`），讓 URL、側邊欄 active 狀態、瀏覽器歷史保持同步；元件內不再保留獨立的 tab state，`initialTab` prop 即為當前 tab。
 
 **UI 元素**:
-- 派題列表（考卷名稱、班級、指派日期、截止日期、完成率）
-- 新增派題表單/對話框
-- 完成率進度條
+- 圖例（未派發／待作答／進行中／已完成）置於矩陣**上方**，方便對照後再點選格子
+- 派題矩陣（列為考卷、欄為班級）；格子最小高度 120px
+- 新增派題的 `AssignPopover` 與管理派題的 `ManagePopover` 採 `position: fixed` + 觸發按鈕 bounding rect 計算座標，避免被外層 `overflow-hidden / overflow-x-auto` 切掉
+- 完成率進度條與狀態徽章
 
 **狀態依賴**: `assignments`, `addAssignment`, `updateAssignment`, `removeAssignment`, `quizzes`, `classes`
 

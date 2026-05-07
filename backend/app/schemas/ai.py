@@ -10,6 +10,7 @@ class DistractorSuggestRequest(BaseModel):
     misconception_label: str = Field(alias="misconceptionLabel", min_length=1, max_length=128)
     misconception_detail: str = Field(alias="misconceptionDetail", min_length=1, max_length=1024)
     current_text: str = Field(default="", alias="currentText", max_length=512)
+    stem: str = Field(default="", max_length=1024)
     ragflow_session_id: str | None = Field(default=None, alias="ragflowSessionId")
 
     model_config = ConfigDict(populate_by_name=True)

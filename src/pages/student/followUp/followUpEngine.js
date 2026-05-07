@@ -246,15 +246,46 @@ function handleAfterRound3(ctx, reply, fuzzy, matchesCorrect) {
   }
 }
 
-function buildAiSummary(status, reasoning, isCorrect) {
+// ── 各節點的「答對但解釋不夠扎實」針對性提醒 ──
+// CORRECT + WEAK 路徑專用：點出該節點的關鍵原理，提示學生補上缺少的解釋
+const WEAK_REASONING_HINT_BY_NODE = {
+  'INe-II-3-02': '答案對，但你還沒清楚說明「糖溶解後其實還在水裡，只是粒子分散到看不見」這個原理。如果把糖水蒸發，糖會再出現喔，下次可以從這個角度想想看。',
+  'INe-II-3-03': '答案對，但你還沒分清楚「攪拌只是讓溶解變快」和「水能溶解的總量有上限」這兩件事。攪拌再用力，也不會超過水原本能溶解的上限。',
+  'INe-II-3-05': '答案對，但你還沒解釋為什麼會有「溶解上限」——溫度、物質種類都會影響能溶多少。同樣的水量，糖跟鹽能溶的最多量是不同的。',
+  'INe-II-3-04': '答案對，但你還沒清楚說明「相同濃度的水溶液，每一處的甜度／鹹度都一樣」這個概念。沉澱層比較濃，是因為超過了溶解上限，跟正常溶液不同。',
+  'INe-Ⅲ-5-1': '答案對，但你還沒說出酸鹼判斷不能只靠味道或外觀，需要用指示劑等工具測試。下次可以多想想「為什麼老師強調不能用嚐的」。',
+  'INe-Ⅲ-5-2': '答案對，但你還沒解釋為什麼日常的水溶液有些是酸、有些是鹼，可以再想想生活中的例子（醋、肥皂水、檸檬汁）背後的酸鹼性差異。',
+  'INe-Ⅲ-5-3': '答案對，但你還沒說清楚石蕊試紙的反應原理：藍色變紅代表酸性、紅色變藍代表鹼性。下次可以說說看顏色變化代表什麼。',
+  'INe-Ⅲ-5-4': '答案對，但你還沒解釋「為什麼指示劑能判斷酸鹼」——指示劑會跟酸或鹼反應而變色，下次可以從反應的角度說明。',
+  'INe-Ⅲ-5-5': '答案對，但你還沒清楚說明「酸鹼中和」的概念：酸跟鹼混合會互相抵消，產生鹽和水，不是其中一邊「贏過」另一邊。',
+  'INe-Ⅲ-5-6': '答案對，但你還沒說出酸鹼反應後「產物的酸鹼性會改變」這件事，可以再想想中和後的溶液為什麼會接近中性。',
+  'INe-Ⅲ-5-7': '答案對，但你還沒解釋為什麼酸鹼能解決生活問題（例如：通樂用強鹼是因為能皂化分解油垢，不只是「強」而已）。可以從反應原理的角度想想。',
+};
+
+// CORRECT + PARTIAL（答對且大致理解，但有小細節遺漏）的針對性回饋
+const PARTIAL_REASONING_HINT_BY_NODE = {
+  'INe-II-3-02': '你大致理解溶解後物質還在水裡，可以再想想「粒子分散」跟「化學變化」的差別。',
+  'INe-II-3-03': '你大致掌握攪拌與溶解的關係，可以再多想想「速度」跟「總量上限」是兩件不同的事。',
+  'INe-II-3-05': '你大致掌握溶解上限的概念，可以再想想為什麼不同物質、不同溫度上限不一樣。',
+  'INe-Ⅲ-5-3': '你大致掌握石蕊試紙的用法，可以再多想想顏色變化背後的酸鹼反應。',
+  'INe-Ⅲ-5-4': '你大致掌握用指示劑測酸鹼的方法，可以再想想為什麼不能用嚐的或聞的。',
+  'INe-Ⅲ-5-7': '你大致理解酸鹼能解決生活問題，可以再想想背後的反應原理（中和、皂化等）。',
+};
+
+function buildAiSummary(status, reasoning, isCorrect, ctx = {}) {
+  const nodeId = ctx.knowledgeNodeId;
   if (status === 'CORRECT' && reasoning === 'SOLID')
     return '你能用自己的話完整解釋原理，理解很扎實！';
   if (status === 'CORRECT' && reasoning === 'PARTIAL')
-    return '你大致理解這個概念，個別細節可以再多想想。';
+    return PARTIAL_REASONING_HINT_BY_NODE[nodeId]
+      || '你大致理解這個概念，個別細節可以再多想想。';
   if (status === 'CORRECT')
-    return '雖然答案選對了，但解釋的過程顯示你可能還沒完全掌握原理，可以再多花一點時間思考。';
+    return WEAK_REASONING_HINT_BY_NODE[nodeId]
+      || '雖然答案選對了，但解釋的過程顯示你可能還沒完全掌握原理，可以再多花一點時間思考。';
   if (status === 'MISCONCEPTION' && isCorrect)
-    return '答案雖然選對了，但對話中你的想法跟科學上的解釋還有一點差距。';
+    return WEAK_REASONING_HINT_BY_NODE[nodeId]
+      ? `${WEAK_REASONING_HINT_BY_NODE[nodeId]}（從對話中，你的想法和科學解釋還有一點差距。）`
+      : '答案雖然選對了，但對話中你的想法跟科學上的解釋還有一點差距。';
   return '從你的對話中，老師看到你還持有這個迷思想法，需要再澄清一下。';
 }
 
@@ -287,7 +318,7 @@ function finalize(ctx, reasoning, override, sourceText) {
       misconceptionCode,
       misconceptionSource: sourceText || null,
       reasoningQuality: reasoning,
-      aiSummary: buildAiSummary(finalStatus, reasoning, isCorrect),
+      aiSummary: buildAiSummary(finalStatus, reasoning, isCorrect, ctx),
       statusChange: {
         from: isCorrect ? 'CORRECT' : misconceptionId,
         to: finalStatus === 'CORRECT' ? 'CORRECT' : misconceptionCode,

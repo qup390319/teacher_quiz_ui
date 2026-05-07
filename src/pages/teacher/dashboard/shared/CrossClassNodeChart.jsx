@@ -6,7 +6,7 @@ import {
 import InfoButton from '../../../../components/InfoButton';
 import InfoDrawer from '../../../../components/InfoDrawer';
 import { CHART_INFO } from '../../../../data/chartInfoConfig';
-import { CLASS_KEY_MAP } from './helpers';
+import { getClassChartKey } from './helpers';
 
 function NodeTooltip({ active, payload, label }) {
   if (active && payload?.length) {
@@ -58,7 +58,7 @@ export default function CrossClassNodeChart({ overviewData }) {
             <Tooltip content={<NodeTooltip />} />
             <ReferenceLine y={70} stroke="#95A5A6" strokeDasharray="4 4" label={{ value: '70%', position: 'right', fontSize: 11, fill: '#95A5A6' }} />
             {classStats.map(c => (
-              <Bar key={c.id} dataKey={CLASS_KEY_MAP[c.id] ?? c.id} name={c.name} fill={c.color} radius={[6, 6, 0, 0]} />
+              <Bar key={c.id} dataKey={getClassChartKey(c.id)} name={c.name} fill={c.color} radius={[6, 6, 0, 0]} />
             ))}
           </BarChart>
         </ResponsiveContainer>

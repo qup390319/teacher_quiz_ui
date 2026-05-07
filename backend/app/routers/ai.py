@@ -43,6 +43,7 @@ async def distractor_suggest(
             misconception_label=payload.misconception_label,
             misconception_detail=payload.misconception_detail,
             current_text=payload.current_text,
+            stem=payload.stem,
         )
     except RagflowError as exc:
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, "RAGFLOW_UNAVAILABLE") from exc

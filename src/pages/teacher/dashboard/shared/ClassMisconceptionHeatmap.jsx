@@ -2,13 +2,13 @@ import { useState } from 'react';
 import InfoButton from '../../../../components/InfoButton';
 import InfoDrawer from '../../../../components/InfoDrawer';
 import { CHART_INFO } from '../../../../data/chartInfoConfig';
-import { CLASS_KEY_MAP } from './helpers';
+import { getClassChartKey } from './helpers';
 
 export default function ClassMisconceptionHeatmap({ overviewData }) {
   const [infoOpen, setInfoOpen] = useState(false);
   const { topMisconceptions, classStats } = overviewData;
   const sorted = [...topMisconceptions].sort((a, b) => b.avg - a.avg);
-  const classKeys = classStats.map(c => ({ key: CLASS_KEY_MAP[c.id] ?? c.id, id: c.id }));
+  const classKeys = classStats.map(c => ({ key: getClassChartKey(c.id), id: c.id }));
 
   const getCellBg = (pct) => {
     if (pct >= 50) return { bg: 'rgba(242,139,149,0.75)', text: '#C0392B' };

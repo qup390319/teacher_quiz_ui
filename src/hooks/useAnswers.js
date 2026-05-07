@@ -23,6 +23,19 @@ export function useQuizStats(quizId, classId) {
   });
 }
 
+/** 教師查單班的「追問對話紀錄」（含 conversationLog / aiSummary 等完整資料）
+ *  回傳 { quizId, classId, rows: [{ studentId, studentName, seat, questionId,
+ *  selectedTag, diagnosis, finalStatus, misconceptionCode, reasoningQuality,
+ *  aiSummary, statusChange, conversationLog, answeredAt }] }
+ */
+export function useClassFollowups(quizId, classId) {
+  return useQuery({
+    queryKey: ['followups', quizId, classId],
+    queryFn: () => api.get(`/quizzes/${quizId}/followups?classId=${encodeURIComponent(classId)}`),
+    enabled: !!quizId && !!classId,
+  });
+}
+
 /** 學生作答歷史（自己的；教師可查任何學生的） */
 export function useStudentHistory(studentId) {
   return useQuery({
@@ -41,6 +54,8 @@ export function useRecordAnswers() {
       qc.invalidateQueries({ queryKey: ['quiz-stats'] });
       qc.invalidateQueries({ queryKey: ['answers'] });
       qc.invalidateQueries({ queryKey: ['student-history'] });
+      // 學生作答後 myDiagnosisCompleted 會翻成 true，需要 refresh 派題列表
+      qc.invalidateQueries({ queryKey: ['assignments'] });
     },
   });
 }
@@ -53,7 +68,10 @@ export function useRecordFollowups() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['quiz-stats'] });
       qc.invalidateQueries({ queryKey: ['answers'] });
+      qc.invalidateQueries({ queryKey: ['followups'] });
       qc.invalidateQueries({ queryKey: ['student-history'] });
+      // 學生作答後 myDiagnosisCompleted 會翻成 true，需要 refresh 派題列表
+      qc.invalidateQueries({ queryKey: ['assignments'] });
     },
   });
 }

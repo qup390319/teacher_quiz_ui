@@ -19,7 +19,9 @@ from app.db.models import (
 from app.db.session import get_db
 from app.schemas.answer import (
     AnswerOut,
+    FollowupConversationRow,
     QuizClassAnswersResponse,
+    QuizClassFollowupsResponse,
     QuizStatsResponse,
     RecordAnswersRequest,
     RecordFollowupsRequest,
@@ -168,6 +170,58 @@ async def get_quiz_class_answers(
         "class_id": data["class_id"],
         "rows": data["rows"],
     })
+
+
+@quiz_router.get(
+    "/{quiz_id}/followups",
+    response_model=QuizClassFollowupsResponse,
+    response_model_by_alias=True,
+)
+async def get_quiz_class_followups(
+    quiz_id: str,
+    class_id: str = Query(alias="classId"),
+    teacher: User = Depends(require_teacher),
+    db: AsyncSession = Depends(get_db),
+) -> QuizClassFollowupsResponse:
+    """Return per-(student, question) follow-up dialogue logs for a class.
+
+    Used by teacher dashboard to read what students actually said during
+    the second-layer N3 follow-up dialogue, not just the final verdict.
+    """
+    cls = await db.get(Class, class_id)
+    if cls is None or cls.teacher_id != teacher.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "CLASS_NOT_FOUND")
+
+    # Pull answers + follow-ups + question (to constrain by quiz_id) + student profile.
+    # Filter by quiz via question.quiz_id.
+    res = await db.execute(
+        select(StudentAnswer, FollowupResult, QuizQuestion, Student)
+        .join(QuizQuestion, QuizQuestion.id == StudentAnswer.question_id)
+        .join(FollowupResult, FollowupResult.student_answer_id == StudentAnswer.id)
+        .join(Student, Student.user_id == StudentAnswer.student_id)
+        .where(QuizQuestion.quiz_id == quiz_id, Student.class_id == class_id)
+        .order_by(Student.seat, QuizQuestion.id),
+    )
+    rows: list[FollowupConversationRow] = []
+    for ans, fup, _q, stu in res.all():
+        rows.append(FollowupConversationRow(
+            student_id=stu.user_id,
+            student_name=stu.name,
+            seat=stu.seat,
+            question_id=ans.question_id,
+            selected_tag=ans.selected_tag,
+            diagnosis=ans.diagnosis,
+            answered_at=ans.answered_at,
+            final_status=fup.final_status,
+            misconception_code=fup.misconception_code,
+            reasoning_quality=fup.reasoning_quality,
+            ai_summary=fup.ai_summary,
+            status_change=fup.status_change or {},
+            conversation_log=fup.conversation_log or [],
+        ))
+    return QuizClassFollowupsResponse(
+        quiz_id=quiz_id, class_id=class_id, rows=rows,
+    )
 
 
 @quiz_router.get(

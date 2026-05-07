@@ -3,11 +3,14 @@ import InfoButton from '../../../../components/InfoButton';
 import InfoDrawer from '../../../../components/InfoDrawer';
 import { CHART_INFO } from '../../../../data/chartInfoConfig';
 import { knowledgeNodes } from '../../../../data/knowledgeGraph';
-import { getMisconceptionStudents } from '../../../../data/quizData';
+import { useClassAnswers, useQuizStats } from '../../../../hooks/useAnswers';
+import { buildMisconceptionStudents } from './classReportData';
 
 export default function WeeklyActionChecklist({ quizId, classId, totalStudents }) {
   const [infoOpen, setInfoOpen] = useState(false);
-  const misconStudents = getMisconceptionStudents(quizId, classId);
+  const { data: stats } = useQuizStats(quizId, classId);
+  const { data: classAnswers } = useClassAnswers(quizId, classId);
+  const misconStudents = buildMisconceptionStudents(stats, classAnswers);
   const highFreqMiscons = Object.entries(misconStudents)
     .map(([id, students]) => ({ id, count: students.length, pct: Math.round((students.length / totalStudents) * 100) }))
     .filter(({ pct }) => pct >= 30)

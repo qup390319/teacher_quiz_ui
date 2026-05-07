@@ -179,6 +179,7 @@ Request:
   "misconceptionLabel": "溶解後物質消失了",      // 由前端從 knowledgeGraph 帶入
   "misconceptionDetail": "溶解後物質會消失不見，不再存在於水中",  // 由前端帶入
   "currentText": "（教師目前已輸入的選項文字，可空字串）",
+  "stem": "（題幹文字；前端強制要求填寫後才能呼叫，避免建議離題）",
   "ragflowSessionId": null                     // 第一次為 null，後續帶上
 }
 
@@ -226,9 +227,12 @@ Response 403:
 目標迷思：{misconception_id}（{misconception_label}）
 迷思詳細描述：{misconception_detail}
 
+{若 stem 非空：題幹情境：{stem}
+（產出的三條學生說法必須是針對這個題幹情境會說的話，不可離題）}
+
 要求：
 1. 必須以學生第一人稱口語撰寫，避免學術用語。
-2. 三條應呈現不同表達方式，但都對應同一個迷思。
+2. 三條應呈現不同表達方式，但都對應同一個迷思，且都緊扣上方題幹情境。
 3. 不要附編號或前綴。
 4. 末尾請用 [REF] 標籤列出引用來源（文件名 + 頁碼或段落），不在三條句子內。
 5. 每條長度控制在 25 字以內。
@@ -247,8 +251,9 @@ Response 403:
 ### 7.4 前端互動
 
 - 教師在出題精靈步驟二的「編輯題目 modal」中，每個非正解選項旁顯示「✨ 建議」icon button
+- **題幹未填寫時按鈕禁用**（hover tooltip 顯示「請先填寫題幹，建議才能與題幹內容相關」），避免後端產出與題幹無關的選項
 - 點擊 → 開啟 `<DistractorSuggestPopover>`
-- Popover 自動帶當前 `nodeId / misconceptionId / currentText`，呼叫後端
+- Popover 自動帶當前 `nodeId / misconceptionId / currentText / stem`，呼叫後端
 - 顯示 3 條候選；點任一條「採用」會把該文字填回該選項 content
 - 提供「再來 3 條」（重新呼叫，帶上 `ragflowSessionId`）
 - 失敗時顯示「目前無法取得建議，請手動輸入」+ 重試按鈕

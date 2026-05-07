@@ -7,7 +7,8 @@ import InfoButton from '../../../../components/InfoButton';
 import InfoDrawer from '../../../../components/InfoDrawer';
 import { CHART_INFO } from '../../../../data/chartInfoConfig';
 import { knowledgeNodes } from '../../../../data/knowledgeGraph';
-import { getNodePassRates } from '../../../../data/quizData';
+import { useQuizStats } from '../../../../hooks/useAnswers';
+import { buildPassRates } from './classReportData';
 
 const getBarColor = (rate) => rate >= 70 ? '#8FC87A' : rate >= 50 ? '#F4D03F' : '#F28B95';
 
@@ -28,7 +29,8 @@ function BreakdownTooltip({ active, payload }) {
 
 export default function BreakdownChart({ quizId, classId }) {
   const [infoOpen, setInfoOpen] = useState(false);
-  const passRates = getNodePassRates(quizId, classId);
+  const { data: stats } = useQuizStats(quizId, classId);
+  const passRates = buildPassRates(stats);
   const chartData = knowledgeNodes.filter(n => passRates[n.id] !== undefined)
     .map(node => ({ name: node.name, id: node.id, passRate: passRates[node.id] || 0 }));
 

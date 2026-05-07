@@ -99,14 +99,17 @@ export default function StudentHome() {
 
       const quiz = quizzes.find((q) => q.id === assignment.quizId);
       const totalQuestions = quiz?.questionCount ?? getQuizQuestions(assignment.quizId).length;
+      // Local studentHistory 只是當前 session 的快取；真正的「是否做過」由後端
+      // assignment.myDiagnosisCompleted 決定（持久化、跨刷新依然正確）。
       const myRecords = studentHistory.filter((h) => h.quizId === assignment.quizId);
       const bestRecord = myRecords.reduce(
         (best, cur) => (best == null || cur.correctCount > best.correctCount ? cur : best),
         null,
       );
+      const completedFromBackend = assignment.myDiagnosisCompleted === true;
 
       let status;
-      if (bestRecord) status = 'completed';
+      if (bestRecord || completedFromBackend) status = 'completed';
       else if (assignment.dueDate < today) status = 'expired';
       else status = 'next';
 

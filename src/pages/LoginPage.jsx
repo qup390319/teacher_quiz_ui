@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ApiError } from '../lib/api';
+import { FONT_SIZE_OPTIONS, getFontSize, setFontSize } from '../lib/fontSize';
 import bgImg from '../assets/backgrounds/bg_chiheisen_green.jpg';
 import mascotImg from '../assets/illustrations/scilens_mascot.png';
 import teacherImg from '../assets/illustrations/irasutoya_teacher_boy.png';
@@ -277,12 +278,62 @@ function LoginModal({ variant, onClose, onSuccess }) {
   );
 }
 
+/* ── 設定彈窗（字體大小） ─────────────────────────────── */
+function SettingsPopover({ fontSize, onChange }) {
+  return (
+    <div
+      role="dialog"
+      aria-label="設定"
+      onMouseDown={(e) => e.stopPropagation()}
+      className={`absolute top-full right-0 z-30 ${WOOD_OUTER} animate-fade-up`}
+      style={{ marginTop: '8px', width: '240px', fontSize: '16px' }}
+    >
+      <div className={`${WOOD_INNER_CREAM} p-4`} style={{ fontSize: '16px' }}>
+        <div className="absolute -top-2 right-8 w-4 h-4 bg-[#C19A6B] rotate-45 rounded-sm" />
+        <div className="text-xs font-bold text-[#5A3E22] mb-3 flex items-center gap-1">
+          <Icon name="format_size" filled className="text-base" />
+          字體大小
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {FONT_SIZE_OPTIONS.map((opt) => {
+            const active = opt.value === fontSize;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); onChange(opt.value); }}
+                aria-pressed={active}
+                style={{ padding: '8px 0', borderRadius: '12px', fontSize: `${opt.px}px` }}
+                className={`border-2 font-bold transition-colors
+                  ${active
+                    ? 'bg-gradient-to-b from-[#A2D550] to-[#65A626] border-[#3E7818] text-white shadow-[0_3px_0_#3E7818]'
+                    : 'bg-white/70 border-[#C19A6B] text-[#5A3E22] hover:bg-white'}`}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function LoginPage() {
   const { currentUser, loading } = useAuth();
   const navigate = useNavigate();
   const [openInfo, setOpenInfo] = useState(null);
   const [loginVariant, setLoginVariant] = useState(null); // 'teacher' | 'student' | null
+  const [openSettings, setOpenSettings] = useState(false);
+  const [fontSize, setFontSizeState] = useState(getFontSize);
   const containerRef = useRef(null);
+  const settingsRef = useRef(null);
+
+  const handleFontSizeChange = (value) => {
+    setFontSize(value);
+    setFontSizeState(value);
+  };
 
   // 已登入者直接導向對應頁
   useEffect(() => {
@@ -295,6 +346,9 @@ export default function LoginPage() {
     const handleClickOutside = (e) => {
       if (containerRef.current && !containerRef.current.contains(e.target)) {
         setOpenInfo(null);
+      }
+      if (settingsRef.current && !settingsRef.current.contains(e.target)) {
+        setOpenSettings(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -320,7 +374,7 @@ export default function LoginPage() {
         backgroundRepeat: 'no-repeat',
       }}
     >
-      <div className="relative z-10 flex items-center justify-between mb-4 sm:mb-6 animate-fade-up">
+      <div className="relative z-30 flex items-center justify-between mb-4 sm:mb-6 animate-fade-up">
         <div className="flex items-center gap-3">
           <img
             src={mascotImg}
@@ -331,16 +385,24 @@ export default function LoginPage() {
             SciLens
           </span>
         </div>
-        <button
-          type="button"
-          aria-label="設定"
-          className="hover:rotate-90 hover:scale-110
-                     transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]
-                     cursor-pointer flex items-center justify-center
-                     drop-shadow-[0_4px_4px_rgba(91,66,38,0.35)]"
-        >
-          <img src={settingsIcon} alt="設定" className="w-16 h-16 sm:w-20 sm:h-20 object-contain" />
-        </button>
+        <div ref={settingsRef} className="relative z-40">
+          <button
+            type="button"
+            aria-label="設定"
+            aria-expanded={openSettings}
+            onClick={() => setOpenSettings((v) => !v)}
+            className={`hover:rotate-90 hover:scale-110
+                       transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]
+                       cursor-pointer flex items-center justify-center
+                       drop-shadow-[0_4px_4px_rgba(91,66,38,0.35)]
+                       ${openSettings ? 'rotate-90 scale-110' : ''}`}
+          >
+            <img src={settingsIcon} alt="設定" className="w-16 h-16 sm:w-20 sm:h-20 object-contain" />
+          </button>
+          {openSettings && (
+            <SettingsPopover fontSize={fontSize} onChange={handleFontSizeChange} />
+          )}
+        </div>
       </div>
 
       <div className="relative z-10 flex-1 flex flex-col items-center justify-center">

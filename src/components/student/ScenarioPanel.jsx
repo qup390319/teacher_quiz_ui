@@ -1,4 +1,5 @@
 import { Icon, WOOD_OUTER, WOOD_INNER_CREAM } from '../ui/woodKit';
+import { resolveScenarioImage } from '../../lib/scenarioImage';
 
 /* 情境敘述頁（題目開始前 / 換題時，spec-08 §6） */
 export default function ScenarioPanel({
@@ -26,15 +27,17 @@ export default function ScenarioPanel({
             </p>
             {question.scenarioImages?.length > 0 && (
               <div className="mt-5 flex flex-col items-center gap-3">
-                {question.scenarioImages.map((src, idx) => (
+                {question.scenarioImages.map((src, idx) => {
+                  const resolved = resolveScenarioImage(src);
+                  return (
                   <button
                     key={src}
                     type="button"
-                    onClick={() => onZoomImage?.(src)}
+                    onClick={() => onZoomImage?.(resolved)}
                     className="group relative cursor-zoom-in"
                   >
                     <img
-                      src={src}
+                      src={resolved}
                       alt={`情境圖 ${idx + 1}`}
                       className="block w-full h-auto rounded-xl border-2 border-[#C19A6B]
                                  max-w-[420px] sm:max-w-[480px] shadow-[0_4px_0_-1px_#5A3E22]"
@@ -47,7 +50,8 @@ export default function ScenarioPanel({
                       </span>
                     )}
                   </button>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

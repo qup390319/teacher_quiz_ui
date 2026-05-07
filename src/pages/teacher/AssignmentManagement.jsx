@@ -35,9 +35,18 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
   const [managePopover, setManagePopover] = useState(null);
   // scenario tab：使用 modal-style 學生選擇器；存放 { quiz, cls, existing? }
   const [picker, setPicker] = useState(null);
-  const [tab, setTab] = useState(initialTab); // 'diagnosis' | 'scenario'（spec-08）
 
+  // tab 來自路由（initialTab prop），切換 tab 時用 navigate 更新 URL，避免畫面與側邊欄 / 瀏覽器歷史脫鉤
+  const tab = initialTab; // 'diagnosis' | 'scenario'（spec-08）
   const isScenarioTab = tab === 'scenario';
+
+  const switchTab = (next) => {
+    setPopover(null);
+    setManagePopover(null);
+    setPicker(null);
+    if (next === tab) return;
+    navigate(next === 'scenario' ? '/teacher/assignments/scenarios' : '/teacher/assignments/diagnosis');
+  };
 
   /* 兩種考卷的 published 列表 */
   const publishedQuizzes = isScenarioTab
@@ -149,7 +158,7 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
                         shadow-[0_2px_8px_rgba(0,0,0,0.04)] w-fit max-w-full">
           <button
             type="button"
-            onClick={() => { setTab('diagnosis'); setPopover(null); setManagePopover(null); }}
+            onClick={() => switchTab('diagnosis')}
             className={`px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-1.5 transition
                        ${tab === 'diagnosis'
                          ? 'bg-[#FFF1D8] border border-[#F0B962] text-[#7A4A18]'
@@ -159,7 +168,7 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
           </button>
           <button
             type="button"
-            onClick={() => { setTab('scenario'); setPopover(null); setManagePopover(null); }}
+            onClick={() => switchTab('scenario')}
             className={`px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-1.5 transition
                        ${tab === 'scenario'
                          ? 'bg-[#E0F0E8] border border-[#3F8B5E] text-[#2E6B47]'
@@ -193,6 +202,21 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
           </div>
         ) : (
           <>
+          {/* 圖例：放在矩陣上方，方便對照 */}
+          <div className="mb-4 px-4 py-3 bg-white border border-[#BDC3C7] rounded-2xl flex flex-wrap items-center gap-x-4 gap-y-2 sm:gap-6 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+            <span className="text-xs text-[#95A5A6] font-medium">圖例：</span>
+            {[
+              { color: 'border-dashed border-[#D5D8DC] bg-white', label: '未派發', textColor: 'text-[#95A5A6]' },
+              { color: 'bg-[#EEF5E6] border-[#D5D8DC]', label: '待作答', textColor: 'text-[#95A5A6]' },
+              { color: 'bg-[#FCF0C2] border-[#F5D669]', label: '進行中', textColor: 'text-[#B7950B]' },
+              { color: 'bg-[#C8EAAE] border-[#8FC87A]', label: '已完成', textColor: 'text-[#3D5A3E]' },
+            ].map((item) => (
+              <div key={item.label} className="flex items-center gap-1.5">
+                <div className={`w-4 h-4 rounded border ${item.color}`} />
+                <span className={`text-xs ${item.textColor}`}>{item.label}</span>
+              </div>
+            ))}
+          </div>
           {/* 手機版：每張考卷一張卡片，班級狀態垂直堆疊（不需橫向卷軸） */}
           <div className="md:hidden space-y-4">
             {matrix.map(({ quiz, cells }) => (
@@ -376,21 +400,6 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
             </div>
           </div>
 
-          {/* 圖例（手機 / 桌機共用） */}
-          <div className="mt-4 px-4 py-3 bg-white border border-[#BDC3C7] rounded-2xl flex flex-wrap items-center gap-x-4 gap-y-2 sm:gap-6 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
-            <span className="text-xs text-[#95A5A6] font-medium">圖例：</span>
-            {[
-              { color: 'border-dashed border-[#D5D8DC] bg-white', label: '未派發', textColor: 'text-[#95A5A6]' },
-              { color: 'bg-[#EEF5E6] border-[#D5D8DC]', label: '待作答', textColor: 'text-[#95A5A6]' },
-              { color: 'bg-[#FCF0C2] border-[#F5D669]', label: '進行中', textColor: 'text-[#B7950B]' },
-              { color: 'bg-[#C8EAAE] border-[#8FC87A]', label: '已完成', textColor: 'text-[#3D5A3E]' },
-            ].map((item) => (
-              <div key={item.label} className="flex items-center gap-1.5">
-                <div className={`w-4 h-4 rounded border ${item.color}`} />
-                <span className={`text-xs ${item.textColor}`}>{item.label}</span>
-              </div>
-            ))}
-          </div>
           </>
         )}
       </div>

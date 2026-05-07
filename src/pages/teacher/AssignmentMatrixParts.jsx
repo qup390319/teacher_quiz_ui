@@ -5,7 +5,7 @@ export function CellEmpty({ onClick }) {
   return (
     <button
       onClick={onClick}
-      className="w-full h-full min-h-[88px] flex flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-[#D5D8DC] text-[#BDC3C7] hover:border-[#8FC87A] hover:text-[#8FC87A] hover:bg-[#EEF5E6] transition-all group"
+      className="w-full h-full min-h-[120px] flex flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-[#D5D8DC] text-[#BDC3C7] hover:border-[#8FC87A] hover:text-[#8FC87A] hover:bg-[#EEF5E6] transition-all group"
     >
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -66,23 +66,54 @@ export function CellActive({ assignment, onClick }) {
   );
 }
 
-// ─── Popover：派發考卷（診斷分頁，整班派發） ─────────────────────────────────
-export function AssignPopover({ quiz, cls, onConfirm, onClose }) {
-  const [dueDate, setDueDate] = useState('');
-  const ref = useRef(null);
-
+// 用觸發按鈕的 bounding rect 算出 fixed 座標，避免被 overflow-hidden 容器切掉
+// 注意：
+// 1. 不掛 scroll listener — date input focus 會觸發 scrollIntoView，
+//    重算座標的 re-render 會干擾原生 date picker 開啟。
+// 2. 桌機 / 手機矩陣同時掛 popover，必須跳過「不可見」的副本，
+//    否則隱藏副本的 click-outside handler 會把使用者點選的可見 popover 關掉。
+function useAnchoredFixedPosition(ref, onClose) {
+  const [coords, setCoords] = useState(null);
+  // anchor 不可見時（offsetParent 為 null），整個 hook 直接跳過。
+  const isVisible = () => {
+    const anchor = ref.current?.parentElement?.querySelector('button');
+    return Boolean(anchor && anchor.offsetParent !== null);
+  };
   useEffect(() => {
+    if (!isVisible()) return;
+    const anchor = ref.current.parentElement.querySelector('button');
+    const update = () => {
+      const r = anchor.getBoundingClientRect();
+      setCoords({ top: r.bottom + 8, left: r.left, width: r.width });
+    };
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ref]);
+  useEffect(() => {
+    if (!isVisible()) return;
     const handler = (e) => {
       if (ref.current && !ref.current.contains(e.target)) onClose();
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, [onClose]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ref, onClose]);
+  return coords;
+}
+
+// ─── Popover：派發考卷（診斷分頁，整班派發） ─────────────────────────────────
+export function AssignPopover({ quiz, cls, onConfirm, onClose }) {
+  const [dueDate, setDueDate] = useState('');
+  const ref = useRef(null);
+  const coords = useAnchoredFixedPosition(ref, onClose);
 
   return (
     <div
       ref={ref}
-      className="absolute top-full left-0 mt-2 z-30 bg-white border border-[#BDC3C7] rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.12)] p-4 w-56"
+      style={coords ? { position: 'fixed', top: coords.top, left: coords.left } : { visibility: 'hidden', position: 'fixed' }}
+      className="z-50 bg-white border border-[#BDC3C7] rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.12)] p-4 w-56"
     >
       <div className="mb-3">
         <p className="text-xs font-bold text-[#2D3436] leading-snug">
@@ -126,14 +157,7 @@ export function ManagePopover({
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [dueDateDirty, setDueDateDirty] = useState(false);
   const ref = useRef(null);
-
-  useEffect(() => {
-    const handler = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) onClose();
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [onClose]);
+  const coords = useAnchoredFixedPosition(ref, onClose);
 
   const handleDueDateChange = (value) => {
     setDueDate(value);
@@ -150,7 +174,8 @@ export function ManagePopover({
   return (
     <div
       ref={ref}
-      className="absolute top-full left-0 mt-2 z-30 bg-white border border-[#BDC3C7] rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.12)] p-4 w-64"
+      style={coords ? { position: 'fixed', top: coords.top, left: coords.left } : { visibility: 'hidden', position: 'fixed' }}
+      className="z-50 bg-white border border-[#BDC3C7] rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.12)] p-4 w-64"
     >
       {/* 標題 */}
       <div className="mb-4">

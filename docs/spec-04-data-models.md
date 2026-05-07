@@ -121,7 +121,7 @@ export function useClasses() {
 | `useScenario(id)` | `GET /api/scenarios/{id}` | `['scenarios', id]` | 學生需該 scenario 已派至自己班級 |
 | `useSaveScenario()` | `POST` 或 `PUT /api/scenarios[/{id}]` | invalidate `['scenarios']` | upsert（教師） |
 | `useDeleteScenario()` | `DELETE /api/scenarios/{id}` | invalidate `['scenarios']` | （教師） |
-| `useAssignments(filters?)` | `GET /api/assignments?...` | `['assignments', filters]` | filters: `{ type, classId, quizId, scenarioQuizId }`；學生隱式只看自己班，且 `targetType='students'` 時需 `student.id ∈ studentIds` 才看得到；回傳含 `targetType / studentIds / completionRate / submittedCount / totalStudents`（scenario 分母 = 指派學生數）|
+| `useAssignments(filters?)` | `GET /api/assignments?...` | `['assignments', filters]` | filters: `{ type, classId, quizId, scenarioQuizId }`；學生隱式只看自己班，且 `targetType='students'` 時需 `student.id ∈ studentIds` 才看得到；回傳含 `targetType / studentIds / completionRate / submittedCount / totalStudents`（scenario 分母 = 指派學生數）；**對學生身份額外回傳 `myDiagnosisCompleted` / `myScenarioCompleted`**，學生首頁據此判斷任務是否完成（跨刷新仍正確） |
 | `useAddAssignment()` | `POST /api/assignments` | invalidate `['assignments']` | |
 | `useUpdateAssignment()` | `PATCH /api/assignments/{id}` | invalidate `['assignments']` | |
 | `useRemoveAssignment()` | `DELETE /api/assignments/{id}` | invalidate `['assignments']` | |
@@ -129,6 +129,7 @@ export function useClasses() {
 | `useClassSummary()` | `POST /api/ai/class-summary` | mutation only | N2；P4 後端從 DB 算統計 |
 | **P4** ↓ | | | |
 | `useClassAnswers(quizId, classId)` | `GET /api/quizzes/{id}/answers?classId=` | `['answers', quizId, classId]` | 教師端查班級作答 |
+| `useClassFollowups(quizId, classId)` | `GET /api/quizzes/{id}/followups?classId=` | `['followups', quizId, classId]` | 教師端查該班完整 N3 追問對話（含 `conversationLog / aiSummary / finalStatus / misconceptionCode / reasoningQuality / statusChange`）；用於 SingleClassReport 底部的對話檢視 |
 | `useQuizStats(quizId, classId?)` | `GET /api/quizzes/{id}/stats?classId=` | `['quiz-stats', quizId, classId]` | 取代 mock `getNodePassRates / getMisconceptionStudents` |
 | `useStudentHistory(studentId)` | `GET /api/students/{id}/history` | `['student-history', studentId]` | 學生個人作答歷史 |
 | `useRecordAnswer()` | `POST /api/answers` | invalidate stats / answers / history | 一次接受陣列 |

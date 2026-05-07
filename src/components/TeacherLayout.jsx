@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import teacherAvatar from '../assets/illustrations/irasutoya_teacher_boy.png';
 
 const ICONS = {
   home: (
@@ -128,12 +129,8 @@ export default function TeacherLayout({ children }) {
       {/* Logo */}
       <div className="px-5 py-5 border-b border-[#D5D8DC] flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-[#C8EAAE] border border-[#BDC3C7] rounded-xl flex items-center justify-center flex-shrink-0">
-            <svg className="w-5 h-5 text-[#3D5A3E]" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} viewBox="0 0 24 24">
-              <circle cx="10.5" cy="10.5" r="6.5" />
-              <path d="m21 21-5.5-5.5" />
-              <circle cx="10.5" cy="10.5" r="1.4" fill="currentColor" stroke="none" />
-            </svg>
+          <div className="w-9 h-9 bg-[#C8EAAE] border border-[#BDC3C7] rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden">
+            <img src={teacherAvatar} alt="教師" className="w-full h-full object-cover" />
           </div>
           <div>
             <p className="text-sm font-bold leading-tight text-[#2D3436] tracking-tight">SciLens</p>

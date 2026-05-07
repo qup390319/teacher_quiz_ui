@@ -3,12 +3,15 @@ import InfoButton from '../../../../components/InfoButton';
 import InfoDrawer from '../../../../components/InfoDrawer';
 import { CHART_INFO } from '../../../../data/chartInfoConfig';
 import { knowledgeNodes } from '../../../../data/knowledgeGraph';
-import { getMisconceptionStudents, getNodePassRates } from '../../../../data/quizData';
+import { useClassAnswers, useQuizStats } from '../../../../hooks/useAnswers';
+import { buildMisconceptionStudents, buildPassRates } from './classReportData';
 
 export default function AIDiagnosisSummary({ quizId, classId, totalStudents }) {
   const [infoOpen, setInfoOpen] = useState(false);
-  const passRates = getNodePassRates(quizId, classId);
-  const misconStudents = getMisconceptionStudents(quizId, classId);
+  const { data: stats } = useQuizStats(quizId, classId);
+  const { data: classAnswers } = useClassAnswers(quizId, classId);
+  const passRates = buildPassRates(stats);
+  const misconStudents = buildMisconceptionStudents(stats, classAnswers);
 
   const passRateValues = Object.values(passRates);
   const avgPassRate = passRateValues.length > 0

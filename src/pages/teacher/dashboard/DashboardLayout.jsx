@@ -5,7 +5,8 @@ import { useApp } from '../../../context/AppContext';
 import { useClasses } from '../../../hooks/useClasses';
 import { useQuizzes } from '../../../hooks/useQuizzes';
 import { useAssignments } from '../../../hooks/useAssignments';
-import { computeOverviewForQuiz, getAllAssignedQuizzes } from './shared/helpers';
+import { useQuizStats } from '../../../hooks/useAnswers';
+import { buildOverviewFromStats, getAllAssignedQuizzes } from './shared/helpers';
 
 const TABS = [
   { to: 'overview',       label: '全年級總覽' },
@@ -54,8 +55,10 @@ export default function DashboardLayout() {
     setSearchParams(next, { replace: false });
   };
 
+  // P4：grade-wide stats 直接從後端拿，不再經過 mock
+  const { data: gradeStats } = useQuizStats(effectiveQuizId);
   const overviewData = effectiveQuizId
-    ? computeOverviewForQuiz(effectiveQuizId, classes, assignments)
+    ? buildOverviewFromStats(gradeStats, classes, assignments, effectiveQuizId)
     : null;
 
   const selectedQuizTitle = quizzes.find(q => q.id === effectiveQuizId)?.title;

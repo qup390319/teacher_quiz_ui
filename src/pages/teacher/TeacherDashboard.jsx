@@ -28,10 +28,17 @@ export default function TeacherDashboard() {
         {/* Page Header */}
         <div className="mb-6 sm:mb-8">
           <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">首頁</h1>
-          <p className="text-[#636E72] mt-1">歡迎使用！以下是完成一次迷思診斷的三大步驟</p>
+          <p className="text-[#636E72] mt-1">歡迎使用！以下是完成一次迷思診斷與治療的完整流程</p>
         </div>
 
-        {/* 主流程導航條 */}
+        {/* 流程一：迷思概念診斷 */}
+        <div className="mb-3 flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFF1D8] border border-[#F0B962] text-xs font-bold text-[#7A4A18]">
+            📝 流程一
+          </span>
+          <h2 className="text-sm font-bold text-[#2D3436]">迷思概念診斷</h2>
+          <span className="text-xs text-[#95A5A6]">出題 → 派題 → 看診斷結果</span>
+        </div>
         <div className="bg-white border border-[#BDC3C7] rounded-[24px] sm:rounded-[32px] p-4 sm:p-6 mb-6 sm:mb-8 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
           <div className="flex flex-wrap items-stretch justify-between gap-2">
             {/* 步驟 1 */}
@@ -78,6 +85,62 @@ export default function TeacherDashboard() {
               </div>
               <p className="text-sm font-bold text-[#2D3436] mb-1">診斷結果</p>
               <p className="text-xs text-[#636E72]">查看報告</p>
+            </button>
+          </div>
+        </div>
+
+        {/* 流程二：迷思概念治療 */}
+        <div className="mb-3 flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#E0F0E8] border border-[#3F8B5E] text-xs font-bold text-[#2E6B47]">
+            🌱 流程二
+          </span>
+          <h2 className="text-sm font-bold text-[#2D3436]">迷思概念治療</h2>
+          <span className="text-xs text-[#95A5A6]">情境出題 → 情境派題 → 看治療對話紀錄</span>
+        </div>
+        <div className="bg-white border border-[#BDC3C7] rounded-[24px] sm:rounded-[32px] p-4 sm:p-6 mb-6 sm:mb-8 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+          <div className="flex flex-wrap items-stretch justify-between gap-2">
+            {/* 步驟 1：情境出題 */}
+            <button
+              onClick={() => navigate('/teacher/scenarios')}
+              className="flex-1 flex flex-col items-center text-center p-4 rounded-2xl hover:bg-[#EEF5E6] transition-colors group"
+            >
+              <div className="w-10 h-10 rounded-full bg-[#5BA47A] border border-[#3F8B5E] text-white text-base font-bold flex items-center justify-center mb-3 group-hover:bg-[#3F8B5E] transition-colors">
+                1
+              </div>
+              <p className="text-sm font-bold text-[#2D3436] mb-1">情境出題</p>
+              <p className="text-xs text-[#636E72]">建立情境考卷</p>
+            </button>
+
+            <svg className="w-6 h-6 text-[#BDC3C7] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+
+            {/* 步驟 2：情境派題 */}
+            <button
+              onClick={() => navigate('/teacher/assignments/scenarios')}
+              className="flex-1 flex flex-col items-center text-center p-4 rounded-2xl hover:bg-[#EEF5E6] transition-colors group"
+            >
+              <div className="w-10 h-10 rounded-full bg-[#BADDF4] border border-[#BDC3C7] text-[#2E86C1] text-base font-bold flex items-center justify-center mb-3 group-hover:bg-[#A8D2EC] transition-colors">
+                2
+              </div>
+              <p className="text-sm font-bold text-[#2D3436] mb-1">情境派題</p>
+              <p className="text-xs text-[#636E72]">指派給學生</p>
+            </button>
+
+            <svg className="w-6 h-6 text-[#BDC3C7] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+
+            {/* 步驟 3：治療對話紀錄 */}
+            <button
+              onClick={() => navigate('/teacher/treatment-logs')}
+              className="flex-1 flex flex-col items-center text-center p-4 rounded-2xl hover:bg-[#EEF5E6] transition-colors group"
+            >
+              <div className="w-10 h-10 rounded-full bg-[#FCF0C2] border border-[#BDC3C7] text-[#B7950B] text-base font-bold flex items-center justify-center mb-3 group-hover:bg-[#F8E89A] transition-colors">
+                3
+              </div>
+              <p className="text-sm font-bold text-[#2D3436] mb-1">治療對話紀錄</p>
+              <p className="text-xs text-[#636E72]">查看治療成效</p>
             </button>
           </div>
         </div>

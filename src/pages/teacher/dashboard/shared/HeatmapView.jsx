@@ -3,14 +3,19 @@ import InfoButton from '../../../../components/InfoButton';
 import InfoDrawer from '../../../../components/InfoDrawer';
 import { CHART_INFO } from '../../../../data/chartInfoConfig';
 import { knowledgeNodes } from '../../../../data/knowledgeGraph';
-import { getQuizQuestions, getQuestionStats } from '../../../../data/quizData';
+import { useQuiz } from '../../../../hooks/useQuizzes';
+import { useQuizStats } from '../../../../hooks/useAnswers';
+import { buildQuestionStats } from './classReportData';
 
 export default function HeatmapView({ quizId, classId, totalStudents }) {
   const [infoOpen, setInfoOpen] = useState(false);
-  const questions = getQuizQuestions(quizId);
-  const rows = questions.map((q, qIdx) => {
+  const { data: quiz } = useQuiz(quizId);
+  const { data: statsData } = useQuizStats(quizId, classId);
+  const questionStats = buildQuestionStats(statsData);
+  const questions = quiz?.questions ?? [];
+  const rows = questions.map((q) => {
     const node = knowledgeNodes.find(n => n.id === q.knowledgeNodeId);
-    const stats = getQuestionStats(qIdx, quizId, classId);
+    const stats = questionStats[q.id] ?? { A: 0, B: 0, C: 0, D: 0 };
     return { q, node, stats };
   });
 

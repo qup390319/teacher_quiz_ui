@@ -1,4 +1,5 @@
 import { Icon, WOOD_OUTER, WOOD_INNER_CREAM } from '../ui/woodKit';
+import { resolveScenarioImage } from '../../lib/scenarioImage';
 
 /* 對話面板（含「查看情境」摺疊 + 對話氣泡列表 + 輸入框 / 下一題按鈕）
  * spec-07 §12.3 對話氣泡 */
@@ -43,21 +44,24 @@ export default function ChatStream({
                 </p>
                 {currentQuestion.scenarioImages?.length > 0 && (
                   <div className="mt-3 flex flex-col items-center gap-2">
-                    {currentQuestion.scenarioImages.map((src) => (
+                    {currentQuestion.scenarioImages.map((src) => {
+                      const resolved = resolveScenarioImage(src);
+                      return (
                       <button
                         key={src}
                         type="button"
-                        onClick={() => onZoomImage?.(src)}
+                        onClick={() => onZoomImage?.(resolved)}
                         className="cursor-zoom-in"
                       >
                         <img
-                          src={src}
+                          src={resolved}
                           alt="情境圖"
                           className="block w-full h-auto rounded-lg border border-[#C19A6B]
                                      max-w-[280px] sm:max-w-[340px]"
                         />
                       </button>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

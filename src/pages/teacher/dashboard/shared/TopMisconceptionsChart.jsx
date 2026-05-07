@@ -6,7 +6,7 @@ import {
 import InfoButton from '../../../../components/InfoButton';
 import InfoDrawer from '../../../../components/InfoDrawer';
 import { CHART_INFO } from '../../../../data/chartInfoConfig';
-import { CLASS_KEY_MAP } from './helpers';
+import { getClassChartKey } from './helpers';
 
 const getBarColor = (avg) => avg >= 45 ? '#F28B95' : avg >= 30 ? '#F4D03F' : '#BDC3C7';
 
@@ -18,7 +18,7 @@ function MisconTooltip({ active, payload, label, sorted, classStats }) {
         <p className="font-bold text-[#2D3436] mb-1 text-xs leading-snug">{label}</p>
         <p className="text-xs text-[#95A5A6] mb-2">{item?.node}</p>
         {classStats.map(c => {
-          const key = CLASS_KEY_MAP[c.id] ?? c.id;
+          const key = getClassChartKey(c.id);
           return (
             <div key={c.id} className="flex items-center gap-2 text-xs mb-0.5">
               <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: c.color }} />

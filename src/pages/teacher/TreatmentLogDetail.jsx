@@ -7,6 +7,7 @@ import { useStudent } from '../../hooks/useStudents';
 import { useTreatmentLog } from '../../hooks/useTreatment';
 import { PHASE_LABEL, STAGE_LABEL } from '../../data/treatmentBot';
 import { knowledgeNodes } from '../../data/knowledgeGraph';
+import { resolveScenarioImage } from '../../lib/scenarioImage';
 
 /* 治療對話紀錄詳情頁（spec-08 §5.4）
  * P4 起：直接從 /api/teachers/treatment-logs/{sessionId} 拉 session + messages
@@ -165,7 +166,7 @@ export default function TreatmentLogDetail() {
                     {activeQuestion.scenarioImages.map((src) => (
                       <img
                         key={src}
-                        src={src}
+                        src={resolveScenarioImage(src)}
                         alt="情境圖"
                         className="w-full rounded-lg border border-[#BDC3C7]"
                       />

@@ -3,9 +3,13 @@ import InfoButton from '../../../../components/InfoButton';
 import InfoDrawer from '../../../../components/InfoDrawer';
 import { CHART_INFO } from '../../../../data/chartInfoConfig';
 import { knowledgeNodes } from '../../../../data/knowledgeGraph';
+import { useClassAnswers, useQuizStats } from '../../../../hooks/useAnswers';
 import {
-  getClassAnswers, getMisconceptionStudents, getNodePassRates,
-} from '../../../../data/quizData';
+  buildClassAnswerRows,
+  buildMisconceptionStudents,
+  buildPassRates,
+  buildQuestionStats,
+} from './classReportData';
 import { getAssignment } from './helpers';
 import { buildClassSummaryPayload } from './summaryPayload';
 import RagflowSummaryPanel from '../../../../components/teacher/RagflowSummaryPanel';
@@ -14,18 +18,35 @@ import WeeklyActionChecklist from './WeeklyActionChecklist';
 import BreakdownChart from './BreakdownChart';
 import MisconceptionDistribution from './MisconceptionDistribution';
 import HeatmapView from './HeatmapView';
+import FollowupConversations from './FollowupConversations';
 
 export default function SingleClassReport({ cls, assignments, quizzes, quizId }) {
   const classId = cls.id;
-  const classAnswersData = getClassAnswers(quizId, classId);
-  const totalStudents = classAnswersData.length;
+  const { data: stats, isLoading: statsLoading } = useQuizStats(quizId, classId);
+  const { data: classAnswers, isLoading: answersLoading } = useClassAnswers(quizId, classId);
 
+  // 從後端 API 派生出舊版 mock 介面 shape，子元件不需重寫
+  const passRates = buildPassRates(stats);
+  const misconStudents = buildMisconceptionStudents(stats, classAnswers);
+  const questionStats = buildQuestionStats(stats);
+  const classAnswerRows = buildClassAnswerRows(classAnswers);
+
+  // 該班的學生人數：以 stats.studentCount 為準（DB students 表）
+  const totalStudents = stats?.studentCount ?? classAnswerRows.length;
+  const submittedCount = stats?.submittedCount ?? 0;
+  const completionRate = stats?.completionRate ?? 0;
   const selectedAssignment = getAssignment(assignments, classId, quizId);
-  // P3 過渡：assignment 不再帶 completion stats（P4 才從 DB 算）。把 mock 學生視為「全部已提交」。
-  const completionRate = selectedAssignment?.completionRate ?? (totalStudents > 0 ? 100 : 0);
-  const hasData = !!selectedAssignment && totalStudents > 0;
+  const hasData = submittedCount > 0;
 
   const [statInfoKey, setStatInfoKey] = useState(null);
+
+  if (statsLoading || answersLoading) {
+    return (
+      <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-12 text-center text-[#636E72] shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+        載入診斷資料中…
+      </div>
+    );
+  }
 
   if (!hasData) {
     const quizTitle = quizzes.find(q => q.id === quizId)?.title ?? '此考卷';
@@ -43,18 +64,18 @@ export default function SingleClassReport({ cls, assignments, quizzes, quizId })
     );
   }
 
-  const misconStudents = getMisconceptionStudents(quizId, classId);
-  const passRates = getNodePassRates(quizId, classId);
-  const avgPassRate = Math.round(Object.values(passRates).reduce((s, v) => s + v, 0) / Object.values(passRates).length);
+  const passRateValues = Object.values(passRates);
+  const avgPassRate = passRateValues.length > 0
+    ? Math.round(passRateValues.reduce((s, v) => s + v, 0) / passRateValues.length)
+    : (stats?.averageMastery ?? 0);
 
   const topMisconEntry = Object.entries(misconStudents)
-    .map(([id, s]) => ({ id, pct: Math.round((s.length / totalStudents) * 100) }))
+    .map(([id, s]) => ({ id, pct: totalStudents > 0 ? Math.round((s.length / totalStudents) * 100) : 0 }))
     .sort((a, b) => b.pct - a.pct)[0];
   const topMisconNode = knowledgeNodes.find(n => n.misconceptions.find(m => m.id === topMisconEntry?.id));
   const topMisconLabel = topMisconNode?.misconceptions.find(m => m.id === topMisconEntry?.id)?.label;
 
-  const submittedCount = selectedAssignment.submittedCount ?? totalStudents;
-  const totalStudentsAssign = selectedAssignment.totalStudents ?? totalStudents;
+  const totalStudentsAssign = selectedAssignment?.totalStudents ?? totalStudents;
 
   return (
     <div className="space-y-6">
@@ -114,6 +135,19 @@ export default function SingleClassReport({ cls, assignments, quizzes, quizId })
       </div>
       <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
         <HeatmapView quizId={quizId} classId={classId} totalStudents={totalStudents} />
+      </div>
+      <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+        <h3 className="text-base font-bold text-[#2D3436] mb-1 flex items-center gap-2">
+          <svg className="w-5 h-5 text-[#5BA47A]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          </svg>
+          學生第二層追問對話完整紀錄
+        </h3>
+        <p className="text-xs text-[#636E72] mb-4">
+          展開後可看到每位學生在追問階段與 AI 老師的完整對話，這是判斷迷思是否真實存在的最直接證據。
+        </p>
+        <FollowupConversations quizId={quizId} classId={classId} />
       </div>
     </div>
   );

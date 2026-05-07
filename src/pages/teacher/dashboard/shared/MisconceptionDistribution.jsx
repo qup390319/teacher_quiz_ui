@@ -3,12 +3,15 @@ import InfoButton from '../../../../components/InfoButton';
 import InfoDrawer from '../../../../components/InfoDrawer';
 import { CHART_INFO } from '../../../../data/chartInfoConfig';
 import { knowledgeNodes } from '../../../../data/knowledgeGraph';
-import { getMisconceptionStudents } from '../../../../data/quizData';
+import { useClassAnswers, useQuizStats } from '../../../../hooks/useAnswers';
+import { buildMisconceptionStudents } from './classReportData';
 
 export default function MisconceptionDistribution({ quizId, classId, totalStudents }) {
   const [expandedIds, setExpandedIds] = useState(new Set());
   const [infoOpen, setInfoOpen] = useState(false);
-  const misconStudents = getMisconceptionStudents(quizId, classId);
+  const { data: stats } = useQuizStats(quizId, classId);
+  const { data: classAnswers } = useClassAnswers(quizId, classId);
+  const misconStudents = buildMisconceptionStudents(stats, classAnswers);
 
   const sorted = Object.entries(misconStudents)
     .map(([id, students]) => ({ id, students, pct: Math.round((students.length / totalStudents) * 100) }))

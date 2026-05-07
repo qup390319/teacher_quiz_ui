@@ -99,6 +99,7 @@ async def _build_stats(
 def _to_io(
     a: Assignment, stats: tuple[int, int, int],
     my_scenario_completed: bool | None = None,
+    my_diagnosis_completed: bool | None = None,
 ) -> AssignmentIO:
     submitted, total, rate = stats
     return AssignmentIO(
@@ -116,6 +117,7 @@ def _to_io(
         submitted_count=submitted,
         total_students=total,
         my_scenario_completed=my_scenario_completed,
+        my_diagnosis_completed=my_diagnosis_completed,
     )
 
 
@@ -174,6 +176,7 @@ async def list_assignments(
 
     # For students: compute per-student scenario completion
     my_scenario_map: dict[str, bool] = {}
+    my_diagnosis_map: dict[str, bool] = {}
     if user.role == "student":
         sce_quiz_ids = [
             a.scenario_quiz_id for a in assignments
@@ -193,8 +196,25 @@ async def list_assignments(
                 if a.type == "scenario" and a.scenario_quiz_id:
                     my_scenario_map[a.id] = a.scenario_quiz_id in completed_sq_ids
 
+        diag_assign_ids = [a.id for a in assignments if a.type == "diagnosis"]
+        if diag_assign_ids:
+            answered_res = await db.execute(
+                select(distinct(StudentAnswer.assignment_id))
+                .where(
+                    StudentAnswer.student_id == user.id,
+                    StudentAnswer.assignment_id.in_(diag_assign_ids),
+                )
+            )
+            answered_ids = {row[0] for row in answered_res.all()}
+            for a in assignments:
+                if a.type == "diagnosis":
+                    my_diagnosis_map[a.id] = a.id in answered_ids
+
     return [
-        _to_io(a, stats.get(a.id, (0, 0, 0)), my_scenario_map.get(a.id))
+        _to_io(
+            a, stats.get(a.id, (0, 0, 0)),
+            my_scenario_map.get(a.id), my_diagnosis_map.get(a.id),
+        )
         for a in assignments
     ]
 

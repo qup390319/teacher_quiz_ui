@@ -84,11 +84,26 @@ class MisconceptionTopRow(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class PerClassStatsRow(BaseModel):
+    """Single-class stats nested in grade-wide response."""
+    class_id: str = Field(serialization_alias="classId")
+    class_name: str = Field(serialization_alias="className")
+    student_count: int = Field(serialization_alias="studentCount")
+    submitted_count: int = Field(serialization_alias="submittedCount")
+    completion_rate: int = Field(serialization_alias="completionRate")
+    average_mastery: int = Field(serialization_alias="averageMastery")
+    node_pass_rates: dict[str, int] = Field(serialization_alias="nodePassRates")
+    top_misconceptions: list[MisconceptionTopRow] = Field(serialization_alias="topMisconceptions")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
 class QuizStatsResponse(BaseModel):
     """GET /api/quizzes/{quiz_id}/stats?classId=
 
-    For grade-wide stats, include `perClass`. For single-class stats, populate
-    `nodePassRates` / `topMisconceptions` directly.
+    For grade-wide stats (no classId), `perClass` is populated with each class's
+    stats so the frontend can render cross-class comparison without N round-trips.
+    For single-class stats, `perClass` is empty.
     """
     quiz_id: str = Field(serialization_alias="quizId")
     class_id: str | None = Field(default=None, serialization_alias="classId")
@@ -101,6 +116,9 @@ class QuizStatsResponse(BaseModel):
     question_stats: dict[int, dict[str, int]] = Field(
         default_factory=dict, serialization_alias="questionStats",
     )  # {questionId: {A: n, B: n, C: n, D: n}}
+    per_class: list[PerClassStatsRow] = Field(
+        default_factory=list, serialization_alias="perClass",
+    )
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -112,5 +130,38 @@ class StudentHistoryRow(BaseModel):
     correct_count: int = Field(serialization_alias="correctCount")
     total_questions: int = Field(serialization_alias="totalQuestions")
     misconceptions: list[str]
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+# ── Teacher-facing: per-question follow-up dialogue logs ─────────────────
+class FollowupConversationRow(BaseModel):
+    """One follow-up dialogue log for one student-question pair."""
+    student_id: str = Field(serialization_alias="studentId")
+    student_name: str = Field(serialization_alias="studentName")
+    seat: int | None = None
+    question_id: int = Field(serialization_alias="questionId")
+    selected_tag: str | None = Field(serialization_alias="selectedTag")
+    diagnosis: str  # current StudentAnswer.diagnosis (after followup statusChange)
+    answered_at: datetime = Field(serialization_alias="answeredAt")
+    final_status: str = Field(serialization_alias="finalStatus")
+    misconception_code: str | None = Field(serialization_alias="misconceptionCode")
+    reasoning_quality: str = Field(serialization_alias="reasoningQuality")
+    ai_summary: str | None = Field(serialization_alias="aiSummary")
+    status_change: dict[str, Any] = Field(serialization_alias="statusChange")
+    conversation_log: list[dict[str, Any]] = Field(serialization_alias="conversationLog")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class QuizClassFollowupsResponse(BaseModel):
+    """GET /api/quizzes/{quiz_id}/followups?classId=
+
+    Returns follow-up dialogue logs for every (student, question) that has one.
+    Only follow-ups; questions with no follow-up are omitted.
+    """
+    quiz_id: str = Field(serialization_alias="quizId")
+    class_id: str = Field(serialization_alias="classId")
+    rows: list[FollowupConversationRow]
 
     model_config = ConfigDict(populate_by_name=True)

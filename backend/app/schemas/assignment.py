@@ -24,9 +24,12 @@ class AssignmentIO(BaseModel):
     completion_rate: int = Field(default=0, serialization_alias="completionRate")
     submitted_count: int = Field(default=0, serialization_alias="submittedCount")
     total_students: int = Field(default=0, serialization_alias="totalStudents")
-    # Per-student scenario completion — only populated for student callers
+    # Per-student completion — only populated for student callers
     my_scenario_completed: bool | None = Field(
         default=None, serialization_alias="myScenarioCompleted",
+    )
+    my_diagnosis_completed: bool | None = Field(
+        default=None, serialization_alias="myDiagnosisCompleted",
     )
 
     model_config = ConfigDict(populate_by_name=True)

@@ -46,7 +46,7 @@ export default function ScenarioLibrary() {
     <TeacherLayout>
       <div className="p-4 sm:p-6 md:p-8">
         {/* 頁首 */}
-        <div className="flex flex-wrap items-start justify-between mb-6 sm:mb-8 gap-3">
+        <div className="flex flex-wrap items-start justify-between mb-3 gap-3">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">情境出題</h1>
             <p className="text-[#636E72] mt-1 text-sm">
@@ -63,6 +63,34 @@ export default function ScenarioLibrary() {
             </svg>
             新增情境考卷
           </button>
+        </div>
+
+        {/* 認知師徒制四階段速覽（每階段一行 chip，極簡） */}
+        <div className="mb-6 sm:mb-8 bg-[#FFFBF0] border border-[#F0B962] rounded-2xl px-4 py-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+          <span className="inline-flex items-center gap-1 text-xs font-bold text-[#7A4A18]">
+            <span className="text-base">💡</span>認知師徒制四階段
+          </span>
+          {[
+            { step: '1', name: '主張 Claim', what: '學生先說判斷' },
+            { step: '2', name: '證據 Evidence', what: 'AI 追問依據' },
+            { step: '3', name: '推理 Reasoning', what: '對照科學原理' },
+            { step: '4', name: '修正 Revision', what: 'AI 反例引導' },
+          ].map((s, i, arr) => (
+            <div key={s.step} className="flex items-center gap-1.5">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white border border-[#F0B962]">
+                <span className="w-5 h-5 rounded-full bg-[#D08B2E] text-white text-xs font-bold flex items-center justify-center">
+                  {s.step}
+                </span>
+                <span className="text-xs font-semibold text-[#5A3E22]">{s.name}</span>
+                <span className="text-xs text-[#7A5232]">· {s.what}</span>
+              </span>
+              {i < arr.length - 1 && (
+                <svg className="w-3 h-3 text-[#D08B2E] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                </svg>
+              )}
+            </div>
+          ))}
         </div>
 
         {/* Tab Bar */}

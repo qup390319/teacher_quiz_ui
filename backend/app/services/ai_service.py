@@ -25,6 +25,7 @@ def build_distractor_query(
     misconception_label: str,
     misconception_detail: str,
     current_text: str = "",
+    stem: str = "",
 ) -> str:
     """Compose the question we send to RAGFlow agent for N6."""
     base = (
@@ -32,9 +33,16 @@ def build_distractor_query(
         f"\n知識節點：{node_id}（{node_name}）"
         f"\n目標迷思：{misconception_id}（{misconception_label}）"
         f"\n迷思詳細描述：{misconception_detail}"
+    )
+    if stem and stem.strip():
+        base += (
+            f"\n\n題幹情境：{stem.strip()}"
+            "\n（產出的三條學生說法必須是針對這個題幹情境會說的話，不可離題）"
+        )
+    base += (
         "\n\n要求："
         "\n1. 必須以學生第一人稱口語撰寫，避免學術用語。"
-        "\n2. 三條應呈現不同表達方式，但都對應同一個迷思。"
+        "\n2. 三條應呈現不同表達方式，但都對應同一個迷思，且都緊扣上方題幹情境。"
         "\n3. 不要附編號或前綴（例如 1. / -）。"
         "\n4. 末尾請用 [REF] 標籤列出引用來源（文件名 + 頁碼或段落），不在三條句子內。"
         "\n5. 每條長度控制在 25 字以內。"
@@ -80,6 +88,7 @@ async def suggest_distractors(
     misconception_label: str,
     misconception_detail: str,
     current_text: str = "",
+    stem: str = "",
 ) -> tuple[list[str], RagflowAnswer]:
     """Call RAGFlow → parse → return (suggestions, raw answer for citations)."""
     sid = session_id or await create_session()
@@ -90,6 +99,7 @@ async def suggest_distractors(
         misconception_label=misconception_label,
         misconception_detail=misconception_detail,
         current_text=current_text,
+        stem=stem,
     )
     answer = await converse(sid, question)
     suggestions = parse_distractor_suggestions(answer.answer, max_count=3)

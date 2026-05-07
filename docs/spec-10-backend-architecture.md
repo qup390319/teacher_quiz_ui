@@ -272,11 +272,12 @@ HTTP status code：
 | `quizzes` | `POST/PUT/DELETE /api/quizzes[/{id}]` | P3 ✅ | 教師專屬（CRUD） |
 | `scenarios` | `GET /api/scenarios` / `GET /api/scenarios/{id}` | P3 ✅ | 教師看全部；**學生只看自己班級已被派發的** |
 | `scenarios` | `POST/PUT/DELETE /api/scenarios[/{id}]` | P3 ✅ | 教師專屬（CRUD） |
-| `assignments` | `GET /api/assignments` | P3 ✅ | **教師範圍隔離**：教師只看 `class_id` 屬於自己班級的派題；學生隱式過濾為自己班級。回傳含 **`completionRate / submittedCount / totalStudents`** 即時統計 |
+| `assignments` | `GET /api/assignments` | P3 ✅ | **教師範圍隔離**：教師只看 `class_id` 屬於自己班級的派題；學生隱式過濾為自己班級。回傳含 **`completionRate / submittedCount / totalStudents`** 即時統計；對學生身份額外回傳 **`myDiagnosisCompleted`**（該生於此 assignment 是否已有 ≥1 筆作答）與 **`myScenarioCompleted`**（該生對該情境考卷是否已完成 treatment session），用於學生首頁判斷任務是否做完，跨刷新仍正確 |
 | `assignments` | `POST/PATCH/DELETE /api/assignments[/{id}]` | P3 ✅ | 教師專屬；POST/PATCH 寫入前驗證 `class_id` 屬於自己 |
 | `answers` | `POST /api/answers` | P4 ✅ | 學生作答（接收陣列以批次寫入） |
 | `answers` | `POST /api/answers/{id}/followup` | P4 ✅ | 追問結果回寫（驅動 statusChange） |
 | `answers` | `GET /api/quizzes/{quiz_id}/answers?classId=` | P4 ✅ | 教師查班級作答 |
+| `answers` | `GET /api/quizzes/{quiz_id}/followups?classId=` | P4 ✅ | 教師查該班完整 N3 追問對話紀錄（含 `conversationLog / aiSummary / finalStatus / misconceptionCode / reasoningQuality / statusChange`），給單班報告底部「學生第二層追問對話完整紀錄」區塊使用 |
 | `answers` | `GET /api/quizzes/{quiz_id}/stats?classId=` | P4 ✅ | 取代前端 mock `getNodePassRates / getMisconceptionStudents` |
 | `answers` | `GET /api/students/{id}/history` | P4 ✅ | 學生作答歷史 |
 | `treatment` | `POST /api/treatment/sessions/start` | P4 ✅ | 啟動治療 session |
