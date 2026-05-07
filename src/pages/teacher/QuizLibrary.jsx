@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TeacherLayout from '../../components/TeacherLayout';
+import ConfirmDeleteModal from '../../components/ConfirmDeleteModal';
 import { useApp } from '../../context/AppContext';
 import { useClasses } from '../../hooks/useClasses';
 import { useAssignments } from '../../hooks/useAssignments';
@@ -25,6 +26,7 @@ export default function QuizLibrary() {
   const { data: assignments = [] } = useAssignments();
   const deleteQuiz = useDeleteQuiz();
   const [activeTab, setActiveTab] = useState('published');
+  const [deletingQuiz, setDeletingQuiz] = useState(null);
 
   const counts = {
     all: quizzes.length,
@@ -67,13 +69,14 @@ export default function QuizLibrary() {
     }
   };
 
-  const handleDeleteDraft = async (quiz) => {
-    if (!window.confirm(`確定要刪除草稿「${quiz.title}」嗎？此操作無法復原。`)) return;
+  const confirmDelete = async () => {
+    if (!deletingQuiz) return;
     try {
-      await deleteQuiz.mutateAsync(quiz.id);
+      await deleteQuiz.mutateAsync(deletingQuiz.id);
+      setDeletingQuiz(null);
     } catch (err) {
       console.error('[QuizLibrary] failed to delete', err);
-      alert('刪除草稿失敗：' + (err?.message ?? '未知錯誤'));
+      alert('刪除考卷失敗：' + (err?.message ?? '未知錯誤'));
     }
   };
 
@@ -242,18 +245,16 @@ export default function QuizLibrary() {
                         </svg>
                         複製為新考卷
                       </button>
-                      {isDraft && (
-                        <button
-                          onClick={() => handleDeleteDraft(quiz)}
-                          disabled={deleteQuiz.isPending}
-                          className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-[#E74C5E] bg-[#FAC8CC] border border-[#BDC3C7] rounded-xl hover:bg-[#F5B8BA] transition-colors disabled:opacity-50"
-                        >
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                          刪除草稿
-                        </button>
-                      )}
+                      <button
+                        onClick={() => setDeletingQuiz(quiz)}
+                        disabled={deleteQuiz.isPending}
+                        className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-[#E74C5E] bg-[#FAC8CC] border border-[#BDC3C7] rounded-xl hover:bg-[#F5B8BA] transition-colors disabled:opacity-50"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        {isDraft ? '刪除草稿' : '刪除'}
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -262,6 +263,17 @@ export default function QuizLibrary() {
           </div>
         )}
       </div>
+
+      {deletingQuiz && (
+        <ConfirmDeleteModal
+          title="確認要刪除此題庫？"
+          message="此動作無法復原。"
+          itemLabel={`${deletingQuiz.status === 'draft' ? '草稿' : '已發布'}・${deletingQuiz.title}`}
+          isPending={deleteQuiz.isPending}
+          onConfirm={confirmDelete}
+          onClose={() => setDeletingQuiz(null)}
+        />
+      )}
     </TeacherLayout>
   );
 }

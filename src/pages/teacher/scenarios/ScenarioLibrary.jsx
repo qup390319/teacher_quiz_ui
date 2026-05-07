@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TeacherLayout from '../../../components/TeacherLayout';
-import { useScenarios } from '../../../hooks/useScenarios';
+import ConfirmDeleteModal from '../../../components/ConfirmDeleteModal';
+import { useScenarios, useDeleteScenario } from '../../../hooks/useScenarios';
 import { useAssignments } from '../../../hooks/useAssignments';
 import { useClasses } from '../../../hooks/useClasses';
 import { knowledgeNodes } from '../../../data/knowledgeGraph';
@@ -20,7 +21,20 @@ export default function ScenarioLibrary() {
   const { data: scenarioQuizzes = [], isLoading } = useScenarios();
   const { data: assignments = [] } = useAssignments();
   const { data: classes = [] } = useClasses();
+  const deleteScenario = useDeleteScenario();
   const [activeTab, setActiveTab] = useState('published');
+  const [deletingScenario, setDeletingScenario] = useState(null);
+
+  const confirmDelete = async () => {
+    if (!deletingScenario) return;
+    try {
+      await deleteScenario.mutateAsync(deletingScenario.id);
+      setDeletingScenario(null);
+    } catch (err) {
+      console.error('[ScenarioLibrary] failed to delete', err);
+      alert('刪除情境考卷失敗：' + (err?.message ?? '未知錯誤'));
+    }
+  };
 
   const counts = {
     all: scenarioQuizzes.length,
@@ -240,6 +254,15 @@ export default function ScenarioLibrary() {
                       >
                         派發
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeletingScenario(sq)}
+                        disabled={deleteScenario.isPending}
+                        className="px-4 py-1.5 text-sm font-semibold text-[#E74C5E] bg-[#FAC8CC]
+                                   border border-[#BDC3C7] rounded-xl hover:bg-[#F5B8BA] transition disabled:opacity-50"
+                      >
+                        刪除
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -248,6 +271,17 @@ export default function ScenarioLibrary() {
           </div>
         )}
       </div>
+
+      {deletingScenario && (
+        <ConfirmDeleteModal
+          title="確認要刪除此題庫？"
+          message="此動作無法復原。"
+          itemLabel={`${deletingScenario.status === 'draft' ? '草稿' : '已發布'}・${deletingScenario.title}`}
+          isPending={deleteScenario.isPending}
+          onConfirm={confirmDelete}
+          onClose={() => setDeletingScenario(null)}
+        />
+      )}
     </TeacherLayout>
   );
 }
