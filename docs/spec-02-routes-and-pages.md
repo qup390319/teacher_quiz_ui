@@ -32,7 +32,7 @@
 | `/teacher/quizzes` | `QuizLibrary` | 考卷庫：瀏覽與管理考卷 | `TeacherLayout` |
 | `/teacher/assignments` | — | 舊路由，redirect 至 `/teacher/assignments/diagnosis` | — |
 | `/teacher/assignments/diagnosis` | `AssignmentManagement` | 派題管理：指派**診斷考卷**給班級 | `TeacherLayout` |
-| `/teacher/assignments/scenarios` | `ScenarioAssignments` | **（規劃，波次 2）** 派題管理：指派**情境治療考卷**給班級（目前為佔位頁） | `TeacherLayout` |
+| `/teacher/assignments/scenarios` | `AssignmentManagement` (initialTab="scenario") | 派題管理：指派**情境治療考卷**給班級（與診斷派題共用同一頁面、預設情境 tab） | `TeacherLayout` |
 | `/teacher/classes` | `ClassManagement` | 班級管理：檢視班級名冊 | `TeacherLayout` |
 | `/teacher/classes/:classId` | `ClassDetail` | 班級詳情：個別班級學生資訊 | `TeacherLayout` |
 | `/teacher/knowledge-map` | `KnowledgeMap` | 知識地圖：知識節點層級結構 | `TeacherLayout` |
@@ -57,7 +57,7 @@
 |------|------|----------|------|
 | `:classId` | string | `ClassDetail` | 班級 ID（如 `class-A`） |
 | `:quizId` | string | `StudentQuiz` | 考卷 ID（如 `quiz-001`） |
-| `:scenarioQuizId` | string | `ScenarioChat` / `ScenarioCreateWizard`（編輯模式） | 情境考卷 ID（如 `scenario-001`） |
+| `:scenarioQuizId` | string | `ScenarioChat` / `ScenarioCreateWizard`（編輯模式） | 情境考卷 ID（如 `scenario-002`） |
 | `:sessionId` | string | `TreatmentLogDetail` | 治療 session ID |
 
 ### 1.3 URL Query 參數（診斷結果子分頁共用）
@@ -236,9 +236,22 @@
 - 根據選定的知識節點載入對應題目
 - 可編輯題幹（stem）與選項（options）
 - 可編輯各選項的迷思概念對應（diagnosis）
-- 儲存時呼叫 `saveQuiz()` 存入考卷庫
+- **CoveragePanel 補洞**：每個節點下列出尚未被任一選項覆蓋的迷思 chips；點擊 chip 直接建立預填的新題目（鎖定該節點 + 該迷思為 distractor），並開啟編輯 modal
+- **從題庫挑題**（`QuestionImportDrawer`）：右側抽屜列出所有考卷，展開後勾選題目即可深拷貝匯入；預設只顯示與當前 `selectedNodeIds` 有交集的考卷，可切換顯示全部
+- **草稿暫存**：
+  - 「儲存草稿」按鈕：以 `status: 'draft'` 立即上傳；首次儲存後將回傳的 quiz id 寫入 `editingQuizId`，後續儲存改走 PUT
+  - 自動暫存：30 秒 debounce，依賴 `quizTitle / quizQuestions / selectedNodeIds`；底部 status pill 顯示「已自動儲存於 HH:mm」
+  - 編輯既有 `published` 卷時自動暫存停用，避免降級為草稿（顯示「此卷已發布，自動暫存停用」）
+- 「儲存並發布」按鈕：以 `status: 'published'` 儲存後跳回 `/teacher/quizzes`，並清空 `editingQuizId`
 
-**狀態依賴**: `selectedNodeIds`, `setSelectedNodeIds`, `quizQuestions`, `setQuizQuestions`, `saveQuiz`
+**子元件**（皆位於 `src/components/teacher/quizEditor/`）:
+- `EditQuestionModal` — 單題編輯 modal，整合 N6 干擾選項建議
+- `DeleteQuestionModal` — 刪除確認 modal
+- `PreviewQuizModal` — 學生端預覽
+- `CoveragePanel` — 涵蓋率 + 補洞 chips
+- `QuestionImportDrawer` — 題庫挑題抽屜
+
+**狀態依賴**: `selectedNodeIds`, `setSelectedNodeIds`, `quizQuestions`, `setQuizQuestions`, `editingQuizId`, `setEditingQuizId`, `editingQuizStatus`, `setEditingQuizStatus`, `useSaveQuiz`
 
 ---
 
@@ -247,16 +260,18 @@
 
 **功能描述**:
 - 瀏覽所有已建立的考卷
-- 支援搜尋/篩選
-- 可進入編輯模式修改考卷
-- 可刪除草稿狀態考卷
+- 可進入編輯模式修改考卷（沿用同一 quiz id；草稿顯示「繼續編輯」）
+- **複製為新考卷**：以該卷為範本（深拷貝題目、節點），導向 `/teacher/quiz/create?step=2` 並清空 `editingQuizId`，儲存時走 POST 建立新考卷
+- 可刪除草稿狀態考卷（已發布卷不顯示刪除按鈕）
 
 **UI 元素**:
-- 考卷卡片列表（標題、題數、狀態、建立日期）
-- 狀態標籤：`draft`（草稿）/ `published`（已發佈）
-- 操作按鈕：編輯、刪除、發佈
+- **頂部 tab 列**：`全部` / `題庫（已發布）` / `草稿`，每個 tab 帶數量徽章；預設停在「題庫（已發布）」（與「派題」流程的可選清單一致）
+- 考卷卡片列表（狀態徽章、標題、題數、節點 badges、已派班級、建立日期）
+- 狀態徽章：`draft`（黃底「草稿」）/ `published`（綠底「已發布」）
+- 操作按鈕：編輯 / 繼續編輯、複製為新考卷、刪除草稿（僅草稿可見）
+- 各 tab 的空狀態：`草稿` tab 提示「按儲存草稿即可暫存」、`題庫` tab 提示「按儲存並發布即可加入題庫」
 
-**狀態依賴**: `quizzes`, `saveQuiz`
+**狀態依賴**: `quizzes`, `useDeleteQuiz`, `setEditingQuizId`, `setEditingQuizStatus`, `setQuizQuestions`, `setSelectedNodeIds`
 
 ---
 
@@ -264,7 +279,7 @@
 **檔案**: `src/pages/teacher/AssignmentManagement.jsx`
 
 **功能描述**:
-- 管理**診斷考卷**派發記錄（情境考卷派題請見 §2.6.1 ScenarioAssignments）
+- 管理**診斷考卷**派發記錄（情境考卷派題請見 §2.6.1，沿用同一元件）
 - 新增派題：選擇考卷 → 選擇班級 → 設定截止日期
 - 檢視已派題記錄及完成狀態
 - 可刪除或更新派題
@@ -281,19 +296,20 @@
 
 ---
 
-### 2.6.1 ScenarioAssignments (`/teacher/assignments/scenarios`)
-**檔案**: `src/pages/teacher/ScenarioAssignments.jsx`
+### 2.6.1 情境派題 (`/teacher/assignments/scenarios`)
+**檔案**: `src/pages/teacher/AssignmentManagement.jsx`（同 §2.6，以 `initialTab="scenario"` prop 帶入）
 
 **功能描述**:
-- **（規劃中，spec-08 波次 2）** 將情境治療考卷指派給班級
-- 目前為佔位頁，顯示「即將推出」空狀態 + 兩個導航按鈕：「前往情境出題」「返回診斷派題」
-- 未來資料來源切換為 `assignments.filter(a => a.type === 'scenario')`，沿用 `AssignmentManagement` 的格子佈局
+- 將已 published 的情境治療考卷指派給班級
+- 與診斷派題共用 `AssignmentManagement` 元件；路由差異僅在於預設選中的 tab
+- 矩陣資料來源為 `assignments.filter(a => a.type === 'scenario')`，矩陣中以 `scenarioQuizId` 對應已 published 的情境考卷
+- 派題目標支援 `class`（整班）與 `students`（指定學生），後者透過 `AssignTargetPicker` modal 選取
 
-**UI 元素（佔位）**:
-- 頁首：標題「派題管理 · 情境考卷」+ 副標說明
-- 中央卡片：青木色 (`#5BA47A`) 圓形 icon + 「即將推出」標題 + 說明文字 + 兩個 CTA
+**UI 元素**:
+- 頁首：與診斷派題共用「派題管理」標題與 tab 列（📝 診斷考卷 / 🌱 情境考卷）
+- 矩陣：列為情境考卷、欄為班級；空格點擊開啟 `AssignTargetPicker`，已派格子點擊開啟 `ManagePopover`
 
-**狀態依賴**: 無（佔位頁不消費 AppContext）
+**狀態依賴**: `assignments`, `scenarios` (via `useScenarios`), `classes`, `addAssignment`, `updateAssignment`, `removeAssignment`
 
 ---
 

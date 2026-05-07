@@ -72,7 +72,7 @@ export default function StudentHome() {
       if (taskType === 'scenario') {
         const sq = scenarioQuizzes.find((q) => q.id === assignment.scenarioQuizId);
         const totalQuestions = sq?.questionCount ?? 0;
-        const sessionCompleted = assignment.status === 'completed';
+        const sessionCompleted = assignment.myScenarioCompleted === true;
 
         let status;
         if (sessionCompleted) status = 'completed';

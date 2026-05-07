@@ -32,13 +32,14 @@
 | 8 | `scenario_quizzes` | 情境治療考卷 | P1 / P3 |
 | 9 | `scenario_questions` | 情境題目 | P1 / P3 |
 | 10 | `assignments` | 派發紀錄 | P1（seed）/ P3 |
+| 10b | `assignment_students` | 個別學生派發關聯（情境派題用）| P5（個別學生派發） |
 | 11 | `student_answers` | 學生作答 | P4 |
 | 12 | `followup_results` | 追問結果 | P4 |
 | 13 | `treatment_sessions` | 治療對話 session | P4 |
 | 14 | `treatment_messages` | 治療對話訊息 | P4 |
 | 15 | `ai_summary_cache` | RAGFlow 摘要快取 | P3 |
 
-> 註：原本說 11 張表，實際拆細為 15 張（user / teacher / student 拆 3 張、ai cache 算 1 張）。spec-10 §6 表格中的「11 張表」描述以本文件為準。
+> 註：原本說 11 張表，實際拆細為 16 張（user / teacher / student 拆 3 張、ai cache 算 1 張、新增 assignment_students）。spec-10 §6 表格中的「11 張表」描述以本文件為準。
 
 ---
 
@@ -77,17 +78,24 @@ CREATE TABLE teachers (
 
 ```sql
 CREATE TABLE classes (
-    id          VARCHAR(32)   PRIMARY KEY,            -- 'class-A', 'class-B', 'class-C'
+    id          VARCHAR(32)   PRIMARY KEY,            -- 'class-A', 'class-B', 'class-C' (server-generated for new classes)
     name        VARCHAR(64)   NOT NULL,               -- '五年甲班'
     grade       VARCHAR(16)   NOT NULL,               -- '五年級'
     subject     VARCHAR(32)   NOT NULL,               -- '自然科學'
     color       VARCHAR(7)    NOT NULL,               -- '#C8EAAE'
     text_color  VARCHAR(7)    NOT NULL,               -- '#3D5A3E'
+    teacher_id  VARCHAR(64)   REFERENCES users(id) ON DELETE SET NULL,  -- 0003 migration
+    note        VARCHAR(200),                          -- 0004 migration: 教師備註，如「114 學年度」
     created_at  TIMESTAMPTZ   NOT NULL DEFAULT NOW()
 );
+CREATE INDEX classes_teacher_idx ON classes(teacher_id);
 ```
 
-> P3 起會加 `owner_teacher_id` 外鍵；P1 不加（單教師示範系統）。
+> **教師範圍隔離（0003 migration）**：`teacher_id` 是該班所屬教師。所有讀取
+> 班級 / 學生 / 派題 / 治療紀錄 / N1 / N2 的 API 都會用 `Class.teacher_id ==
+> current_teacher.id` 過濾，bbb001 等新教師看不到 aaa001 的示範資料；反之亦然。
+> 共用的 `quizzes` / `scenario_quizzes` 不做隔離（系統範例題庫）。
+> 0003 升級時會自動把所有既有班級回填為 `aaa001` 以保留既有 demo dashboard。
 
 ### 3.4 `students`
 
@@ -201,12 +209,15 @@ CREATE TABLE assignments (
     quiz_id            VARCHAR(32)   REFERENCES quizzes(id),
     scenario_quiz_id   VARCHAR(32)   REFERENCES scenario_quizzes(id),
     class_id           VARCHAR(32)   NOT NULL REFERENCES classes(id),
+    -- 派發對象：'class' = 整班；'students' = 個別學生（spec-05 §3.4 / spec-04 §2.4）
+    target_type        VARCHAR(16)   NOT NULL DEFAULT 'class',
     assigned_at        DATE          NOT NULL DEFAULT CURRENT_DATE,
     due_date           DATE          NOT NULL,
     status             VARCHAR(16)   NOT NULL DEFAULT 'active',
     created_at         TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
     CONSTRAINT assignments_type_chk CHECK (type IN ('diagnosis', 'scenario')),
     CONSTRAINT assignments_status_chk CHECK (status IN ('active', 'completed')),
+    CONSTRAINT assignments_target_type_chk CHECK (target_type IN ('class', 'students')),
     CONSTRAINT assignments_quiz_xor CHECK (
         (type = 'diagnosis' AND quiz_id IS NOT NULL AND scenario_quiz_id IS NULL)
      OR (type = 'scenario'  AND scenario_quiz_id IS NOT NULL AND quiz_id IS NULL)
@@ -217,6 +228,26 @@ CREATE INDEX assignments_class_due_idx ON assignments(class_id, due_date);
 CREATE INDEX assignments_quiz_idx ON assignments(quiz_id);
 CREATE INDEX assignments_scenario_idx ON assignments(scenario_quiz_id);
 ```
+
+### 3.10b `assignment_students`
+
+當 `assignments.target_type = 'students'` 時，這張關聯表記錄被指派的學生清單。
+診斷派題 (`target_type='class'`) 不寫此表（學生隱含為「該班全體」）。
+
+```sql
+CREATE TABLE assignment_students (
+    assignment_id  VARCHAR(64) NOT NULL REFERENCES assignments(id) ON DELETE CASCADE,
+    student_id     VARCHAR(64) NOT NULL REFERENCES users(id),
+    PRIMARY KEY (assignment_id, student_id)
+);
+
+CREATE INDEX assignment_students_student_idx ON assignment_students(student_id);
+```
+
+> 業務不變式（router 層強制；無 DB CHECK 因為跨表）：
+> - 所有 `student_id` 必須屬於該 assignment 的 `class_id`
+> - `target_type='students'` 時，`assignment_students` 至少 1 筆
+> - `target_type='class'`   時，`assignment_students` 必為空
 
 ### 3.11 `student_answers`
 
@@ -341,12 +372,12 @@ CREATE INDEX ai_summary_cache_expires_idx ON ai_summary_cache(expires_at);
 
 | 資料類別 | 內容 |
 |---------|------|
-| 教師 | `aaa001`（姓名「示範老師」、密碼 `aaa001`） |
-| 班級 | `class-A` / `class-B` / `class-C`（沿用 `src/data/classData.js`） |
+| 教師 | `aaa001`（「示範老師」，密碼 `aaa001`，擁有所有 demo 班級）<br>`bbb001`（「黃老師」，密碼 `bbb001`，**正式上線使用**，無班級 / 學生 / 派題 / 作答） |
+| 班級 | `class-A` / `class-B` / `class-C`（`teacher_id` 全部 = `aaa001`） |
 | 學生 | 五年甲班 20 人（`115001~115020`）、五年乙班 18 人（`115101~115118`）、五年丙班 22 人（`115201~115222`） |
 | 診斷考卷 | `quiz-001`、`quiz-002`（沿用 `src/data/quizData.js`） |
-| 情境考卷 | `scenario-001` ~ `scenario-005`（沿用 `src/data/scenarioQuizData.js`） |
-| 派題 | `assign-001` ~ `assign-004`（沿用 `src/data/assignmentData.js`） |
+| 情境考卷 | `scenario-002`（沿用 `src/data/scenarioQuizData.js`，2026-05-07 後僅保留 1 份 demo） |
+| 派題 | `assign-001` ~ `assign-004`（診斷整班）+ `assign-006`（情境，指定 2 位學生）|
 
 學生帳號編號規則：
 - 五年甲班：`115001` ~ `115020`（座號 1~20）

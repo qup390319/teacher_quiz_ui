@@ -8,6 +8,7 @@ from sqlalchemy.orm import selectinload
 from app.auth.deps import get_current_user, require_student, require_teacher
 from app.db.models import (
     Assignment,
+    Class,
     FollowupResult,
     Quiz,
     QuizQuestion,
@@ -155,9 +156,12 @@ quiz_router = APIRouter()  # mounted under /api/quizzes/{quiz_id}
 async def get_quiz_class_answers(
     quiz_id: str,
     class_id: str = Query(alias="classId"),
-    _teacher = Depends(require_teacher),
+    teacher: User = Depends(require_teacher),
     db: AsyncSession = Depends(get_db),
 ) -> QuizClassAnswersResponse:
+    cls = await db.get(Class, class_id)
+    if cls is None or cls.teacher_id != teacher.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "CLASS_NOT_FOUND")
     data = await stats_service.get_class_answers(db, quiz_id, class_id)
     return QuizClassAnswersResponse.model_validate({
         "quiz_id": data["quiz_id"],
@@ -174,13 +178,16 @@ async def get_quiz_class_answers(
 async def get_quiz_stats(
     quiz_id: str,
     class_id: str | None = Query(default=None, alias="classId"),
-    _teacher = Depends(require_teacher),
+    teacher: User = Depends(require_teacher),
     db: AsyncSession = Depends(get_db),
 ) -> QuizStatsResponse:
     if class_id:
+        cls = await db.get(Class, class_id)
+        if cls is None or cls.teacher_id != teacher.id:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "CLASS_NOT_FOUND")
         data = await stats_service.get_class_stats(db, quiz_id, class_id)
     else:
-        data = await stats_service.get_grade_stats(db, quiz_id)
+        data = await stats_service.get_grade_stats(db, quiz_id, teacher_id=teacher.id)
     return QuizStatsResponse.model_validate(data)
 
 

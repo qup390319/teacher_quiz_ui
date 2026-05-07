@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.deps import require_teacher
-from app.db.models import User
+from app.db.models import Class, User
 from app.db.session import get_db
 from app.schemas.ai import (
     CitationOut,
@@ -78,11 +78,13 @@ def _to_citations(answer) -> list[CitationOut]:
 )
 async def grade_summary(
     payload: GradeSummaryRequest,
-    _teacher: User = Depends(require_teacher),
+    teacher: User = Depends(require_teacher),
     db: AsyncSession = Depends(get_db),
 ) -> SummaryResponse:
     """N1 — grade-level summary across all classes (P4: stats from DB)."""
-    prompt = await build_grade_summary_query_from_db(db, payload.quiz_id)
+    prompt = await build_grade_summary_query_from_db(
+        db, payload.quiz_id, teacher_id=teacher.id,
+    )
     if not prompt:
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, "NO_DATA_FOR_QUIZ")
     try:
@@ -104,10 +106,13 @@ async def grade_summary(
 )
 async def class_summary(
     payload: ClassSummaryRequest,
-    _teacher: User = Depends(require_teacher),
+    teacher: User = Depends(require_teacher),
     db: AsyncSession = Depends(get_db),
 ) -> SummaryResponse:
     """N2 — single-class summary (P4: stats from DB)."""
+    cls = await db.get(Class, payload.class_id)
+    if cls is None or cls.teacher_id != teacher.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "CLASS_NOT_FOUND")
     prompt = await build_class_summary_query_from_db(db, payload.quiz_id, payload.class_id)
     if not prompt:
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, "NO_DATA_FOR_CLASS")

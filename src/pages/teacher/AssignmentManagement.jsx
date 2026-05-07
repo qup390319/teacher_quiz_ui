@@ -1,6 +1,13 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TeacherLayout from '../../components/TeacherLayout';
+import AssignTargetPicker from '../../components/teacher/AssignTargetPicker';
+import {
+  AssignPopover,
+  CellActive,
+  CellEmpty,
+  ManagePopover,
+} from './AssignmentMatrixParts';
 import { useApp } from '../../context/AppContext';
 import { useClasses } from '../../hooks/useClasses';
 import { useQuizzes } from '../../hooks/useQuizzes';
@@ -12,249 +19,8 @@ import {
   useUpdateAssignment,
 } from '../../hooks/useAssignments';
 
-// ─── 格子：未派發 ─────────────────────────────────────────────────────────────
-function CellEmpty({ onClick }) {
-  return (
-    <button
-      onClick={onClick}
-      className="w-full h-full min-h-[88px] flex flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-[#D5D8DC] text-[#BDC3C7] hover:border-[#8FC87A] hover:text-[#8FC87A] hover:bg-[#EEF5E6] transition-all group"
-    >
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-      </svg>
-      <span className="text-xs font-medium">派發</span>
-    </button>
-  );
-}
-
-// ─── 格子：已派發 ─────────────────────────────────────────────────────────────
-function CellActive({ assignment, onClick }) {
-  const pct = assignment.completionRate;
-  const barColor = pct === 100 ? '#8FC87A' : pct >= 50 ? '#F4D03F' : '#F28B95';
-  const isComplete = pct === 100;
-
-  return (
-    <button
-      onClick={onClick}
-      className={`w-full h-full min-h-[88px] flex flex-col items-start justify-between p-3 rounded-2xl border transition-all ${
-        isComplete
-          ? 'bg-[#C8EAAE] border-[#8FC87A] hover:bg-[#8FC87A]'
-          : pct === 0
-          ? 'bg-[#EEF5E6] border-[#D5D8DC] hover:bg-[#DDE8D4]'
-          : 'bg-[#FCF0C2] border-[#F5D669] hover:bg-[#F8E89A]'
-      }`}
-    >
-      <div className="flex items-center justify-between w-full">
-        <span className={`text-xs font-semibold ${
-          isComplete ? 'text-[#3D5A3E]' : pct === 0 ? 'text-[#95A5A6]' : 'text-[#B7950B]'
-        }`}>
-          {isComplete ? '已完成' : pct === 0 ? '待作答' : '進行中'}
-        </span>
-        <svg className="w-3.5 h-3.5 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-            d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-        </svg>
-      </div>
-      <div className="w-full">
-        <div className="flex items-end justify-between mb-1.5">
-          <span className={`text-xl font-bold leading-none ${
-            isComplete ? 'text-[#3D5A3E]' : pct === 0 ? 'text-[#95A5A6]' : 'text-[#B7950B]'
-          }`}>
-            {pct}%
-          </span>
-          <span className="text-xs text-[#636E72]">{assignment.submittedCount}/{assignment.totalStudents}</span>
-        </div>
-        <div className="w-full bg-white/60 rounded-full h-1.5">
-          <div
-            className="h-1.5 rounded-full transition-all"
-            style={{ width: `${pct}%`, backgroundColor: barColor }}
-          />
-        </div>
-        {assignment.dueDate && (
-          <p className="text-[10px] text-[#95A5A6] mt-1.5 truncate">截止：{assignment.dueDate}</p>
-        )}
-      </div>
-    </button>
-  );
-}
-
-// ─── Popover：派發考卷 ────────────────────────────────────────────────────────
-function AssignPopover({ quiz, cls, onConfirm, onClose }) {
-  const [dueDate, setDueDate] = useState('');
-  const ref = useRef(null);
-
-  useEffect(() => {
-    const handler = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) onClose();
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [onClose]);
-
-  return (
-    <div
-      ref={ref}
-      className="absolute top-full left-0 mt-2 z-30 bg-white border border-[#BDC3C7] rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.12)] p-4 w-56"
-    >
-      <div className="mb-3">
-        <p className="text-xs font-bold text-[#2D3436] leading-snug">
-          派發給 <span style={{ color: cls.textColor }}>{cls.name}</span>
-        </p>
-        <p className="text-xs text-[#95A5A6] mt-0.5 truncate">{quiz.title}</p>
-      </div>
-      <div className="mb-3">
-        <label className="text-xs text-[#636E72] mb-1 block">截止日期（選填）</label>
-        <input
-          type="date"
-          value={dueDate}
-          onChange={(e) => setDueDate(e.target.value)}
-          className="w-full border border-[#BDC3C7] rounded-xl px-2.5 py-1.5 text-sm text-[#2D3436] focus:outline-none focus:ring-2 focus:ring-[#8FC87A]"
-        />
-      </div>
-      <div className="flex gap-2">
-        <button
-          onClick={onClose}
-          className="flex-1 py-1.5 text-xs font-medium text-[#636E72] border border-[#BDC3C7] rounded-xl hover:bg-[#EEF5E6] transition-colors"
-        >
-          取消
-        </button>
-        <button
-          onClick={() => onConfirm(dueDate)}
-          className="flex-1 py-1.5 text-xs font-semibold bg-[#8FC87A] text-[#2D3436] border border-[#BDC3C7] rounded-xl hover:bg-[#76B563] transition-colors"
-        >
-          確認派發
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ─── Popover：管理已派發考卷 ──────────────────────────────────────────────────
-function ManagePopover({ assignment, quiz, cls, onViewReport, onUpdateDueDate, onRemove, onClose }) {
-  const [dueDate, setDueDate] = useState(assignment.dueDate || '');
-  const [confirmingRemove, setConfirmingRemove] = useState(false);
-  const [dueDateDirty, setDueDateDirty] = useState(false);
-  const ref = useRef(null);
-
-  useEffect(() => {
-    const handler = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) onClose();
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [onClose]);
-
-  const handleDueDateChange = (value) => {
-    setDueDate(value);
-    setDueDateDirty(value !== (assignment.dueDate || ''));
-  };
-
-  const handleSaveDueDate = () => {
-    onUpdateDueDate(assignment.id, dueDate);
-    setDueDateDirty(false);
-  };
-
-  const pct = assignment.completionRate;
-
-  return (
-    <div
-      ref={ref}
-      className="absolute top-full left-0 mt-2 z-30 bg-white border border-[#BDC3C7] rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.12)] p-4 w-64"
-    >
-      {/* 標題 */}
-      <div className="mb-4">
-        <div className="flex items-center gap-1.5 mb-1">
-          <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: cls.color }} />
-          <p className="text-sm font-bold text-[#2D3436]">{cls.name}</p>
-        </div>
-        <p className="text-xs text-[#95A5A6] truncate">{quiz.title}</p>
-      </div>
-
-      {/* 資訊列 */}
-      <div className="space-y-2 mb-4">
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-[#636E72]">派發日期</span>
-          <span className="text-[#2D3436] font-medium">{assignment.assignedAt}</span>
-        </div>
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-[#636E72]">完成進度</span>
-          <span className={`font-bold ${pct === 100 ? 'text-[#3D5A3E]' : pct >= 50 ? 'text-[#B7950B]' : pct > 0 ? 'text-[#E74C5E]' : 'text-[#95A5A6]'}`}>
-            {assignment.submittedCount}/{assignment.totalStudents} 人（{pct}%）
-          </span>
-        </div>
-      </div>
-
-      {/* 截止日期編輯 */}
-      <div className="mb-4">
-        <label className="text-xs text-[#636E72] mb-1 block">截止日期</label>
-        <div className="flex gap-2">
-          <input
-            type="date"
-            value={dueDate}
-            onChange={(e) => handleDueDateChange(e.target.value)}
-            className="flex-1 border border-[#BDC3C7] rounded-xl px-2.5 py-1.5 text-sm text-[#2D3436] focus:outline-none focus:ring-2 focus:ring-[#8FC87A]"
-          />
-          {dueDateDirty && (
-            <button
-              onClick={handleSaveDueDate}
-              className="px-3 py-1.5 text-xs font-semibold bg-[#8FC87A] text-[#2D3436] border border-[#BDC3C7] rounded-xl hover:bg-[#76B563] transition-colors flex-shrink-0"
-            >
-              儲存
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* 操作按鈕 */}
-      <div className="space-y-2">
-        <button
-          onClick={() => onViewReport(assignment.classId, assignment.quizId)}
-          disabled={pct === 0}
-          className={`w-full py-2 text-xs font-semibold rounded-xl border transition-colors ${
-            pct > 0
-              ? 'bg-[#8FC87A] text-[#2D3436] border-[#BDC3C7] hover:bg-[#76B563]'
-              : 'bg-[#EEF5E6] text-[#95A5A6] border-[#D5D8DC] cursor-not-allowed'
-          }`}
-        >
-          {pct > 0 ? '查看診斷報告' : '尚無作答資料'}
-        </button>
-
-        {/* 取消派發 */}
-        {!confirmingRemove ? (
-          <button
-            onClick={() => setConfirmingRemove(true)}
-            className="w-full py-2 text-xs font-medium text-[#E74C5E] border border-[#F5B8BA] rounded-xl hover:bg-[#FAC8CC] transition-colors"
-          >
-            取消派發
-          </button>
-        ) : (
-          <div className="border border-[#F5B8BA] rounded-xl p-3 bg-[#FFF5F5]">
-            <p className="text-xs text-[#E74C5E] mb-2 leading-relaxed">
-              確定要取消派發嗎？已收到的作答資料將被清除。
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setConfirmingRemove(false)}
-                className="flex-1 py-1.5 text-xs font-medium text-[#636E72] border border-[#BDC3C7] rounded-xl hover:bg-[#EEF5E6] transition-colors"
-              >
-                返回
-              </button>
-              <button
-                onClick={() => onRemove(assignment.id)}
-                className="flex-1 py-1.5 text-xs font-semibold bg-[#E74C5E] text-white border border-[#E74C5E] rounded-xl hover:bg-[#C0392B] transition-colors"
-              >
-                確認取消
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // ─── 主頁面 ───────────────────────────────────────────────────────────────────
-export default function AssignmentManagement() {
+export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) {
   const navigate = useNavigate();
   const { setCurrentClassId, setCurrentQuizId } = useApp();
   const { data: assignments = [] } = useAssignments();
@@ -267,7 +33,9 @@ export default function AssignmentManagement() {
 
   const [popover, setPopover] = useState(null);
   const [managePopover, setManagePopover] = useState(null);
-  const [tab, setTab] = useState('diagnosis'); // 'diagnosis' | 'scenario'（spec-08）
+  // scenario tab：使用 modal-style 學生選擇器；存放 { quiz, cls, existing? }
+  const [picker, setPicker] = useState(null);
+  const [tab, setTab] = useState(initialTab); // 'diagnosis' | 'scenario'（spec-08）
 
   const isScenarioTab = tab === 'scenario';
 
@@ -290,24 +58,55 @@ export default function AssignmentManagement() {
     })),
   }));
 
-  const handleConfirm = async (quizId, classId, dueDate) => {
+  // 診斷分頁：整班派發（保留原行為）
+  const handleConfirmDiagnosis = async (quizId, classId, dueDate) => {
     if (!dueDate) {
       alert('請選擇截止日期');
       return;
     }
     try {
-      const base = {
-        type: isScenarioTab ? 'scenario' : 'diagnosis',
+      await addAssignmentMut.mutateAsync({
+        type: 'diagnosis',
+        quizId,
         classId,
+        targetType: 'class',
+        studentIds: [],
         dueDate,
         status: 'active',
-      };
-      await addAssignmentMut.mutateAsync(
-        isScenarioTab ? { ...base, scenarioQuizId: quizId } : { ...base, quizId },
-      );
+      });
       setPopover(null);
     } catch (err) {
       console.error('[AssignmentManagement] add failed', err);
+      alert('派發失敗：' + (err?.message ?? '未知錯誤'));
+    }
+  };
+
+  // 情境分頁：以個別學生為單位派發
+  const handleConfirmScenarioPicker = async ({ studentIds, dueDate }) => {
+    if (!picker) return;
+    const { quiz, cls, existing } = picker;
+    try {
+      if (existing) {
+        await updateAssignmentMut.mutateAsync({
+          id: existing.id,
+          dueDate,
+          studentIds,
+        });
+      } else {
+        await addAssignmentMut.mutateAsync({
+          type: 'scenario',
+          scenarioQuizId: quiz.id,
+          classId: cls.id,
+          targetType: 'students',
+          studentIds,
+          dueDate,
+          status: 'active',
+        });
+      }
+      setPicker(null);
+      setManagePopover(null);
+    } catch (err) {
+      console.error('[AssignmentManagement] scenario add/update failed', err);
       alert('派發失敗：' + (err?.message ?? '未知錯誤'));
     }
   };
@@ -428,12 +227,20 @@ export default function AssignmentManagement() {
                       </div>
                       {assignment === null ? (
                         <>
-                          <CellEmpty onClick={() => { setPopover({ quizId: quiz.id, classId: cls.id }); setManagePopover(null); }} />
-                          {popover?.quizId === quiz.id && popover?.classId === cls.id && (
+                          <CellEmpty onClick={() => {
+                            setManagePopover(null);
+                            if (isScenarioTab) {
+                              setPicker({ quiz, cls, existing: null });
+                              setPopover(null);
+                            } else {
+                              setPopover({ quizId: quiz.id, classId: cls.id });
+                            }
+                          }} />
+                          {!isScenarioTab && popover?.quizId === quiz.id && popover?.classId === cls.id && (
                             <AssignPopover
                               quiz={quiz}
                               cls={cls}
-                              onConfirm={(dueDate) => handleConfirm(quiz.id, cls.id, dueDate)}
+                              onConfirm={(dueDate) => handleConfirmDiagnosis(quiz.id, cls.id, dueDate)}
                               onClose={() => setPopover(null)}
                             />
                           )}
@@ -449,9 +256,14 @@ export default function AssignmentManagement() {
                               assignment={assignment}
                               quiz={quiz}
                               cls={cls}
+                              isScenario={isScenarioTab}
                               onViewReport={handleViewReport}
                               onUpdateDueDate={handleUpdateDueDate}
                               onRemove={handleRemove}
+                              onEditTargets={(asg) => {
+                                setPicker({ quiz, cls, existing: asg });
+                                setManagePopover(null);
+                              }}
                               onClose={() => setManagePopover(null)}
                             />
                           )}
@@ -514,12 +326,20 @@ export default function AssignmentManagement() {
                   <div key={cls.id} className="p-3 border-l border-[#D5D8DC] relative">
                     {assignment === null ? (
                       <>
-                        <CellEmpty onClick={() => { setPopover({ quizId: quiz.id, classId: cls.id }); setManagePopover(null); }} />
-                        {popover?.quizId === quiz.id && popover?.classId === cls.id && (
+                        <CellEmpty onClick={() => {
+                          setManagePopover(null);
+                          if (isScenarioTab) {
+                            setPicker({ quiz, cls, existing: null });
+                            setPopover(null);
+                          } else {
+                            setPopover({ quizId: quiz.id, classId: cls.id });
+                          }
+                        }} />
+                        {!isScenarioTab && popover?.quizId === quiz.id && popover?.classId === cls.id && (
                           <AssignPopover
                             quiz={quiz}
                             cls={cls}
-                            onConfirm={(dueDate) => handleConfirm(quiz.id, cls.id, dueDate)}
+                            onConfirm={(dueDate) => handleConfirmDiagnosis(quiz.id, cls.id, dueDate)}
                             onClose={() => setPopover(null)}
                           />
                         )}
@@ -535,9 +355,14 @@ export default function AssignmentManagement() {
                             assignment={assignment}
                             quiz={quiz}
                             cls={cls}
+                            isScenario={isScenarioTab}
                             onViewReport={handleViewReport}
                             onUpdateDueDate={handleUpdateDueDate}
                             onRemove={handleRemove}
+                            onEditTargets={(asg) => {
+                              setPicker({ quiz, cls, existing: asg });
+                              setManagePopover(null);
+                            }}
                             onClose={() => setManagePopover(null)}
                           />
                         )}
@@ -569,6 +394,17 @@ export default function AssignmentManagement() {
           </>
         )}
       </div>
+
+      {/* 情境分頁：學生對象選擇器 Modal */}
+      {picker && (
+        <AssignTargetPicker
+          quiz={picker.quiz}
+          cls={picker.cls}
+          existing={picker.existing}
+          onConfirm={handleConfirmScenarioPicker}
+          onClose={() => setPicker(null)}
+        />
+      )}
     </TeacherLayout>
   );
 }

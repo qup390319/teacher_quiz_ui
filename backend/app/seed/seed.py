@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import (
     Assignment,
+    AssignmentStudent,
     Class,
     Quiz,
     QuizOption,
@@ -38,6 +39,11 @@ DATA_DIR = Path(__file__).parent / "data"
 # --- Static seed data -------------------------------------------------------
 TEACHER_ACCOUNT = "aaa001"
 TEACHER_NAME = "示範老師"
+# Production launch teacher: starts with no classes/students/assignments. Sees
+# only the system-shared quizzes + scenarios so they can run the system for
+# real. See spec-13 §6.1.
+PROD_TEACHER_ACCOUNT = "bbb001"
+PROD_TEACHER_NAME = "黃老師"
 
 CLASSES = [
     {
@@ -83,19 +89,19 @@ async def db_is_empty(db: AsyncSession) -> bool:
     return res.scalar_one_or_none() is None
 
 
-async def seed_teacher(db: AsyncSession) -> None:
-    existing = await db.get(User, TEACHER_ACCOUNT)
-    if existing:
+async def _seed_one_teacher(db: AsyncSession, account: str, name: str) -> None:
+    if await db.get(User, account):
         return
-    user = User(
-        id=TEACHER_ACCOUNT,
-        account=TEACHER_ACCOUNT,
-        password=TEACHER_ACCOUNT,
-        role="teacher",
-        password_was_default=True,
-    )
-    db.add(user)
-    db.add(Teacher(user_id=TEACHER_ACCOUNT, name=TEACHER_NAME))
+    db.add(User(
+        id=account, account=account, password=account,
+        role="teacher", password_was_default=True,
+    ))
+    db.add(Teacher(user_id=account, name=name))
+
+
+async def seed_teacher(db: AsyncSession) -> None:
+    await _seed_one_teacher(db, TEACHER_ACCOUNT, TEACHER_NAME)
+    await _seed_one_teacher(db, PROD_TEACHER_ACCOUNT, PROD_TEACHER_NAME)
 
 
 async def seed_classes_and_students(db: AsyncSession) -> None:
@@ -105,7 +111,11 @@ async def seed_classes_and_students(db: AsyncSession) -> None:
             db.add(Class(
                 id=cls["id"], name=cls["name"], grade=cls["grade"],
                 subject=cls["subject"], color=cls["color"], text_color=cls["text_color"],
+                teacher_id=TEACHER_ACCOUNT,
             ))
+        elif existing_class.teacher_id is None:
+            # Older DB rows from before per-teacher isolation — claim for demo teacher.
+            existing_class.teacher_id = TEACHER_ACCOUNT
         prefix = cls["account_prefix"]
         offset = cls["account_seat_offset"]
         for seat, name in enumerate(cls["students"], start=1):
@@ -196,16 +206,21 @@ async def seed_assignments(db: AsyncSession) -> int:
     for a in payload:
         if await db.get(Assignment, a["id"]):
             continue
+        target_type = a.get("targetType", "class")
+        student_ids = a.get("studentIds", []) or []
         db.add(Assignment(
             id=a["id"],
             type=a.get("type", "diagnosis"),
             quiz_id=a.get("quizId"),
             scenario_quiz_id=a.get("scenarioQuizId"),
             class_id=a["classId"],
+            target_type=target_type,
             assigned_at=date.fromisoformat(a["assignedAt"]),
             due_date=date.fromisoformat(a["dueDate"]),
             status=a.get("status", "active"),
         ))
+        for sid in student_ids:
+            db.add(AssignmentStudent(assignment_id=a["id"], student_id=sid))
         inserted += 1
     return inserted
 
@@ -289,7 +304,7 @@ async def run_seed(*, if_empty: bool, reset: bool) -> None:
         n_ans = await seed_student_answers(db)
         await db.commit()
         print(
-            f"[seed] done — teacher {TEACHER_ACCOUNT}, "
+            f"[seed] done — teachers {TEACHER_ACCOUNT} (demo) + {PROD_TEACHER_ACCOUNT} ({PROD_TEACHER_NAME}, empty), "
             f"{sum(len(c['students']) for c in CLASSES)} students across {len(CLASSES)} classes, "
             f"{n_quiz} quizzes, {n_scen} scenarios, {n_asg} assignments, "
             f"{n_ans} student answers.",
@@ -301,7 +316,8 @@ async def _truncate_all(db: AsyncSession) -> None:
     from sqlalchemy import text
     tables = [
         "ai_summary_cache", "treatment_messages", "treatment_sessions",
-        "followup_results", "student_answers", "assignments",
+        "followup_results", "student_answers",
+        "assignment_students", "assignments",
         "scenario_questions", "scenario_quizzes",
         "quiz_options", "quiz_questions", "quizzes",
         "students", "teachers", "classes", "users",

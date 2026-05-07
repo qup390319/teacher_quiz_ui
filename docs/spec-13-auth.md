@@ -28,6 +28,16 @@
 | 學生帳號 | 純數字（建議按學年 + 班級 + 座號） | `115001`（115學年甲班1號）、`115101`（115學年乙班1號）、`115201`（115學年丙班1號） |
 | 預設密碼 | 完全等於帳號 | 教師 `aaa001` / `aaa001`；學生 `115001` / `115001` |
 
+### 2.1 預設教師帳號
+
+| 帳號 | 名稱 | 用途 | 看到的資料 |
+|------|------|------|-----------|
+| `aaa001` | 示範老師 | 給指導教授 / 簡報展示 | 全部 seed 示範資料（3 個班級 / ~60 學生 / 派題 / 作答 / 治療紀錄） |
+| `bbb001` | 黃老師 | **正式上線使用** | 班級 / 學生 / 派題 / 作答 / 診斷結果皆為空白；只看得到系統共用的「診斷出題」「情境出題」題庫 |
+
+兩個教師之間透過 `classes.teacher_id` 做資料隔離（spec-11 §3.3）。
+共用題庫（`quizzes` / `scenario_quizzes`）不做隔離。
+
 ---
 
 ## 3. 密碼處理
@@ -262,7 +272,7 @@ async def get_student(
 | `POST /api/answers/followups` | ❌ | ✅ | 只能寫自己的 answer |
 | `POST /api/treatment/sessions/start` | ❌ | ✅ | 只能對自己 |
 | `GET /api/students/{id}/history` | ✅ | ✅ 限定 | 只能查自己（`user.id == student_id`） |
-| `GET /api/classes`, `/{id}`, `PUT /students` | ✅ | ❌ | TEACHER_ONLY |
+| `GET /api/classes`, `POST /api/classes`, `PATCH /{id}`, `GET /{id}`, `PUT /students` | ✅ | ❌ | TEACHER_ONLY |
 | `GET /api/students/{id}` (含明文密碼) | ✅ | ❌ | TEACHER_ONLY |
 | `POST /api/quizzes`, `PUT`, `DELETE` | ✅ | ❌ | TEACHER_ONLY |
 | `POST /api/scenarios`, `PUT`, `DELETE` | ✅ | ❌ | TEACHER_ONLY |

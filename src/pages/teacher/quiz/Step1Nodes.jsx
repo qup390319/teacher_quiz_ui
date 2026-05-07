@@ -80,12 +80,13 @@ function PathStage({ stage, nodes, selectedNodeIds }) {
 }
 
 export default function Step1Nodes({ onNext }) {
-  const { selectedNodeIds, setSelectedNodeIds } = useApp();
+  const { selectedNodeIds, setSelectedNodeIds, setIsWizardDirty } = useApp();
 
   const toggleNode = (nodeId) => {
     setSelectedNodeIds((prev) =>
       prev.includes(nodeId) ? prev.filter((id) => id !== nodeId) : [...prev, nodeId]
     );
+    setIsWizardDirty(true);
   };
 
   const missingPrereqs = [];

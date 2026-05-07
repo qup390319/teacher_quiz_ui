@@ -123,9 +123,7 @@ def _common_summary_instructions() -> str:
         "2. 第二段：跨班觀察 / 個別班級重點。\n"
         "3. 第三段：優先介入順序（點名最該先處理的迷思代碼或班級）。\n"
         "4. 「行動建議：」標頭下，條列 3~5 條具體可採行動，"
-        "若知識節點有對應的情境治療考卷（M02-* → scenario-001、"
-        "M03-* → scenario-002、M05-* → scenario-003、"
-        "M10-* → scenario-004、M12-* → scenario-005），請一併標註建議派發的 scenario-ID。\n"
+        "若知識節點 INe-II-3-03（攪拌與溶解）有迷思 M03-*，請建議派發 scenario-002（飽和糖水甜度）。\n"
         "5. 末尾以 [REF] 標籤列出本次引用的文獻，每條一行。\n"
         "請務必引用文獻，避免空泛論述。"
     )
@@ -144,10 +142,15 @@ async def _quiz_title_and_nodes(db: AsyncSession, quiz_id: str) -> tuple[str, li
     return title, [{"id": nid, "name": nid} for nid in node_ids]
 
 
-async def build_grade_summary_query_from_db(db: AsyncSession, quiz_id: str) -> str:
-    """N1 (P4): pull stats from DB then assemble prompt."""
+async def build_grade_summary_query_from_db(
+    db: AsyncSession, quiz_id: str, *, teacher_id: str | None = None,
+) -> str:
+    """N1 (P4): pull stats from DB then assemble prompt.
+
+    `teacher_id` scopes the per-class aggregation to that teacher's classes.
+    """
     title, nodes = await _quiz_title_and_nodes(db, quiz_id)
-    grade = await stats_service.get_grade_stats(db, quiz_id)
+    grade = await stats_service.get_grade_stats(db, quiz_id, teacher_id=teacher_id)
     per_class = grade.get("per_class") or []
     if not per_class:
         return ""  # signal "no data"; router will return 502 RAGFLOW_EMPTY

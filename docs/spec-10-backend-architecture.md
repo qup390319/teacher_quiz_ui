@@ -133,7 +133,7 @@ backend/
 # 在 backend/ 目錄
 uv sync                                  # 安裝依賴
 uv run alembic upgrade head              # 套用所有 migration
-uv run python -m app.seed.seed           # 灌入 mock data（教師 aaa001、三班學生）
+uv run python -m app.seed.seed           # 灌入 mock data（教師 aaa001 demo + bbb001 黃老師空白、三班學生）
 uv run uvicorn app.main:app --reload --port 8000
 ```
 
@@ -261,17 +261,19 @@ HTTP status code：
 | `auth` | `POST /api/auth/logout` | P1 | 清除 cookie |
 | `auth` | `GET /api/auth/me` | P1 | 取得當前登入者資料 |
 | `auth` | `PATCH /api/auth/password` | P1 | 自己改密碼 |
-| `students` | `GET /api/students/{id}` | P1 | 取單一學生（含明文密碼，僅教師） |
-| `students` | `POST /api/students/{id}/reset-password` | P1 | 教師重設學生密碼為帳號 |
-| `classes` | `GET /api/classes` | P3 ✅ | 教師看自己班級 |
-| `classes` | `GET /api/classes/{class_id}` | P3 ✅ | 班級詳情含學生 |
-| `classes` | `PUT /api/classes/{class_id}/students` | P3 ✅ | 整批替換學生名冊 |
+| `students` | `GET /api/students/{id}` | P1 | 取單一學生（含明文密碼，僅教師；**僅該教師班級內的學生**） |
+| `students` | `POST /api/students/{id}/reset-password` | P1 | 教師重設學生密碼為帳號（僅自己班級的學生） |
+| `classes` | `GET /api/classes` | P3 ✅ | **教師範圍隔離**：只回傳 `teacher_id == current_teacher.id` 的班級 |
+| `classes` | `POST /api/classes` | ✅ | 教師建立空班；server 自動產生 id；新建班級的 `teacher_id` = 建立者 |
+| `classes` | `PATCH /api/classes/{class_id}` | ✅ | 教師編輯班級資訊（name/grade/subject/color/textColor/note 部分更新；非自己班級回 404） |
+| `classes` | `GET /api/classes/{class_id}` | P3 ✅ | 班級詳情含學生（非自己班級回 404） |
+| `classes` | `PUT /api/classes/{class_id}/students` | P3 ✅ | 整批替換學生名冊（非自己班級回 404） |
 | `quizzes` | `GET /api/quizzes` / `GET /api/quizzes/{id}` | P3 ✅ | 教師看全部；**學生只看自己班級已被派發的**（透過 Assignment 表過濾） |
 | `quizzes` | `POST/PUT/DELETE /api/quizzes[/{id}]` | P3 ✅ | 教師專屬（CRUD） |
 | `scenarios` | `GET /api/scenarios` / `GET /api/scenarios/{id}` | P3 ✅ | 教師看全部；**學生只看自己班級已被派發的** |
 | `scenarios` | `POST/PUT/DELETE /api/scenarios[/{id}]` | P3 ✅ | 教師專屬（CRUD） |
-| `assignments` | `GET /api/assignments` | P3 ✅ | 教師看全部；學生隱式過濾為自己班級。回傳含 **`completionRate / submittedCount / totalStudents`** 即時統計（從 `student_answers` + `students` 表 group by 算出；scenario 則查 `treatment_sessions` status='completed'） |
-| `assignments` | `POST/PATCH/DELETE /api/assignments[/{id}]` | P3 ✅ | 教師專屬 |
+| `assignments` | `GET /api/assignments` | P3 ✅ | **教師範圍隔離**：教師只看 `class_id` 屬於自己班級的派題；學生隱式過濾為自己班級。回傳含 **`completionRate / submittedCount / totalStudents`** 即時統計 |
+| `assignments` | `POST/PATCH/DELETE /api/assignments[/{id}]` | P3 ✅ | 教師專屬；POST/PATCH 寫入前驗證 `class_id` 屬於自己 |
 | `answers` | `POST /api/answers` | P4 ✅ | 學生作答（接收陣列以批次寫入） |
 | `answers` | `POST /api/answers/{id}/followup` | P4 ✅ | 追問結果回寫（驅動 statusChange） |
 | `answers` | `GET /api/quizzes/{quiz_id}/answers?classId=` | P4 ✅ | 教師查班級作答 |
@@ -283,8 +285,8 @@ HTTP status code：
 | `treatment` | `POST /api/treatment/sessions/{id}/messages` | P4 ✅ | 一輪對話 |
 | `treatment` | `PATCH /api/treatment/sessions/{id}/advance` | P4 ✅ | 切下一題 |
 | `treatment` | `POST /api/treatment/sessions/{id}/complete` | P4 ✅ | 標記完成 |
-| `treatment` | `GET /api/teachers/treatment-logs?classId=&scenarioQuizId=` | P4 ✅ | 教師端列表 |
-| `treatment` | `GET /api/teachers/treatment-logs/{session_id}` | P4 ✅ | 教師端詳情 |
+| `treatment` | `GET /api/teachers/treatment-logs?classId=&scenarioQuizId=` | P4 ✅ | 教師端列表（**只看自己班級學生**） |
+| `treatment` | `GET /api/teachers/treatment-logs/{session_id}` | P4 ✅ | 教師端詳情（學生不在自己班級回 404） |
 | `llm` | `POST /api/llm/chat` | P2 ✅ | vLLM proxy（N3/N4/N5） |
 | `llm` | `POST /api/llm/chat/stream` | P2 ✅ | SSE 串流 |
 | `ai` | `POST /api/ai/distractor-suggest` | P2 ✅ | RAGFlow（N6） |

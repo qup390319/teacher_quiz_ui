@@ -1,9 +1,16 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TeacherLayout from '../../../components/TeacherLayout';
 import { useScenarios } from '../../../hooks/useScenarios';
 import { useAssignments } from '../../../hooks/useAssignments';
 import { useClasses } from '../../../hooks/useClasses';
 import { knowledgeNodes } from '../../../data/knowledgeGraph';
+
+const TABS = [
+  { key: 'all', label: '全部' },
+  { key: 'published', label: '題庫（已發布）' },
+  { key: 'draft', label: '草稿' },
+];
 
 /* 情境考卷庫（spec-08 §5.1）
  * 列出全部情境考卷，可預覽題數 / 目標節點 / 目標迷思，並可編輯／新增。
@@ -13,6 +20,16 @@ export default function ScenarioLibrary() {
   const { data: scenarioQuizzes = [], isLoading } = useScenarios();
   const { data: assignments = [] } = useAssignments();
   const { data: classes = [] } = useClasses();
+  const [activeTab, setActiveTab] = useState('published');
+
+  const counts = {
+    all: scenarioQuizzes.length,
+    published: scenarioQuizzes.filter((s) => s.status === 'published').length,
+    draft: scenarioQuizzes.filter((s) => s.status === 'draft').length,
+  };
+  const visibleScenarios = activeTab === 'all'
+    ? scenarioQuizzes
+    : scenarioQuizzes.filter((s) => s.status === activeTab);
 
   const getAssignedClasses = (scenarioQuizId) => {
     const classIds = [
@@ -48,15 +65,57 @@ export default function ScenarioLibrary() {
           </button>
         </div>
 
+        {/* Tab Bar */}
+        {!isLoading && scenarioQuizzes.length > 0 && (
+          <div className="mb-4 flex gap-1 border-b border-[#BDC3C7]">
+            {TABS.map((tab) => {
+              const active = activeTab === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`relative px-4 py-2.5 text-sm font-semibold transition-colors -mb-px border-b-2 ${
+                    active
+                      ? 'border-[#5BA47A] text-[#3F8B5E]'
+                      : 'border-transparent text-[#95A5A6] hover:text-[#636E72]'
+                  }`}
+                >
+                  {tab.label}
+                  <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${
+                    active ? 'bg-[#E0F0E8] text-[#3F8B5E]' : 'bg-[#EEF5E6] text-[#95A5A6]'
+                  }`}>
+                    {counts[tab.key]}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {/* 情境考卷列表 */}
         {isLoading && (
           <div className="text-[#636E72] text-sm mb-4">載入中…</div>
         )}
         {!isLoading && scenarioQuizzes.length === 0 ? (
           <EmptyState onCreate={() => navigate('/teacher/scenarios/create')} />
+        ) : !isLoading && visibleScenarios.length === 0 ? (
+          <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-12 text-center shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+            <div className="w-14 h-14 bg-[#E0F0E8] rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-7 h-7 text-[#5BA47A]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+            </div>
+            <p className="text-[#636E72] font-medium">
+              {activeTab === 'draft' ? '目前沒有草稿' : '題庫尚未有已發布的情境考卷'}
+            </p>
+            <p className="text-sm text-[#95A5A6] mt-1">
+              {activeTab === 'draft' ? '建立情境考卷時可先儲存為草稿' : '建立完情境考卷後按發布即可加入題庫'}
+            </p>
+          </div>
         ) : (
           <div className="space-y-4">
-            {scenarioQuizzes.map((sq) => {
+            {visibleScenarios.map((sq) => {
               const targetNode = knowledgeNodes.find((n) => n.id === sq.targetNodeId);
               const assignedClasses = getAssignedClasses(sq.id);
               return (

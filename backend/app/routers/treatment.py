@@ -214,10 +214,28 @@ async def list_treatment_logs(
     class_id: str | None = Query(default=None, alias="classId"),
     scenario_quiz_id: str | None = Query(default=None, alias="scenarioQuizId"),
     status_filter: str | None = Query(default=None, alias="status"),
-    _teacher: User = Depends(require_teacher),
+    teacher: User = Depends(require_teacher),
     db: AsyncSession = Depends(get_db),
 ) -> list[TreatmentLogRow]:
-    stmt = select(TreatmentSession).order_by(TreatmentSession.started_at.desc())
+    # Limit to students belonging to one of the teacher's classes.
+    teacher_cls_res = await db.execute(
+        select(Class.id).where(Class.teacher_id == teacher.id),
+    )
+    teacher_class_ids = {cid for (cid,) in teacher_cls_res.all()}
+    if not teacher_class_ids:
+        return []
+    teacher_stu_res = await db.execute(
+        select(Student.user_id).where(Student.class_id.in_(teacher_class_ids)),
+    )
+    teacher_student_ids = {sid for (sid,) in teacher_stu_res.all()}
+    if not teacher_student_ids:
+        return []
+
+    stmt = (
+        select(TreatmentSession)
+        .where(TreatmentSession.student_id.in_(teacher_student_ids))
+        .order_by(TreatmentSession.started_at.desc())
+    )
     if scenario_quiz_id:
         stmt = stmt.where(TreatmentSession.scenario_quiz_id == scenario_quiz_id)
     if status_filter in ("active", "completed"):
@@ -274,7 +292,7 @@ async def list_treatment_logs(
 )
 async def get_treatment_log_detail(
     session_id: str,
-    _teacher: User = Depends(require_teacher),
+    teacher: User = Depends(require_teacher),
     db: AsyncSession = Depends(get_db),
 ) -> TreatmentSessionDetail:
     s = await db.get(
@@ -282,5 +300,12 @@ async def get_treatment_log_detail(
         options=[selectinload(TreatmentSession.messages)],
     )
     if s is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "SESSION_NOT_FOUND")
+    # Verify the student belongs to one of this teacher's classes.
+    stu = await db.get(Student, s.student_id)
+    if stu is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "SESSION_NOT_FOUND")
+    cls = await db.get(Class, stu.class_id)
+    if cls is None or cls.teacher_id != teacher.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "SESSION_NOT_FOUND")
     return _to_session_detail(s)

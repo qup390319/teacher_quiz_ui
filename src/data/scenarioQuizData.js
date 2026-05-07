@@ -4,17 +4,13 @@
  * 定義詳見 docs/spec-08-treatment-cognitive-apprenticeship.md §10
  * 與診斷考卷 (quizData.js) 並列獨立。
  *
- * 5 份 demo 情境考卷，覆蓋當前 5 個示範診斷節點：
- *   INe-II-3-02 / INe-II-3-03 / INe-II-3-05 / INe-Ⅲ-5-4 / INe-Ⅲ-5-7
+ * 目前僅保留 1 份 demo 情境考卷：
+ *   scenario-002 → 飽和糖水甜度（節點 INe-II-3-03）
  *
  * 題目文字、情境敘述、開場提問皆移植自 eh 系統 levels.ts 的 QUESTION_CONFIGS，
  * 圖片素材複製到 src/assets/scenarios/。
  */
 import sugarLayerImg from '../assets/scenarios/2-1-2-sugar-saturation-chart.png';
-import sugarChartsImg from '../assets/scenarios/2-3-sugar-saturation-layer.png';
-import soilPhYearsImg from '../assets/scenarios/level4-1-soil-ph-years.png';
-import soilPhYieldImg from '../assets/scenarios/level4-1-soil-ph-yield.png';
-import acidGasImg from '../assets/scenarios/level5-2-acid-gas.png';
 
 /**
  * @typedef {Object} ScenarioQuestion
@@ -23,61 +19,23 @@ import acidGasImg from '../assets/scenarios/level5-2-acid-gas.png';
  * @property {string} scenarioText - 情境敘述（多行字串，\n 為段落分隔）
  * @property {string[]=} scenarioImages - 情境圖片 import 路徑（0~2 張）
  * @property {boolean=} scenarioImageZoomable - 是否可點擊放大（預設 false）
- * @property {string} initialMessage - AI 開場提問（對應 stage=claim, step=1）
- * @property {string[]} targetMisconceptions - 本題針對的迷思 ID（如 ['M02-1']）
- * @property {string} expertModel - 專家示範範文（apprenticeship 階段 modeling 用）
- *
+ * @property {string} initialMessage - AI 開場提問（步驟 1 由 AI 主動說）
+ * @property {string[]} targetMisconceptions - 該題針對的迷思 ID（M01-1 等）
+ * @property {string} expertModel - 專家示範範文（治療階段「示範」期 AI 引用）
+ */
+
+/**
  * @typedef {Object} ScenarioQuiz
- * @property {string} id - 'scenario-001' 格式
- * @property {string} title - 考卷標題
- * @property {string} status - 'draft' | 'published'
- * @property {string} targetNodeId - 主目標節點 ID
- * @property {string[]} targetMisconceptions - 全部目標迷思 ID 集合
+ * @property {string} id - 'scenario-001' 等
+ * @property {string} title - 顯示名稱
+ * @property {'draft'|'published'} status
+ * @property {string} targetNodeId - 主要對應的知識節點
+ * @property {string[]} targetMisconceptions - 主要對應的迷思群（聚合自題目）
  * @property {string} createdAt - YYYY-MM-DD
  * @property {ScenarioQuestion[]} questions
  */
 
 export const SCENARIO_QUIZZES_DATA = [
-  // ───────────────────────────────────────────────────────────────
-  // scenario-001：溶解現象判斷（2 題）
-  // ───────────────────────────────────────────────────────────────
-  {
-    id: 'scenario-001',
-    title: '情境治療 · 溶解現象判斷',
-    status: 'published',
-    targetNodeId: 'INe-II-3-02',
-    targetMisconceptions: ['M02-1', 'M02-2'],
-    createdAt: '2026-04-29',
-    questions: [
-      {
-        index: 1,
-        title: '論證議題 1',
-        scenarioText:
-          '小華將 10 公克的砂糖加入 100 公克的水中，攪拌後砂糖完全消失不見了。\n小華把這杯糖水放到磅秤上秤重，並思考：糖水會變輕嗎？\n如果把這杯水放太陽下曬乾，砂糖還會出現嗎？',
-        initialMessage:
-          '請根據剛才的情境，說說你的想法：糖水放到磅秤上秤重，糖水會變輕嗎？\n如果把這杯水放太陽下曬乾，砂糖還會出現嗎？',
-        targetMisconceptions: ['M02-1'],
-        expertModel:
-          '我來示範專家的思考：我的主張是糖水秤重不會變輕，曬乾後砂糖會重新出現。' +
-          '證據是物質溶解時只是「分散」在水中、看不見，並沒有消失。' +
-          '推理是只要水分被蒸發掉，原本溶解的砂糖就會重新析出，這證明糖一直都在。',
-      },
-      {
-        index: 2,
-        title: '論證議題 2',
-        scenarioText:
-          '請判斷以下生活中處理食物的過程，哪些是「溶解現象」？\nA. 煮湯加鹽巴　B. 熱湯加粗粒黑胡椒　C. 把米煮成稀飯\nD. 在水中加維他命 C 錠　E. 在豆漿中加入砂糖　F. 奶茶加珍珠\n\n你判斷出現「溶解現象」的標準是什麼？這些物質能被取回嗎？',
-        initialMessage:
-          '哪些是溶解現象？這些物質能被取回嗎？請提出你的主張，也就是你的看法。',
-        targetMisconceptions: ['M02-2'],
-        expertModel:
-          '我來示範專家的思考：我主張 A、D、E 是溶解現象。' +
-          '證據是這三項加入後物質「均勻分散、看不見」、且不會沉在底下。' +
-          '推理是真正溶解的物質必須能被取回（例如蒸發水後重新出現），所以鹽、維他命 C、糖都符合溶解的判準。',
-      },
-    ],
-  },
-
   // ───────────────────────────────────────────────────────────────
   // scenario-002：飽和糖水甜度（2 題）
   // ───────────────────────────────────────────────────────────────
@@ -124,187 +82,6 @@ export const SCENARIO_QUIZZES_DATA = [
           '我來示範專家的思考：我主張甜度不會繼續增加。' +
           '證據是杯底已經有沉澱，這代表水已經溶不下更多糖（達到飽和）。' +
           '推理是水在固定溫度下能溶解的糖有上限，超過上限的糖只會沉在底下，不會增加水中糖的濃度，所以甜度不會再上升。',
-      },
-    ],
-  },
-
-  // ───────────────────────────────────────────────────────────────
-  // scenario-003：重量守恆與圖表（2 題）
-  // ───────────────────────────────────────────────────────────────
-  {
-    id: 'scenario-003',
-    title: '情境治療 · 重量守恆與圖表判讀',
-    status: 'published',
-    targetNodeId: 'INe-II-3-05',
-    targetMisconceptions: ['M05-1', 'M05-2'],
-    createdAt: '2026-04-29',
-    questions: [
-      {
-        index: 1,
-        title: '論證議題 1',
-        scenarioText:
-          '初始條件：將一杯含有 10 克糖的 110 克糖水（含糖和水）放在陽光下。\n\n' +
-          '圖甲（折線圖）：X 軸為「曝曬天數」，Y 軸為「整杯糖水的總重量」，趨勢線逐日往下降。\n' +
-          '圖乙（折線圖）：X 軸為「曝曬天數」，Y 軸為「杯底析出固體砂糖重量」，前幾天為 0，接著逐日上升，最終停留在 10 克。\n\n' +
-          '妹妹看著圖甲的數據下降，哭著說：「陽光把我的糖水變不見了！裡面的糖也跟著消失了！」\n' +
-          '對照圖甲與圖乙的數據趨勢，你覺得妹妹說「糖也跟著消失了」對嗎？',
-        initialMessage:
-          '請對照圖甲與圖乙的數據趨勢，你覺得妹妹說「糖也跟著消失了」對嗎？先說說你的「主張」，也就是你的看法。',
-        targetMisconceptions: ['M05-1'],
-        expertModel:
-          '我來示範專家的思考：我主張妹妹說的不對，糖沒有消失。' +
-          '證據是圖乙顯示杯底析出的砂糖最終達到 10 克，正好等於原本的糖量。' +
-          '推理是圖甲總重量下降是因為水分被陽光蒸發掉，但糖留在杯子裡並重新析出，這證明糖的總量是守恆的。',
-      },
-      {
-        index: 2,
-        title: '論證議題 2',
-        scenarioText:
-          '小明看了這兩張圖表後說：「因為圖甲顯示糖水的總重量一直增加，代表砂糖都有加進去，所以圖乙的甜度折線畫錯了，甜度應該也要跟著一直上升才對！」\n\n' +
-          '請對照圖甲與圖乙的趨勢，小明的說法正確嗎？',
-        scenarioImages: [sugarChartsImg],
-        scenarioImageZoomable: true,
-        initialMessage:
-          '請對照圖甲與圖乙的趨勢，小明的說法正確嗎？先提出你的想法，再說明理由。',
-        targetMisconceptions: ['M05-2'],
-        expertModel:
-          '我來示範專家的思考：我主張小明的說法不正確。' +
-          '證據是圖乙顯示甜度在飽和後不再上升，停在最高值。' +
-          '推理是即使再加更多糖，超過飽和量的糖會沉在底部，溶在水裡的糖濃度不會繼續增加，所以圖乙是對的，是小明的推論有誤。',
-      },
-    ],
-  },
-
-  // ───────────────────────────────────────────────────────────────
-  // scenario-004：酸鹼中和與生活應用（3 題）
-  // ───────────────────────────────────────────────────────────────
-  {
-    id: 'scenario-004',
-    title: '情境治療 · 酸鹼中和與生活應用',
-    status: 'published',
-    targetNodeId: 'INe-Ⅲ-5-4',
-    targetMisconceptions: ['M10-1', 'M10-2', 'M10-3'],
-    createdAt: '2026-04-29',
-    questions: [
-      {
-        index: 1,
-        title: '論證議題 1',
-        scenarioText:
-          '小翔在爬山時被紅螞蟻咬傷，老師建議他用肥皂水（鹼性）沖洗來緩解蟻酸（酸性）造成的腫痛。' +
-          '這讓他聯想到：爸爸胃酸過多（酸性）不舒服時，服用含有碳酸氫鈉（鹼性）的胃藥也能緩解不適。\n\n' +
-          '為了驗證「鹼性物質是否真的能抵銷酸性的特質」，小翔在實驗室建立了一個模擬實驗：\n' +
-          '他用白醋（酸性）代表蟻酸與胃酸，加入紫色高麗菜汁後呈現紅色。\n' +
-          '他用小蘇打水（鹼性）代表肥皂水與胃藥。\n' +
-          '他將小蘇打水慢慢滴入紅色的白醋中，加入紫色高麗菜汁後呈現紫色。\n\n' +
-          '問題：你覺得肥皂水可以減緩蟻酸造成的腫痛嗎？',
-        initialMessage:
-          '你覺得肥皂水可以減緩蟻酸造成的腫痛嗎？先說說你的想法，也就是你的主張。',
-        targetMisconceptions: ['M10-1'],
-        expertModel:
-          '我來示範專家的思考：我主張肥皂水可以減緩蟻酸造成的腫痛。' +
-          '證據是小翔的模擬實驗中，鹼性的小蘇打水加入酸性白醋後，紫色高麗菜汁從紅色變回紫色，代表溶液變得接近中性。' +
-          '推理是這就是「酸鹼中和」現象，鹼性物質能抵銷酸性物質的刺激性，所以肥皂水能緩解蟻酸帶來的腫痛。',
-      },
-      {
-        index: 2,
-        title: '論證議題 2',
-        scenarioText:
-          '農夫阿公發現農田因為長期施肥或酸雨影響，土壤變得太酸，作物長不好。' +
-          '老師建議阿公可以在田裡撒一些熟石灰（鹼性）來改良土壤。\n\n' +
-          '小翔想到自己做過的模擬實驗：酸性的白醋加入鹼性的小蘇打水後，溶液會從紅色變回紫色，表示溶液變得比較接近中性。\n\n' +
-          '問題：你覺得熟石灰可以幫助改善酸化的土壤嗎？',
-        initialMessage:
-          '你覺得熟石灰可以幫助改善酸化的土壤嗎？先說說你的想法。',
-        targetMisconceptions: ['M10-2'],
-        expertModel:
-          '我來示範專家的思考：我主張熟石灰可以改善酸化的土壤。' +
-          '證據是熟石灰是鹼性物質，加入酸性物質後可以發生中和反應，使酸鹼度趨近中性。' +
-          '推理是這跟模擬實驗一樣，鹼性中和酸性，使土壤回到較適合植物生長的酸鹼度。',
-      },
-      {
-        index: 3,
-        title: '論證議題 3',
-        scenarioText:
-          '農夫阿公發現農田最近幾年收成越來越差。小華拿了圖甲跟圖乙給阿公看，並建議：' +
-          '「阿公，我們應該在田裡大量撒入『熟石灰（鹼性）』，而且撒越多越好，這樣作物就會長得好！」' +
-          '請分析兩張圖表的趨勢。\n\n' +
-          '問題：小華建議阿公「撒越多越好」。你覺得小華的說法是完全正確的嗎？',
-        scenarioImages: [soilPhYearsImg, soilPhYieldImg],
-        scenarioImageZoomable: true,
-        initialMessage:
-          '小華建議阿公「撒越多越好」。你覺得小華的說法是完全正確的嗎？請提出你的主張。',
-        targetMisconceptions: ['M10-3'],
-        expertModel:
-          '我來示範專家的思考：我主張小華的說法不完全正確。' +
-          '證據是圖乙顯示作物收成在某個 pH 區間最高，太酸或太鹼都會降低收成。' +
-          '推理是中和不是「越多越好」，過量的鹼會使土壤變得太鹼，反而傷害作物，所以應該適量、控制在最佳 pH 區間。',
-      },
-    ],
-  },
-
-  // ───────────────────────────────────────────────────────────────
-  // scenario-005：水在酸鹼反應的角色（3 題）
-  // ───────────────────────────────────────────────────────────────
-  {
-    id: 'scenario-005',
-    title: '情境治療 · 水在酸鹼反應的角色',
-    status: 'published',
-    targetNodeId: 'INe-Ⅲ-5-7',
-    targetMisconceptions: ['M12-1', 'M12-2', 'M12-3'],
-    createdAt: '2026-04-29',
-    questions: [
-      {
-        index: 1,
-        title: '論證議題 1',
-        scenarioText:
-          '小華聽說「檸檬酸粉末」可以用來清除熱水瓶裡的鹼性水垢。' +
-          '他為了確認粉末的性質，拿出一張乾燥的藍色石蕊試紙（或是塗有紫色高麗菜汁的乾燥紙片），' +
-          '直接灑上一些「乾燥的檸檬酸粉末」。結果他驚奇地發現：試紙的顏色竟然完全沒有改變！' +
-          '小華心想：「難道檸檬酸粉末不是酸性的嗎？」' +
-          '接著，他只不過在粉末上滴了一滴純水，試紙竟然立刻變成了紅色。\n\n' +
-          '問題：為什麼乾燥的粉末不能讓試紙變色，而加了水之後卻可以？',
-        initialMessage:
-          '為什麼乾燥的粉末不能讓試紙變色，而加了水之後卻可以？請提出你的主張和想法。',
-        targetMisconceptions: ['M12-1'],
-        expertModel:
-          '我來示範專家的思考：我主張水在酸鹼反應中扮演關鍵角色。' +
-          '證據是乾燥的檸檬酸粉末沒有讓試紙變色，但加水後立刻變紅。' +
-          '推理是檸檬酸要溶於水才能釋放出酸性的成分，跟試紙上的物質產生反應；沒有水時，反應無法進行，所以試紙不會變色。',
-      },
-      {
-        index: 2,
-        title: '論證議題 2',
-        scenarioText:
-          '工廠排放了大量酸性廢氣。有市民看著圖甲說：「你看！廢氣濃度再高，測試紙都沒有變紅，' +
-          '代表這些廢氣根本沒有酸性，不用擔心污染植物！」' +
-          '你贊成這位市民的看法嗎？請對照圖甲與圖乙的趨勢，說明你的主張和想法。',
-        scenarioImages: [acidGasImg],
-        scenarioImageZoomable: true,
-        initialMessage:
-          '你贊成這位市民的看法嗎？請說明你的主張和想法。',
-        targetMisconceptions: ['M12-2'],
-        expertModel:
-          '我來示範專家的思考：我不贊成市民的看法。' +
-          '證據是圖乙顯示廢氣遇到水（例如雨水）後，測試紙立刻變紅，證明它確實是酸性。' +
-          '推理是乾燥的氣體無法直接讓試紙變色，並不代表它沒有酸性，' +
-          '只要遇到水形成酸雨，就會傷害植物，所以仍需擔心污染。',
-      },
-      {
-        index: 3,
-        title: '論證議題 3',
-        scenarioText:
-          '小強在野外看到許多石灰岩（主要成分為碳酸鈣，呈弱鹼性）。' +
-          '他拿乾燥的石蕊試紙直接貼在乾燥的石灰岩表面，試紙沒有反應；' +
-          '但他若先將石蕊試紙噴濕再貼上去，試紙就慢慢變藍了。\n\n' +
-          '問題：為什麼乾燥的石灰岩無法讓試紙變色，必須在有水的情況下才能展現鹼性？',
-        initialMessage:
-          '為什麼乾燥的石灰岩無法讓試紙變色，必須在有水的情況下才能展現鹼性？請說說看你的想法。',
-        targetMisconceptions: ['M12-3'],
-        expertModel:
-          '我來示範專家的思考：我主張水是讓石灰岩展現鹼性的關鍵。' +
-          '證據是乾燥時試紙不變色，噴濕後試紙變藍。' +
-          '推理是石灰岩要溶於水才能釋出鹼性物質，跟試紙產生反應，' +
-          '沒有水做為媒介，反應無法進行，所以乾燥時看不到變色。',
       },
     ],
   },

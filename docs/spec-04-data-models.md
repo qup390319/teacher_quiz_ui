@@ -11,7 +11,7 @@
 > **P1 重要變更**：原先 `AppContext.role / setRole` 已移除。任何元件需要當前角色，請改用 `useAuth().role`。
 >
 > **P3 重要變更**：原先 AppContext 直接持有的 `classes / quizzes / scenarioQuizzes / assignments` 與所有對應的 setters / save / add / update / remove 函式**全部移除**。改由 React Query hooks 提供：
-> - `useClasses()` / `useClass(classId)` / `useUpdateClassStudents()`
+> - `useClasses()` / `useClass(classId)` / `useCreateClass()` / `useUpdateClass()` / `useUpdateClassStudents()`
 > - `useQuizzes()` / `useQuiz(quizId)` / `useSaveQuiz()` / `useDeleteQuiz()`
 > - `useScenarios()` / `useScenario(id)` / `useSaveScenario()` / `useDeleteScenario()`
 > - `useAssignments(filters)` / `useAddAssignment()` / `useUpdateAssignment()` / `useRemoveAssignment()`
@@ -49,6 +49,8 @@ const { currentUser, loading, role, login, logout } = useAuth();
 | ~~`role`~~ | — | — | **P1 移除**：改由 `useAuth().role` 提供 |
 | `quizQuestions` | `Question[]` | `[...defaultQuestions]` | 出題精靈中正在編輯的題目（純 UI 狀態） |
 | `selectedNodeIds` | `string[]` | `['INe-II-3-02', 'INe-II-3-03', 'INe-II-3-05', 'INe-Ⅲ-5-4', 'INe-Ⅲ-5-7']` | 出題精靈中選定的知識節點 |
+| `editingQuizId` | `string \| null` | `null` | 出題精靈當前正在編輯的 quiz id：`null` = 新建 / 複製模式（儲存走 POST）；有值 = 編輯既有 quiz（儲存走 PUT，含自動暫存覆蓋同一份）。由 QuizLibrary 的「編輯／繼續編輯」設置；「複製為新考卷」與 TeacherDashboard 的「新增考卷／推薦題組」皆會清空此值 |
+| `editingQuizStatus` | `'draft' \| 'published' \| null` | `null` | 編輯時帶入的原始 status，用於 Step2Edit 判定是否啟用自動暫存（`published` 卷自動暫存停用，避免被降級為 draft） |
 | ~~`classes`~~ | — | — | **P3 移除**：改用 `useClasses()` |
 | `currentClassId` | `string \| null` | `null` | 當前篩選的班級 ID（純 UI 狀態，配合 dashboard URL query 同步） |
 | ~~`currentClass`~~ | — | — | **P3 移除**：用 `useClass(currentClassId).data` |
@@ -106,6 +108,8 @@ export function useClasses() {
 |------|---------|-----------|------|
 | `useClasses()` | `GET /api/classes` | `['classes']` | **教師專屬**。回傳 `ClassBrief[]`：`{ id, name, grade, subject, color, textColor, studentCount }` — **不包含** `students` 陣列 |
 | `useClass(classId)` | `GET /api/classes/{id}` | `['classes', classId]` | **教師專屬**。`ClassDetail` = `ClassBrief` + `students: StudentBrief[]` |
+| `useCreateClass()` | `POST /api/classes` | invalidate `['classes']` | **教師**。Body：`{ name, grade, subject, color, textColor, note? }`；server 自動產生 id（`class-A..Z` 取下一個） |
+| `useUpdateClass()` | `PATCH /api/classes/{id}` | invalidate `['classes']`、`['classes', id]` | **教師**。Body 為部分更新；可帶 `name/grade/subject/color/textColor/note`，傳 `note: null` 可清空備註 |
 | `useUpdateClassStudents()` | `PUT /api/classes/{id}/students` | invalidate `['classes']` | mutation |
 | `useStudent(studentId)` | `GET /api/students/{id}` | `['students', id]` | **教師**：含明文密碼 |
 | `useResetStudentPassword()` | `POST /api/students/{id}/reset-password` | invalidate `['students', id]` | mutation |
@@ -117,7 +121,7 @@ export function useClasses() {
 | `useScenario(id)` | `GET /api/scenarios/{id}` | `['scenarios', id]` | 學生需該 scenario 已派至自己班級 |
 | `useSaveScenario()` | `POST` 或 `PUT /api/scenarios[/{id}]` | invalidate `['scenarios']` | upsert（教師） |
 | `useDeleteScenario()` | `DELETE /api/scenarios/{id}` | invalidate `['scenarios']` | （教師） |
-| `useAssignments(filters?)` | `GET /api/assignments?...` | `['assignments', filters]` | filters: `{ type, classId, quizId }`；學生隱式只看自己班；回傳含 `completionRate / submittedCount / totalStudents` 即時統計 |
+| `useAssignments(filters?)` | `GET /api/assignments?...` | `['assignments', filters]` | filters: `{ type, classId, quizId, scenarioQuizId }`；學生隱式只看自己班，且 `targetType='students'` 時需 `student.id ∈ studentIds` 才看得到；回傳含 `targetType / studentIds / completionRate / submittedCount / totalStudents`（scenario 分母 = 指派學生數）|
 | `useAddAssignment()` | `POST /api/assignments` | invalidate `['assignments']` | |
 | `useUpdateAssignment()` | `PATCH /api/assignments/{id}` | invalidate `['assignments']` | |
 | `useRemoveAssignment()` | `DELETE /api/assignments/{id}` | invalidate `['assignments']` | |
@@ -219,26 +223,34 @@ interface Assignment {
   quizId?: string;        // 診斷考卷 ID（type='diagnosis' 時必填）
   scenarioQuizId?: string;// 情境考卷 ID（type='scenario' 時必填）
   classId: string;        // 班級 ID
+  // ── 派發對象（spec-05 §3.4）─────────────────────────────────
+  // 'class'    = 整班派發（diagnosis 預設；studentIds 必為空陣列）
+  // 'students' = 個別學生派發（scenario 預設；studentIds 至少 1 位）
+  targetType: 'class' | 'students';
+  studentIds: string[];   // 指派的學生 user_id 列表（targetType='students' 時必填）
   assignedAt: string;     // 指派日期（YYYY-MM-DD）
   dueDate: string;        // 截止日期（YYYY-MM-DD）
   status: 'active' | 'completed'; // 狀態
   completionRate: number; // 完成率（0-100）
-  submittedCount: number; // 已繳交人數
-  totalStudents: number;  // 班級總人數
+  submittedCount: number; // 已繳交人數（已作答 / 已完成的指派學生數）
+  totalStudents: number;  // 分母：targetType='class' = 全班人數；'students' = studentIds.length
 }
 ```
 
 **注意**：
 - 既有 `ASSIGNMENTS_DATA` 中所有資料 `type` 欄位為 `undefined`（視為 `'diagnosis'`，向下相容）
-- 治療派題透過 `addAssignment({ type: 'scenario', scenarioQuizId, classId, ... })` 新增
+- 診斷派題透過 `addAssignment({ type: 'diagnosis', quizId, classId, targetType: 'class', studentIds: [], ... })` 新增
+- 情境派題以**個別學生**為單位：`addAssignment({ type: 'scenario', scenarioQuizId, classId, targetType: 'students', studentIds: [...], ... })`
+- 學生端 `useAssignments` 過濾規則：班級命中 + （`targetType='class'` 或 `student.id ∈ studentIds`）
 
 **預設資料**:
-| ID | 考卷 | 班級 | 完成率 |
-|----|------|------|--------|
-| `assign-001` | quiz-001 | class-A | 100% (20/20) |
-| `assign-002` | quiz-001 | class-B | 72% (13/18) |
-| `assign-003` | quiz-001 | class-C | 45% (10/22) |
-| `assign-004` | quiz-002 | class-A | 85% (17/20) |
+| ID | 考卷 | 班級 | targetType | 對象/完成率 |
+|----|------|------|-----------|------------|
+| `assign-001` | quiz-001 | class-A | class | 全班 100% (20/20) |
+| `assign-002` | quiz-001 | class-B | class | 全班 72% (13/18) |
+| `assign-003` | quiz-001 | class-C | class | 全班 45% (10/22) |
+| `assign-004` | quiz-002 | class-A | class | 全班 85% (17/20) |
+| `assign-006` | scenario-002 | class-A | students | 2 位 0% |
 
 ### 2.5 KnowledgeNode（知識節點）
 **來源**: `src/data/knowledgeGraph.js`
@@ -385,15 +397,11 @@ interface ScenarioQuiz {
 }
 ```
 
-**預設資料**：5 份 demo 情境考卷（spec-08 §10）
+**預設資料**：1 份 demo 情境考卷（spec-08 §10）
 
 | ID | 標題 | 目標節點 | 題數 |
 |----|------|---------|------|
-| `scenario-001` | 情境治療 · 溶解現象判斷 | INe-II-3-02 | 2 |
 | `scenario-002` | 情境治療 · 飽和糖水甜度 | INe-II-3-03 | 2 |
-| `scenario-003` | 情境治療 · 重量守恆與圖表判讀 | INe-II-3-05 | 2 |
-| `scenario-004` | 情境治療 · 酸鹼中和與生活應用 | INe-Ⅲ-5-4 | 3 |
-| `scenario-005` | 情境治療 · 水在酸鹼反應的角色 | INe-Ⅲ-5-7 | 3 |
 
 ### 2.10 TreatmentMessage / TreatmentSession（治療對話狀態）
 **來源**: AppContext 內部 state（不存於資料檔）

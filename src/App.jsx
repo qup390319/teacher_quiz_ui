@@ -14,7 +14,6 @@ import MisconceptionsPage from './pages/teacher/dashboard/MisconceptionsPage';
 import ClassDetailPage from './pages/teacher/dashboard/ClassDetailPage';
 import QuizLibrary from './pages/teacher/QuizLibrary';
 import AssignmentManagement from './pages/teacher/AssignmentManagement';
-import ScenarioAssignments from './pages/teacher/ScenarioAssignments';
 import ClassManagement from './pages/teacher/ClassManagement';
 import ClassDetail from './pages/teacher/ClassDetail';
 import KnowledgeMap from './pages/teacher/KnowledgeMap';
@@ -51,8 +50,8 @@ export default function App() {
             <Route path="/teacher/quiz/create" element={<Teacher><QuizCreateWizard /></Teacher>} />
             <Route path="/teacher/quizzes" element={<Teacher><QuizLibrary /></Teacher>} />
             <Route path="/teacher/assignments" element={<Navigate to="/teacher/assignments/diagnosis" replace />} />
-            <Route path="/teacher/assignments/diagnosis" element={<Teacher><AssignmentManagement /></Teacher>} />
-            <Route path="/teacher/assignments/scenarios" element={<Teacher><ScenarioAssignments /></Teacher>} />
+            <Route path="/teacher/assignments/diagnosis" element={<Teacher><AssignmentManagement initialTab="diagnosis" /></Teacher>} />
+            <Route path="/teacher/assignments/scenarios" element={<Teacher><AssignmentManagement initialTab="scenario" /></Teacher>} />
             <Route path="/teacher/classes" element={<Teacher><ClassManagement /></Teacher>} />
             <Route path="/teacher/classes/:classId" element={<Teacher><ClassDetail /></Teacher>} />
             <Route path="/teacher/knowledge-map" element={<Teacher><KnowledgeMap /></Teacher>} />

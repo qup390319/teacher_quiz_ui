@@ -126,5 +126,36 @@
         ]
       }
     ]
+  },
+  {
+    "id": "quiz-draft-demo",
+    "title": "草稿示範 · 水溶液單元（編寫中）",
+    "status": "draft",
+    "knowledgeNodeIds": ["INe-II-3-02", "INe-II-3-03"],
+    "createdAt": "2026-05-06",
+    "questions": [
+      {
+        "id": 1,
+        "stem": "把一匙鹽倒進水裡攪拌後，鹽從杯中消失看不見了。下列哪個說法最正確？",
+        "knowledgeNodeId": "INe-II-3-02",
+        "options": [
+          { "tag": "A", "content": "鹽變成肉眼看不見的小粒子分散在水中，把水蒸發後鹽會重新出現。", "diagnosis": "CORRECT" },
+          { "tag": "B", "content": "鹽完全消失了，因為它與水反應變成新東西。", "diagnosis": "M02-4" },
+          { "tag": "C", "content": "（請輸入選項 C）", "diagnosis": "M02-1" },
+          { "tag": "D", "content": "（請輸入選項 D）", "diagnosis": "M02-3" }
+        ]
+      },
+      {
+        "id": 2,
+        "stem": "（請輸入題幹）",
+        "knowledgeNodeId": "INe-II-3-03",
+        "options": [
+          { "tag": "A", "content": "（請輸入選項 A）", "diagnosis": "M03-1" },
+          { "tag": "B", "content": "（請輸入選項 B，此為正確答案）", "diagnosis": "CORRECT" },
+          { "tag": "C", "content": "（請輸入選項 C）", "diagnosis": "M03-2" },
+          { "tag": "D", "content": "（請輸入選項 D）", "diagnosis": "M03-3" }
+        ]
+      }
+    ]
   }
 ]

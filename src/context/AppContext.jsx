@@ -26,6 +26,12 @@ export function AppProvider({ children }) {
   const [selectedNodeIds, setSelectedNodeIds] = useState([
     'INe-II-3-02', 'INe-II-3-03', 'INe-II-3-05', 'INe-Ⅲ-5-4', 'INe-Ⅲ-5-7',
   ]);
+  // 出題精靈正在編輯的 quiz id（null = 新建 / 複製；有值 = 編輯既有）
+  const [editingQuizId, setEditingQuizId] = useState(null);
+  // 出題精靈正在編輯的 quiz 原始 status（draft / published / null）
+  const [editingQuizStatus, setEditingQuizStatus] = useState(null);
+  // 出題精靈是否有「尚未儲存的變更」（dirty）→ 用於離開時提示
+  const [isWizardDirty, setIsWizardDirty] = useState(false);
 
   // 當前選中的 class / quiz（純 UI 狀態）
   const [currentClassId, setCurrentClassId] = useState(null);
@@ -46,6 +52,9 @@ export function AppProvider({ children }) {
       // 出題精靈
       quizQuestions, setQuizQuestions,
       selectedNodeIds, setSelectedNodeIds,
+      editingQuizId, setEditingQuizId,
+      editingQuizStatus, setEditingQuizStatus,
+      isWizardDirty, setIsWizardDirty,
       // 當前選中的 quiz / class（UI 狀態）
       currentClassId, setCurrentClassId,
       currentQuizId, setCurrentQuizId,

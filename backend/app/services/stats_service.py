@@ -173,8 +173,14 @@ async def get_class_stats(db: AsyncSession, quiz_id: str, class_id: str) -> dict
     }
 
 
-async def get_grade_stats(db: AsyncSession, quiz_id: str) -> dict[str, Any]:
-    """Aggregate stats across all classes that have an assignment for this quiz."""
+async def get_grade_stats(
+    db: AsyncSession, quiz_id: str, *, teacher_id: str | None = None,
+) -> dict[str, Any]:
+    """Aggregate stats across classes that have an assignment for this quiz.
+
+    If `teacher_id` is given, only classes owned by that teacher are included
+    (per-teacher data isolation; spec-11 §3.3).
+    """
     quiz = await _load_quiz_with_questions(db, quiz_id)
     if quiz is None:
         return _empty_stats(quiz_id, None)
@@ -185,8 +191,13 @@ async def get_grade_stats(db: AsyncSession, quiz_id: str) -> dict[str, Any]:
     assignments = list(asg_res.scalars().all())
     class_ids = sorted({a.class_id for a in assignments})
 
-    classes_res = await db.execute(select(Class).where(Class.id.in_(class_ids)))
+    classes_stmt = select(Class).where(Class.id.in_(class_ids))
+    if teacher_id is not None:
+        classes_stmt = classes_stmt.where(Class.teacher_id == teacher_id)
+    classes_res = await db.execute(classes_stmt)
     classes = {c.id: c for c in classes_res.scalars().all()}
+    # Drop classes not owned by this teacher.
+    class_ids = [cid for cid in class_ids if cid in classes]
 
     # Per-class stats (re-use get_class_stats)
     per_class = []

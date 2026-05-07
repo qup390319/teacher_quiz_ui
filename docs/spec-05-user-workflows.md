@@ -50,48 +50,95 @@
 
 ### 1.2 出題流程 (Quiz Creation)
 
+進入點（皆會把 `editingQuizId` 重置為 `null`，除「編輯／繼續編輯」外）：
+- TeacherDashboard 主頁的「快速出題」CTA → `/teacher/quiz/create`
+- TeacherDashboard 主頁的「一鍵使用推薦題組」 → `/teacher/quiz/create?step=2`（預載 defaultQuestions）
+- QuizLibrary「新增考卷」按鈕 → `/teacher/quiz/create`
+- QuizLibrary「複製為新考卷」按鈕 → `/teacher/quiz/create?step=2`，預載複製品
+- QuizLibrary「編輯／繼續編輯」按鈕 → `/teacher/quiz/create?step=2`，**保留** `editingQuizId` + `editingQuizStatus`
+
 ```
 教師進入 /teacher/quiz/create
     │
     ├─ 步驟一：選擇知識節點 (Step1Nodes)
-    │   ├─ 瀏覽 8 個知識節點（按 level 分組）
-    │   ├─ 勾選/取消勾選節點
-    │   ├─ 選定的 ID 儲存至 selectedNodeIds
+    │   ├─ 瀏覽 12 個知識節點（兩條子主題路徑）
+    │   ├─ 勾選/取消勾選節點 → selectedNodeIds
+    │   ├─ 系統提示尚未選的先備節點，可一鍵加入
     │   └─ 點擊「下一步」
     │
     └─ 步驟二：編輯題目 (Step2Edit)
-        ├─ 系統根據選定節點載入對應預設題目
-        ├─ 可編輯題幹 (stem)
-        ├─ 可編輯各選項內容 (content)
-        │    └─ 每個非正解選項旁有「✨ 建議」按鈕（N6, spec-12 §7）
-        │         開啟 DistractorSuggestPopover → 後端呼叫 RAGFlow
-        │         取得文獻檢索的真實學生說法 3 條，可一鍵採用 / 再來 3 條
-        ├─ 可調整各選項的迷思對應 (diagnosis)
-        ├─ 點擊「儲存」→ 呼叫 saveQuiz()
-        └─ 儲存成功後導航至考卷庫
+        ├─ CoveragePanel 補洞器
+        │   ├─ 顯示每節點迷思覆蓋率（progress bar）
+        │   └─ 列出尚未覆蓋的迷思 chips（紅底）
+        │       └─ 點擊 chip → 直接建立預填新題（鎖節點 + 該迷思為 distractor A，
+        │             B 為正解，C/D 從該節點剩餘且未覆蓋的迷思補滿）→ 開啟編輯 modal
+        │
+        ├─ 「從題庫挑題」按鈕 → 開啟 QuestionImportDrawer（右側抽屜）
+        │   ├─ 預設只顯示與當前 selectedNodeIds 有交集的考卷
+        │   ├─ 可勾選「顯示全部」切換
+        │   └─ 勾選若干題目 → deep clone 並 append 到 quizQuestions（重新編號 1..N）
+        │
+        ├─ 「新增題目」→ 建立空骨架後開啟編輯 modal
+        │
+        ├─ EditQuestionModal（單題編輯）
+        │   ├─ 題幹、節點、4 個選項各自的 content + diagnosis
+        │   └─ 每個非正解選項旁有「✨ 建議」按鈕（N6, spec-12 §7）
+        │       → DistractorSuggestPopover → 後端 RAGFlow → 學生真實說法 3 條
+        │
+        ├─ 草稿暫存
+        │   ├─ 「儲存草稿」按鈕：以 status=draft 立即上傳；首次儲存後將回傳的
+        │   │   quiz id 寫入 editingQuizId，後續儲存改走 PUT（同一份）
+        │   ├─ 自動暫存：30 秒 debounce，依賴 quizTitle / quizQuestions / selectedNodeIds
+        │   ├─ 底部 status pill 顯示「已自動儲存於 HH:mm」
+        │   └─ 編輯既有 published 卷時自動暫存停用（避免降級為 draft）
+        │
+        ├─ 「預覽學生端」→ PreviewQuizModal（模擬學生作答介面）
+        │
+        └─ 「儲存並發布」→ status=published 儲存後跳回 /teacher/quizzes，清空 editingQuizId
 ```
 
 ### 1.3 派題流程 (Assignment)
+
+頁面分兩個分頁：「📝 診斷考卷」（整班派發）與「🌱 情境考卷」（個別學生派發）。
 
 ```
 教師進入 /teacher/assignments
     │
     ├─ 以矩陣/網格 UI 呈現（考卷為列 × 班級為欄）
-    │   ├─ 每格顯示：完成率%、已繳交/總人數、截止日期
+    │   ├─ 每格顯示：完成率%、submittedCount/totalStudents、截止日期
+    │   │   * scenario 分頁的 totalStudents 為「該派題指派的學生數」，非班級總人數
     │   ├─ 已派發格子依完成率顯示不同顏色：
     │   │   ├─ 100% → 綠色 (#C8EAAE)，狀態文字「已完成」
     │   │   ├─ 1~99% → 黃色 (#FCF0C2)，狀態文字「進行中」
     │   │   └─ 0% → 淺綠 (#EEF5E6)，狀態文字「待作答」
     │   └─ 未派發格子顯示虛線框 + 「派發」按鈕
     │
-    ├─ 點擊未派發格子 → 彈出 Popover
-    │   ├─ 設定截止日期
-    │   ├─ 確認派發 → 呼叫 addAssignment()
-    │   └─ 自動生成 ID: assign-{timestamp}
+    ├─ 診斷分頁（整班派發）
+    │   ├─ 點擊未派發格子 → AssignPopover（小型 popover）
+    │   │   ├─ 設定截止日期
+    │   │   ├─ 確認派發 → addAssignment({ targetType:'class', studentIds:[], ... })
+    │   │   └─ 自動生成 ID: assign-{timestamp}
+    │   └─ 點擊已派發格子 → ManagePopover
+    │       ├─ 可修改截止日期 → updateAssignment()
+    │       ├─ 可查看診斷報告（若有作答資料）
+    │       └─ 可取消派題 → removeAssignment()
     │
-    └─ 點擊已派發格子 → 彈出 Popover
-        ├─ 可修改截止日期 → 呼叫 updateAssignment()
-        └─ 可取消派題 → 呼叫 removeAssignment()
+    └─ 情境分頁（個別學生派發；spec-08）
+        ├─ 點擊未派發格子 → AssignTargetPicker（modal-style 學生選擇器）
+        │   ├─ 顯示該班所有學生（座號排序，預設皆未勾選）
+        │   ├─ 教師勾選對象（提供「全部勾選 / 全部取消」快捷）
+        │   ├─ 設定截止日期
+        │   └─ 確認 → addAssignment({
+        │             type:'scenario', scenarioQuizId, classId,
+        │             targetType:'students', studentIds:[...], dueDate, ...
+        │           })
+        │   * 跨班派發：分別點擊各班的格子，各自派發一次（單筆派題對應單一班級）
+        │
+        └─ 點擊已派發格子 → ManagePopover（情境分頁顯示「指派對象 N 位」）
+            ├─ 可修改截止日期
+            ├─ 「調整派發對象」→ 再次開啟 AssignTargetPicker（existing 帶入既有 studentIds）
+            │       └─ 確認 → updateAssignment({ studentIds })
+            └─ 可取消派題
 ```
 
 ### 1.4 診斷結果查看流程
@@ -288,7 +335,7 @@
 ```
 教師進入 /teacher/scenarios（情境考卷庫）
     │
-    ├─ 瀏覽既有 5 份 demo（scenario-001 ~ 005）+ 自製
+    ├─ 瀏覽既有 1 份 demo（scenario-002 · 飽和糖水甜度）+ 自製
     ├─ 點擊「新增」 → /teacher/scenarios/create
     │   ├─ 步驟一：選目標節點 + 標目標迷思
     │   ├─ 步驟二：撰寫情境敘述（textarea）+ 上傳圖片
@@ -299,22 +346,37 @@
         └─ 同上，預填現有資料
 ```
 
-### 3.2 教師端：派發治療任務
+### 3.2 教師端：派發治療任務（個別學生派發）
+
+情境治療派題以**個別學生**為單位（spec-04 §2.4 `targetType='students'`）。教師看一個班級、勾選需要治療的學生，再看下一個班級。
 
 ```
-教師查看診斷結果（DashboardReport / StudentReport）
+教師進入 /teacher/assignments → 切到「🌱 情境考卷」分頁
     │
-    ├─ 在班級／個人迷思列表旁 → 點「📤 派發情境考卷」
+    ├─ 點擊（情境考卷 × 班級）的未派發格子
+    │   └─ 開啟 AssignTargetPicker（modal）
+    │       ├─ 顯示該班全體學生（座號 + 姓名 + 帳號）
+    │       ├─ 教師手動勾選需要派發的學生（不預選）
+    │       ├─ 設定截止日期
+    │       └─ 確認 → addAssignment({
+    │                 type:'scenario', scenarioQuizId, classId,
+    │                 targetType:'students', studentIds:[...], dueDate, ...
+    │               })
     │
-    ├─ 跳轉至 TreatmentAssignment（合併進 AssignmentManagement 的 'scenario' tab）
-    │   ├─ 預填當前學生／班級的迷思清單
-    │   ├─ 教師勾選想治療的迷思（MisconceptionPicker）
-    │   ├─ 系統依 getScenarioQuizzesByMisconception() 推薦對應情境考卷
-    │   ├─ 教師選定情境考卷 + 班級 + 截止日
-    │   └─ 確認派發 → addAssignment({ type: 'scenario', scenarioQuizId, classId, dueDate, ... })
+    ├─ 點擊（情境考卷 × 班級）的已派發格子
+    │   └─ ManagePopover 顯示「指派對象 N 位」+ 完成進度
+    │       ├─ 「調整派發對象」→ 再次開啟 AssignTargetPicker（含既有勾選）
+    │       │   → updateAssignment({ studentIds })
+    │       ├─ 修改截止日期 → updateAssignment({ dueDate })
+    │       └─ 取消派題 → removeAssignment()
     │
-    └─ 完成派發後，學生端 StudentHome 的「情境治療」區塊就會出現此任務
+    └─ 完成派發後，被勾選的學生在 StudentHome「情境治療」區塊看到此任務
+       （後端 useAssignments 對學生角色過濾：班級命中且 student.id ∈ studentIds）
 ```
+
+> 未來可擴充入口：在 DashboardReport 的迷思列表旁加「📤 派發情境治療」按鈕，
+> 帶入 `{ classId, scenarioQuizId 候選 }` 跳到此分頁並自動展開對應格子的 picker（教師仍手動勾學生）。
+> 目前主要入口是 `/teacher/assignments` 的 scenario 分頁。
 
 ### 3.3 學生端：情境對話流程（spec-08 §6）
 

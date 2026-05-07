@@ -2,7 +2,7 @@
 import time
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.deps import get_current_user, require_teacher
@@ -104,9 +104,13 @@ async def get_quiz(
 
 
 async def _replace_questions_options(db: AsyncSession, quiz: Quiz, payload_questions: list[QuizQuestionIO]) -> None:
-    """Wipe existing questions+options, recreate from payload. Simpler than diffing."""
-    for qq in list(quiz.questions):
-        await db.delete(qq)  # cascade removes options
+    """Wipe existing questions+options, recreate from payload. Simpler than diffing.
+
+    Uses SQL-level DELETE (not ORM iteration) so we don't lazy-load `quiz.questions`
+    in async context (which raises MissingGreenlet). FK ondelete=CASCADE on
+    quiz_options.question_id removes child options for us.
+    """
+    await db.execute(delete(QuizQuestion).where(QuizQuestion.quiz_id == quiz.id))
     await db.flush()
     for q_in in payload_questions:
         qq = QuizQuestion(
@@ -144,7 +148,7 @@ async def create_quiz(
     await db.flush()
     await _replace_questions_options(db, quiz, payload.questions)
     await db.commit()
-    await db.refresh(quiz)
+    await db.refresh(quiz, ["questions"])
     return _to_detail(quiz)
 
 
@@ -163,7 +167,7 @@ async def update_quiz(
     quiz.knowledge_node_ids = payload.knowledge_node_ids
     await _replace_questions_options(db, quiz, payload.questions)
     await db.commit()
-    await db.refresh(quiz)
+    await db.refresh(quiz, ["questions"])
     return _to_detail(quiz)
 
 

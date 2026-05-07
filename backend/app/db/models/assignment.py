@@ -2,10 +2,11 @@
 from datetime import date, datetime
 
 from sqlalchemy import CheckConstraint, Date, ForeignKey, Index, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from app.db.base import Base
+from app.db.models.assignment_student import AssignmentStudent
 
 
 class Assignment(Base):
@@ -13,6 +14,9 @@ class Assignment(Base):
     __table_args__ = (
         CheckConstraint("type IN ('diagnosis','scenario')", name="assignments_type_chk"),
         CheckConstraint("status IN ('active','completed')", name="assignments_status_chk"),
+        CheckConstraint(
+            "target_type IN ('class','students')", name="assignments_target_type_chk",
+        ),
         CheckConstraint(
             "(type='diagnosis' AND quiz_id IS NOT NULL AND scenario_quiz_id IS NULL) "
             "OR (type='scenario' AND scenario_quiz_id IS NOT NULL AND quiz_id IS NULL)",
@@ -34,9 +38,18 @@ class Assignment(Base):
     class_id: Mapped[str] = mapped_column(
         String(32), ForeignKey("classes.id"), nullable=False,
     )
+    target_type: Mapped[str] = mapped_column(
+        String(16), default="class", nullable=False,
+    )
     assigned_at: Mapped[date] = mapped_column(
         Date, server_default=func.current_date(), nullable=False,
     )
     due_date: Mapped[date] = mapped_column(Date, nullable=False)
     status: Mapped[str] = mapped_column(String(16), default="active", nullable=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+
+    students: Mapped[list[AssignmentStudent]] = relationship(
+        AssignmentStudent,
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )

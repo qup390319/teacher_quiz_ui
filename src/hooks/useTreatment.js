@@ -72,6 +72,7 @@ export function useCompleteTreatmentSession() {
         });
       }
       qc.invalidateQueries({ queryKey: ['treatment-logs'] });
+      qc.invalidateQueries({ queryKey: ['assignments'] });
     },
   });
 }

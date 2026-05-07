@@ -6,12 +6,20 @@ import { defaultQuestions } from '../../data/quizData';
 
 export default function TeacherDashboard() {
   const navigate = useNavigate();
-  const { setQuizQuestions, setSelectedNodeIds } = useApp();
+  const { setQuizQuestions, setSelectedNodeIds, setEditingQuizId, setEditingQuizStatus } = useApp();
 
   const handleUsePreset = () => {
     setQuizQuestions([...defaultQuestions]);
     setSelectedNodeIds(['INe-II-3-02', 'INe-II-3-03', 'INe-II-3-05', 'INe-Ⅲ-5-4', 'INe-Ⅲ-5-7']);
+    setEditingQuizId(null);
+    setEditingQuizStatus(null);
     navigate('/teacher/quiz/create?step=2');
+  };
+
+  const handleNewQuiz = () => {
+    setEditingQuizId(null);
+    setEditingQuizStatus(null);
+    navigate('/teacher/quiz/create');
   };
 
   return (
@@ -102,7 +110,7 @@ export default function TeacherDashboard() {
 
           {/* 快速出題 */}
           <button
-            onClick={() => navigate('/teacher/quiz/create')}
+            onClick={handleNewQuiz}
             className="bg-[#BADDF4] border border-[#BDC3C7] rounded-[32px] p-6 text-left hover:bg-[#A8D2EC] transition-all duration-200 group shadow-[0_2px_12px_rgba(0,0,0,0.06)]"
           >
             <div className="w-12 h-12 bg-white border border-[#BDC3C7] rounded-2xl flex items-center justify-center mb-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">

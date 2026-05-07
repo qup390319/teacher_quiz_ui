@@ -268,16 +268,14 @@ StudentHome
 
 ---
 
-## 10. 範例素材對照表（5 份 Demo）
+## 10. 範例素材對照表（1 份 Demo）
 
 | 情境考卷 ID | 標題 | 目標節點 | 題數 | 來源 |
 |---|---|---|---|---|
-| `scenario-001` | 溶解現象判斷 | INe-II-3-02 | 2 | eh `levels.ts` Q0、Q1 |
 | `scenario-002` | 飽和糖水甜度 | INe-II-3-03 | 2 | eh Q3、Q4 |
-| `scenario-003` | 重量守恆與圖表 | INe-II-3-05 | 2 | eh Q2、Q5 |
-| `scenario-004` | 酸鹼中和與生活應用 | INe-Ⅲ-5-4 | 3 | eh Q6、Q7、Q8 |
-| `scenario-005` | 水在酸鹼反應的角色 | INe-Ⅲ-5-7 | 3 | eh Q10、Q11、Q12 |
 
-圖片素材：`src/assets/scenarios/{2-1-2-sugar-saturation-chart, 2-3-sugar-saturation-layer, level4-1-soil-ph-years, level4-1-soil-ph-yield, level5-2-acid-gas}.png`
+圖片素材：`src/assets/scenarios/2-1-2-sugar-saturation-chart.png`
+
+> 註：原本 5 份 demo（scenario-001/003/004/005）已於 2026-05-07 移除以收斂 demo 內容，僅保留 scenario-002。其餘 png 素材檔案保留於 `src/assets/scenarios/` 但暫無引用。
 
 > 題目文字、情境敘述均直接複製 eh `levels.ts` 中對應 `QUESTION_CONFIGS`，已轉成本系統 `ScenarioQuestion` 結構。
