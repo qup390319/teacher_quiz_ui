@@ -135,7 +135,8 @@ export default function ScenarioCreateWizard() {
               {isEditing ? '編輯情境考卷' : '新增情境考卷'}
             </h1>
             <p className="text-[#636E72] mt-1 text-sm">
-              情境考卷的每一題都會由 AI 用「主張・證據・推理・修正」引導學生對話（認知師徒制）
+              每一題由 AI 以「認知師徒制」（示範 → 指導 → 鷹架 → 反思）引導學生對話，
+              對話內部用 CER（主張·證據·推理·修正）追問澄清。
             </p>
             <button
               type="button"
@@ -168,9 +169,16 @@ export default function ScenarioCreateWizard() {
                   填寫前先了解：什麼是「認知師徒制」？
                 </h2>
                 <p className="text-sm text-[#7A5232] mt-2 leading-relaxed">
-                  認知師徒制（Cognitive Apprenticeship）把學習想成「師傅帶徒弟」——AI 扮演師傅，
-                  透過對話讓學生「把想法說出來」，再一步步協助修正。本系統把這個過程拆成下面四個階段，
-                  您只需要為每一題提供下方欄位的內容，AI 會依據這些內容引導學生。
+                  認知師徒制（Cognitive Apprenticeship, Collins et al. 1989）把學習想成「師傅帶徒弟」——
+                  AI 扮演師傅，透過下面四個方法引導學生：先<strong>示範</strong>專家怎麼想、再
+                  <strong>指導</strong>學生即時修正、用<strong>鷹架</strong>從多到少漸退提示，
+                  最後讓學生<strong>反思</strong>整個推理歷程。
+                  您為每題填寫下方欄位，AI 會自動把這些素材安排到四個方法中。
+                  <br />
+                  <span className="text-xs text-[#9B7A4E]">
+                    💡 對話的「內部骨架」採用 CER（主張·證據·推理·修正），
+                    用來追問澄清，是上面四個方法在每一輪對話中的具體展現方式。
+                  </span>
                 </p>
               </div>
               <button
@@ -189,31 +197,31 @@ export default function ScenarioCreateWizard() {
               {[
                 {
                   step: '1',
-                  name: '主張 Claim',
-                  what: 'AI 用情境提問，請學生先說出自己的判斷。',
-                  teacher: '您要寫：情境敘述 + 開場提問',
-                  example: '例：「A、B 兩杯糖水哪一杯比較甜？為什麼？」',
+                  name: '示範 Modeling',
+                  what: 'AI 主動展示專家的思考路徑，讓學生看見「成熟學習者怎麼想」。',
+                  teacher: '您要寫：專家示範範文（這題正確的推理示範，含主張、證據、推理）',
+                  example: '例：「我來示範專家的思考——我主張 A、B 一樣甜；證據是兩杯都已飽和；推理是溶質濃度相同。」',
                 },
                 {
                   step: '2',
-                  name: '證據 Evidence',
-                  what: 'AI 追問學生「你看到什麼讓你這樣想？」，要學生指出觀察依據。',
-                  teacher: '您要寫：題目要鎖定的目標迷思（系統會自動追問與這條迷思相關的證據）',
-                  example: '例：選擇「M03-1 攪拌增加溶解量」這條迷思',
+                  name: '指導 Coaching',
+                  what: 'AI 即時點評學生回答，提供 8–25 字短評，貼著學生的想法做下一步追問。',
+                  teacher: '您要寫：本題鎖定的目標迷思（系統會針對該迷思精準回應、追問）',
+                  example: '例：勾選「M03-1 攪拌增加溶解量」→ 學生回「攪拌會多溶」時，AI 會說：「再想一下：是『多』還是『快』？」',
                 },
                 {
                   step: '3',
-                  name: '推理 Reasoning',
-                  what: 'AI 引導學生連結「證據 → 結論」的科學原理，檢查推理是否正確。',
-                  teacher: '您要寫：專家示範（這題的正確科學解釋）',
-                  example: '例：飽和糖水即使位置不同，溶質濃度仍相同，所以一樣甜。',
+                  name: '鷹架與漸退 Scaffolding & Fading',
+                  what: '提示分為 0–3 級。學生卡關時 AI 會逐級加深提示；表現好時提示自動退場。',
+                  teacher: '您要寫：情境敘述 + AI 開場提問（決定學生第一次面對問題的鷹架形狀）',
+                  example: '例：開場「A、B 兩杯糖水哪杯比較甜？」→ 卡住時提示「你有沒有觀察到杯子裡的糖量？」',
                 },
                 {
                   step: '4',
-                  name: '修正 Revision',
-                  what: '若學生推理錯誤，AI 會用反例或提示讓學生主動修正想法。',
-                  teacher: '無需額外填寫，AI 會根據前三項自動產生反例與引導。',
-                  example: '例：AI 會問「如果把 A 杯倒一半到 B 杯，會變比較甜嗎？」',
+                  name: '反思 Articulation & Reflection',
+                  what: '本題對話結束後，AI 帶學生用自己的話複述推理路徑，比較「原本的想法」與「修正後的想法」。',
+                  teacher: '無需額外填寫——系統會自動依對話歷程帶出反思問題。',
+                  example: '例：AI 問「你一開始為什麼覺得攪拌會多溶？後來什麼線索讓你改變想法？」',
                 },
               ].map((s) => (
                 <div key={s.step} className="bg-white rounded-xl border border-[#F0B962] p-4 shadow-[0_1px_3px_rgba(208,139,46,0.06)]">
@@ -231,7 +239,10 @@ export default function ScenarioCreateWizard() {
             </div>
 
             <p className="text-xs text-[#7A4A18] mt-4">
-              💡 簡單記：<strong>情境</strong>引出主張 → <strong>提問</strong>逼出證據 → <strong>專家示範</strong>校準推理 → <strong>AI</strong> 自動修正。
+              💡 對應到下方欄位：<strong>情境敘述／開場提問</strong>＝鷹架 ·
+              <strong>本題目標迷思</strong>＝指導切點 ·
+              <strong>專家示範</strong>＝示範文本 ·
+              <strong>反思</strong>由系統自動產生。
             </p>
           </section>
         )}

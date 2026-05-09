@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useStudentMode } from '../../hooks/useStudentMode';
 import { useScenario } from '../../hooks/useScenarios';
 import {
   useAdvanceTreatmentQuestion,
@@ -25,6 +26,7 @@ import WoodenProgressBar from '../../components/student/WoodenProgressBar';
 import ScenarioImageLightbox from '../../components/student/ScenarioImageLightbox';
 import ScenarioIntro from '../../components/student/ScenarioIntro';
 import ScenarioPanel from '../../components/student/ScenarioPanel';
+import ScenarioSideCard from '../../components/student/ScenarioSideCard';
 import ChatStream from '../../components/student/ChatStream';
 import MascotHintBubble from '../../components/student/MascotHintBubble';
 import { SettlingPanel, ResultPanel } from '../../components/student/CompletionWoodenSign';
@@ -39,6 +41,7 @@ const newId = () => `m-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
  *  flowStage : 'chat' → 'between-questions' → 'next-scenario' → 'settling' → 'result' → 'reflection'
  * ============================================================ */
 export default function ScenarioChat() {
+  useStudentMode();
   const { scenarioQuizId } = useParams();
   const navigate = useNavigate();
   const { currentUser } = useAuth();
@@ -451,23 +454,36 @@ export default function ScenarioChat() {
         )}
 
         {entryStage === 'chat' && (flowStage === 'chat' || flowStage === 'between-questions') && (
-          <ChatStream
-            scenarioExpanded={scenarioExpanded}
-            onToggleScenario={() => setScenarioExpanded((v) => !v)}
-            currentQuestion={currentQuestion}
-            messages={messages}
-            isThinking={isThinking}
-            chatStreamRef={chatStreamRef}
-            requiresRestatement={requiresRestatement}
-            onZoomImage={setLightboxSrc}
-            inputValue={inputValue}
-            inputRef={inputRef}
-            isBetween={flowStage === 'between-questions'}
-            onInputChange={setInputValue}
-            onKeyDown={handleKeyDown}
-            onSend={handleSend}
-            onNextQuestionScenario={() => setFlowStage('next-scenario')}
-          />
+          <div className="flex-1 flex flex-col md:grid md:grid-cols-[minmax(320px,420px)_1fr] md:gap-4 md:px-4 md:overflow-hidden min-h-0">
+            {/* 左欄：情境側欄（md+ 固定顯示；mobile 可收合） */}
+            {!flowStage.startsWith('between') && (
+              <ScenarioSideCard
+                question={currentQuestion}
+                onZoomImage={setLightboxSrc}
+                expanded={scenarioExpanded}
+                onToggle={() => setScenarioExpanded((v) => !v)}
+              />
+            )}
+            {/* 右欄：對話 + mascot（mascot 用 absolute 定位於此容器） */}
+            <div className="relative flex-1 flex flex-col min-h-0">
+              <ChatStream
+                messages={messages}
+                isThinking={isThinking}
+                chatStreamRef={chatStreamRef}
+                requiresRestatement={requiresRestatement}
+                inputValue={inputValue}
+                inputRef={inputRef}
+                isBetween={flowStage === 'between-questions'}
+                onInputChange={setInputValue}
+                onKeyDown={handleKeyDown}
+                onSend={handleSend}
+                onNextQuestionScenario={() => setFlowStage('next-scenario')}
+              />
+              {flowStage === 'chat' && (
+                <MascotHintBubble feedback={feedbackText} />
+              )}
+            </div>
+          </div>
         )}
 
         {entryStage === 'chat' && flowStage === 'next-scenario' && (
@@ -500,10 +516,6 @@ export default function ScenarioChat() {
           />
         )}
       </main>
-
-      {entryStage === 'chat' && flowStage === 'chat' && (
-        <MascotHintBubble feedback={feedbackText} />
-      )}
 
       <ScenarioImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
 

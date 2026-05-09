@@ -70,13 +70,22 @@ export default function Step2Edit({ onBack }) {
     quizQuestions, setQuizQuestions, selectedNodeIds,
     editingQuizId, setEditingQuizId,
     editingQuizStatus, setEditingQuizStatus,
+    editingQuizTitle, setEditingQuizTitle,
     setIsWizardDirty,
   } = useApp();
   const { data: quizzes = [] } = useQuizzes();
   const saveQuizMut = useSaveQuiz();
   const navigate = useNavigate();
 
-  const [quizTitle, setQuizTitle] = useState(() => generateDefaultTitle(quizzes));
+  // 編輯既有：用原 title；複製：用「原title (複製)」；新建：用日期預設名。
+  // 用 effect 在初次掛載時把預設名寫回 context；之後直接以 editingQuizTitle 為唯一來源，
+  // 避免 step 1 ↔ step 2 切換造成本地 title 流失（也讓 buildPayload 永遠拿到最新值）。
+  useEffect(() => {
+    if (!editingQuizTitle) setEditingQuizTitle(generateDefaultTitle(quizzes));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const quizTitle = editingQuizTitle;
+  const setQuizTitle = setEditingQuizTitle;
   const [editingQuestion, setEditingQuestion] = useState(null);
   const [deletingQuestion, setDeletingQuestion] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
@@ -208,6 +217,7 @@ export default function Step2Edit({ onBack }) {
       await performSave('published');
       setEditingQuizId(null);
       setEditingQuizStatus(null);
+      setEditingQuizTitle('');
       navigate('/teacher/quizzes');
     } catch (err) {
       alert('儲存考卷失敗：' + (err?.message ?? '未知錯誤'));

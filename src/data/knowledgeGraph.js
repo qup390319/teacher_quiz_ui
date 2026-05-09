@@ -193,3 +193,37 @@ export const getMisconceptionById = (mid) => {
   }
   return null;
 };
+
+/**
+ * 把教師自訂迷思（從 useCustomMisconceptions hook 拉到的陣列）合併進指定節點。
+ * 自訂迷思帶 isCustom: true 旗標，下游 UI 可用此判斷是否要顯示「自訂」徽章/刪除按鈕。
+ * 不會修改原 knowledgeNodes 陣列。
+ *
+ * @param {object} node — 從 getNodeById 取得的節點
+ * @param {Array} customs — 該教師全部的自訂迷思（會自動依 nodeId 過濾）
+ * @returns {object} 新節點（misconceptions 是合併後的新陣列）
+ */
+export const mergeCustomsIntoNode = (node, customs = []) => {
+  if (!node) return node;
+  const own = customs.filter((c) => c.nodeId === node.id);
+  if (own.length === 0) return node;
+  return {
+    ...node,
+    misconceptions: [
+      ...node.misconceptions,
+      ...own.map((c) => ({
+        id: c.id,
+        label: c.label,
+        detail: c.detail,
+        studentDetail: c.studentDetail,
+        confirmQuestion: c.confirmQuestion,
+        isCustom: true,
+      })),
+    ],
+  };
+};
+
+/** Convenience：用 nodeId + customs 直接拿到合併後節點。*/
+export const getNodeByIdWithCustoms = (id, customs = []) =>
+  mergeCustomsIntoNode(getNodeById(id), customs);
+

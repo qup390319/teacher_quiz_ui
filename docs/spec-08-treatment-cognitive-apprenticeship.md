@@ -220,7 +220,7 @@ StudentHome
               ScenarioChat
                   ├─ entryStage = 'intro'   吉祥物開場（「準備好了嗎？」）
                   ├─ entryStage = 'scenario' 情境敘述卡（含可放大圖）
-                  ├─ entryStage = 'chat'    AI 對話
+                  ├─ entryStage = 'chat'    AI 對話（兩欄佈局，見 §6.1）
                   │     ├─ flowStage = 'chat'          逐輪推進
                   │     ├─ flowStage = 'between-questions'  一題完成 → 「下一題」
                   │     ├─ flowStage = 'next-scenario' 下一題情境敘述
@@ -231,6 +231,20 @@ StudentHome
               addToTreatmentHistory({ scenarioQuizId, sessionId, ... })
               （未來教師端可由此查紀錄）
 ```
+
+### 6.1 對話頁佈局（兩欄）
+
+平板與桌機（`md:` 斷點 ≥ 768px）：
+- **左欄**（固定 320–420px）：`<ScenarioSideCard>` — 情境題目永遠展開、隨對話一起捲動，**不需收合**
+- **右欄**（彈性）：`<ChatStream>` — 對話氣泡列表 + 輸入框；右下角 `<MascotHintBubble>` 用 `position: absolute` 定位於本欄內（不會跨到情境欄上）
+
+行動裝置（< md）：
+- 仍是單欄佈局，情境卡頂部以「查看情境 / 收起情境」按鈕收合（預設收合，節省空間）
+
+實作元件：
+- `src/components/student/ScenarioSideCard.jsx`（新增）：負責情境內容渲染與行動裝置收合切換
+- `src/components/student/ChatStream.jsx`（簡化）：純對話氣泡列表 + 底部輸入；不再內嵌情境
+- `src/components/student/MascotHintBubble.jsx`：改為 `absolute`（父層必為 `relative`）
 
 ---
 

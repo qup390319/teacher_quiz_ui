@@ -40,7 +40,7 @@ export default function ScenarioPanel({
                       src={resolved}
                       alt={`情境圖 ${idx + 1}`}
                       className="block w-full h-auto rounded-xl border-2 border-[#C19A6B]
-                                 max-w-[420px] sm:max-w-[480px] shadow-[0_4px_0_-1px_#5A3E22]"
+                                 max-w-[560px] sm:max-w-[720px] md:max-w-[820px] shadow-[0_4px_0_-1px_#5A3E22]"
                     />
                     {question.scenarioImageZoomable !== false && (
                       <span className="pointer-events-none absolute inset-x-0 bottom-0 rounded-b-xl

@@ -30,6 +30,8 @@ export function AppProvider({ children }) {
   const [editingQuizId, setEditingQuizId] = useState(null);
   // 出題精靈正在編輯的 quiz 原始 status（draft / published / null）
   const [editingQuizStatus, setEditingQuizStatus] = useState(null);
+  // 出題精靈正在編輯的 quiz 原始 title（編輯既有：載入時帶入；新建：留空，由 Step2Edit 產生預設）
+  const [editingQuizTitle, setEditingQuizTitle] = useState('');
   // 出題精靈是否有「尚未儲存的變更」（dirty）→ 用於離開時提示
   const [isWizardDirty, setIsWizardDirty] = useState(false);
 
@@ -54,6 +56,7 @@ export function AppProvider({ children }) {
       selectedNodeIds, setSelectedNodeIds,
       editingQuizId, setEditingQuizId,
       editingQuizStatus, setEditingQuizStatus,
+      editingQuizTitle, setEditingQuizTitle,
       isWizardDirty, setIsWizardDirty,
       // 當前選中的 quiz / class（UI 狀態）
       currentClassId, setCurrentClassId,

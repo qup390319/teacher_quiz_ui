@@ -1,17 +1,13 @@
-import { Icon, WOOD_OUTER, WOOD_INNER_CREAM } from '../ui/woodKit';
-import { resolveScenarioImage } from '../../lib/scenarioImage';
+import { Icon } from '../ui/woodKit';
 
-/* 對話面板（含「查看情境」摺疊 + 對話氣泡列表 + 輸入框 / 下一題按鈕）
- * spec-07 §12.3 對話氣泡 */
+/* 對話面板（純對話氣泡列表 + 輸入框 / 下一題按鈕）
+ * spec-07 §12.3 對話氣泡。
+ * 情境題目在側欄（ScenarioSideCard）獨立顯示，不再放這裡。 */
 export default function ChatStream({
-  scenarioExpanded,
-  onToggleScenario,
-  currentQuestion,
   messages,
   isThinking,
   chatStreamRef,
   requiresRestatement,
-  onZoomImage,
   inputValue,
   inputRef,
   isBetween,
@@ -21,61 +17,13 @@ export default function ChatStream({
   onNextQuestionScenario,
 }) {
   return (
-    <div className="flex-1 flex flex-col px-3 sm:px-5">
-      {/* 查看情境 摺疊 */}
-      {currentQuestion && !isBetween && (
-        <div className="shrink-0 mb-2 animate-fade-up">
-          <button
-            type="button"
-            onClick={onToggleScenario}
-            aria-expanded={scenarioExpanded}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border-2 border-[#8B5E3C]
-                       bg-white text-[#7A4A18] text-xs sm:text-sm font-game font-black
-                       shadow-[0_2px_0_#8B5E3C] hover:translate-y-0.5 transition-all duration-200"
-          >
-            <Icon name={scenarioExpanded ? 'expand_less' : 'expand_more'} filled className="text-base" />
-            {scenarioExpanded ? '收起情境' : '查看情境'}
-          </button>
-          {scenarioExpanded && (
-            <div className={WOOD_OUTER + ' mt-2'}>
-              <div className={WOOD_INNER_CREAM + ' px-4 py-3'}>
-                <p className="text-xs sm:text-sm leading-6 sm:leading-7 text-[#5A3E22] whitespace-pre-line">
-                  {currentQuestion.scenarioText}
-                </p>
-                {currentQuestion.scenarioImages?.length > 0 && (
-                  <div className="mt-3 flex flex-col items-center gap-2">
-                    {currentQuestion.scenarioImages.map((src) => {
-                      const resolved = resolveScenarioImage(src);
-                      return (
-                      <button
-                        key={src}
-                        type="button"
-                        onClick={() => onZoomImage?.(resolved)}
-                        className="cursor-zoom-in"
-                      >
-                        <img
-                          src={resolved}
-                          alt="情境圖"
-                          className="block w-full h-auto rounded-lg border border-[#C19A6B]
-                                     max-w-[280px] sm:max-w-[340px]"
-                        />
-                      </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
+    <div className="flex-1 flex flex-col px-3 sm:px-5 relative min-h-0">
       {/* 對話氣泡列表 */}
       <section ref={chatStreamRef} className="flex-1 flex flex-col gap-3 pb-4 overflow-y-auto">
         {messages.map((m) => <Bubble key={m.id} role={m.role} text={m.text} />)}
         {isThinking && <ThinkingBubble />}
         {requiresRestatement && (
-          <div className="self-center text-xs sm:text-sm text-[#D08B2E] font-bold bg-[#FFF1D8]
+          <div className="self-center text-sm sm:text-base text-[#D08B2E] font-bold bg-[#FFF1D8]
                           border-2 border-[#F0B962] rounded-full px-3 py-1 mt-1">
             試著重新說說你的看法吧！
           </div>
@@ -146,7 +94,7 @@ export function Bubble({ role, text }) {
                         bg-gradient-to-b from-[#FFF8E7] to-[#FBE9C7]
                         border-2 border-[#C19A6B] text-[#5A3E22]
                         shadow-[0_2px_0_-1px_#5A3E22]">
-          <p className="text-sm sm:text-base leading-relaxed whitespace-pre-line">{text}</p>
+          <p className="text-base sm:text-lg leading-relaxed whitespace-pre-line">{text}</p>
         </div>
       </div>
     );
@@ -157,7 +105,7 @@ export function Bubble({ role, text }) {
                       bg-gradient-to-b from-[#B8DC83] to-[#7DB044]
                       border-2 border-[#5C8A2E] text-[#2F4A1A]
                       shadow-[0_2px_0_-1px_#3D5A1A]">
-        <p className="text-sm sm:text-base leading-relaxed whitespace-pre-line">{text}</p>
+        <p className="text-base sm:text-lg leading-relaxed whitespace-pre-line">{text}</p>
       </div>
     </div>
   );

@@ -269,7 +269,7 @@ HTTP status code：
 | `classes` | `GET /api/classes/{class_id}` | P3 ✅ | 班級詳情含學生（非自己班級回 404） |
 | `classes` | `PUT /api/classes/{class_id}/students` | P3 ✅ | 整批替換學生名冊（非自己班級回 404） |
 | `quizzes` | `GET /api/quizzes` / `GET /api/quizzes/{id}` | P3 ✅ | 教師看全部；**學生只看自己班級已被派發的**（透過 Assignment 表過濾） |
-| `quizzes` | `POST/PUT/DELETE /api/quizzes[/{id}]` | P3 ✅ | 教師專屬（CRUD） |
+| `quizzes` | `POST/PUT/DELETE /api/quizzes[/{id}]` | P3 ✅ | 教師專屬（CRUD）；**PUT 採 smart upsert**（match by `order_index` 在原 `quiz_questions.id` 上 UPDATE，避免破壞 `student_answers.question_id` FK）；嘗試刪除有作答的題目會回 409 `QUESTION_HAS_ANSWERS` |
 | `scenarios` | `GET /api/scenarios` / `GET /api/scenarios/{id}` | P3 ✅ | 教師看全部；**學生只看自己班級已被派發的** |
 | `scenarios` | `POST/PUT/DELETE /api/scenarios[/{id}]` | P3 ✅ | 教師專屬（CRUD） |
 | `assignments` | `GET /api/assignments` | P3 ✅ | **教師範圍隔離**：教師只看 `class_id` 屬於自己班級的派題；學生隱式過濾為自己班級。回傳含 **`completionRate / submittedCount / totalStudents`** 即時統計；對學生身份額外回傳 **`myDiagnosisCompleted`**（該生於此 assignment 是否已有 ≥1 筆作答）與 **`myScenarioCompleted`**（該生對該情境考卷是否已完成 treatment session），用於學生首頁判斷任務是否做完，跨刷新仍正確 |
@@ -293,6 +293,9 @@ HTTP status code：
 | `ai` | `POST /api/ai/distractor-suggest` | P2 ✅ | RAGFlow（N6） |
 | `ai` | `POST /api/ai/grade-summary` | P3 ✅ | RAGFlow（N1） |
 | `ai` | `POST /api/ai/class-summary` | P3 ✅ | RAGFlow（N2） |
+| `misconceptions` | `GET /api/misconceptions/custom` | ✅ | **教師私有**：列出該老師自訂迷思（spec-04 §2.5.1） |
+| `misconceptions` | `POST /api/misconceptions/custom` | ✅ | 新增自訂迷思（`teacher_id` 由 cookie 帶入；驗證 `nodeId` ∈ 12 節點） |
+| `misconceptions` | `DELETE /api/misconceptions/custom/{id}` | ✅ | 只能刪自己的；他人/不存在皆回 404，避免列舉攻擊 |
 
 > P1 端點以外，其餘僅在後端骨架中保留 router 檔（裡面可能只有 `# TODO P2/P3/P4`），不實作。
 

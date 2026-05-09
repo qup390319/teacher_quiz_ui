@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
+import { useStudentMode } from '../../hooks/useStudentMode';
 import { useQuiz } from '../../hooks/useQuizzes';
 import { useRecordAnswers, useRecordFollowups } from '../../hooks/useAnswers';
 import { knowledgeNodes } from '../../data/knowledgeGraph';
@@ -31,6 +32,7 @@ export default function StudentQuiz() {
 }
 
 function StudentQuizScreen({ quizId }) {
+  useStudentMode();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const assignmentId = searchParams.get('assignmentId');

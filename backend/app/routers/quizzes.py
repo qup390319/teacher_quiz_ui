@@ -6,7 +6,15 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.deps import get_current_user, require_teacher
-from app.db.models import Assignment, Quiz, QuizOption, QuizQuestion, Student, User
+from app.db.models import (
+    Assignment,
+    Quiz,
+    QuizOption,
+    QuizQuestion,
+    Student,
+    StudentAnswer,
+    User,
+)
 from app.db.session import get_db
 from app.schemas.quiz import (
     QuizBrief,
@@ -103,29 +111,79 @@ async def get_quiz(
     return _to_detail(q)
 
 
-async def _replace_questions_options(db: AsyncSession, quiz: Quiz, payload_questions: list[QuizQuestionIO]) -> None:
-    """Wipe existing questions+options, recreate from payload. Simpler than diffing.
+async def _upsert_questions_options(
+    db: AsyncSession, quiz: Quiz, payload_questions: list[QuizQuestionIO],
+) -> None:
+    """Smart diff: UPDATE existing questions in-place (matched by order_index),
+    INSERT new ones, DELETE removed ones (only if they have no student answers).
 
-    Uses SQL-level DELETE (not ORM iteration) so we don't lazy-load `quiz.questions`
-    in async context (which raises MissingGreenlet). FK ondelete=CASCADE on
-    quiz_options.question_id removes child options for us.
+    Why not wipe-and-recreate? `student_answers.question_id` FKs to `quiz_questions.id`
+    with ON DELETE RESTRICT. Once any student has answered a question, deleting it
+    raises ForeignKeyViolationError → save 500. So we update in place and preserve
+    the existing question rows whenever possible.
+
+    Options have no inbound FK references, so they are still wipe-and-recreate per
+    question (simpler than diffing tag-by-tag).
     """
-    await db.execute(delete(QuizQuestion).where(QuizQuestion.quiz_id == quiz.id))
-    await db.flush()
-    for q_in in payload_questions:
-        qq = QuizQuestion(
-            quiz_id=quiz.id,
-            order_index=q_in.id,
-            stem=q_in.stem,
-            knowledge_node_id=q_in.knowledge_node_id,
+    # Load existing questions (already populated via lazy="selectin" on Quiz.questions
+    # but we re-read here to be safe within this transaction).
+    res = await db.execute(
+        select(QuizQuestion).where(QuizQuestion.quiz_id == quiz.id),
+    )
+    existing = list(res.scalars().all())
+    existing_by_order = {q.order_index: q for q in existing}
+    payload_orders = {q_in.id for q_in in payload_questions}
+
+    # 1) Detect removed questions and ensure none have student answers
+    removed = [q for q in existing if q.order_index not in payload_orders]
+    if removed:
+        removed_ids = [q.id for q in removed]
+        ans_res = await db.execute(
+            select(StudentAnswer.question_id)
+            .where(StudentAnswer.question_id.in_(removed_ids))
+            .limit(1),
         )
-        db.add(qq)
-        await db.flush()
-        for opt in q_in.options:
-            db.add(QuizOption(
-                question_id=qq.id, tag=opt.tag,
-                content=opt.content, diagnosis=opt.diagnosis,
-            ))
+        if ans_res.scalar_one_or_none() is not None:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "QUESTION_HAS_ANSWERS: 部分要刪除的題目已有學生作答，無法刪除。"
+                "請改為修改題目內容，或建立新版本考卷。",
+            )
+
+    # 2) UPDATE existing or INSERT new for each payload question
+    for q_in in payload_questions:
+        existing_q = existing_by_order.get(q_in.id)
+        if existing_q is not None:
+            existing_q.stem = q_in.stem
+            existing_q.knowledge_node_id = q_in.knowledge_node_id
+            await db.execute(
+                delete(QuizOption).where(QuizOption.question_id == existing_q.id),
+            )
+            await db.flush()
+            for opt in q_in.options:
+                db.add(QuizOption(
+                    question_id=existing_q.id, tag=opt.tag,
+                    content=opt.content, diagnosis=opt.diagnosis,
+                ))
+        else:
+            qq = QuizQuestion(
+                quiz_id=quiz.id,
+                order_index=q_in.id,
+                stem=q_in.stem,
+                knowledge_node_id=q_in.knowledge_node_id,
+            )
+            db.add(qq)
+            await db.flush()
+            for opt in q_in.options:
+                db.add(QuizOption(
+                    question_id=qq.id, tag=opt.tag,
+                    content=opt.content, diagnosis=opt.diagnosis,
+                ))
+
+    # 3) DELETE removed questions (safe now: no student answers)
+    for q in removed:
+        await db.delete(q)
+    await db.flush()
 
 
 @router.post("", response_model=QuizDetail, status_code=status.HTTP_201_CREATED, response_model_by_alias=True)
@@ -146,7 +204,7 @@ async def create_quiz(
     )
     db.add(quiz)
     await db.flush()
-    await _replace_questions_options(db, quiz, payload.questions)
+    await _upsert_questions_options(db, quiz, payload.questions)
     await db.commit()
     await db.refresh(quiz, ["questions"])
     return _to_detail(quiz)
@@ -165,7 +223,7 @@ async def update_quiz(
     quiz.title = payload.title
     quiz.status = payload.status
     quiz.knowledge_node_ids = payload.knowledge_node_ids
-    await _replace_questions_options(db, quiz, payload.questions)
+    await _upsert_questions_options(db, quiz, payload.questions)
     await db.commit()
     await db.refresh(quiz, ["questions"])
     return _to_detail(quiz)

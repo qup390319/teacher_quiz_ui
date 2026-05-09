@@ -19,7 +19,7 @@ export default function QuizLibrary() {
   const navigate = useNavigate();
   const {
     setQuizQuestions, setSelectedNodeIds,
-    setEditingQuizId, setEditingQuizStatus,
+    setEditingQuizId, setEditingQuizStatus, setEditingQuizTitle,
   } = useApp();
   const { data: quizzes = [], isLoading } = useQuizzes();
   const { data: classes = [] } = useClasses();
@@ -44,6 +44,7 @@ export default function QuizLibrary() {
       setSelectedNodeIds([...detail.knowledgeNodeIds]);
       setEditingQuizId(quiz.id);
       setEditingQuizStatus(detail.status);
+      setEditingQuizTitle(detail.title);  // 帶入原 title，避免儲存時被預設值覆蓋
       navigate('/teacher/quiz/create?step=2');
     } catch (err) {
       console.error('[QuizLibrary] failed to load quiz', err);
@@ -62,6 +63,7 @@ export default function QuizLibrary() {
       setSelectedNodeIds([...detail.knowledgeNodeIds]);
       setEditingQuizId(null);          // 新建模式
       setEditingQuizStatus(null);
+      setEditingQuizTitle(`${detail.title} (複製)`);
       navigate('/teacher/quiz/create?step=2');
     } catch (err) {
       console.error('[QuizLibrary] failed to clone quiz', err);
@@ -81,8 +83,11 @@ export default function QuizLibrary() {
   };
 
   const handleNew = () => {
+    setQuizQuestions([]);              // 清空殘留題目
+    setSelectedNodeIds([]);             // 清空殘留節點
     setEditingQuizId(null);
     setEditingQuizStatus(null);
+    setEditingQuizTitle('');
     navigate('/teacher/quiz/create');
   };
 

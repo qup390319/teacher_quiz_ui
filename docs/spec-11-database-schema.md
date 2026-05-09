@@ -38,6 +38,7 @@
 | 13 | `treatment_sessions` | 治療對話 session | P4 |
 | 14 | `treatment_messages` | 治療對話訊息 | P4 |
 | 15 | `ai_summary_cache` | RAGFlow 摘要快取 | P3 |
+| 16 | `custom_misconceptions` | 教師私有自訂迷思（spec-04 §2.5.1） | post-P4 |
 
 > 註：原本說 11 張表，實際拆細為 16 張（user / teacher / student 拆 3 張、ai cache 算 1 張、新增 assignment_students）。spec-10 §6 表格中的「11 張表」描述以本文件為準。
 
@@ -354,6 +355,33 @@ CREATE TABLE ai_summary_cache (
 CREATE UNIQUE INDEX ai_summary_cache_unique_idx ON ai_summary_cache(scope, scope_id, quiz_id);
 CREATE INDEX ai_summary_cache_expires_idx ON ai_summary_cache(expires_at);
 ```
+
+### 3.16 `custom_misconceptions`
+
+教師私有的自訂迷思（spec-04 §2.5.1）。每位教師只能讀寫自己的記錄。
+
+```sql
+CREATE TABLE custom_misconceptions (
+    id                VARCHAR(48) PRIMARY KEY,                -- 'cm-{ts}-{teacherIdPrefix}'
+    teacher_id        VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    node_id           VARCHAR(32) NOT NULL,                   -- 12 個合法節點 ID 之一（軟限制，後端在 router 驗證）
+    label             VARCHAR(64) NOT NULL,                   -- 短標題
+    detail            TEXT        NOT NULL,                   -- 教師參考的詳細描述
+    student_detail    TEXT        NOT NULL,                   -- 學生視角描述
+    confirm_question  TEXT        NOT NULL,                   -- AI 確認題
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX custom_misconceptions_teacher_idx ON custom_misconceptions(teacher_id);
+CREATE INDEX custom_misconceptions_teacher_node_idx ON custom_misconceptions(teacher_id, node_id);
+```
+
+**Migration**：`20260509_0005_custom_misconceptions.py`（已 upgrade）。
+
+**隔離保證**：
+- 所有 router 端點都用 `WHERE teacher_id = current_user.id` 過濾
+- 寫入時 `teacher_id` 永遠取 cookie 帶來的當前 user，前端傳值會被忽略
+- 刪除時若 record 不屬於當前老師，回 404（不洩漏存在性）
 
 ---
 

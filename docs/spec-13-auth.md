@@ -132,8 +132,14 @@ async def change_password(db, user_id: str, old: str, new: str):
 
 **Request**:
 ```json
-{ "account": "aaa001", "password": "aaa001" }
+{ "account": "aaa001", "password": "aaa001", "role": "teacher" }
 ```
+
+| 欄位 | 必填 | 說明 |
+|------|------|------|
+| `account` | ✅ | 帳號 |
+| `password` | ✅ | 明文密碼 |
+| `role` | ⛔ optional | 登入頁所選角色卡（`teacher` \| `student`）。若提供且與帳號實際 role 不符，回 401 `ROLE_MISMATCH`。 |
 
 **Response 200**：
 ```json
@@ -151,8 +157,14 @@ async def change_password(db, user_id: str, old: str, new: str):
 
 **Response 401**：
 ```json
-{ "error": "INVALID_CREDENTIALS", "message": "帳號或密碼錯誤" }
+{ "detail": "INVALID_CREDENTIALS" }
 ```
+或（角色卡與實際身份不符）：
+```json
+{ "detail": "ROLE_MISMATCH" }
+```
+
+> 注意：角色檢查發生在密碼驗證之後，因此 `ROLE_MISMATCH` 只會在帳密**正確**時出現；密碼錯時一律回 `INVALID_CREDENTIALS`，不會洩漏「此帳號存在但是另一種角色」的訊息。
 
 ### 6.2 `POST /api/auth/logout`
 
@@ -312,9 +324,16 @@ export function RequireAuth({ role, children }) {
 
 ### 8.3 LoginPage
 
-點選角色卡 → 彈出登入框 → 呼叫 `/api/auth/login` → 成功後依 role 導向。
+點選角色卡 → 彈出登入框 → 呼叫 `/api/auth/login`（帶 `role`）→ 成功後依 role 導向。
 
 P1 為了不破壞既有 UX，把原本「點教師卡 → 直接進教師端」改成「點教師卡 → 彈出登入框 → 輸入帳密 → 進教師端」。學生卡同理。
+
+#### 角色防呆（雙保險）
+
+防止「點老師卡卻用學生帳密成功登入」這類 UX 漏洞：
+
+1. **後端為主**：`AuthContext.login(account, password, variant)` 把使用者所選的角色卡 `variant` 隨 request 送出，後端 `/api/auth/login` 比對 `payload.role` 與 `user.role`，不符即回 401 `ROLE_MISMATCH`。前端 `catch` 顯示「此帳號不是老師/學生」。
+2. **前端兜底**：若後端版本舊、忽略 `role` 欄位，`login()` 仍會把 `currentUser` 設為實際角色，`LoginPage` 的 auto-redirect `useEffect` 會立刻把使用者導去錯誤端的頁面。為此 `LoginModal.handleSubmit` 在偵測到 `user.role !== variant` 時會**先 `await logout()`** 清掉 cookie 與 `currentUser`，再顯示錯誤訊息。
 
 ### 8.4 fetch 設定
 
@@ -339,6 +358,7 @@ fetch('/api/auth/me', { credentials: 'include' })
 | Brute force 登入 | P1 不實作 rate limit；後續可加（如 5 次失敗鎖 5 分鐘） |
 | 學生密碼太短 | 改密碼端點要求 6~32 字元 |
 | 教師端洩密碼給螢幕旁圍觀者 | 前端密碼欄位加遮罩，預設只顯示「●●●●●●」+ 點擊「眼睛」按鈕才顯示明文 |
+| 教師之間互相窺探自訂迷思 | `/api/misconceptions/custom/*` 端點一律以 cookie 帶來的 `teacher_id` 過濾；寫入時忽略 payload 的 teacher_id；他人 record 的 DELETE 回 404（不洩露存在性） |
 
 ---
 

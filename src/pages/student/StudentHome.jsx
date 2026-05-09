@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
+import { useStudentMode } from '../../hooks/useStudentMode';
 import { useAssignments } from '../../hooks/useAssignments';
 import { useQuizzes } from '../../hooks/useQuizzes';
 import { useScenarios } from '../../hooks/useScenarios';
@@ -37,6 +38,7 @@ const calcStars = (correctCount, totalCount) => {
 const todayString = () => new Date().toISOString().slice(0, 10);
 
 export default function StudentHome() {
+  useStudentMode();
   const navigate = useNavigate();
   const { currentUser, logout } = useAuth();
   const {

@@ -6,19 +6,26 @@ import { defaultQuestions } from '../../data/quizData';
 
 export default function TeacherDashboard() {
   const navigate = useNavigate();
-  const { setQuizQuestions, setSelectedNodeIds, setEditingQuizId, setEditingQuizStatus } = useApp();
+  const {
+    setQuizQuestions, setSelectedNodeIds,
+    setEditingQuizId, setEditingQuizStatus, setEditingQuizTitle,
+  } = useApp();
 
   const handleUsePreset = () => {
     setQuizQuestions([...defaultQuestions]);
     setSelectedNodeIds(['INe-II-3-02', 'INe-II-3-03', 'INe-II-3-05', 'INe-Ⅲ-5-4', 'INe-Ⅲ-5-7']);
     setEditingQuizId(null);
     setEditingQuizStatus(null);
+    setEditingQuizTitle('');
     navigate('/teacher/quiz/create?step=2');
   };
 
   const handleNewQuiz = () => {
+    setQuizQuestions([]);
+    setSelectedNodeIds([]);
     setEditingQuizId(null);
     setEditingQuizStatus(null);
+    setEditingQuizTitle('');
     navigate('/teacher/quiz/create');
   };
 

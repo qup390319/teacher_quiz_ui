@@ -1,11 +1,13 @@
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
+import { useStudentMode } from '../../hooks/useStudentMode';
 import { useStudentHistory } from '../../hooks/useStudents';
 import { getQuizQuestions } from '../../data/quizData';
 import { knowledgeNodes } from '../../data/knowledgeGraph';
 
 export default function StudentReport() {
+  useStudentMode();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { currentQuizId, activeStudentReport } = useApp();

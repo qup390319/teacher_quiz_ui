@@ -304,6 +304,32 @@ interface Misconception {
 - 子主題 B 使用 `INe-Ⅲ-5-*`（Ⅲ 為 Unicode 羅馬數字三 `Ⅲ`，**不是** ASCII 三個 I）
 - 兩個前綴並存，比對 ID 時需注意字元差異
 
+#### 2.5.1 CustomMisconception（教師自訂迷思 — per-teacher 私有）
+
+教師可在系統預設 48 條迷思之外，依個人教學經驗為任一節點新增自訂迷思。**每位教師只看得到自己建立的，不跨帳號共享**（後端以 `teacher_id` 過濾，spec-13 §9）。
+
+```typescript
+interface CustomMisconception {
+  id: string;              // 'cm-{ts}-{teacherIdPrefix}'
+  nodeId: string;          // 對應的 12 個合法知識節點 ID 之一
+  label: string;           // 短標題（≤ 30 字）
+  detail: string;          // 教師參考的詳細描述
+  studentDetail: string;   // 學生視角描述（治療對話用）
+  confirmQuestion: string; // AI 用來向學生確認此迷思的提問
+  createdAt: string;       // ISO date
+}
+```
+
+**前端整合**：
+- Hook：`useCustomMisconceptions()` / `useCreateCustomMisconception()` / `useDeleteCustomMisconception()`（`src/hooks/useCustomMisconceptions.js`）
+- Helper：`mergeCustomsIntoNode(node, customs)`（`src/data/knowledgeGraph.js`）— 把該老師的自訂迷思合併進指定節點，每條帶 `isCustom: true` 旗標
+- UI：`KnowledgeMap` 表格內顯示「自訂」徽章 + 刪除按鈕；右上角與每個節點 row 各有「+ 自訂迷思」入口
+
+**API**（spec-10 §6）：`/api/misconceptions/custom`（GET / POST / DELETE，皆 `require_teacher`）
+
+**範圍限制**（v1）：
+- 學生端考卷 / 治療對話**目前不**自動帶入自訂迷思的 `confirmQuestion`（後端 `student_answers.diagnosis` 仍存原始 ID 字串）；之後可逐步把 `EditQuestionModal` / `CoveragePanel` / `ScenarioCreateWizard` 也改為合併後再渲染
+
 ### 2.6 StudentAnswer（學生作答記錄）
 ```typescript
 interface StudentAnswer {

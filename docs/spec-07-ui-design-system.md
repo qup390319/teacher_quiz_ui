@@ -847,29 +847,33 @@ ease-[cubic-bezier(0.34,1.56,0.64,1)]
 
 ### 12.4 吉祥物提示泡泡（MascotHintBubble）
 
-固定於右下角（input bar 上方）。
+**定位策略**：放在「對話欄容器」內，用 `position: absolute`（非 viewport-fixed），讓它跟著對話欄寬度走。父容器（spec-08 §6.1 兩欄佈局的右欄）必須是 `relative`。
 
 ```jsx
-<div className="fixed bottom-[88px] right-3 z-20 pointer-events-none">
+{/* 父容器：對話右欄，必須 relative */}
+<div className="relative flex-1 flex flex-col min-h-0">
+  <ChatStream … />
+  <MascotHintBubble feedback={feedbackText} />
+</div>
+
+{/* MascotHintBubble 內部：absolute 釘在右下，氣泡指向右下 */}
+<div className="absolute bottom-[88px] right-3 sm:right-5 z-20 pointer-events-none">
   <div className="relative">
-    {/* 對話泡泡：米紙 + 木紋邊 */}
-    <div className="absolute bottom-full left-0 mb-2 min-w-[160px] max-w-[220px]
+    <div className="absolute bottom-full right-0 mb-2 min-w-[160px] max-w-[240px]
                     rounded-[20px] bg-gradient-to-b from-[#FFF8E7] to-[#FBE9C7]
-                    border-2 border-[#C19A6B] px-4 py-3
-                    shadow-[0_4px_0_-1px_#5A3E22,0_6px_10px_-3px_rgba(91,66,38,0.4)]">
-      {/* 向下尖角，左側 */}
-      <div className="absolute bottom-[-7px] left-6 h-3 w-3 rotate-45
+                    border-2 border-[#C19A6B] px-4 py-3 …">
+      <div className="absolute bottom-[-7px] right-6 h-3 w-3 rotate-45
                       bg-[#FBE9C7] border-b-2 border-r-2 border-[#C19A6B]" />
-      <p className="text-sm font-bold leading-6 text-[#5A3E22]">{feedback}</p>
+      <p className="text-base font-bold leading-6 text-[#5A3E22]">{feedback}</p>
     </div>
-    {/* 吉祥物圖（用 scilens_mascot.png 或 irasutoya_hero.png） */}
-    <img src={mascotImg} alt="吉祥物" className="h-16 w-16 object-contain
-                drop-shadow-[0_4px_4px_rgba(91,66,38,0.3)]" />
+    <img src={mascotImg} alt="吉祥物" className="h-14 w-14 sm:h-16 sm:w-16 object-contain animate-breath" />
   </div>
 </div>
 ```
 
 **禁用**：eh 系統的 owl GIF（`owl_intro.gif`），改用 SciLens 既有 `scilens_mascot.png`。
+
+**歷史變更**：v2.5 之前用 `position: fixed` 釘 viewport，但在兩欄佈局下會跨到情境欄上方造成跑版（issue #4），改為 absolute 後永遠跟著對話欄。
 
 ### 12.5 結算過關木牌（CompletionWoodenSign）
 
@@ -959,6 +963,46 @@ ease-[cubic-bezier(0.34,1.56,0.64,1)]
 - [ ] 反思頁用雙欄 grid + 木框，**不做**書本翻頁造型
 - [ ] 所有 transition 用 `ease-[cubic-bezier(0.34,1.56,0.64,1)]`
 - [ ] 共用元件從 `src/components/ui/woodKit.jsx` import
+
+---
+
+## 13. 字體與可讀性（學生端優先）
+
+學生主要透過**平板**使用，預設 16px Tailwind 字級在小尺寸標題、提示文字、聊天氣泡中可能偏小。採用**雙層放大策略**：
+
+### 13.1 全域 root font-size 放大（學生路由限定）
+
+`useStudentMode()` hook（`src/hooks/useStudentMode.js`）在學生頁面（`StudentHome` / `StudentQuiz` / `ScenarioChat` / `StudentReport`）掛載時，於 `<html>` 加上 `student-mode` class，卸載時移除。配合 `index.css`：
+
+```css
+html.student-mode { font-size: 17px; }                /* mobile 6.25% 放大 */
+@media (min-width: 768px)  { html.student-mode { font-size: 18.5px; } } /* tablet */
+@media (min-width: 1024px) { html.student-mode { font-size: 19.5px; } } /* desktop */
+```
+
+因為 Tailwind v4 的 `text-*` / spacing 全用 rem，所有字級、邊距、間隙會等比例放大；教師端不掛 class，不受影響。
+
+### 13.2 重點區域額外字級提升（不依賴 root scale）
+
+對學生持續閱讀的區塊，把 Tailwind utility 多升一階以確保即使在最小斷點也夠大：
+
+| 區塊 | 原字級 | 新字級 |
+|------|--------|--------|
+| 對話氣泡（`Bubble`，AI / 學生）| `text-sm sm:text-base` | `text-base sm:text-lg` |
+| 情境敘述（`ScenarioSideCard`、`ScenarioPanel`）| `text-xs sm:text-sm` | `text-sm sm:text-base` |
+| 吉祥物提示泡泡（`MascotHintBubble`）| `text-sm` | `text-base` |
+| 重述提示橫幅（`ChatStream` requiresRestatement）| `text-xs sm:text-sm` | `text-sm sm:text-base` |
+
+### 13.3 情境圖片尺寸（issue #2）
+
+學生對話頁的情境圖片預設過小，平板上難以辨認細節。改為：
+
+| 元件 | 原 max-w | 新 max-w |
+|------|----------|----------|
+| `ChatStream`（對話內聯/側欄）| `280px / sm:340px` | `420px / sm:560px / md:640px` |
+| `ScenarioPanel`（題目開始前的大卡片）| `420px / sm:480px` | `560px / sm:720px / md:820px` |
+
+點擊圖片仍可開 `<ScenarioImageLightbox>` 看全尺寸。
 
 ---
 

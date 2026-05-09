@@ -9,6 +9,7 @@ from app.routers import assignments as assignments_router
 from app.routers import auth as auth_router
 from app.routers import classes as classes_router
 from app.routers import llm as llm_router
+from app.routers import misconceptions as misconceptions_router
 from app.routers import quizzes as quizzes_router
 from app.routers import scenarios as scenarios_router
 from app.routers import students as students_router
@@ -34,6 +35,7 @@ app.include_router(auth_router.router, prefix="/api/auth", tags=["auth"])
 app.include_router(students_router.router, prefix="/api/students", tags=["students"])
 app.include_router(classes_router.router, prefix="/api/classes", tags=["classes"])
 app.include_router(quizzes_router.router, prefix="/api/quizzes", tags=["quizzes"])
+app.include_router(misconceptions_router.router, prefix="/api/misconceptions", tags=["misconceptions"])
 app.include_router(scenarios_router.router, prefix="/api/scenarios", tags=["scenarios"])
 app.include_router(assignments_router.router, prefix="/api/assignments", tags=["assignments"])
 app.include_router(llm_router.router, prefix="/api/llm", tags=["llm"])

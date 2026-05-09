@@ -4,6 +4,7 @@ from app.db.models.assignment import Assignment
 from app.db.models.assignment_student import AssignmentStudent
 from app.db.models.cache import AiSummaryCache
 from app.db.models.class_ import Class
+from app.db.models.custom_misconception import CustomMisconception
 from app.db.models.quiz import Quiz, QuizOption, QuizQuestion
 from app.db.models.scenario import ScenarioQuestion, ScenarioQuiz
 from app.db.models.treatment import TreatmentMessage, TreatmentSession
@@ -14,6 +15,7 @@ __all__ = [
     "Assignment",
     "AssignmentStudent",
     "Class",
+    "CustomMisconception",
     "FollowupResult",
     "Quiz",
     "QuizOption",

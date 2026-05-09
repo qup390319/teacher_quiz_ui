@@ -46,6 +46,19 @@ body {
   color: #2D3436;
 }
 
+/* ── 學生端字體放大（平板優先；spec-07 §13 可讀性）─────
+ * 由 useStudentMode hook 在 <html> 掛上 .student-mode class。
+ * 改動 root font-size 會讓所有 rem 基礎的 Tailwind 尺寸（text-*、padding、margin、gap）按比例放大，
+ * 對平板觸控與閱讀更友善。教師端無此 class，不受影響。
+ */
+html.student-mode { font-size: 17px; }
+@media (min-width: 768px) {
+  html.student-mode { font-size: 18.5px; }
+}
+@media (min-width: 1024px) {
+  html.student-mode { font-size: 19.5px; }
+}
+
 /* Chat bubble animation */
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(12px); }
