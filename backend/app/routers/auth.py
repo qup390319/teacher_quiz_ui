@@ -68,6 +68,9 @@ async def login(
     if user is None or not verify_password(payload.password, user.password):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "INVALID_CREDENTIALS")
 
+    if payload.role is not None and payload.role != user.role:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "ROLE_MISMATCH")
+
     token = create_token(user_id=user.id, role=user.role)
     _set_session_cookie(response, token)
     current = await _build_current_user(db, user)

@@ -37,8 +37,11 @@ export function AuthProvider({ children }) {
     return () => { cancelled = true; };
   }, []);
 
-  const login = useCallback(async (account, password) => {
-    const { user } = await api.post('/auth/login', { account, password });
+  const login = useCallback(async (account, password, role) => {
+    // `role` 是登入頁所選的角色卡（'teacher' | 'student'）。後端會檢查 role 是否與帳號實際 role 相符，
+    // 不符回 401 ROLE_MISMATCH。
+    const body = role ? { account, password, role } : { account, password };
+    const { user } = await api.post('/auth/login', body);
     // Drop any cached data from the previous session — different teachers see
     // different rows (classes/assignments/students/...). Without this, the new
     // user briefly sees the prior user's lists from React Query's cache.

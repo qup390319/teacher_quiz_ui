@@ -1,10 +1,15 @@
 """Auth-related Pydantic schemas."""
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class LoginRequest(BaseModel):
     account: str = Field(min_length=1, max_length=64)
     password: str = Field(min_length=1, max_length=255)
+    # 前端登入頁的角色卡 (`teacher` | `student`)。後端會檢查此值是否與帳號的實際 role 相符。
+    # 不傳代表沿用舊行為（任何 role 都可登入）。
+    role: Literal["teacher", "student"] | None = None
 
 
 class ChangePasswordRequest(BaseModel):

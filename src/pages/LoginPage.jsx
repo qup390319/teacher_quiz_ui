@@ -145,7 +145,7 @@ function RoleCard({ variant, open, onToggleInfo, onSelect }) {
 
 /* ── 登入彈窗（spec-13 §8.3） ─────────────────────────────── */
 function LoginModal({ variant, onClose, onSuccess }) {
-  const { login } = useAuth();
+  const { login, logout } = useAuth();
   const [account, setAccount] = useState('');
   const [password, setPassword] = useState('');
   const [showPwd, setShowPwd] = useState(false);
@@ -162,21 +162,31 @@ function LoginModal({ variant, onClose, onSuccess }) {
     ? 'from-[#A2D550] to-[#65A626] border-[#3E7818] shadow-[0_4px_0_#3E7818]'
     : 'from-[#5BA8DC] to-[#2D8AC4] border-[#1A5F94] shadow-[0_4px_0_#1A5F94]';
 
+  const roleMismatchMessage = `此帳號不是${isTeacher ? '老師' : '學生'}，請確認後再試。`;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (submitting) return;
     setError('');
     setSubmitting(true);
     try {
-      const user = await login(account.trim(), password);
+      const user = await login(account.trim(), password, variant);
       if (variant && user.role !== variant) {
-        setError(`此帳號不是${isTeacher ? '老師' : '學生'}，請確認後再試。`);
+        // 後端理應回 401 ROLE_MISMATCH 而走到 catch；但若舊版後端忽略 role 欄位，
+        // login() 會把 currentUser 設為錯角色，LoginPage useEffect 會自動導走。
+        // 這裡 logout() 清掉 cookie 與 currentUser，避免被導去錯誤端的頁面。
+        await logout();
+        setError(roleMismatchMessage);
         return;
       }
       onSuccess(user);
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
-        setError('帳號或密碼錯誤，請再試一次。');
+        if (err.code === 'ROLE_MISMATCH') {
+          setError(roleMismatchMessage);
+        } else {
+          setError('帳號或密碼錯誤，請再試一次。');
+        }
       } else {
         setError('登入失敗，請稍後再試。');
         console.error('[login]', err);
