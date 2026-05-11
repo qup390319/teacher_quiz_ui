@@ -21,12 +21,12 @@ export default function HeatmapView({ quizId, classId, totalStudents }) {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-1">
-        <div>
+      <div className="mb-1">
+        <div className="flex items-center gap-2">
           <h3 className="text-base font-bold text-[#2D3436]">題目明細矩陣</h3>
-          <p className="text-sm text-[#636E72] mt-0.5">各題選項作答分佈與迷思對應</p>
+          <InfoButton onClick={() => setInfoOpen(true)} />
         </div>
-        <InfoButton onClick={() => setInfoOpen(true)} />
+        <p className="text-sm text-[#636E72] mt-0.5">各題選項作答分佈與迷思對應</p>
       </div>
       <div className="mt-3 overflow-x-auto rounded-2xl border border-[#BDC3C7]">
         <table className="w-full text-sm bg-white" style={{ minWidth: '700px' }}>

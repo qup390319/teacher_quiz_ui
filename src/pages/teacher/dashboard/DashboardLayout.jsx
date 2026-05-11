@@ -13,7 +13,7 @@ const TABS = [
   { to: 'classes',        label: '各班學習狀況' },
   { to: 'nodes',          label: '知識節點跨班比較' },
   { to: 'misconceptions', label: '跨班高頻迷思' },
-  { to: 'class-detail',   label: '各班詳細報告' },
+  { to: 'students',       label: '個別學生診斷報告' },
 ];
 
 export default function DashboardLayout() {

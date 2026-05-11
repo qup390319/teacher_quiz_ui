@@ -29,6 +29,7 @@ class CurrentUser(BaseModel):
     role: str
     name: str | None = None
     class_id: str | None = Field(default=None, serialization_alias="classId")
+    class_name: str | None = Field(default=None, serialization_alias="className")
     seat: int | None = None
     password_was_default: bool = Field(serialization_alias="passwordWasDefault")
 

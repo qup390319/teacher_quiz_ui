@@ -9,6 +9,8 @@ export const knowledgeNodes = [
     id: 'INe-II-3-01',
     name: '生活中溶解的現象',
     description: '在日常生活中觀察並辨識常見的溶解現象',
+    videoUrl: 'https://market.cloud.edu.tw/resources/video/1838699',
+    videoTitle: '生活中溶解的現象',
     level: 1,
     prerequisites: [],
     misconceptions: [
@@ -22,8 +24,10 @@ export const knowledgeNodes = [
   },
   {
     id: 'INe-II-3-02',
-    name: '溶解現象（看不見與沉澱）',
+    name: '溶解是物質在水中變小而看不見，有的物質能夠溶解，有的物質不容易溶解在水中，會出現沉澱',
     description: '溶解是物質在水中變小而看不見，有的物質能夠溶解，有的物質不容易溶解在水中而出現沉澱',
+    videoUrl: 'https://market.cloud.edu.tw/resources/video/1838700',
+    videoTitle: '生活中溶解的現象',
     level: 1,
     prerequisites: ['INe-II-3-01'],
     misconceptions: [
@@ -37,8 +41,10 @@ export const knowledgeNodes = [
   },
   {
     id: 'INe-II-3-03',
-    name: '攪拌與溶解',
+    name: '攪拌可以增加物質在水中溶解的速度，但是不能增加溶解的量',
     description: '攪拌可以增加物質在水中溶解的速度，但是不能增加溶解的量',
+    videoUrl: 'https://market.cloud.edu.tw/resources/video/1844511',
+    videoTitle: '如何增加物質溶解的速度',
     level: 2,
     prerequisites: ['INe-II-3-02'],
     misconceptions: [
@@ -52,8 +58,10 @@ export const knowledgeNodes = [
   },
   {
     id: 'INe-II-3-04',
-    name: '不同物質的溶解程度不同',
+    name: '不同物質在水中的溶解程度不同',
     description: '不同物質在水中的溶解程度不同，有些容易溶解、有些不容易',
+    videoUrl: 'https://market.cloud.edu.tw/resources/video/1844512',
+    videoTitle: '不同物質的溶解程度',
     level: 3,
     prerequisites: ['INe-II-3-05'],
     misconceptions: [
@@ -67,8 +75,10 @@ export const knowledgeNodes = [
   },
   {
     id: 'INe-II-3-05',
-    name: '溶解量上限與沉澱',
+    name: '同一種物質在相同的環境下，在水中有一定的溶解量，超過這個量會出現沉澱',
     description: '同一種物質在相同的環境下，在水中有一定的溶解量，超過這個量會出現沉澱',
+    videoUrl: 'https://market.cloud.edu.tw/resources/video/1844513',
+    videoTitle: '不同物質的溶解的程度',
     level: 3,
     prerequisites: ['INe-II-3-03'],
     misconceptions: [
@@ -86,6 +96,8 @@ export const knowledgeNodes = [
     id: 'INe-Ⅲ-5-1',
     name: '水溶液包含溶質和溶劑',
     description: '水溶液是由溶質與溶劑組成；水是常見的溶劑，溶於水中的物質稱為溶質',
+    videoUrl: 'https://market.cloud.edu.tw/resources/video/1844560',
+    videoTitle: '認識水溶液',
     level: 1,
     prerequisites: [],
     misconceptions: [
@@ -100,6 +112,8 @@ export const knowledgeNodes = [
     id: 'INe-Ⅲ-5-2',
     name: '辨別生活中的水溶液',
     description: '從日常生活中辨識哪些液體屬於水溶液',
+    videoUrl: 'https://market.cloud.edu.tw/resources/video/1844561',
+    videoTitle: '辨別水溶液',
     level: 2,
     prerequisites: ['INe-Ⅲ-5-1'],
     misconceptions: [
@@ -114,6 +128,8 @@ export const knowledgeNodes = [
     id: 'INe-Ⅲ-5-3',
     name: '石蕊試紙的正確使用方法',
     description: '了解石蕊試紙的種類、保存方式與正確的使用步驟',
+    videoUrl: 'https://market.cloud.edu.tw/resources/video/1844562',
+    videoTitle: '石蕊試紙的使用方法',
     level: 2,
     prerequisites: ['INe-Ⅲ-5-2'],
     misconceptions: [
@@ -128,6 +144,8 @@ export const knowledgeNodes = [
     id: 'INe-Ⅲ-5-4',
     name: '用石蕊試紙檢驗水溶液的酸鹼性',
     description: '用石蕊試紙的顏色變化判斷水溶液是酸性、中性或鹼性',
+    videoUrl: 'https://market.cloud.edu.tw/resources/video/1844563',
+    videoTitle: '用石蕊試紙檢驗酸鹼性',
     level: 3,
     prerequisites: ['INe-Ⅲ-5-3'],
     misconceptions: [
@@ -141,8 +159,10 @@ export const knowledgeNodes = [
   },
   {
     id: 'INe-Ⅲ-5-5',
-    name: '自製酸鹼指示劑（紫色高麗菜）',
+    name: '自製酸鹼指示劑(含花青素植物、紫色高麗菜)',
     description: '利用含花青素的植物（如紫色高麗菜）汁液製作酸鹼指示劑',
+    videoUrl: 'https://market.cloud.edu.tw/resources/video/1844564',
+    videoTitle: '自製酸鹼指示劑_紫色高麗菜',
     level: 3,
     prerequisites: ['INe-Ⅲ-5-4'],
     misconceptions: [
@@ -155,8 +175,10 @@ export const knowledgeNodes = [
   },
   {
     id: 'INe-Ⅲ-5-6',
-    name: '自製酸鹼指示劑（蝶豆花）',
+    name: '自製酸鹼指示劑(蝶豆花)',
     description: '利用蝶豆花花青素製作酸鹼指示劑，觀察顏色變化',
+    videoUrl: 'https://market.cloud.edu.tw/resources/video/1844566',
+    videoTitle: '自製酸鹼指示劑_蝶豆花',
     level: 3,
     prerequisites: ['INe-Ⅲ-5-4'],
     misconceptions: [
@@ -169,8 +191,10 @@ export const knowledgeNodes = [
   },
   {
     id: 'INe-Ⅲ-5-7',
-    name: '酸鹼解決生活問題',
+    name: '酸鹼可以用來解決生活中的問題',
     description: '酸鹼性物質可以用來解決生活中的問題（如清潔、止癢、保健）',
+    videoUrl: 'https://market.cloud.edu.tw/resources/video/1844567',
+    videoTitle: '酸鹼混合的生活應用',
     level: 4,
     prerequisites: ['INe-Ⅲ-5-5', 'INe-Ⅲ-5-6'],
     misconceptions: [

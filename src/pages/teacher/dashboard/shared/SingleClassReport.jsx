@@ -17,7 +17,6 @@ import WeeklyActionChecklist from './WeeklyActionChecklist';
 import BreakdownChart from './BreakdownChart';
 import MisconceptionDistribution from './MisconceptionDistribution';
 import HeatmapView from './HeatmapView';
-import FollowupConversations from './FollowupConversations';
 
 export default function SingleClassReport({ cls, assignments, quizzes, quizId }) {
   const classId = cls.id;
@@ -98,11 +97,11 @@ export default function SingleClassReport({ cls, assignments, quizzes, quizId })
               : '目前無偵測到任何迷思。' },
         ].map(s => (
           <div key={s.label} className={`rounded-2xl border border-[#BDC3C7] p-4 ${s.bg} shadow-[0_2px_12px_rgba(0,0,0,0.06)]`}>
-            <div className="flex items-start justify-between mb-0.5">
-              <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+            <p className={`text-2xl font-bold ${s.color} mb-0.5`}>{s.value}</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-sm font-semibold text-[#2D3436]">{s.label}</p>
               <InfoButton onClick={() => setStatInfoKey(s.infoKey)} />
             </div>
-            <p className="text-sm font-semibold text-[#2D3436]">{s.label}</p>
             <p className="text-xs text-[#636E72] mt-0.5 leading-snug">{s.sub}</p>
           </div>
         ))}
@@ -133,19 +132,6 @@ export default function SingleClassReport({ cls, assignments, quizzes, quizId })
       </div>
       <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
         <HeatmapView quizId={quizId} classId={classId} totalStudents={totalStudents} />
-      </div>
-      <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-        <h3 className="text-base font-bold text-[#2D3436] mb-1 flex items-center gap-2">
-          <svg className="w-5 h-5 text-[#5BA47A]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-          </svg>
-          學生第二層追問對話完整紀錄
-        </h3>
-        <p className="text-xs text-[#636E72] mb-4">
-          展開後可看到每位學生在追問階段與 AI 老師的完整對話，這是判斷迷思是否真實存在的最直接證據。
-        </p>
-        <FollowupConversations quizId={quizId} classId={classId} />
       </div>
     </div>
   );

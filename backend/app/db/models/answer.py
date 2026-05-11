@@ -77,6 +77,7 @@ class FollowupResult(Base):
         JSONB, default=dict, nullable=False, server_default="{}",
     )
     ai_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    cause_ids: Mapped[list[int] | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
 
     answer: Mapped[StudentAnswer] = relationship(back_populates="followup")

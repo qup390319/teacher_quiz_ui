@@ -40,6 +40,7 @@ class FollowupInput(BaseModel):
     reasoning_quality: Literal["SOLID", "PARTIAL", "WEAK", "GUESSING"] = Field(alias="reasoningQuality")
     status_change: dict[str, Any] = Field(default_factory=dict, alias="statusChange")
     ai_summary: str | None = Field(default=None, alias="aiSummary")
+    cause_ids: list[int] | None = Field(default=None, alias="causeIds")
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -148,6 +149,7 @@ class FollowupConversationRow(BaseModel):
     misconception_code: str | None = Field(serialization_alias="misconceptionCode")
     reasoning_quality: str = Field(serialization_alias="reasoningQuality")
     ai_summary: str | None = Field(serialization_alias="aiSummary")
+    cause_ids: list[int] | None = Field(default=None, serialization_alias="causeIds")
     status_change: dict[str, Any] = Field(serialization_alias="statusChange")
     conversation_log: list[dict[str, Any]] = Field(serialization_alias="conversationLog")
 
@@ -163,5 +165,27 @@ class QuizClassFollowupsResponse(BaseModel):
     quiz_id: str = Field(serialization_alias="quizId")
     class_id: str = Field(serialization_alias="classId")
     rows: list[FollowupConversationRow]
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class DiagnosisLogRow(BaseModel):
+    """One follow-up dialogue row for the teacher diagnosis-logs overview."""
+    student_id: str = Field(serialization_alias="studentId")
+    student_name: str = Field(serialization_alias="studentName")
+    seat: int | None = None
+    class_id: str | None = Field(default=None, serialization_alias="classId")
+    class_name: str | None = Field(default=None, serialization_alias="className")
+    quiz_id: str = Field(serialization_alias="quizId")
+    quiz_title: str = Field(serialization_alias="quizTitle")
+    question_id: int = Field(serialization_alias="questionId")
+    final_status: str = Field(serialization_alias="finalStatus")
+    misconception_code: str | None = Field(serialization_alias="misconceptionCode")
+    reasoning_quality: str = Field(serialization_alias="reasoningQuality")
+    ai_summary: str | None = Field(serialization_alias="aiSummary")
+    cause_ids: list[int] | None = Field(default=None, serialization_alias="causeIds")
+    status_change: dict[str, Any] = Field(serialization_alias="statusChange")
+    conversation_log: list[dict[str, Any]] = Field(serialization_alias="conversationLog")
+    answered_at: datetime = Field(serialization_alias="answeredAt")
 
     model_config = ConfigDict(populate_by_name=True)

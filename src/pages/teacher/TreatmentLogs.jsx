@@ -58,9 +58,9 @@ export default function TreatmentLogs() {
       <div className="p-4 sm:p-6 md:p-8">
         {/* 頁首 */}
         <div className="mb-4 sm:mb-6">
-          <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">治療對話紀錄</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">情境對話紀錄</h1>
           <p className="text-[#636E72] mt-1 text-sm">
-            檢視學生與 AI 的治療對話內容，作為派發治療成效的判斷依據（spec-08 §5.4）
+            檢視學生與 AI 的情境治療對話內容，作為派發治療成效的判斷依據
           </p>
         </div>
 
@@ -109,7 +109,7 @@ export default function TreatmentLogs() {
                   d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
               </svg>
             </div>
-            <p className="text-[#636E72] font-medium">還沒有治療對話紀錄</p>
+            <p className="text-[#636E72] font-medium">還沒有情境對話紀錄</p>
             <p className="text-sm text-[#95A5A6] mt-1">當學生開始情境治療對話後，紀錄會自動出現在這裡</p>
           </div>
         ) : (

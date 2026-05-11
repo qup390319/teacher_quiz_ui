@@ -1,21 +1,45 @@
- 
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 
-/**
- * N1 / N2 — both are "trigger on demand" mutations rather than queries.
- * Frontend computes statistics (from mock answer distributions in P3,
- * later from DB in P4) and POSTs them; backend builds prompt + RAGFlow.
- */
+export function useGradeSummaryCache(quizId) {
+  return useQuery({
+    queryKey: ['ai-summary', 'grade', quizId],
+    queryFn: () => api.get(`/ai/grade-summary?quizId=${encodeURIComponent(quizId)}`),
+    enabled: !!quizId,
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useClassSummaryCache(quizId, classId) {
+  return useQuery({
+    queryKey: ['ai-summary', 'class', quizId, classId],
+    queryFn: () =>
+      api.get(`/ai/class-summary?quizId=${encodeURIComponent(quizId)}&classId=${encodeURIComponent(classId)}`),
+    enabled: !!quizId && !!classId,
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
+}
 
 export function useGradeSummary() {
+  const qc = useQueryClient();
   return useMutation({
-    mutationFn: (payload) => api.post('/ai/grade-summary', payload),
+    mutationFn: ({ payload, force }) =>
+      api.post(`/ai/grade-summary${force ? '?force=true' : ''}`, payload),
+    onSuccess: (_data, { payload }) => {
+      qc.invalidateQueries({ queryKey: ['ai-summary', 'grade', payload.quizId] });
+    },
   });
 }
 
 export function useClassSummary() {
+  const qc = useQueryClient();
   return useMutation({
-    mutationFn: (payload) => api.post('/ai/class-summary', payload),
+    mutationFn: ({ payload, force }) =>
+      api.post(`/ai/class-summary${force ? '?force=true' : ''}`, payload),
+    onSuccess: (_data, { payload }) => {
+      qc.invalidateQueries({ queryKey: ['ai-summary', 'class', payload.quizId, payload.classId] });
+    },
   });
 }

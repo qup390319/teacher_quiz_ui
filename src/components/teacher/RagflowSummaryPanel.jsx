@@ -1,35 +1,49 @@
-import { useState } from 'react';
 import { ApiError } from '../../lib/api';
-import { useGradeSummary, useClassSummary } from '../../hooks/useSummary';
+import {
+  useGradeSummaryCache,
+  useClassSummaryCache,
+  useGradeSummary,
+  useClassSummary,
+} from '../../hooks/useSummary';
 
 /**
  * 文獻引用版 AI 摘要面板（N1 / N2，spec-12 §8）
  *
- * 用 RAGFlow 從文獻檢索 + 生成班級 / 全年級的學習摘要 + 可採行動 + 引用。
- * 教師按「以文獻檢索 AI 摘要」才會發送 RAGFlow 請求（避免進頁面就燒額度）。
- *
- * Props:
- *   scope: 'grade' | 'class'
- *   payload: 對應 spec-12 §8.2 / §8.3 的 request body（preset 好讓 hook 直接 mutate）
- *   title: 卡片標題（'全年級 AI 診斷摘要' or '本班 AI 診斷摘要'）
+ * 進頁面自動載入快取；若無快取則自動首次生成。
+ * 教師可按「重新生成」強制重新呼叫 RAGFlow。
  */
 export default function RagflowSummaryPanel({ scope, payload, title }) {
+  const quizId = payload?.quizId;
+  const classId = payload?.classId;
+
+  const gradeCache = useGradeSummaryCache(scope === 'grade' ? quizId : null);
+  const classCache = useClassSummaryCache(
+    scope === 'class' ? quizId : null,
+    scope === 'class' ? classId : null,
+  );
+  const cacheQuery = scope === 'grade' ? gradeCache : classCache;
+
   const gradeMut = useGradeSummary();
   const classMut = useClassSummary();
   const mut = scope === 'grade' ? gradeMut : classMut;
-  const [showResult, setShowResult] = useState(false);
 
-  const fetchSummary = async () => {
-    setShowResult(true);
+  const cacheData = cacheQuery.data;
+  const cacheLoading = cacheQuery.isLoading;
+  const cacheIs404 = cacheQuery.error instanceof ApiError && cacheQuery.error.status === 404;
+
+  const data = mut.data ?? cacheData;
+  const isGenerating = mut.isPending;
+
+  const handleGenerate = async (force = false) => {
     try {
-      await mut.mutateAsync(payload);
+      await mut.mutateAsync({ payload, force });
     } catch (err) {
-      // shown via mut.error
       console.error('[RagflowSummaryPanel]', err);
     }
   };
 
-  const data = mut.data;
+  const needsFirstGenerate = !cacheLoading && !cacheData && cacheIs404 && !mut.data && !mut.isPending;
+
   const error = mut.error;
   const errorMsg = error
     ? error instanceof ApiError && error.code === 'RAGFLOW_UNAVAILABLE'
@@ -39,6 +53,14 @@ export default function RagflowSummaryPanel({ scope, payload, title }) {
         : `請求失敗：${error.message ?? '未知錯誤'}`
     : '';
 
+  const generatedAt = data?.generatedAt;
+  const formattedTime = generatedAt
+    ? new Date(generatedAt).toLocaleString('zh-TW', {
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit',
+    })
+    : null;
+
   return (
     <div className="bg-gradient-to-br from-[#FFFCF3] to-[#FBE9C7] border-2 border-[#D9C58E] rounded-[24px] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
       <div className="flex items-center gap-3 mb-4">
@@ -46,37 +68,57 @@ export default function RagflowSummaryPanel({ scope, payload, title }) {
         <div className="flex-1 min-w-0">
           <h3 className="text-base font-bold text-[#5A3E22]">{title}</h3>
           <p className="text-xs text-[#7A5232]">
-            由 RAGFlow 從水溶液迷思概念研究文獻檢索並生成（spec-12 §8）
+            由 RAGFlow 從水溶液迷思概念研究文獻檢索並生成
+            {formattedTime && (
+              <span className="ml-2 text-[#95A5A6]">· 上次生成：{formattedTime}</span>
+            )}
           </p>
         </div>
-        <button
-          onClick={fetchSummary}
-          disabled={mut.isPending}
-          className="px-3 py-1.5 text-xs font-semibold text-[#7A5232] bg-white border border-[#D9C58E] rounded-lg hover:bg-[#FFF8E7] disabled:opacity-50"
-        >
-          {mut.isPending ? '檢索中…' : showResult ? '重新整理' : '以文獻檢索 AI 摘要'}
-        </button>
+        {data && (
+          <button
+            onClick={() => handleGenerate(true)}
+            disabled={isGenerating}
+            className="px-3 py-1.5 text-xs font-semibold text-[#7A5232] bg-white border border-[#D9C58E] rounded-lg hover:bg-[#FFF8E7] disabled:opacity-50"
+          >
+            {isGenerating ? '生成中…' : '重新生成'}
+          </button>
+        )}
       </div>
 
-      {!showResult && (
-        <p className="text-sm text-[#7A5232] py-2">
-          點擊上方按鈕，會根據本{scope === 'grade' ? '年級' : '班'}的當前統計值呼叫 RAGFlow，回傳含「行動建議」與「文獻引用」的結構化摘要。
-        </p>
+      {cacheLoading && (
+        <div className="py-6 text-center text-sm text-[#7A5232]">
+          <span className="inline-block animate-pulse">載入中…</span>
+        </div>
       )}
 
-      {showResult && mut.isPending && (
+      {needsFirstGenerate && (
+        <div className="py-4 text-center">
+          <p className="text-sm text-[#7A5232] mb-3">
+            尚未生成過 AI 摘要，點擊下方按鈕首次生成。
+          </p>
+          <button
+            onClick={() => handleGenerate(false)}
+            disabled={isGenerating}
+            className="px-4 py-2 text-sm font-semibold text-white bg-[#8B5E3C] rounded-xl hover:bg-[#7A5232] disabled:opacity-50 transition-colors"
+          >
+            {isGenerating ? '生成中…' : '以文獻檢索 AI 摘要'}
+          </button>
+        </div>
+      )}
+
+      {isGenerating && !data && (
         <div className="py-6 text-center text-sm text-[#7A5232]">
           <span className="inline-block animate-pulse">正在檢索文獻並組裝摘要…（約 5~30 秒）</span>
         </div>
       )}
 
-      {showResult && errorMsg && (
+      {errorMsg && (
         <div className="px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">
           {errorMsg}
         </div>
       )}
 
-      {showResult && data && !mut.isPending && (
+      {data && !isGenerating && (
         <div className="space-y-3">
           <div className="bg-white/70 border border-[#D9C58E] rounded-xl p-4">
             <p className="text-sm text-[#2D3436] leading-relaxed whitespace-pre-line">

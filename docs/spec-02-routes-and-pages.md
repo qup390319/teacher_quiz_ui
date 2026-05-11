@@ -35,7 +35,9 @@
 | `/teacher/assignments/scenarios` | `AssignmentManagement` (initialTab="scenario") | 派題管理：指派**情境治療考卷**給班級（與診斷派題共用同一頁面、預設情境 tab） | `TeacherLayout` |
 | `/teacher/classes` | `ClassManagement` | 班級管理：檢視班級名冊 | `TeacherLayout` |
 | `/teacher/classes/:classId` | `ClassDetail` | 班級詳情：個別班級學生資訊 | `TeacherLayout` |
-| `/teacher/knowledge-map` | `KnowledgeMap` | 知識地圖：知識節點層級結構 | `TeacherLayout` |
+| `/teacher/knowledge-map` | `KnowledgeMap` | (預設) 知識節點與迷思概念總覽：唯讀檢視系統預設迷思概念 | `TeacherLayout` |
+| `/teacher/custom-knowledge-map` | `CustomKnowledgeMap` | (自定義) 知識節點總覽：檢視預設＋自訂迷思概念，支援新增/刪除自訂迷思 | `TeacherLayout` |
+| `/teacher/misconception-causes` | `MisconceptionCauses` | 迷思概念成因：列出診斷對話中分類迷思成因的 8 種類別（特徵 + 常見樣態） | `TeacherLayout` |
 | `/teacher/report` | `TeacherReport` | 舊版診斷報告（保留向後相容） | `TeacherLayout` |
 | `/teacher/scenarios` | `ScenarioLibrary` | **（規劃，波次 2）** 情境考卷庫（治療模組，spec-08） | `TeacherLayout` |
 | `/teacher/scenarios/create` | `ScenarioCreateWizard` | **（規劃，波次 2）** 情境考卷出題精靈 | `TeacherLayout` |
@@ -359,18 +361,82 @@
 **檔案**: `src/pages/teacher/KnowledgeMap.jsx`
 
 **功能描述**:
+- **唯讀頁面**，僅展示系統預設迷思概念，不提供新增/編輯/刪除功能
+- 頁面標題為「(預設) 知識節點與迷思概念總覽」
 - 以層級結構展示所有知識節點
 - 顯示各節點的迷思概念列表
-- 顯示先備知識關聯
-- 提供教學策略建議
+- 顯示先備知識關聯（知識學習路徑視覺化）
 
 **UI 元素**:
-- 知識節點卡片（按 level 1~4 分層展示）
-- 各節點包含：名稱、描述、迷思概念列表、教學策略
-- 先備知識連線/箭頭
+- 知識學習路徑視覺化（知識節點按 level 分層展示 + 先備知識連線/箭頭）
 - 各節點群組使用對應色彩（NODE_GROUP_COLORS）
+- 迷思概念表格（3 欄）：
+  | 欄位 | 說明 |
+  |------|------|
+  | 知識節點 | 節點名稱 |
+  | 迷思概念 | 迷思概念 label |
+  | 學生常見想法 | 迷思概念 studentDetail |
+- **無「操作」欄位**（唯讀，不可編輯或刪除）
 
 **資料來源**: `knowledgeNodes` (from knowledgeGraph.js)
+
+---
+
+### 2.9.1 CustomKnowledgeMap (`/teacher/custom-knowledge-map`)
+**檔案**: `src/pages/teacher/CustomKnowledgeMap.jsx`
+
+**功能描述**:
+- 同時顯示**系統預設迷思概念**與**教師自訂迷思概念**
+- 預設迷思以淡灰風格呈現，帶「預設」徽章；自訂迷思以正常風格呈現，帶「自訂」徽章
+- 教師可新增自訂迷思概念（全域按鈕 + 各節點按鈕）
+- 教師可刪除自訂迷思概念（僅自訂可刪，預設不可刪）
+- 知識學習路徑視覺化（與預設頁相同）
+
+**UI 元素**:
+- 知識學習路徑視覺化（同 §2.9）
+- 圖例列（legend bar）：說明「預設」與「自訂」兩種徽章的意義
+- 「新增自訂迷思」按鈕（頁面頂部全域 + 各節點區塊內）
+- 迷思概念表格（4 欄）：
+  | 欄位 | 說明 |
+  |------|------|
+  | 知識節點 | 節點名稱 |
+  | 迷思概念 | 迷思概念 label + 徽章（「預設」灰 / 「自訂」彩） |
+  | 學生常見想法 | 迷思概念 studentDetail |
+  | 操作 | 自訂迷思顯示刪除按鈕；預設迷思無操作 |
+- 預設迷思列以 muted gray 樣式呈現，自訂迷思列以正常樣式呈現
+
+**資料來源**: `knowledgeNodes` (from knowledgeGraph.js), 教師自訂迷思概念（後端 API 或前端狀態）
+
+---
+
+### 2.9.2 MisconceptionCauses (`/teacher/misconception-causes`)
+**檔案**: `src/pages/teacher/MisconceptionCauses.jsx`
+
+**功能描述**:
+- 純說明頁，列出診斷模型用來歸類學生迷思成因的 **8 種類別**
+- 類別 1–6 為一般通用成因；類別 7、8 為「情境條件成因」（僅在學生對話明確提及對應描述時才適用），UI 上以灰色徽章 + 虛線分隔 + 提示文字明確區分
+- 教師可作為診斷報告閱讀時的參考圖鑑
+
+**UI 元素**:
+- 頁面標題 + 返回首頁按鈕
+- 黃色提示橫幅：說明類別 1–6 與 7、8 的差異
+- 兩欄響應式網格（手機單欄、md+ 雙欄），每張卡片含：
+  - 圓形編號徽章 + 類別名稱（彩色 header）
+  - 「特徵」段落
+  - 「常見樣態」段落
+  - （僅 7、8）虛線分隔下方的「情境條件成因」提示
+
+**8 個成因類別**:
+1. 學科知識不足或缺乏
+2. 概念不清楚或混淆
+3. 不正確的推論或運算過程
+4. 單憑個人直覺或關鍵字反應
+5. 來自日常的經驗和生活中的觀察
+6. 日常生活用語與科學用語的混淆
+7. 教師的教學過程不當（情境條件）
+8. 實驗操作不當（情境條件）
+
+**資料來源**: 頁面內 hard-coded 常數 `CAUSE_CATEGORIES`（無外部依賴）
 
 ---
 
@@ -433,8 +499,9 @@
 - 左：登出 `WoodIconButton size="sm"`（`arrow_back` 圖示，`aria-label="登出"`，點擊呼叫 `useAuth().logout()` 後 `navigate('/', { replace: true })`，避免 LoginPage auto-redirect 反彈回 `/student`） + `AvatarPill`
   - AvatarPill = 木框內 [avatar img] + 「🎓 班級名」+ **學習進度條**（探索的概念 % + 數字）
   - mobile (`<sm`)：只顯示 avatar 圖示，隱藏文字 + 進度條
-- 右：合併三項統計 pill（`CombinedStats`，木框內 3 cell 用直線分隔，每 cell = icon + 數字無 label）+ 設定齒輪
+- 右：合併三項統計 pill（`CombinedStats`，木框內 3 cell 用直線分隔，每 cell = icon + 數字無 label）+ 設定齒輪（點擊開啟 `StudentSettingsDrawer`）
   - 統計項：✅ 已完成 `M/N` ｜ 🌳 已探索概念 `X/12` ｜ ⏳ 待完成 `K`
+  - 設定齒輪：`settings_wood.png` icon，點擊 `setSettingsOpen(true)` 開啟右側設定抽屜
 
 **3. 吉祥物對話列**（透明 overlay，無對話框）：
 - 左：`scilens_mascot.png` (w-14 sm:w-16) + `animate-breath`
@@ -479,6 +546,7 @@
 **輔助元件**:
 - 共用：`Icon`, `WOOD_OUTER`, `WOOD_INNER_CREAM`, `WoodIconButton`, `StarRating`（from `src/components/ui/woodKit.jsx`）
 - 學生專用：`TaskCard`（from `src/components/student/TaskCard.jsx`），內含 `Sticker`、`ChunkyButton` 子元件
+- 學生專用：`StudentSettingsDrawer`（from `src/components/student/StudentSettingsDrawer.jsx`），右側滑入設定抽屜，包含字體大小調整、個人資訊（唯讀）、關於系統/使用說明、登出按鈕
 - 內部 sub-component：`AvatarPill`（含學習進度條）、`CombinedStats`、`Section`（含折疊行為）、`EmptyBoard`
 
 **素材依賴**:

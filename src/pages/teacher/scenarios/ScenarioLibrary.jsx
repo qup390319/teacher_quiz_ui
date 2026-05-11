@@ -64,7 +64,7 @@ export default function ScenarioLibrary() {
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">情境出題</h1>
             <p className="text-[#636E72] mt-1 text-sm">
-              情境考卷以「論證情境 + AI 對話治療」進行（認知師徒制）。流程：建立情境考卷 → 派發給班級 → 學生與 AI 對話 → 教師查紀錄。
+              情境考卷以「論證情境 + AI 對話治療」進行。流程：建立情境考卷 → 派發給班級 → 學生與 AI 對話 → 教師查紀錄。
             </p>
           </div>
           <button
@@ -77,34 +77,6 @@ export default function ScenarioLibrary() {
             </svg>
             新增情境考卷
           </button>
-        </div>
-
-        {/* 認知師徒制四個方法速覽（每方法一行 chip，極簡） */}
-        <div className="mb-6 sm:mb-8 bg-[#FFFBF0] border border-[#F0B962] rounded-2xl px-4 py-3 flex flex-wrap items-center gap-x-3 gap-y-2">
-          <span className="inline-flex items-center gap-1 text-xs font-bold text-[#7A4A18]">
-            <span className="text-base">💡</span>認知師徒制四方法
-          </span>
-          {[
-            { step: '1', name: '示範 Modeling', what: 'AI 展示專家思路' },
-            { step: '2', name: '指導 Coaching', what: '即時點評學生' },
-            { step: '3', name: '鷹架 Scaffolding', what: '提示分級漸退' },
-            { step: '4', name: '反思 Articulation', what: '回顧推理路徑' },
-          ].map((s, i, arr) => (
-            <div key={s.step} className="flex items-center gap-1.5">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white border border-[#F0B962]">
-                <span className="w-5 h-5 rounded-full bg-[#D08B2E] text-white text-xs font-bold flex items-center justify-center">
-                  {s.step}
-                </span>
-                <span className="text-xs font-semibold text-[#5A3E22]">{s.name}</span>
-                <span className="text-xs text-[#7A5232]">· {s.what}</span>
-              </span>
-              {i < arr.length - 1 && (
-                <svg className="w-3 h-3 text-[#D08B2E] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
-                </svg>
-              )}
-            </div>
-          ))}
         </div>
 
         {/* Tab Bar */}
@@ -296,7 +268,7 @@ function EmptyState({ onCreate }) {
         </svg>
       </div>
       <p className="text-[#636E72] font-medium">還沒有情境考卷</p>
-      <p className="text-sm text-[#95A5A6] mt-1 mb-4">情境考卷讓 AI 用「認知師徒制」對話引導學生治療迷思</p>
+      <p className="text-sm text-[#95A5A6] mt-1 mb-4">情境考卷讓 AI 用「論證對話」引導學生治療迷思</p>
       <button
         type="button"
         onClick={onCreate}

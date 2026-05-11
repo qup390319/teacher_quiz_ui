@@ -15,11 +15,8 @@ export default function AddCustomMisconceptionModal({
   const [nodeId, setNodeId] = useState(initialNodeId || knowledgeNodes[0].id);
   const [label, setLabel] = useState('');
   const [detail, setDetail] = useState('');
-  const [studentDetail, setStudentDetail] = useState('');
-  const [confirmQuestion, setConfirmQuestion] = useState('');
 
-  const valid =
-    label.trim() && detail.trim() && studentDetail.trim() && confirmQuestion.trim();
+  const valid = label.trim() && detail.trim();
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -28,8 +25,6 @@ export default function AddCustomMisconceptionModal({
       nodeId,
       label: label.trim(),
       detail: detail.trim(),
-      studentDetail: studentDetail.trim(),
-      confirmQuestion: confirmQuestion.trim(),
     });
   };
 
@@ -87,26 +82,6 @@ export default function AddCustomMisconceptionModal({
               onChange={(e) => setDetail(e.target.value)}
               rows={2}
               placeholder="例：學生認為糖加得越多甜度就越強，忽略飽和量限制。"
-              className="w-full px-3 py-2 rounded-xl border border-[#BDC3C7] text-sm leading-6 resize-none
-                         focus:outline-none focus:ring-2 focus:ring-[#8FC87A]"
-            />
-          </Field>
-          <Field label="學生視角描述（治療對話用）" required>
-            <textarea
-              value={studentDetail}
-              onChange={(e) => setStudentDetail(e.target.value)}
-              rows={2}
-              placeholder="例：也就是說，你可能會覺得糖加得越多，糖水就會越甜。"
-              className="w-full px-3 py-2 rounded-xl border border-[#BDC3C7] text-sm leading-6 resize-none
-                         focus:outline-none focus:ring-2 focus:ring-[#8FC87A]"
-            />
-          </Field>
-          <Field label="確認題（讓 AI 確認學生是否有此迷思）" required>
-            <textarea
-              value={confirmQuestion}
-              onChange={(e) => setConfirmQuestion(e.target.value)}
-              rows={2}
-              placeholder="例：你是不是覺得，糖加得越多，糖水就會無限變甜呢？"
               className="w-full px-3 py-2 rounded-xl border border-[#BDC3C7] text-sm leading-6 resize-none
                          focus:outline-none focus:ring-2 focus:ring-[#8FC87A]"
             />

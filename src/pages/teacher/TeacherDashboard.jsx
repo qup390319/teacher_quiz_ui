@@ -102,7 +102,7 @@ export default function TeacherDashboard() {
             🌱 流程二
           </span>
           <h2 className="text-sm font-bold text-[#2D3436]">迷思概念治療</h2>
-          <span className="text-xs text-[#95A5A6]">情境出題 → 情境派題 → 看治療對話紀錄</span>
+          <span className="text-xs text-[#95A5A6]">情境出題 → 情境派題 → 看情境對話紀錄</span>
         </div>
         <div className="bg-white border border-[#BDC3C7] rounded-[24px] sm:rounded-[32px] p-4 sm:p-6 mb-6 sm:mb-8 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
           <div className="flex flex-wrap items-stretch justify-between gap-2">
@@ -138,7 +138,7 @@ export default function TeacherDashboard() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
 
-            {/* 步驟 3：治療對話紀錄 */}
+            {/* 步驟 3：情境對話紀錄 */}
             <button
               onClick={() => navigate('/teacher/treatment-logs')}
               className="flex-1 flex flex-col items-center text-center p-4 rounded-2xl hover:bg-[#EEF5E6] transition-colors group"
@@ -146,7 +146,7 @@ export default function TeacherDashboard() {
               <div className="w-10 h-10 rounded-full bg-[#FCF0C2] border border-[#BDC3C7] text-[#B7950B] text-base font-bold flex items-center justify-center mb-3 group-hover:bg-[#F8E89A] transition-colors">
                 3
               </div>
-              <p className="text-sm font-bold text-[#2D3436] mb-1">治療對話紀錄</p>
+              <p className="text-sm font-bold text-[#2D3436] mb-1">情境對話紀錄</p>
               <p className="text-xs text-[#636E72]">查看治療成效</p>
             </button>
           </div>

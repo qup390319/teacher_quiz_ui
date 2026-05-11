@@ -122,7 +122,6 @@ export default function ScenarioChat() {
   const [isThinking, setIsThinking] = useState(false);
   const [feedbackText, setFeedbackText] = useState('試著說說你的想法吧！');
 
-  const [scenarioExpanded, setScenarioExpanded] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState(null);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const chatStreamRef = useRef(null);
@@ -400,7 +399,7 @@ export default function ScenarioChat() {
 
   return (
     <div
-      className="relative min-h-screen flex flex-col"
+      className="relative h-dvh flex flex-col overflow-hidden"
       style={{
         backgroundImage: `url(${bgImg})`,
         backgroundSize: 'cover',
@@ -435,7 +434,7 @@ export default function ScenarioChat() {
         )}
       </header>
 
-      <main className="relative z-10 flex-1 flex flex-col">
+      <main className="relative z-10 flex-1 flex flex-col min-h-0">
         {entryStage === 'intro' && (
           <ScenarioIntro
             quiz={quiz}
@@ -460,8 +459,6 @@ export default function ScenarioChat() {
               <ScenarioSideCard
                 question={currentQuestion}
                 onZoomImage={setLightboxSrc}
-                expanded={scenarioExpanded}
-                onToggle={() => setScenarioExpanded((v) => !v)}
               />
             )}
             {/* 右欄：對話 + mascot（mascot 用 absolute 定位於此容器） */}

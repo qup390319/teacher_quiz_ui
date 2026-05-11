@@ -11,14 +11,19 @@ import OverviewPage from './pages/teacher/dashboard/OverviewPage';
 import ClassesPage from './pages/teacher/dashboard/ClassesPage';
 import NodesPage from './pages/teacher/dashboard/NodesPage';
 import MisconceptionsPage from './pages/teacher/dashboard/MisconceptionsPage';
+import StudentReportsPage from './pages/teacher/dashboard/StudentReportsPage';
 import ClassDetailPage from './pages/teacher/dashboard/ClassDetailPage';
 import QuizLibrary from './pages/teacher/QuizLibrary';
 import AssignmentManagement from './pages/teacher/AssignmentManagement';
 import ClassManagement from './pages/teacher/ClassManagement';
 import ClassDetail from './pages/teacher/ClassDetail';
 import KnowledgeMap from './pages/teacher/KnowledgeMap';
+import CustomKnowledgeMap from './pages/teacher/CustomKnowledgeMap';
+import MisconceptionCauses from './pages/teacher/MisconceptionCauses';
 import ScenarioLibrary from './pages/teacher/scenarios/ScenarioLibrary';
 import ScenarioCreateWizard from './pages/teacher/scenarios/ScenarioCreateWizard';
+import DiagnosisLogs from './pages/teacher/DiagnosisLogs';
+import StudentDiagnosisReport from './pages/teacher/StudentDiagnosisReport';
 import TreatmentLogs from './pages/teacher/TreatmentLogs';
 import TreatmentLogDetail from './pages/teacher/TreatmentLogDetail';
 import StudentHome from './pages/student/StudentHome';
@@ -45,6 +50,7 @@ export default function App() {
               <Route path="classes" element={<ClassesPage />} />
               <Route path="nodes" element={<NodesPage />} />
               <Route path="misconceptions" element={<MisconceptionsPage />} />
+              <Route path="students" element={<StudentReportsPage />} />
               <Route path="class-detail" element={<ClassDetailPage />} />
             </Route>
             <Route path="/teacher/quiz/create" element={<Teacher><QuizCreateWizard /></Teacher>} />
@@ -55,10 +61,14 @@ export default function App() {
             <Route path="/teacher/classes" element={<Teacher><ClassManagement /></Teacher>} />
             <Route path="/teacher/classes/:classId" element={<Teacher><ClassDetail /></Teacher>} />
             <Route path="/teacher/knowledge-map" element={<Teacher><KnowledgeMap /></Teacher>} />
+            <Route path="/teacher/custom-knowledge-map" element={<Teacher><CustomKnowledgeMap /></Teacher>} />
+            <Route path="/teacher/misconception-causes" element={<Teacher><MisconceptionCauses /></Teacher>} />
             {/* 情境治療模組（spec-08） */}
             <Route path="/teacher/scenarios" element={<Teacher><ScenarioLibrary /></Teacher>} />
             <Route path="/teacher/scenarios/create" element={<Teacher><ScenarioCreateWizard /></Teacher>} />
             <Route path="/teacher/scenarios/:scenarioQuizId/edit" element={<Teacher><ScenarioCreateWizard /></Teacher>} />
+            <Route path="/teacher/diagnosis-logs" element={<Teacher><DiagnosisLogs /></Teacher>} />
+            <Route path="/teacher/students/:studentId/report" element={<Teacher><StudentDiagnosisReport /></Teacher>} />
             <Route path="/teacher/treatment-logs" element={<Teacher><TreatmentLogs /></Teacher>} />
             <Route path="/teacher/treatment-logs/:sessionId" element={<Teacher><TreatmentLogDetail /></Teacher>} />
             {/* 保留舊路由避免失效 */}

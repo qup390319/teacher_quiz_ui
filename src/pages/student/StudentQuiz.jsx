@@ -261,15 +261,11 @@ function StudentQuizScreen({ quizId }) {
     askFollowUpRound1(0);
   };
 
-  const handleFollowUpFinal = (finalDiagnosis, ctxAtFinal, replyForLog) => {
-    const updatedLog = [
-      ...ctxAtFinal.conversationLog,
-      { role: 'student', content: replyForLog },
-    ];
+  const handleFollowUpFinal = (finalDiagnosis, ctxAtFinal) => {
     const result = {
       questionId: ctxAtFinal.questionId,
       followUpRounds: ctxAtFinal.round,
-      conversationLog: updatedLog,
+      conversationLog: ctxAtFinal.conversationLog,
       diagnosis: finalDiagnosis,
     };
     followUpResultsRef.current = [...followUpResultsRef.current, result];
@@ -334,11 +330,11 @@ function StudentQuizScreen({ quizId }) {
       const result = processStudentReply(ctxWithReply, reply);
 
       if (result.kind === 'final') {
-        handleFollowUpFinal(result.finalDiagnosis, ctxWithReply, reply);
+        handleFollowUpFinal(result.finalDiagnosis, ctxWithReply);
         return;
       }
 
-      const nextRound = ctxWithReply.round + 1;
+      const nextRound = result.keepRound ? ctxWithReply.round : ctxWithReply.round + 1;
       const aiMsg = result.aiMessage;
       const updatedCtx = {
         ...ctxWithReply,
@@ -349,7 +345,7 @@ function StudentQuizScreen({ quizId }) {
       setFollowUpCtx(updatedCtx);
       setMessages((prev) => [
         ...prev,
-        { id: `fu-${ctxWithReply.questionId}-r${nextRound}`, role: 'ai', text: aiMsg },
+        { id: `fu-${ctxWithReply.questionId}-r${nextRound}-${Date.now()}`, role: 'ai', text: aiMsg },
       ]);
       setFollowUpEnabled(true);
     }, 900);

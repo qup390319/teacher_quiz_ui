@@ -80,6 +80,12 @@ class SummaryResponse(BaseModel):
     summary: str
     actions: list[str]
     citations: list[CitationOut]
-    ragflow_session_id: str | None = Field(serialization_alias="ragflowSessionId")
+    ragflow_session_id: str | None = Field(
+        default=None, serialization_alias="ragflowSessionId",
+    )
+    generated_at: str | None = Field(
+        default=None, serialization_alias="generatedAt",
+    )
+    cached: bool = False
 
     model_config = ConfigDict(populate_by_name=True)

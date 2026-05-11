@@ -19,6 +19,7 @@ from app.db.models import (
 from app.db.session import get_db
 from app.schemas.answer import (
     AnswerOut,
+    DiagnosisLogRow,
     FollowupConversationRow,
     QuizClassAnswersResponse,
     QuizClassFollowupsResponse,
@@ -131,6 +132,7 @@ async def record_followups(
             reasoning_quality=f.reasoning_quality,
             status_change=f.status_change,
             ai_summary=f.ai_summary,
+            cause_ids=f.cause_ids,
         ))
 
         # Apply statusChange to base answer (UPGRADED/DOWNGRADED)
@@ -216,6 +218,7 @@ async def get_quiz_class_followups(
             misconception_code=fup.misconception_code,
             reasoning_quality=fup.reasoning_quality,
             ai_summary=fup.ai_summary,
+            cause_ids=fup.cause_ids,
             status_change=fup.status_change or {},
             conversation_log=fup.conversation_log or [],
         ))
@@ -306,4 +309,78 @@ async def get_student_history(
             misconceptions=misc,
         ))
     rows.sort(key=lambda r: r.answered_at, reverse=True)
+    return rows
+
+
+# ── teacher-facing: diagnosis follow-up logs ─────────────────────────────
+teacher_router = APIRouter()  # mounted under /api/teachers
+
+
+@teacher_router.get(
+    "/diagnosis-logs",
+    response_model=list[DiagnosisLogRow],
+    response_model_by_alias=True,
+)
+async def list_diagnosis_logs(
+    class_id: str | None = Query(default=None, alias="classId"),
+    quiz_id: str | None = Query(default=None, alias="quizId"),
+    student_id: str | None = Query(default=None, alias="studentId"),
+    teacher: User = Depends(require_teacher),
+    db: AsyncSession = Depends(get_db),
+) -> list[DiagnosisLogRow]:
+    """Return all follow-up dialogue logs across the teacher's classes."""
+    teacher_cls_res = await db.execute(
+        select(Class.id).where(Class.teacher_id == teacher.id),
+    )
+    teacher_class_ids = {cid for (cid,) in teacher_cls_res.all()}
+    if not teacher_class_ids:
+        return []
+
+    stmt = (
+        select(StudentAnswer, FollowupResult, QuizQuestion, Student)
+        .join(QuizQuestion, QuizQuestion.id == StudentAnswer.question_id)
+        .join(FollowupResult, FollowupResult.student_answer_id == StudentAnswer.id)
+        .join(Student, Student.user_id == StudentAnswer.student_id)
+        .where(Student.class_id.in_(teacher_class_ids))
+        .order_by(StudentAnswer.answered_at.desc())
+    )
+    if quiz_id:
+        stmt = stmt.where(QuizQuestion.quiz_id == quiz_id)
+    if class_id:
+        stmt = stmt.where(Student.class_id == class_id)
+    if student_id:
+        stmt = stmt.where(Student.user_id == student_id)
+
+    res = await db.execute(stmt)
+    all_rows = res.all()
+
+    quiz_ids = {q.quiz_id for _, _, q, _ in all_rows}
+    quiz_res = await db.execute(select(Quiz).where(Quiz.id.in_(quiz_ids)))
+    quiz_map = {q.id: q for q in quiz_res.scalars().all()}
+
+    cls_res = await db.execute(select(Class).where(Class.id.in_(teacher_class_ids)))
+    cls_map = {c.id: c for c in cls_res.scalars().all()}
+
+    rows: list[DiagnosisLogRow] = []
+    for ans, fup, qq, stu in all_rows:
+        quiz = quiz_map.get(qq.quiz_id)
+        cls = cls_map.get(stu.class_id)
+        rows.append(DiagnosisLogRow(
+            student_id=stu.user_id,
+            student_name=stu.name,
+            seat=stu.seat,
+            class_id=cls.id if cls else None,
+            class_name=cls.name if cls else None,
+            quiz_id=qq.quiz_id,
+            quiz_title=quiz.title if quiz else qq.quiz_id,
+            question_id=ans.question_id,
+            final_status=fup.final_status,
+            misconception_code=fup.misconception_code,
+            reasoning_quality=fup.reasoning_quality,
+            ai_summary=fup.ai_summary,
+            cause_ids=fup.cause_ids,
+            status_change=fup.status_change or {},
+            conversation_log=fup.conversation_log or [],
+            answered_at=ans.answered_at,
+        ))
     return rows

@@ -21,7 +21,7 @@ export default function MisconceptionDistribution({ quizId, classId, totalStuden
 
   return (
     <div>
-      <div className="flex items-start justify-between mb-1">
+      <div className="flex items-center gap-2 mb-1">
         <h3 className="text-base font-bold text-[#2D3436]">迷思概念分佈</h3>
         <InfoButton onClick={() => setInfoOpen(true)} />
       </div>
@@ -62,9 +62,13 @@ export default function MisconceptionDistribution({ quizId, classId, totalStuden
               {isExpanded && (
                 <div className="px-4 pb-3 pt-0 border-t border-[#D5D8DC] bg-white">
                   <div className="flex flex-wrap gap-1.5 pt-3">
-                    {students.map(name => (
-                      <span key={name} className="text-xs bg-[#EEF5E6] border border-[#D5D8DC] text-[#636E72] px-2.5 py-1 rounded-full">{name}</span>
-                    ))}
+                    {students.map(s => {
+                      const key = typeof s === 'string' ? s : s.id ?? s.name;
+                      const label = typeof s === 'string' ? s : s.name;
+                      return (
+                        <span key={key} className="text-xs bg-[#EEF5E6] border border-[#D5D8DC] text-[#636E72] px-2.5 py-1 rounded-full">{label}</span>
+                      );
+                    })}
                   </div>
                 </div>
               )}

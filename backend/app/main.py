@@ -46,3 +46,4 @@ app.include_router(answers_router.quiz_router, prefix="/api/quizzes", tags=["ans
 app.include_router(answers_router.student_router, prefix="/api/students", tags=["answers"])  # /api/students/{id}/history
 app.include_router(treatment_router.router, prefix="/api/treatment", tags=["treatment"])
 app.include_router(treatment_router.teacher_router, prefix="/api/teachers", tags=["treatment"])
+app.include_router(answers_router.teacher_router, prefix="/api/teachers", tags=["answers"])  # /api/teachers/diagnosis-logs

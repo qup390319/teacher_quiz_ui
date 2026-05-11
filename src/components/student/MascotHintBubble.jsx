@@ -7,7 +7,7 @@ import mascotImg from '../../assets/illustrations/scilens_mascot.png';
  */
 export default function MascotHintBubble({ feedback }) {
   return (
-    <div className="absolute bottom-[88px] right-3 sm:right-5 z-20 pointer-events-none animate-fade-up">
+    <div className="hidden md:block absolute bottom-[88px] right-3 sm:right-5 z-20 pointer-events-none animate-fade-up">
       <div className="relative">
         <div className="absolute bottom-full right-0 mb-2 min-w-[160px] max-w-[240px]
                         rounded-[20px] bg-gradient-to-b from-[#FFF8E7] to-[#FBE9C7]

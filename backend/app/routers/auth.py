@@ -7,7 +7,7 @@ from app.auth.deps import get_current_user
 from app.auth.jwt import create_token
 from app.auth.password import verify_password
 from app.config import settings
-from app.db.models import Student, Teacher, User
+from app.db.models import Class, Student, Teacher, User
 from app.db.session import get_db
 from app.schemas.auth import (
     ChangePasswordRequest,
@@ -35,6 +35,7 @@ def _set_session_cookie(response: Response, token: str) -> None:
 async def _build_current_user(db: AsyncSession, user: User) -> CurrentUser:
     name: str | None = None
     class_id: str | None = None
+    class_name: str | None = None
     seat: int | None = None
     if user.role == "teacher":
         teacher = await db.get(Teacher, user.id)
@@ -46,12 +47,17 @@ async def _build_current_user(db: AsyncSession, user: User) -> CurrentUser:
             name = student.name
             class_id = student.class_id
             seat = student.seat
+            if student.class_id:
+                cls = await db.get(Class, student.class_id)
+                if cls:
+                    class_name = cls.name
     return CurrentUser(
         id=user.id,
         account=user.account,
         role=user.role,
         name=name,
         class_id=class_id,
+        class_name=class_name,
         seat=seat,
         password_was_default=user.password_was_default,
     )

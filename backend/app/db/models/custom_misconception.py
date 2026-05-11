@@ -24,8 +24,8 @@ class CustomMisconception(Base):
     node_id: Mapped[str] = mapped_column(String(32), nullable=False)
     label: Mapped[str] = mapped_column(String(64), nullable=False)
     detail: Mapped[str] = mapped_column(Text, nullable=False)
-    student_detail: Mapped[str] = mapped_column(Text, nullable=False)
-    confirm_question: Mapped[str] = mapped_column(Text, nullable=False)
+    student_detail: Mapped[str | None] = mapped_column(Text, nullable=True)
+    confirm_question: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), nullable=False,
     )

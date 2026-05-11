@@ -39,6 +39,7 @@
 | `CompletionWoodenSign` | `src/components/student/CompletionWoodenSign.jsx` | 結算木牌 + StarRating |
 | `ReflectionPanel` | `src/components/student/ReflectionPanel.jsx` | 雙欄米紙 panel 反思頁（**不做**書本造型） |
 | `ScenarioImageLightbox` | `src/components/student/ScenarioImageLightbox.jsx` | 圖片放大檢視 |
+| `StudentSettingsDrawer` | `src/components/student/StudentSettingsDrawer.jsx` | 學生端設定抽屜（字體大小、個人資訊、關於系統、登出） |
 
 ---
 
@@ -110,7 +111,8 @@
 **其他（section: 其他）**:
 | 項目名稱 | 路由目標 | 圖示 |
 |----------|----------|------|
-| 知識節點總覽 | `/teacher/knowledge-map` | Grid icon |
+| (預設) 知識節點總覽 | `/teacher/knowledge-map` | Grid icon |
+| (自定義) 知識節點總覽 | `/teacher/custom-knowledge-map` | Grid icon |
 
 ### 行為
 - **RWD（spec-07 §7.3）**：

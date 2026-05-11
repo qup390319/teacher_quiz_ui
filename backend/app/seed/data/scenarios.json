@@ -28,35 +28,5 @@
         "expertModel": "我來示範專家的思考：我主張甜度不會繼續增加。證據是杯底已經有沉澱，這代表水已經溶不下更多糖（達到飽和）。推理是水在固定溫度下能溶解的糖有上限，超過上限的糖只會沉在底下，不會增加水中糖的濃度，所以甜度不會再上升。"
       }
     ]
-  },
-  {
-    "id": "scenario-draft-demo",
-    "title": "草稿示範 · 酸鹼反應情境（編寫中）",
-    "status": "draft",
-    "targetNodeId": "INe-Ⅲ-5-4",
-    "targetMisconceptions": ["M09-4"],
-    "createdAt": "2026-05-07",
-    "questions": [
-      {
-        "index": 1,
-        "title": "論證議題 1",
-        "scenarioText": "小華在自然課實驗時，桌上有三杯透明無色的水溶液：白醋、糖水、肥皂水。老師要他們不打開瓶蓋的情況下，判斷哪一杯是酸性、哪一杯是鹼性、哪一杯是中性。\n\n小華說：「我來嚐看看就好啦！酸的就是酸性、苦的就是鹼性、沒有味道就是中性！」\n\n問題：小華「直接用嚐的」來判斷酸鹼，這個方法有什麼問題？該怎麼做才正確？",
-        "scenarioImages": [],
-        "scenarioImageZoomable": false,
-        "initialMessage": "你覺得「用嚐的」判斷酸鹼會有什麼問題？請先說說你的看法。",
-        "targetMisconceptions": ["M09-4"],
-        "expertModel": "（請輸入專家示範回答）"
-      },
-      {
-        "index": 2,
-        "title": "論證議題 2",
-        "scenarioText": "（請輸入情境描述）",
-        "scenarioImages": [],
-        "scenarioImageZoomable": false,
-        "initialMessage": "（請輸入引導學生主張的開場問句）",
-        "targetMisconceptions": ["M09-4"],
-        "expertModel": "（請輸入專家示範回答）"
-      }
-    ]
   }
 ]

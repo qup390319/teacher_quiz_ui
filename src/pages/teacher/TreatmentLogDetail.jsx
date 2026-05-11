@@ -6,7 +6,7 @@ import { useClasses } from '../../hooks/useClasses';
 import { useStudent } from '../../hooks/useStudents';
 import { useTreatmentLog } from '../../hooks/useTreatment';
 import { PHASE_LABEL, STAGE_LABEL } from '../../data/treatmentBot';
-import { knowledgeNodes } from '../../data/knowledgeGraph';
+import { knowledgeNodes, getMisconceptionById } from '../../data/knowledgeGraph';
 import { resolveScenarioImage } from '../../lib/scenarioImage';
 
 /* 治療對話紀錄詳情頁（spec-08 §5.4）
@@ -177,15 +177,22 @@ export default function TreatmentLogDetail() {
                   <div>
                     <p className="text-xs font-semibold text-[#636E72] mb-1">針對迷思</p>
                     <div className="flex flex-wrap gap-1.5">
-                      {activeQuestion.targetMisconceptions.map((mid) => (
-                        <span
-                          key={mid}
-                          className="inline-flex px-2 py-0.5 rounded-full bg-[#FFF1D8] border border-[#F0B962]
-                                     text-[#7A4A18] text-xs font-mono"
-                        >
-                          {mid}
-                        </span>
-                      ))}
+                      {activeQuestion.targetMisconceptions.map((mid) => {
+                        const misc = getMisconceptionById(mid);
+                        return (
+                          <span
+                            key={mid}
+                            title={misc?.detail}
+                            className="inline-flex px-2 py-0.5 rounded-full bg-[#FFF1D8] border border-[#F0B962]
+                                       text-[#7A4A18] text-xs"
+                          >
+                            <span className="font-mono">{mid}</span>
+                            {misc?.label && (
+                              <span className="ml-1 font-medium">· {misc.label}</span>
+                            )}
+                          </span>
+                        );
+                      })}
                     </div>
                   </div>
                 )}

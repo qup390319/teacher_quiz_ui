@@ -23,12 +23,12 @@ export default function ClassStatusCards({ overviewData, onSelectClass }) {
 
   return (
     <div>
-      <div className="flex items-start justify-between mb-1">
-        <div>
+      <div className="mb-1">
+        <div className="flex items-center gap-2">
           <h3 className="text-base font-bold text-[#2D3436]">各班學習狀況總覽</h3>
-          <p className="text-sm text-[#636E72] mt-0.5">三項核心指標一覽，快速掌握各班現況與介入優先序</p>
+          <InfoButton onClick={() => setInfoOpen(true)} />
         </div>
-        <InfoButton onClick={() => setInfoOpen(true)} />
+        <p className="text-sm text-[#636E72] mt-0.5">三項核心指標一覽，快速掌握各班現況與介入優先序</p>
       </div>
       <div
         className="grid gap-3 sm:gap-4 mt-4 grid-cols-1 sm:grid-cols-2 lg:[grid-template-columns:var(--cols-lg)]"

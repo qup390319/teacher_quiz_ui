@@ -266,15 +266,21 @@ export default function StudentReport() {
                   </div>
                 </div>
                 <p className="text-xs text-[#636E72] mb-3">{node.description}</p>
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <div className="flex-1 bg-[#C8EAAE] border border-[#BDC3C7] rounded-xl px-3 py-2.5 flex items-center gap-2">
-                    <span className="text-base">📺</span>
-                    <div>
+                {node.videoUrl && (
+                  <a
+                    href={node.videoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 bg-[#C8EAAE] border border-[#BDC3C7] rounded-xl px-3 py-2.5
+                               hover:bg-[#B8D89A] transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[22px] text-[#2D3436]">play_circle</span>
+                    <div className="min-w-0">
                       <p className="text-xs font-semibold text-[#2D3436]">教學影片</p>
-                      <p className="text-xs text-[#2E86C1] font-medium">{node.id} · 因材網</p>
+                      <p className="text-xs text-[#2E86C1] font-medium truncate">{node.videoTitle}</p>
                     </div>
-                  </div>
-                </div>
+                  </a>
+                )}
               </div>
             ))}
           </div>

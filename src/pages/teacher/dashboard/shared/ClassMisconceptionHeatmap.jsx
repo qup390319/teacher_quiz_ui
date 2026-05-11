@@ -21,7 +21,7 @@ export default function ClassMisconceptionHeatmap({ overviewData }) {
 
   return (
     <div>
-      <div className="flex items-start justify-between mb-1">
+      <div className="flex items-center gap-2 mb-1">
         <h3 className="text-base font-bold text-[#2D3436]">班級 × 迷思熱力圖</h3>
         <InfoButton onClick={() => setInfoOpen(true)} />
       </div>

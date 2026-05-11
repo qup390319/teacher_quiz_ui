@@ -16,6 +16,7 @@ import {
 } from '../../components/ui/woodKit';
 import TaskCard from '../../components/student/TaskCard';
 import Section from '../../components/student/StudentHomeSection';
+import StudentSettingsDrawer from '../../components/student/StudentSettingsDrawer';
 import bgImg from '../../assets/backgrounds/bg_chiheisen_green.jpg';
 import studentImg from '../../assets/illustrations/irasutoya_student_clean.png';
 import mascotImg from '../../assets/illustrations/scilens_mascot.png';
@@ -59,6 +60,7 @@ export default function StudentHome() {
 
   const [diagnosisHistoryOpen, setDiagnosisHistoryOpen] = useState(false);
   const [scenarioHistoryOpen, setScenarioHistoryOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   /* 將派題 enriched 為任務卡資料 */
   const { diagnosisTasks, scenarioTasks } = useMemo(() => {
@@ -231,6 +233,7 @@ export default function StudentHome() {
             <button
               type="button"
               aria-label="設定"
+              onClick={() => setSettingsOpen(true)}
               className="hover:rotate-90 hover:scale-110 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]
                          cursor-pointer flex items-center justify-center flex-shrink-0
                          drop-shadow-[0_3px_3px_rgba(91,66,38,0.35)]"
@@ -391,6 +394,8 @@ export default function StudentHome() {
           </div>
         </div>
       </main>
+
+      <StudentSettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }
@@ -416,8 +421,8 @@ function AvatarPill({ studentName }) {
 /* 兩項統計合併進一個木框 pill：已完成 / 待完成 */
 function CombinedStats({ stats }) {
   const items = [
-    { icon: 'check_circle',    value: `${stats.completedAssignments}/${stats.totalAssignments}`, color: 'text-[#5C8A2E]', label: '已完成派題' },
-    { icon: 'pending_actions', value: stats.pending,                                             color: 'text-[#D08B2E]', label: '待完成派題' },
+    { icon: 'check_circle',    value: `${stats.completedAssignments}/${stats.totalAssignments}`, color: 'text-[#5C8A2E]', label: '已完成派題', shortLabel: '已完成' },
+    { icon: 'pending_actions', value: stats.pending,                                             color: 'text-[#D08B2E]', label: '待完成派題', shortLabel: '未完成' },
   ];
   return (
     <div className={WOOD_OUTER}>
@@ -425,6 +430,7 @@ function CombinedStats({ stats }) {
         {items.map((item) => (
           <div key={item.icon} title={item.label} className="flex items-center gap-1.5 px-2.5 sm:px-3">
             <Icon name={item.icon} filled className={`text-lg sm:text-xl ${item.color}`} />
+            <span className="font-game text-xs text-[#7A5232] leading-none">{item.shortLabel}</span>
             <span className="font-game text-base sm:text-lg font-black text-[#5A3E22] leading-none">
               {item.value}
             </span>

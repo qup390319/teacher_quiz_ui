@@ -48,7 +48,7 @@ export default function ClassScatterChart({ overviewData }) {
 
   return (
     <div>
-      <div className="flex items-start justify-between mb-1">
+      <div className="flex items-center gap-2 mb-1">
         <h3 className="text-base font-bold text-[#2D3436]">完成率 × 掌握率 班級分布</h3>
         <InfoButton onClick={() => setInfoOpen(true)} />
       </div>

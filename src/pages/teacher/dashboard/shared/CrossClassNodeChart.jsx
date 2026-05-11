@@ -32,7 +32,7 @@ export default function CrossClassNodeChart({ overviewData }) {
 
   return (
     <div>
-      <div className="flex items-start justify-between mb-1">
+      <div className="flex items-center gap-2 mb-1">
         <h3 className="text-base font-bold text-[#2D3436]">知識節點跨班比較</h3>
         <InfoButton onClick={() => setInfoOpen(true)} />
       </div>

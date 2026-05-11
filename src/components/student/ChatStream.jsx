@@ -19,7 +19,11 @@ export default function ChatStream({
   return (
     <div className="flex-1 flex flex-col px-3 sm:px-5 relative min-h-0">
       {/* 對話氣泡列表 */}
-      <section ref={chatStreamRef} className="flex-1 flex flex-col gap-3 pb-4 overflow-y-auto">
+      <section ref={chatStreamRef} className="flex-1 flex flex-col gap-3 pb-4 overflow-y-auto
+                 [scrollbar-width:thin] [scrollbar-color:#E8D5B5_transparent]
+                 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent
+                 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#E8D5B5]
+                 [&::-webkit-scrollbar-thumb:hover]:bg-[#D4BC96]">
         {messages.map((m) => <Bubble key={m.id} role={m.role} text={m.text} />)}
         {isThinking && <ThinkingBubble />}
         {requiresRestatement && (

@@ -46,6 +46,12 @@ const ICONS = {
         d="M3 10h18M3 14h18M10 3v18M14 3v18M3 6a3 3 0 013-3h12a3 3 0 013 3v12a3 3 0 01-3 3H6a3 3 0 01-3-3V6z" />
     </svg>
   ),
+  bulb: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M9 18h6M10 22h4M12 2a7 7 0 00-4 12.7c.6.5 1 1.2 1 2V17h6v-.3c0-.8.4-1.5 1-2A7 7 0 0012 2z" />
+    </svg>
+  ),
 };
 
 const navItems = [
@@ -78,21 +84,25 @@ const navItems = [
     group: 'dashboard',
     label: '診斷結果',
     icon: ICONS.chart,
+    alwaysOpen: true,
     children: [
       { to: '/teacher/dashboard/overview',       label: '全年級總覽' },
       { to: '/teacher/dashboard/classes',        label: '各班學習狀況' },
       { to: '/teacher/dashboard/nodes',          label: '知識節點跨班比較' },
       { to: '/teacher/dashboard/misconceptions', label: '跨班高頻迷思' },
-      { to: '/teacher/dashboard/class-detail',   label: '各班詳細報告' },
+      { to: '/teacher/dashboard/students',       label: '個別學生診斷報告' },
     ],
   },
-  { to: '/teacher/treatment-logs', label: '治療對話紀錄', icon: ICONS.chat },
+  { to: '/teacher/diagnosis-logs', label: '診斷對話紀錄', icon: ICONS.chat },
+  { to: '/teacher/treatment-logs', label: '情境對話紀錄', icon: ICONS.chat },
 
   { section: '班級' },
-  { to: '/teacher/classes', label: '班級管理', icon: ICONS.users },
+  { to: '/teacher/classes', label: '班級名單管理', icon: ICONS.users },
 
   { section: '其他' },
-  { to: '/teacher/knowledge-map', label: '知識節點總覽', icon: ICONS.grid },
+  { to: '/teacher/misconception-causes', label: '迷思概念成因', icon: ICONS.bulb },
+  { to: '/teacher/knowledge-map', label: '(預設) 知識節點總覽', icon: ICONS.grid },
+  { to: '/teacher/custom-knowledge-map', label: '(自定義) 知識節點總覽', icon: ICONS.grid },
 ];
 
 function isGroupActive(children, pathname) {

@@ -42,7 +42,7 @@ export default function BreakdownChart({ quizId, classId }) {
 
   return (
     <div>
-      <div className="flex items-start justify-between mb-1">
+      <div className="flex items-center gap-2 mb-1">
         <h3 className="text-base font-bold text-[#2D3436]">各概念掌握程度分析</h3>
         <InfoButton onClick={() => setInfoOpen(true)} />
       </div>

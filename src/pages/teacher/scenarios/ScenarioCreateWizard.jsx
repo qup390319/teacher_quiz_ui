@@ -135,8 +135,7 @@ export default function ScenarioCreateWizard() {
               {isEditing ? '編輯情境考卷' : '新增情境考卷'}
             </h1>
             <p className="text-[#636E72] mt-1 text-sm">
-              每一題由 AI 以「認知師徒制」（示範 → 指導 → 鷹架 → 反思）引導學生對話，
-              對話內部用 CER（主張·證據·推理·修正）追問澄清。
+              每一題由 AI 以「論證對話」（主張 → 證據 → 推理 → 重述）引導學生對話。
             </p>
             <button
               type="button"
@@ -147,7 +146,7 @@ export default function ScenarioCreateWizard() {
                 <circle cx="12" cy="12" r="9" strokeLinecap="round" strokeLinejoin="round" />
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v.01M11 12h1v4h1" />
               </svg>
-              {showGuide ? '收起說明' : '什麼是認知師徒制？'}
+              {showGuide ? '收起說明' : '什麼是論證對話？'}
             </button>
           </div>
           <button
@@ -159,26 +158,20 @@ export default function ScenarioCreateWizard() {
           </button>
         </div>
 
-        {/* 認知師徒制說明 */}
+        {/* 論證對話說明 */}
         {showGuide && (
           <section className="bg-[#FFFBF0] rounded-2xl border-2 border-[#F0B962] p-6 mb-6 shadow-[0_2px_8px_rgba(208,139,46,0.08)]">
             <div className="flex items-start justify-between gap-3 mb-4">
               <div>
                 <h2 className="text-base font-bold text-[#7A4A18] flex items-center gap-2">
                   <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#F0B962] text-white text-xs">💡</span>
-                  填寫前先了解：什麼是「認知師徒制」？
+                  填寫前先了解：什麼是「論證對話」？
                 </h2>
                 <p className="text-sm text-[#7A5232] mt-2 leading-relaxed">
-                  認知師徒制（Cognitive Apprenticeship, Collins et al. 1989）把學習想成「師傅帶徒弟」——
-                  AI 扮演師傅，透過下面四個方法引導學生：先<strong>示範</strong>專家怎麼想、再
-                  <strong>指導</strong>學生即時修正、用<strong>鷹架</strong>從多到少漸退提示，
-                  最後讓學生<strong>反思</strong>整個推理歷程。
-                  您為每題填寫下方欄位，AI 會自動把這些素材安排到四個方法中。
-                  <br />
-                  <span className="text-xs text-[#9B7A4E]">
-                    💡 對話的「內部骨架」採用 CER（主張·證據·推理·修正），
-                    用來追問澄清，是上面四個方法在每一輪對話中的具體展現方式。
-                  </span>
+                  論證對話以 CER 架構（Claim-Evidence-Reasoning）引導學生進行科學論證——
+                  AI 依序帶學生完成四個階段：先提出<strong>主張</strong>、再找出支持的<strong>證據</strong>、
+                  接著連結背後的<strong>科學推理</strong>，最後<strong>重述</strong>完整的論證。
+                  您為每題填寫下方欄位，AI 會自動將素材安排到四個階段中。
                 </p>
               </div>
               <button
@@ -197,31 +190,31 @@ export default function ScenarioCreateWizard() {
               {[
                 {
                   step: '1',
-                  name: '示範 Modeling',
-                  what: 'AI 主動展示專家的思考路徑，讓學生看見「成熟學習者怎麼想」。',
-                  teacher: '您要寫：專家示範範文（這題正確的推理示範，含主張、證據、推理）',
-                  example: '例：「我來示範專家的思考——我主張 A、B 一樣甜；證據是兩杯都已飽和；推理是溶質濃度相同。」',
+                  name: '主張 Claim',
+                  what: '學生先提出自己對問題的立場與判斷。',
+                  teacher: '您要寫：情境敘述 + AI 開場提問（引導學生提出主張）',
+                  example: '例：AI 問「你認為 A 杯和 B 杯的糖水，哪一杯喝起來比較甜？請先提出你的主張。」',
                 },
                 {
                   step: '2',
-                  name: '指導 Coaching',
-                  what: 'AI 即時點評學生回答，提供 8–25 字短評，貼著學生的想法做下一步追問。',
-                  teacher: '您要寫：本題鎖定的目標迷思（系統會針對該迷思精準回應、追問）',
-                  example: '例：勾選「M03-1 攪拌增加溶解量」→ 學生回「攪拌會多溶」時，AI 會說：「再想一下：是『多』還是『快』？」',
+                  name: '證據 Evidence',
+                  what: 'AI 追問學生找出支持主張的觀察線索或實驗證據。',
+                  teacher: '您要寫：本題鎖定的目標迷思（系統會針對該迷思精準追問）',
+                  example: '例：AI 問「能不能告訴我，你是怎麼知道的？證據就是支持你想法的線索或觀察喔！」',
                 },
                 {
                   step: '3',
-                  name: '鷹架與漸退 Scaffolding & Fading',
-                  what: '提示分為 0–3 級。學生卡關時 AI 會逐級加深提示；表現好時提示自動退場。',
-                  teacher: '您要寫：情境敘述 + AI 開場提問（決定學生第一次面對問題的鷹架形狀）',
-                  example: '例：開場「A、B 兩杯糖水哪杯比較甜？」→ 卡住時提示「你有沒有觀察到杯子裡的糖量？」',
+                  name: '推理 Reasoning',
+                  what: 'AI 引導學生連結證據與主張背後的科學原因。學生卡關時提示分級漸退。',
+                  teacher: '您要寫：專家示範範文（這題正確的推理示範，含主張、證據、推理）',
+                  example: '例：AI 問「把證據和主張連起來看，你覺得背後的科學原因是什麼？」',
                 },
                 {
                   step: '4',
-                  name: '反思 Articulation & Reflection',
-                  what: '本題對話結束後，AI 帶學生用自己的話複述推理路徑，比較「原本的想法」與「修正後的想法」。',
-                  teacher: '無需額外填寫——系統會自動依對話歷程帶出反思問題。',
-                  example: '例：AI 問「你一開始為什麼覺得攪拌會多溶？後來什麼線索讓你改變想法？」',
+                  name: '重述 Restatement',
+                  what: '學生用自己的話整理完整論證（主張＋證據＋推理），鞏固理解。',
+                  teacher: '無需額外填寫——系統會自動依對話歷程帶出重述引導。',
+                  example: '例：AI 問「把剛剛說過的內容再整理一次：你的主張是什麼？支持的線索是什麼？背後的原因是什麼？」',
                 },
               ].map((s) => (
                 <div key={s.step} className="bg-white rounded-xl border border-[#F0B962] p-4 shadow-[0_1px_3px_rgba(208,139,46,0.06)]">

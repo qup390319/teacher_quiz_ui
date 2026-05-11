@@ -40,14 +40,14 @@ export default function OverallAIDiagnosisSummary({ overviewData }) {
             </svg>
           </div>
           <div>
-            <h3 className="text-base font-bold text-[#2D3436]">全年級診斷總覽</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-base font-bold text-[#2D3436]">全年級診斷總覽</h3>
+              <InfoButton onClick={() => setInfoOpen(true)} />
+            </div>
             <p className="text-xs text-[#636E72]">依各班診斷結果彙整學習狀況，提供跨班趨勢與優先介入順序</p>
           </div>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <InfoButton onClick={() => setInfoOpen(true)} />
-          <span className={`text-xs font-bold px-3 py-1.5 rounded-full border ${health.color}`}>{health.label}</span>
-        </div>
+        <span className={`text-xs font-bold px-3 py-1.5 rounded-full border flex-shrink-0 ${health.color}`}>{health.label}</span>
       </div>
       <div className="grid grid-cols-3 gap-3 mb-4">
         {[

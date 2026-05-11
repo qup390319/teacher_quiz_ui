@@ -8,57 +8,57 @@
     "questions": [
       {
         "id": 1,
-        "stem": "媽媽把一匙糖加入熱開水並攪拌，糖看不見了，這時候糖到哪裡去了？",
+        "stem": "媽媽在杯子裡的水加了一匙糖，用湯匙攪一攪後，糖看不見了。請問糖跑去哪裡了？",
         "knowledgeNodeId": "INe-II-3-02",
         "options": [
-          { "tag": "A", "content": "糖變成肉眼看不見的小粒子分散在水裡，仍然存在於水中。", "diagnosis": "CORRECT" },
-          { "tag": "B", "content": "糖完全消失了，已經不在水裡。", "diagnosis": "M02-1" },
-          { "tag": "C", "content": "糖像冰塊一樣融化了，已經變成水的一部分。", "diagnosis": "M02-2" },
-          { "tag": "D", "content": "糖蒸發到空氣中了，所以看不見。", "diagnosis": "M02-3" }
+          { "tag": "A", "content": "糖還在水裡，只是變成很小很小的粒子，眼睛看不到。", "diagnosis": "CORRECT" },
+          { "tag": "B", "content": "糖不見了，已經完全消失了。", "diagnosis": "M02-1" },
+          { "tag": "C", "content": "糖像冰塊一樣融化了，變成水的一部分。", "diagnosis": "M02-2" },
+          { "tag": "D", "content": "糖跑到空氣中去了，所以看不見。", "diagnosis": "M02-3" }
         ]
       },
       {
         "id": 2,
-        "stem": "小明在 100 毫升的水中加入很多糖，攪拌一陣子後杯底仍有糖沒溶完。下列敘述何者最正確？",
+        "stem": "小明在一杯水裡加了好多糖，攪了很久之後，杯底還是有一些糖沒有溶解。為什麼？",
         "knowledgeNodeId": "INe-II-3-03",
         "options": [
-          { "tag": "A", "content": "只要攪拌得更用力、攪久一點，剩下的糖就一定能全部溶解。", "diagnosis": "M03-1" },
-          { "tag": "B", "content": "攪拌只能加快糖溶解的速度，無法讓更多的糖溶進這杯水裡。", "diagnosis": "CORRECT" },
-          { "tag": "C", "content": "沒有攪拌的話，糖根本不會溶解。", "diagnosis": "M03-2" },
-          { "tag": "D", "content": "持續攪拌，沉在杯底的糖也會跟著重新溶解進水裡。", "diagnosis": "M03-3" }
+          { "tag": "A", "content": "攪得不夠用力，再多攪一下就一定能全部溶完。", "diagnosis": "M03-1" },
+          { "tag": "B", "content": "這杯水已經溶不下那麼多糖了，攪拌只能讓糖溶得比較快，不能溶更多。", "diagnosis": "CORRECT" },
+          { "tag": "C", "content": "不攪拌的話，糖根本不會溶解。", "diagnosis": "M03-2" },
+          { "tag": "D", "content": "只要一直攪下去，杯底的糖一定會再溶進去。", "diagnosis": "M03-3" }
         ]
       },
       {
         "id": 3,
-        "stem": "小華把鹽一直加進一杯水中，加到最後杯底開始有鹽溶不掉。下列哪個說法最正確？",
+        "stem": "小華把鹽一直加進一杯水中，加到後來杯底有鹽溶不掉了。為什麼？",
         "knowledgeNodeId": "INe-II-3-05",
         "options": [
-          { "tag": "A", "content": "一杯水能溶解的鹽量有上限，超過就會沉澱。", "diagnosis": "CORRECT" },
-          { "tag": "B", "content": "鹽沉到杯底是因為鹽比水重，與溶解量上限無關。", "diagnosis": "M05-2" },
-          { "tag": "C", "content": "只要不斷加熱與加水，這杯水可以溶解任何量的鹽。", "diagnosis": "M05-3" },
-          { "tag": "D", "content": "鹽是破碎狀比較輕會浮上來，沒看到就是已經溶完了。", "diagnosis": "M05-4" }
+          { "tag": "A", "content": "一杯水能溶的鹽有限，太多就溶不了了。", "diagnosis": "CORRECT" },
+          { "tag": "B", "content": "鹽沉到杯底是因為鹽比較重，不是因為溶不下。", "diagnosis": "M05-2" },
+          { "tag": "C", "content": "只要一直加水或加熱，就可以溶掉所有的鹽。", "diagnosis": "M05-3" },
+          { "tag": "D", "content": "鹽很輕會浮起來，看不到就是已經溶完了。", "diagnosis": "M05-4" }
         ]
       },
       {
         "id": 4,
-        "stem": "要判斷一杯透明的水溶液是酸性、中性還是鹼性，最適合的方法是？",
+        "stem": "老師給你一杯透明的水，要你分辨它是酸性、中性還是鹼性。你應該怎麼做？",
         "knowledgeNodeId": "INe-Ⅲ-5-4",
         "options": [
-          { "tag": "A", "content": "用嘴巴嚐看看，鹹的就是鹼性。", "diagnosis": "M09-1" },
-          { "tag": "B", "content": "聞看看，沒有刺鼻味就是中性。", "diagnosis": "M09-2" },
-          { "tag": "C", "content": "用石蕊試紙浸入水溶液中，依顏色變化判斷。", "diagnosis": "CORRECT" },
-          { "tag": "D", "content": "看名稱中有沒有「酸」字，沒有就一定不是酸性。", "diagnosis": "M09-3" }
+          { "tag": "A", "content": "用嘴巴嚐嚐看味道。", "diagnosis": "M09-1" },
+          { "tag": "B", "content": "用鼻子聞聞看有沒有味道。", "diagnosis": "M09-2" },
+          { "tag": "C", "content": "用石蕊試紙放進去，看顏色怎麼變。", "diagnosis": "CORRECT" },
+          { "tag": "D", "content": "看瓶子上的名字有沒有「酸」這個字。", "diagnosis": "M09-3" }
         ]
       },
       {
         "id": 5,
-        "stem": "水管被堵住時，可以倒入鹼性的通樂（含氫氧化鈉）來通水管。下列敘述何者最正確？",
+        "stem": "肥皂水是鹼性的，可以用來洗碗盤上的油漬。下面哪個說法是對的？",
         "knowledgeNodeId": "INe-Ⅲ-5-7",
         "options": [
-          { "tag": "A", "content": "鹼性物質都有毒，絕對不能拿來做家庭清潔。", "diagnosis": "M12-1" },
-          { "tag": "B", "content": "通樂能把水管裡的油脂等阻塞物分解掉。", "diagnosis": "CORRECT" },
-          { "tag": "C", "content": "通樂越濃就一定越強鹼，越稀就是弱鹼。", "diagnosis": "M12-2" },
-          { "tag": "D", "content": "鹼性遇到酸性會把彼此完全消滅變成虛無。", "diagnosis": "M12-3" }
+          { "tag": "A", "content": "鹼性的東西都很危險，不能用在生活中。", "diagnosis": "M12-1" },
+          { "tag": "B", "content": "鹼性的肥皂水可以把油漬分解洗乾淨。", "diagnosis": "CORRECT" },
+          { "tag": "C", "content": "肥皂水越濃就一定是強鹼，越淡就是弱鹼。", "diagnosis": "M12-2" },
+          { "tag": "D", "content": "酸和鹼碰在一起會互相消滅，什麼都不剩。", "diagnosis": "M12-3" }
         ]
       }
     ]
@@ -72,57 +72,57 @@
     "questions": [
       {
         "id": 1,
-        "stem": "把鹽放進水裡攪一攪後鹽看不見了，過一會兒水嚐起來仍是鹹的。這代表？",
+        "stem": "把鹽放進水裡攪一攪，鹽看不見了，但是水變鹹了。為什麼？",
         "knowledgeNodeId": "INe-II-3-02",
         "options": [
-          { "tag": "A", "content": "鹽已經不是原來的鹽，溶解過程把鹽變成另一種物質。", "diagnosis": "M02-4" },
-          { "tag": "B", "content": "鹽變成肉眼看不見的小粒子均勻分散在水中。", "diagnosis": "CORRECT" },
-          { "tag": "C", "content": "鹽真的不見了，只是水的味道剛好變鹹。", "diagnosis": "M02-1" },
-          { "tag": "D", "content": "鹽蒸發了，鹹味是水自己變的。", "diagnosis": "M02-3" }
+          { "tag": "A", "content": "鹽已經變成另一種東西了。", "diagnosis": "M02-4" },
+          { "tag": "B", "content": "鹽變成很小的粒子散在水中，所以水是鹹的。", "diagnosis": "CORRECT" },
+          { "tag": "C", "content": "鹽真的消失了，水的鹹味是自己跑出來的。", "diagnosis": "M02-1" },
+          { "tag": "D", "content": "鹽跑到空氣裡了，鹹味是水本來就有的。", "diagnosis": "M02-3" }
         ]
       },
       {
         "id": 2,
-        "stem": "兩杯一樣的水各加入 5 公克糖，A 杯不攪拌、B 杯快速攪拌。最後比較兩杯，會發現？",
+        "stem": "兩杯一樣多的水，各放入一樣多的糖。A 杯不攪拌，B 杯用湯匙快速攪拌。比較這兩杯水，會發現什麼？",
         "knowledgeNodeId": "INe-II-3-03",
         "options": [
-          { "tag": "A", "content": "兩杯能溶解的糖量相同，只是 B 杯溶解得比較快。", "diagnosis": "CORRECT" },
-          { "tag": "B", "content": "B 杯能溶解的糖比 A 杯多，因為攪拌會讓水容納更多糖。", "diagnosis": "M03-1" },
-          { "tag": "C", "content": "A 杯的糖完全沒有溶解，因為沒攪拌就不會溶解。", "diagnosis": "M03-2" },
-          { "tag": "D", "content": "兩杯溶解情況完全一樣，攪拌不會加快也不會增加。", "diagnosis": "M03-4" }
+          { "tag": "A", "content": "最後兩杯溶的糖一樣多，只是 B 杯比較快溶完。", "diagnosis": "CORRECT" },
+          { "tag": "B", "content": "B 杯可以溶比較多糖，因為攪拌會讓水裝下更多糖。", "diagnosis": "M03-1" },
+          { "tag": "C", "content": "A 杯的糖完全不會溶解，因為沒有攪拌。", "diagnosis": "M03-2" },
+          { "tag": "D", "content": "攪不攪拌都沒差，溶解速度也一樣。", "diagnosis": "M03-4" }
         ]
       },
       {
         "id": 3,
-        "stem": "在室溫下，把糖一直加入同一杯水並攪拌。當水中已經溶不下時你會看到？",
+        "stem": "在一杯水中一直加糖並攪拌，加到水溶不下為止。你會看到什麼？",
         "knowledgeNodeId": "INe-II-3-05",
         "options": [
-          { "tag": "A", "content": "多餘的糖會沉到杯底，因為水能溶解的糖量有極限。", "diagnosis": "CORRECT" },
-          { "tag": "B", "content": "多餘的糖只是因為比較重而沉底，再攪拌、加熱還會繼續溶。", "diagnosis": "M05-2" },
-          { "tag": "C", "content": "水可以無限溶解糖，看到沉澱代表還沒攪拌均勻。", "diagnosis": "M05-3" },
-          { "tag": "D", "content": "加熱可以讓糖暫時全溶，但放一段時間後又會全部沉澱出來。", "diagnosis": "M05-1" }
+          { "tag": "A", "content": "多出來的糖會沉在杯底，因為這杯水已經溶不下了。", "diagnosis": "CORRECT" },
+          { "tag": "B", "content": "糖沉在杯底只是因為太重，再多攪一下就會溶了。", "diagnosis": "M05-2" },
+          { "tag": "C", "content": "水可以一直溶糖，不可能溶不下。", "diagnosis": "M05-3" },
+          { "tag": "D", "content": "加熱可以讓全部的糖溶掉，但冷了又會全部跑出來。", "diagnosis": "M05-1" }
         ]
       },
       {
         "id": 4,
-        "stem": "將紫色石蕊試紙浸入小蘇打水中，試紙變成藍色。這代表小蘇打水是？",
+        "stem": "把紫色石蕊試紙放進小蘇打水裡，試紙變成藍色了。這表示小蘇打水是什麼性質？",
         "knowledgeNodeId": "INe-Ⅲ-5-4",
         "options": [
-          { "tag": "A", "content": "酸性，因為「小蘇打」這個名稱沒有「酸」字。", "diagnosis": "M09-3" },
-          { "tag": "B", "content": "鹼性，因為紫色石蕊試紙在鹼性溶液中會變成藍色。", "diagnosis": "CORRECT" },
-          { "tag": "C", "content": "中性，因為小蘇打水沒有刺鼻味。", "diagnosis": "M09-2" },
-          { "tag": "D", "content": "鹼性，因為小蘇打水嚐起來不是酸的也不是鹹的。", "diagnosis": "M09-4" }
+          { "tag": "A", "content": "酸性，因為名字裡沒有「酸」這個字。", "diagnosis": "M09-3" },
+          { "tag": "B", "content": "鹼性，因為石蕊試紙碰到鹼性液體會變藍色。", "diagnosis": "CORRECT" },
+          { "tag": "C", "content": "中性，因為小蘇打水沒有特別的味道。", "diagnosis": "M09-2" },
+          { "tag": "D", "content": "鹼性，因為喝起來不酸也不鹹。", "diagnosis": "M09-4" }
         ]
       },
       {
         "id": 5,
-        "stem": "被蜜蜂叮咬時皮膚會痛癢，這是因為蜜蜂的毒液偏酸性。下列建議何者最合適？",
+        "stem": "被蜜蜂叮到時皮膚會又痛又癢，因為蜜蜂的毒液是酸性的。怎樣做比較好？",
         "knowledgeNodeId": "INe-Ⅲ-5-7",
         "options": [
-          { "tag": "A", "content": "不要碰它，所有酸都很危險、有毒，碰了會更糟。", "diagnosis": "M12-1" },
-          { "tag": "B", "content": "塗一點偏鹼性的小蘇打水，可以幫助緩解。", "diagnosis": "CORRECT" },
-          { "tag": "C", "content": "馬上塗檸檬汁，因為酸與酸可以互相消滅。", "diagnosis": "M12-3" },
-          { "tag": "D", "content": "因為有「酸」字，皮膚一定會被腐蝕壞死，要立刻送醫。", "diagnosis": "M12-4" }
+          { "tag": "A", "content": "酸性的東西都很危險，千萬不能碰。", "diagnosis": "M12-1" },
+          { "tag": "B", "content": "塗一點鹼性的小蘇打水，可以幫忙止癢。", "diagnosis": "CORRECT" },
+          { "tag": "C", "content": "趕快塗檸檬汁，因為酸加酸可以消除。", "diagnosis": "M12-3" },
+          { "tag": "D", "content": "被酸性的東西碰到一定會爛掉，要馬上去醫院。", "diagnosis": "M12-4" }
         ]
       }
     ]
@@ -136,10 +136,10 @@
     "questions": [
       {
         "id": 1,
-        "stem": "把一匙鹽倒進水裡攪拌後，鹽從杯中消失看不見了。下列哪個說法最正確？",
+        "stem": "把一匙鹽倒進水裡攪拌後，鹽看不見了。下面哪個說法是對的？",
         "knowledgeNodeId": "INe-II-3-02",
         "options": [
-          { "tag": "A", "content": "鹽變成肉眼看不見的小粒子分散在水中，把水蒸發後鹽會重新出現。", "diagnosis": "CORRECT" },
+          { "tag": "A", "content": "鹽變成很小的粒子散在水中，把水蒸發後鹽會重新出現。", "diagnosis": "CORRECT" },
           { "tag": "B", "content": "鹽完全消失了，因為它與水反應變成新東西。", "diagnosis": "M02-4" },
           { "tag": "C", "content": "（請輸入選項 C）", "diagnosis": "M02-1" },
           { "tag": "D", "content": "（請輸入選項 D）", "diagnosis": "M02-3" }

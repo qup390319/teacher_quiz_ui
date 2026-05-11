@@ -322,6 +322,13 @@ async def seed_followups(db: AsyncSession) -> int:
             {"role": "assistant", "content": "很好，那我們來想想看：如果把溶液繼續加水稀釋，那些溶質會發生什麼變化？"},
             {"role": "student",   "content": "嗯…我想可能會慢慢消失，因為溶解就是不見了。"},
         ]
+        cause_map = {
+            "M02-1": [2, 5], "M02-2": [6], "M02-3": [3, 5], "M02-4": [2, 6],
+            "M03-1": [3, 5], "M03-2": [4, 5], "M03-3": [3], "M03-4": [1],
+            "M05-1": [3], "M05-2": [5], "M05-3": [3, 4], "M05-4": [2],
+            "M09-1": [2, 6], "M09-2": [4], "M09-3": [5], "M09-4": [1, 4],
+            "M12-1": [5, 6], "M12-2": [3], "M12-3": [4], "M12-4": [4, 6],
+        }
         db.add(FollowupResult(
             student_answer_id=a.id,
             conversation_log=convo,
@@ -330,6 +337,7 @@ async def seed_followups(db: AsyncSession) -> int:
             reasoning_quality="WEAK",
             status_change={},
             ai_summary=f"學生對 {m} 的概念仍有迷思，傾向把溶解視為物質消失。建議從重量守恆切入再次討論。",
+            cause_ids=cause_map.get(m, [4]),
         ))
         inserted += 1
     return inserted

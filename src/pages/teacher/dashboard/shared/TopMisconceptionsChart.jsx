@@ -50,7 +50,7 @@ export default function TopMisconceptionsChart({ overviewData }) {
 
   return (
     <div>
-      <div className="flex items-start justify-between mb-1">
+      <div className="flex items-center gap-2 mb-1">
         <h3 className="text-base font-bold text-[#2D3436]">跨班高頻迷思 Top {sorted.length}</h3>
         <InfoButton onClick={() => setInfoOpen(true)} />
       </div>

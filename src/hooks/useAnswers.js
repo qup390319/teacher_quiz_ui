@@ -60,6 +60,19 @@ export function useRecordAnswers() {
   });
 }
 
+/** 教師端：跨班跨卷的診斷追問對話紀錄 */
+export function useDiagnosisLogs(filters = {}) {
+  const params = new URLSearchParams();
+  for (const [k, v] of Object.entries(filters)) {
+    if (v !== undefined && v !== null && v !== '' && v !== 'all') params.append(k, v);
+  }
+  const qs = params.toString();
+  return useQuery({
+    queryKey: ['diagnosis-logs', filters],
+    queryFn: () => api.get(`/teachers/diagnosis-logs${qs ? `?${qs}` : ''}`),
+  });
+}
+
 /** 學生提交一批追問結果（驅動 statusChange 自動修正第一階段 diagnosis） */
 export function useRecordFollowups() {
   const qc = useQueryClient();
