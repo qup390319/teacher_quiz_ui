@@ -4,7 +4,8 @@ from fastapi.responses import StreamingResponse
 
 from app.auth.deps import get_current_user
 from app.db.models import User
-from app.schemas.llm import ChatRequest, ChatResponse
+from app.schemas.llm import CauseAnalysisRequest, CauseAnalysisResponse, ChatRequest, ChatResponse
+from app.services import cause_analysis_service
 from app.services.llm_service import LlmServiceError, chat, chat_stream
 
 router = APIRouter()
@@ -51,3 +52,21 @@ async def llm_chat_stream(
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@router.post("/analyze-cause", response_model=CauseAnalysisResponse, response_model_by_alias=True)
+async def analyze_misconception_cause(
+    payload: CauseAnalysisRequest,
+    _user: User = Depends(get_current_user),
+) -> CauseAnalysisResponse:
+    """Analyze misconception cause from follow-up dialogue via LLM."""
+    try:
+        cause_ids = await cause_analysis_service.analyze_cause(
+            conversation_log=payload.conversation_log,
+            misconception_code=payload.misconception_code,
+            misconception_label=payload.misconception_label,
+            knowledge_node=payload.knowledge_node,
+        )
+    except Exception as exc:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "CAUSE_ANALYSIS_FAILED") from exc
+    return CauseAnalysisResponse(cause_ids=cause_ids)

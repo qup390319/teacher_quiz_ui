@@ -142,3 +142,34 @@ RAGFlow（spec-12）用於「檢索文獻 + 生成」場景（N1 / N2 / N6），
 兩條路徑完全獨立，前端 import 路徑也不同：
 - LLM 對話：`import { chat, chatStream } from '@/llm'`
 - RAGFlow 任務：`import { api } from '@/lib/api'` 後直接 `api.post('/ai/distractor-suggest', ...)`
+
+## 11. 迷思成因分析端點（Misconception Cause Analysis）
+
+### POST /api/llm/analyze-cause
+
+追問對話結束後，若學生被判定為 MISCONCEPTION，前端呼叫此端點分析成因。
+
+**Request body:**
+
+```json
+{
+  "conversationLog": [{"role": "ai"|"student", "content": "..."}],
+  "misconceptionCode": "M02-1",
+  "misconceptionLabel": "溶解即消失",
+  "knowledgeNode": "溶解現象"
+}
+```
+
+**Response:**
+
+```json
+{
+  "causeIds": [5]
+}
+```
+
+- `causeIds` 為 1-8 的整數陣列（對應 `misconceptionCauses.js` 的 8 大成因類別），通常 1-2 個
+- 後端 service: `app/services/cause_analysis_service.py`
+- 透過 `llm_service.chat()` 呼叫 vLLM，使用專門的 system prompt 讓 LLM 從 8 大成因中選擇
+- LLM 不可用時回傳空陣列 `[]`，不阻擋流程
+- 需登入（任何角色）

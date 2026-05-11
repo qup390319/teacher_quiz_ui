@@ -4,7 +4,8 @@ import { useApp } from '../../context/AppContext';
 import { useStudentMode } from '../../hooks/useStudentMode';
 import { useQuiz } from '../../hooks/useQuizzes';
 import { useRecordAnswers, useRecordFollowups } from '../../hooks/useAnswers';
-import { knowledgeNodes } from '../../data/knowledgeGraph';
+import { knowledgeNodes, getMisconceptionById } from '../../data/knowledgeGraph';
+import { api } from '../../lib/api';
 import { WoodIconButton } from '../../components/ui/woodKit';
 import WoodenProgressBar from '../../components/student/WoodenProgressBar';
 import { Bubble, ThinkingBubble } from '../../components/student/ChatStream';
@@ -183,6 +184,7 @@ function StudentQuizScreen({ quizId }) {
             reasoningQuality: r.diagnosis.reasoningQuality,
             statusChange: r.diagnosis.statusChange ?? {},
             aiSummary: r.diagnosis.aiSummary ?? null,
+            causeIds: r.diagnosis.causeIds ?? null,
           }))
           .filter((p) => p.studentAnswerId != null);
         if (followupPayload.length > 0) {
@@ -261,13 +263,31 @@ function StudentQuizScreen({ quizId }) {
     askFollowUpRound1(0);
   };
 
-  const handleFollowUpFinal = (finalDiagnosis, ctxAtFinal) => {
+  const handleFollowUpFinal = async (finalDiagnosis, ctxAtFinal) => {
     const result = {
       questionId: ctxAtFinal.questionId,
       followUpRounds: ctxAtFinal.round,
       conversationLog: ctxAtFinal.conversationLog,
       diagnosis: finalDiagnosis,
     };
+
+    // LLM 成因分析：若為 MISCONCEPTION 且有對話紀錄，非同步呼叫後端分析
+    if (finalDiagnosis.finalStatus === 'MISCONCEPTION' && ctxAtFinal.conversationLog.length > 0) {
+      try {
+        const miscon = getMisconceptionById(finalDiagnosis.misconceptionCode);
+        const node = knowledgeNodes.find((n) => n.id === ctxAtFinal.knowledgeNodeId);
+        const resp = await api.post('/llm/analyze-cause', {
+          conversationLog: ctxAtFinal.conversationLog,
+          misconceptionCode: finalDiagnosis.misconceptionCode ?? null,
+          misconceptionLabel: miscon?.label ?? null,
+          knowledgeNode: node?.name ?? null,
+        });
+        result.diagnosis = { ...finalDiagnosis, causeIds: resp.causeIds ?? [] };
+      } catch {
+        // LLM 不可用時不阻擋流程
+      }
+    }
+
     followUpResultsRef.current = [...followUpResultsRef.current, result];
 
     /* 依 statusChange 反向修正 answersRef.current（僅本地，最終 POST 時送修正後值） */

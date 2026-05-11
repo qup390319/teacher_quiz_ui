@@ -5,6 +5,7 @@ import { useStudentMode } from '../../hooks/useStudentMode';
 import { useStudentHistory } from '../../hooks/useStudents';
 import { getQuizQuestions } from '../../data/quizData';
 import { knowledgeNodes } from '../../data/knowledgeGraph';
+import { CAUSE_CATEGORIES, CAUSE_COLOR_THEMES } from '../../data/misconceptionCauses';
 
 export default function StudentReport() {
   useStudentMode();
@@ -39,6 +40,17 @@ export default function StudentReport() {
     r.diagnosis?.finalStatus === 'CORRECT'
     && (r.diagnosis?.reasoningQuality === 'WEAK' || r.diagnosis?.reasoningQuality === 'GUESSING')
   );
+
+  /* 取得迷思成因 IDs（來自 LLM 分析） */
+  const getCauseIds = (misconceptionId) => {
+    const causeSet = new Set();
+    followUpResults.forEach((r) => {
+      if (r.diagnosis?.misconceptionCode === misconceptionId && r.diagnosis?.causeIds) {
+        r.diagnosis.causeIds.forEach((id) => causeSet.add(id));
+      }
+    });
+    return [...causeSet].sort((a, b) => a - b);
+  };
 
   /* 取得單一迷思相關的學生對話引用 */
   const getStudentQuote = (questionId) => {
@@ -152,6 +164,7 @@ export default function StudentReport() {
             <div className="space-y-4">
               {misconDetails.map(({ node, miscon, relatedQs }) => {
                 const quote = relatedQs.length > 0 ? getStudentQuote(relatedQs[0].id) : null;
+                const causeIds = getCauseIds(miscon.id);
                 return (
                   <div key={miscon.id} className="rounded-[32px] border border-[#BDC3C7] p-5 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
                     <div className="flex items-start gap-3 mb-3">
@@ -165,6 +178,24 @@ export default function StudentReport() {
                       <p className="text-sm text-[#2D3436] font-medium leading-relaxed">「{miscon.label}」</p>
                       <p className="text-sm text-[#636E72] mt-1 leading-relaxed">{miscon.studentDetail || miscon.detail}</p>
                     </div>
+
+                    {causeIds.length > 0 && (
+                      <div className="bg-[#F9FBF7] border border-[#D5D8DC] rounded-2xl p-3 mb-3">
+                        <p className="text-xs font-semibold text-[#636E72] mb-2">🔎 可能的原因</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {causeIds.map((cid) => {
+                            const cat = CAUSE_CATEGORIES.find((c) => c.id === cid);
+                            if (!cat) return null;
+                            const theme = CAUSE_COLOR_THEMES[cat.color] ?? CAUSE_COLOR_THEMES.gray;
+                            return (
+                              <span key={cid} className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold ${theme.badge}`}>
+                                {cat.name}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
 
                     {quote && (
                       <div className="bg-[#FFF6E0] border border-[#F0CFA4] rounded-2xl p-3 mb-3">

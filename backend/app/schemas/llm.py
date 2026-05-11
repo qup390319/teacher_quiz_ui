@@ -36,3 +36,20 @@ class ChatResponse(BaseModel):
     raw: dict[str, Any] | None = None  # 預設不回傳；?include_raw=true 才帶
 
     model_config = ConfigDict(populate_by_name=True)
+
+
+# ── Cause analysis (misconception cause diagnosis via LLM) ──────────────
+class CauseAnalysisRequest(BaseModel):
+    """POST /api/llm/analyze-cause body."""
+    conversation_log: list[dict] = Field(alias="conversationLog")
+    misconception_code: str | None = Field(default=None, alias="misconceptionCode")
+    misconception_label: str | None = Field(default=None, alias="misconceptionLabel")
+    knowledge_node: str | None = Field(default=None, alias="knowledgeNode")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class CauseAnalysisResponse(BaseModel):
+    cause_ids: list[int] = Field(serialization_alias="causeIds")
+
+    model_config = ConfigDict(populate_by_name=True)

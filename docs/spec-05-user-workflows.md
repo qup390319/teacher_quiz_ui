@@ -324,6 +324,27 @@
 - **注意**: `studentDetail`、`studentHint` 不在此階段顯示，僅在最終 StudentReport 中呈現
 - **目前實作備註**: 因尚未接後端 LLM，`followUpEngine` 為純前端模板＋啟發式判讀模擬；未來接上 LLM 後僅替換引擎內部，對外 API 不變
 
+**第三層：迷思成因分析（finalize 時，若診斷為迷思）**
+- 追問對話結束、`finalDiagnosis` 產出後，當 `finalStatus === 'MISCONCEPTION'` 時，系統自動呼叫後端 `POST /api/llm/analyze-cause`
+- 後端接收：
+  - 對話紀錄（`conversationLog`）
+  - 迷思代碼（`misconceptionCode`）
+  - 知識節點 ID（`nodeId`）
+- LLM 根據對話內容與迷思特徵，從以下 **8 大成因類別** 中判斷 **1～2 個最可能的成因**：
+  - 1. Prior Knowledge（前科學概念）
+  - 2. Linguistic Misunderstanding（語言理解誤差）
+  - 3. Incomplete Knowledge（知識不完整）
+  - 4. Everyday Experience（日常經驗泛化）
+  - 5. Intuitive Reasoning（直覺推理）
+  - 6. Analogy Misapplication（類比誤用）
+  - 7. Social / Cultural Factors（社會／文化因素）
+  - 8. Instruction-Related（教學相關因素）
+- 成因 ID 以 `C{1-8}` 標記，存儲於 `followup_results.cause_ids`（JSONB array，最多 2 個）
+- **LLM 不可用時的降級**：若呼叫失敗，系統不阻擋流程（不拋錯），`cause_ids` 為空陣列 `[]`；前端會延後顯示成因徽章或不顯示
+- **報告顯示**：
+  - StudentReport（學生完成後看到的報告頁）：確認迷思旁顯示成因徽章 / tag（如「日常經驗泛化」）
+  - StudentDiagnosisReport（教師檢視的學生報告）：同樣顯示成因徽章，幫助教師設計針對性教學
+
 ---
 
 ## 3. 治療模組工作流（spec-08，波次 2/3 實作）

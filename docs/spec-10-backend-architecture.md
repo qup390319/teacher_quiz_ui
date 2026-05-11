@@ -84,10 +84,11 @@ backend/
     │   └── ai.py           # /api/ai/*（P2 / P3）
     ├── services/
     │   ├── __init__.py
-    │   ├── llm_service.py       # P2
-    │   ├── ragflow_service.py   # P2
-    │   ├── diagnosis_service.py # P4
-    │   └── summary_service.py   # P3
+    │   ├── llm_service.py            # P2
+    │   ├── ragflow_service.py        # P2
+    │   ├── diagnosis_service.py      # P4
+    │   ├── summary_service.py        # P3
+    │   └── cause_analysis_service.py # P4
     ├── seed/
     │   ├── __init__.py
     │   └── seed.py         # 把 src/data/*Data.js 轉成 SQL 灌入
@@ -101,6 +102,16 @@ backend/
 - `routers/` 只做 HTTP 介面與 schema 轉換，業務邏輯一律進 `services/`
 - `db/models/` 只放 ORM 定義，禁止寫業務邏輯
 - `schemas/` 是 API 邊界的 Pydantic 型別，與 `db/models/` 是兩套（防止 ORM 細節漏到 API）
+
+### 2.1 services/ 詳細說明
+
+| 服務檔案 | 階段 | 職責 |
+|---------|------|------|
+| `llm_service.py` | P2 ✅ | 統一 vLLM proxy 接口；內部轉換 prompt 格式、呼叫 vLLM、解析回應 |
+| `ragflow_service.py` | P2 ✅ | 統一 RAGFlow proxy 接口；呼叫出題輔助（N6）與摘要（N1/N2）端點 |
+| `diagnosis_service.py` | P4 ✅ | 驅動兩階段診斷流程（自動診斷 + 迷思確認）；計算節點通過率、迷思命中學生清單 |
+| `summary_service.py` | P3 ✅ | 彙整學生作答 → 生成摘要（呼叫 RAGFlow N1/N2）；快取到 `AiSummaryCache` 表 |
+| `cause_analysis_service.py` | P4 ✅ | 分析學生迷思成因（透過 LLM）；接收追問對話日誌、迷思資訊與 8 個成因分類，產生 structured prompt，呼叫 LLM 取得分析，解析 JSON 回應提取成因 ID；LLM 不可用時優雅回傳空清單 |
 
 ---
 
