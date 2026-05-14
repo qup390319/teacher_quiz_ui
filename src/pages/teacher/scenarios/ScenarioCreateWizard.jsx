@@ -525,16 +525,6 @@ function QuestionEditor({ question, availableMisconceptions, canRemove, onUpdate
                        focus:outline-none focus:ring-2 focus:ring-[#5BA47A]/40 focus:border-[#5BA47A]"
           />
         </Field>
-        <Field label="專家示範範文（apprenticeship 階段 AI 會引述）">
-          <textarea
-            rows={3}
-            value={question.expertModel}
-            onChange={(e) => onUpdate({ expertModel: e.target.value })}
-            placeholder="例：我來示範專家的思考：我主張...證據是...推理是..."
-            className="w-full px-3 py-2 rounded-xl border border-[#BDC3C7] bg-white text-sm leading-6
-                       focus:outline-none focus:ring-2 focus:ring-[#5BA47A]/40 focus:border-[#5BA47A]"
-          />
-        </Field>
         {availableMisconceptions.length > 0 && (
           <Field label="本題針對的迷思">
             <div className="flex flex-wrap gap-1.5">

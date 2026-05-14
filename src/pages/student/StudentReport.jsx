@@ -41,7 +41,9 @@ export default function StudentReport() {
     && (r.diagnosis?.reasoningQuality === 'WEAK' || r.diagnosis?.reasoningQuality === 'GUESSING')
   );
 
-  /* 取得迷思成因 IDs（來自 LLM 分析） */
+  /* 取得迷思成因 IDs（來自 LLM 分析）
+   * 優先讀 in-memory 快照；沒有的話 fall back 用後端 history 聚合好的
+   * causeIdsByMisconception（重新登入後仍能還原成因徽章）。 */
   const getCauseIds = (misconceptionId) => {
     const causeSet = new Set();
     followUpResults.forEach((r) => {
@@ -49,6 +51,10 @@ export default function StudentReport() {
         r.diagnosis.causeIds.forEach((id) => causeSet.add(id));
       }
     });
+    if (causeSet.size === 0) {
+      const fallback = backendRow?.causeIdsByMisconception?.[misconceptionId];
+      if (Array.isArray(fallback)) fallback.forEach((id) => causeSet.add(id));
+    }
     return [...causeSet].sort((a, b) => a - b);
   };
 

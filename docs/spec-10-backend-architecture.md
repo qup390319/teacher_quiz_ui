@@ -290,7 +290,7 @@ HTTP status code：
 | `answers` | `GET /api/quizzes/{quiz_id}/answers?classId=` | P4 ✅ | 教師查班級作答 |
 | `answers` | `GET /api/quizzes/{quiz_id}/followups?classId=` | P4 ✅ | 教師查該班完整 N3 追問對話紀錄（含 `conversationLog / aiSummary / finalStatus / misconceptionCode / reasoningQuality / statusChange`），給單班報告底部「學生第二層追問對話完整紀錄」區塊使用 |
 | `answers` | `GET /api/quizzes/{quiz_id}/stats?classId=` | P4 ✅ | 取代前端 mock `getNodePassRates / getMisconceptionStudents` |
-| `answers` | `GET /api/students/{id}/history` | P4 ✅ | 學生作答歷史 |
+| `answers` | `GET /api/students/{id}/history` | P4 ✅ | 學生作答歷史；每筆額外回傳 `causeIdsByMisconception`（`{misconceptionCode: causeIds[]}`），讓「學習體檢表」在 in-memory 快照失效（重新登入）後仍能還原成因徽章 |
 | `treatment` | `POST /api/treatment/sessions/start` | P4 ✅ | 啟動治療 session |
 | `treatment` | `GET /api/treatment/sessions/{id}` | P4 ✅ | 取單一 session（含 messages） |
 | `treatment` | `GET /api/treatment/sessions/by-key/{scenario_quiz_id}/{student_id}` | P4 ✅ | 給學生端用 |

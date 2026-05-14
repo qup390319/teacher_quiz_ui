@@ -131,7 +131,7 @@ export function useClasses() {
 | `useClassAnswers(quizId, classId)` | `GET /api/quizzes/{id}/answers?classId=` | `['answers', quizId, classId]` | 教師端查班級作答 |
 | `useClassFollowups(quizId, classId)` | `GET /api/quizzes/{id}/followups?classId=` | `['followups', quizId, classId]` | 教師端查該班完整 N3 追問對話（含 `conversationLog / aiSummary / finalStatus / misconceptionCode / reasoningQuality / statusChange`）；用於 SingleClassReport 底部的對話檢視 |
 | `useQuizStats(quizId, classId?)` | `GET /api/quizzes/{id}/stats?classId=` | `['quiz-stats', quizId, classId]` | 取代 mock `getNodePassRates / getMisconceptionStudents` |
-| `useStudentHistory(studentId)` | `GET /api/students/{id}/history` | `['student-history', studentId]` | 學生個人作答歷史 |
+| `useStudentHistory(studentId)` | `GET /api/students/{id}/history` | `['student-history', studentId]` | 學生個人作答歷史；每筆含 `causeIdsByMisconception`（`{misconceptionCode: number[]}`），用於 in-memory 快照失效時還原成因徽章 |
 | `useRecordAnswer()` | `POST /api/answers` | invalidate stats / answers / history | 一次接受陣列 |
 | `useRecordFollowups()` | `POST /api/answers/{id}/followup` 一次多筆 | invalidate stats / answers / history | |
 | `useStartTreatmentSession()` | `POST /api/treatment/sessions/start` | mutation | 回傳 sessionId（已存在則拿既有） |

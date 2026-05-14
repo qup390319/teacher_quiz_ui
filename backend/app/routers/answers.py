@@ -300,6 +300,15 @@ async def get_student_history(
         latest = max(ans_list, key=lambda a: a.answered_at)
         correct = sum(1 for a in ans_list if a.diagnosis == "CORRECT")
         misc = sorted({a.diagnosis for a in ans_list if a.diagnosis != "CORRECT"})
+        cause_map: dict[str, set[int]] = {}
+        for a in ans_list:
+            fup = a.followup
+            if not fup or not fup.misconception_code or not fup.cause_ids:
+                continue
+            cause_map.setdefault(fup.misconception_code, set()).update(fup.cause_ids)
+        cause_ids_by_misconception = {
+            code: sorted(ids) for code, ids in cause_map.items()
+        }
         rows.append(StudentHistoryRow(
             quiz_id=qid,
             quiz_title=quiz.title,
@@ -307,6 +316,7 @@ async def get_student_history(
             correct_count=correct,
             total_questions=len(ans_list),
             misconceptions=misc,
+            cause_ids_by_misconception=cause_ids_by_misconception,
         ))
     rows.sort(key=lambda r: r.answered_at, reverse=True)
     return rows

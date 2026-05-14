@@ -131,6 +131,12 @@ class StudentHistoryRow(BaseModel):
     correct_count: int = Field(serialization_alias="correctCount")
     total_questions: int = Field(serialization_alias="totalQuestions")
     misconceptions: list[str]
+    # {misconceptionCode: sorted unique causeIds} aggregated across this quiz's
+    # follow-up results. Lets the student "學習體檢表" render cause badges after
+    # the in-memory snapshot is gone (e.g. after re-login).
+    cause_ids_by_misconception: dict[str, list[int]] = Field(
+        default_factory=dict, serialization_alias="causeIdsByMisconception",
+    )
 
     model_config = ConfigDict(populate_by_name=True)
 
