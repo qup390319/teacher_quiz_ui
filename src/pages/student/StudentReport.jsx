@@ -6,6 +6,7 @@ import { useStudentHistory } from '../../hooks/useStudents';
 import { getQuizQuestions } from '../../data/quizData';
 import { knowledgeNodes } from '../../data/knowledgeGraph';
 import { CAUSE_CATEGORIES, CAUSE_COLOR_THEMES } from '../../data/misconceptionCauses';
+import { Icon } from '../../components/ui/woodKit';
 
 export default function StudentReport() {
   useStudentMode();
@@ -311,7 +312,9 @@ export default function StudentReport() {
                     className="flex items-center gap-2 bg-[#C8EAAE] border border-[#BDC3C7] rounded-xl px-3 py-2.5
                                hover:bg-[#B8D89A] transition-colors"
                   >
-                    <span className="material-symbols-outlined text-[22px] text-[#2D3436]">play_circle</span>
+                    <span style={{ fontSize: 22 }} className="text-[#2D3436]">
+                      <Icon name="play_circle" filled />
+                    </span>
                     <div className="min-w-0">
                       <p className="text-xs font-semibold text-[#2D3436]">教學影片</p>
                       <p className="text-xs text-[#2E86C1] font-medium truncate">{node.videoTitle}</p>
