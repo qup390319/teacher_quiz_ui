@@ -320,7 +320,7 @@ CREATE TABLE treatment_messages (
     question_index         INTEGER      NOT NULL,
     role                   VARCHAR(8)   NOT NULL,
     text                   TEXT         NOT NULL,
-    phase                  VARCHAR(16),                     -- diagnosis|apprenticeship|completed (僅 ai)
+    phase                  VARCHAR(16),                     -- diagnosis|apprenticeship|cer|completed (僅 ai；cer 由 alembic 0008 引入)
     stage                  VARCHAR(16),                     -- claim|evidence|reasoning|revise|complete
     step                   INTEGER,
     hint_level             INTEGER,
@@ -328,7 +328,7 @@ CREATE TABLE treatment_messages (
     requires_restatement   BOOLEAN      NOT NULL DEFAULT FALSE,
     created_at             TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     CONSTRAINT treatment_messages_role_chk CHECK (role IN ('ai', 'student')),
-    CONSTRAINT treatment_messages_phase_chk CHECK (phase IS NULL OR phase IN ('diagnosis', 'apprenticeship', 'completed')),
+    CONSTRAINT treatment_messages_phase_chk CHECK (phase IS NULL OR phase IN ('diagnosis', 'apprenticeship', 'cer', 'completed')),
     CONSTRAINT treatment_messages_stage_chk CHECK (stage IS NULL OR stage IN ('claim', 'evidence', 'reasoning', 'revise', 'complete')),
     CONSTRAINT treatment_messages_step_chk CHECK (step IS NULL OR (step BETWEEN 0 AND 7)),
     CONSTRAINT treatment_messages_hint_chk CHECK (hint_level IS NULL OR (hint_level BETWEEN 0 AND 3))

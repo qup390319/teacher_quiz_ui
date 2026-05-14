@@ -1,16 +1,19 @@
 /**
- * 治療對話 Mock AI（Cognitive Apprenticeship 機器人）
+ * 治療對話 AI（Cognitive Apprenticeship 機器人）
  *
- * 規格詳見 docs/spec-08-treatment-cognitive-apprenticeship.md §2-3。
+ * 規格詳見 docs/spec-08-treatment-cognitive-apprenticeship.md §2-3, §7。
  *
  * 介面契約 100% 對齊 eh 系統 server.js 的 RESPONSE_JSON_SCHEMA：
  *   { phase, step, stage, assistantMessage, feedback, hintLevel, requiresRestatement }
- * 未來換成真 LLM 時，UI 完全不用改，只需把 runTreatmentTurn 改成 async fetch。
  *
- * 本 mock 是規則式 (rule-based) 推進，不依賴 NLP；
- * 對話品質由情境考卷的 expertModel 文本提供，bot 只負責「依 step 切換 stage / 包裝對話文字」。
+ * 兩種驅動模式：
+ * 1. LLM 模式：在 treatmentBotPrompts.js 登錄該題的 system prompt → 走真 LLM
+ * 2. Mock 模式：未登錄的題目走 rule-based 推進（保留作為 fallback）
+ *
+ * runTreatmentTurn 是 async，會依題目自動選擇模式並在 LLM 失敗時 fallback 到 mock。
  */
 import { getScenarioQuiz } from './scenarioQuizData';
+import { hasLlmPromptFor, runTreatmentTurnLlm } from './treatmentBotLlm.js';
 
 export const STEPS_PER_QUESTION = 7;
 
@@ -55,22 +58,43 @@ const FEEDBACK_BY_CONTEXT = {
  * ──────────────────────────────────────────────────────────── */
 
 /**
- * 推進一輪對話。
+ * 推進一輪對話（async）。
+ *
+ * 流程：
+ *  1. 若該題已登錄 LLM prompt → 走真 LLM
+ *  2. LLM 失敗（網路 / JSON 解析 / 後端錯誤）→ fallback 到 mock，console.warn
+ *  3. 沒登錄 prompt 的題目 → 直接走 mock
  *
  * @param {Object} state - 當前對話狀態
  * @param {string} state.scenarioQuizId
  * @param {number} state.questionIndex - 1-based
  * @param {Array<{role:'ai'|'student', text:string}>} state.history
- * @param {'diagnosis'|'apprenticeship'|'completed'} state.phase
+ * @param {'diagnosis'|'apprenticeship'|'cer'|'completed'} state.phase
  * @param {number} state.step - 1~7
  * @param {'claim'|'evidence'|'reasoning'|'revise'|'complete'} state.stage
  * @param {0|1|2|3} state.hintLevel
  * @param {boolean} state.requiresRestatement
  * @param {string} userMessage - 學生本次輸入
- * @returns {Object} BotResponse
+ * @returns {Promise<Object>} BotResponse
  *   { phase, step, stage, assistantMessage, feedback, hintLevel, requiresRestatement }
  */
-export function runTreatmentTurn(state, userMessage) {
+export async function runTreatmentTurn(state, userMessage) {
+  if (hasLlmPromptFor(state.scenarioQuizId, state.questionIndex)) {
+    try {
+      return await runTreatmentTurnLlm(state, userMessage);
+    } catch (err) {
+      console.warn('[treatmentBot] LLM turn failed, falling back to mock:', err?.message ?? err);
+      // fall through to mock
+    }
+  }
+  return runTreatmentTurnMock(state, userMessage);
+}
+
+/**
+ * Rule-based fallback。同步、不依賴 NLP；
+ * 對話品質由情境考卷的 expertModel 文本提供，bot 只負責「依 step 切換 stage / 包裝對話文字」。
+ */
+export function runTreatmentTurnMock(state, userMessage) {
   const trimmed = (userMessage ?? '').trim();
   const isShort = trimmed.length > 0 && trimmed.length < 5;
   const isOffTopic = isOffTopicReply(trimmed);
@@ -220,6 +244,7 @@ function computeFeedback({ nextStep, nextStage, isShort, isOffTopic }) {
 export const PHASE_LABEL = {
   diagnosis: '診斷',
   apprenticeship: '師徒',
+  cer: 'CER 整理',
   completed: '完成',
 };
 

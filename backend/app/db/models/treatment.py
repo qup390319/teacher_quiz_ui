@@ -48,7 +48,7 @@ class TreatmentMessage(Base):
     __table_args__ = (
         CheckConstraint("role IN ('ai','student')", name="treatment_messages_role_chk"),
         CheckConstraint(
-            "phase IS NULL OR phase IN ('diagnosis','apprenticeship','completed')",
+            "phase IS NULL OR phase IN ('diagnosis','apprenticeship','cer','completed')",
             name="treatment_messages_phase_chk",
         ),
         CheckConstraint(

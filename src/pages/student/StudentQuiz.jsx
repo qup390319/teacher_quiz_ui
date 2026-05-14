@@ -10,7 +10,11 @@ import { WoodIconButton } from '../../components/ui/woodKit';
 import WoodenProgressBar from '../../components/student/WoodenProgressBar';
 import { Bubble, ThinkingBubble } from '../../components/student/ChatStream';
 import AIFollowUpPanel from './followUp/AIFollowUpPanel';
-import { buildRound1Message, processStudentReply } from './followUp/followUpEngine';
+import {
+  buildRound1Message,
+  processStudentReply,
+  FOLLOWUP_MAX_ROUNDS,
+} from './followUp/followUpEngine';
 import { BottomPanel, OptionsPanel, DonePanel } from './studentQuizPanels';
 import bgImg from '../../assets/backgrounds/bg_chiheisen_green.jpg';
 import mascotImg from '../../assets/illustrations/scilens_mascot.png';
@@ -62,9 +66,10 @@ function StudentQuizScreen({ quizId }) {
 
   /* 第二層追問狀態 */
   const [followUpIndex, setFollowUpIndex] = useState(0); // 第幾題的追問
-  const [followUpCtx, setFollowUpCtx] = useState(null); // { round, strategy, isCorrect, misconceptionId, knowledgeNodeId }
+  const [followUpCtx, setFollowUpCtx] = useState(null); // { round, phase, strategy, isCorrect, misconceptionId, knowledgeNodeId, questionStem, ... }
   const [followUpInput, setFollowUpInput] = useState('');
   const [followUpEnabled, setFollowUpEnabled] = useState(false);
+  const [followUpChips, setFollowUpChips] = useState(null); // string[] | null，由 LLM 提供
 
   useEffect(() => {
     if (quizLoading) return;
@@ -215,18 +220,22 @@ function StudentQuizScreen({ quizId }) {
 
     const ctx = {
       round: 1,
+      phase: 'belief',
       strategy: null,
       isCorrect,
       misconceptionId: isCorrect ? null : answer?.diagnosis,
       knowledgeNodeId: q.knowledgeNodeId,
       conversationLog: [],
       questionId: q.id,
+      questionStem: q.stem,
       selectedOption,
+      selectedOptionContent: selectedOption?.content ?? '',
     };
     setFollowUpCtx(ctx);
     setFollowUpEnabled(false);
     setIsThinking(true);
     setFollowUpInput('');
+    setFollowUpChips(null);
 
     setTimeout(() => {
       setIsThinking(false);
@@ -271,8 +280,9 @@ function StudentQuizScreen({ quizId }) {
       diagnosis: finalDiagnosis,
     };
 
-    // LLM 成因分析：若為 MISCONCEPTION 且有對話紀錄，非同步呼叫後端分析
-    if (finalDiagnosis.finalStatus === 'MISCONCEPTION' && ctxAtFinal.conversationLog.length > 0) {
+    // LLM POE prompt 已自帶 causeIds 時跳過後端再分析
+    const hasCauses = Array.isArray(finalDiagnosis.causeIds) && finalDiagnosis.causeIds.length > 0;
+    if (!hasCauses && finalDiagnosis.finalStatus === 'MISCONCEPTION' && ctxAtFinal.conversationLog.length > 0) {
       try {
         const miscon = getMisconceptionById(finalDiagnosis.misconceptionCode);
         const node = knowledgeNodes.find((n) => n.id === ctxAtFinal.knowledgeNodeId);
@@ -310,14 +320,8 @@ function StudentQuizScreen({ quizId }) {
     setFollowUpEnabled(false);
     setTimeout(() => {
       setIsThinking(false);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `fu-${ctxAtFinal.questionId}-summary`,
-          role: 'ai',
-          text: finalDiagnosis.aiSummary,
-        },
-      ]);
+      setMessages((prev) => [...prev,
+        { id: `fu-${ctxAtFinal.questionId}-summary`, role: 'ai', text: finalDiagnosis.aiSummary }]);
       if (nextIdx >= sortedQuestions.length) {
         finishQuiz(answersRef.current, '謝謝你陪我聊完所有題目！');
         return;
@@ -327,48 +331,41 @@ function StudentQuizScreen({ quizId }) {
     }, 900);
   };
 
-  const handleFollowUpSend = () => {
+  const handleFollowUpSend = async (overrideText) => {
     if (!followUpEnabled || !followUpCtx) return;
-    const reply = followUpInput.trim();
+    const reply = (typeof overrideText === 'string' ? overrideText : followUpInput).trim();
     if (!reply) return;
-
     setFollowUpEnabled(false);
     setFollowUpInput('');
-    setMessages((prev) => [
-      ...prev,
-      { id: `fu-${followUpCtx.questionId}-r${followUpCtx.round}-s`, role: 'student', text: reply },
-    ]);
-
-    const ctxWithReply = {
-      ...followUpCtx,
-      conversationLog: [...followUpCtx.conversationLog, { role: 'student', content: reply }],
-    };
-
+    setFollowUpChips(null);
+    setMessages((prev) => [...prev,
+      { id: `fu-${followUpCtx.questionId}-r${followUpCtx.round}-s-${Date.now()}`, role: 'student', text: reply }]);
+    const ctxWithReply = { ...followUpCtx,
+      conversationLog: [...followUpCtx.conversationLog, { role: 'student', content: reply }] };
     setIsThinking(true);
-    setTimeout(() => {
+    let result;
+    try { result = await processStudentReply(ctxWithReply, reply); }
+    catch (err) {
+      console.error('[StudentQuiz] processStudentReply failed', err);
       setIsThinking(false);
-      const result = processStudentReply(ctxWithReply, reply);
-
-      if (result.kind === 'final') {
-        handleFollowUpFinal(result.finalDiagnosis, ctxWithReply);
-        return;
-      }
-
-      const nextRound = result.keepRound ? ctxWithReply.round : ctxWithReply.round + 1;
-      const aiMsg = result.aiMessage;
-      const updatedCtx = {
-        ...ctxWithReply,
-        round: nextRound,
-        strategy: result.strategy ?? ctxWithReply.strategy,
-        conversationLog: [...ctxWithReply.conversationLog, { role: 'ai', content: aiMsg }],
-      };
-      setFollowUpCtx(updatedCtx);
-      setMessages((prev) => [
-        ...prev,
-        { id: `fu-${ctxWithReply.questionId}-r${nextRound}-${Date.now()}`, role: 'ai', text: aiMsg },
-      ]);
+      setMessages((prev) => [...prev, { id: `fu-err-${Date.now()}`, role: 'ai', text: '我這邊有點當機，可以再說一次你的想法嗎？' }]);
       setFollowUpEnabled(true);
-    }, 900);
+      return;
+    }
+    setIsThinking(false);
+    if (result.kind === 'final') { handleFollowUpFinal(result.finalDiagnosis, ctxWithReply); return; }
+    // LLM 帶 round/phase；rule-based 帶 keepRound/strategy
+    const nextRound = typeof result.round === 'number'
+      ? result.round
+      : (result.keepRound ? ctxWithReply.round : ctxWithReply.round + 1);
+    setFollowUpCtx({ ...ctxWithReply, round: nextRound,
+      phase: result.phase ?? ctxWithReply.phase,
+      strategy: result.strategy ?? ctxWithReply.strategy,
+      conversationLog: [...ctxWithReply.conversationLog, { role: 'ai', content: result.aiMessage }] });
+    setFollowUpChips(Array.isArray(result.chips) && result.chips.length >= 2 ? result.chips : null);
+    setMessages((prev) => [...prev,
+      { id: `fu-${ctxWithReply.questionId}-r${nextRound}-${Date.now()}`, role: 'ai', text: result.aiMessage }]);
+    setFollowUpEnabled(true);
   };
 
   /* ── 第一層選項處理 ───────────────────────────────── */
@@ -480,10 +477,12 @@ function StudentQuizScreen({ quizId }) {
           <AIFollowUpPanel
             inputValue={followUpInput}
             onChange={setFollowUpInput}
-            onSend={handleFollowUpSend}
+            onSend={() => handleFollowUpSend()}
+            onSendText={(text) => handleFollowUpSend(text)}
             disabled={!followUpEnabled}
             round={followUpCtx.round}
-            totalRounds={3}
+            totalRounds={FOLLOWUP_MAX_ROUNDS}
+            chips={followUpChips}
             questionRecap={{
               stem: followUpQuestion.stem,
               selectedContent: followUpSelectedOption?.content ?? '',

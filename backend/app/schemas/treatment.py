@@ -11,7 +11,7 @@ class TreatmentMessageIO(BaseModel):
     question_index: int = Field(serialization_alias="questionIndex")
     role: Literal["ai", "student"]
     text: str
-    phase: Literal["diagnosis", "apprenticeship", "completed"] | None = None
+    phase: Literal["diagnosis", "apprenticeship", "cer", "completed"] | None = None
     stage: Literal["claim", "evidence", "reasoning", "revise", "complete"] | None = None
     step: int | None = None
     hint_level: int | None = Field(default=None, serialization_alias="hintLevel")
@@ -48,7 +48,7 @@ class AppendMessageRequest(BaseModel):
     question_index: int = Field(alias="questionIndex", ge=1)
     role: Literal["ai", "student"]
     text: str = Field(min_length=1)
-    phase: Literal["diagnosis", "apprenticeship", "completed"] | None = None
+    phase: Literal["diagnosis", "apprenticeship", "cer", "completed"] | None = None
     stage: Literal["claim", "evidence", "reasoning", "revise", "complete"] | None = None
     step: int | None = Field(default=None, ge=0, le=7)
     hint_level: int | None = Field(default=None, alias="hintLevel", ge=0, le=3)

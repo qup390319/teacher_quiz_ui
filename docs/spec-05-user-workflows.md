@@ -251,27 +251,29 @@
     │   │   ├─ **不顯示對錯回饋**，直接進入下一題
     │   │   └─ 最後一題完成後 → 進入 followUp phase
     │   │
-    │   ├─ Phase: followUp（第二階段：AI 開放式追問）
+    │   ├─ Phase: followUp（第二階段：AI POE 追問 + 成因追溯）
     │   │   ├─ 過渡訊息：「選擇題的部分結束了！接下來想跟你聊聊剛才的幾道題⋯」
     │   │   ├─ **所有題目皆進入第二層**（不論答對答錯）
-    │   │   ├─ 對每一題執行 1～3 輪追問迴圈：
-    │   │   │   ├─ Round 1：AI 以開放式問句問學生選擇理由
-    │   │   │   │   - buildRound1Message(option, isCorrect) 產生模板
-    │   │   │   │   - 答對：「能跟老師說說你是怎麼想的嗎？」
-    │   │   │   │   - 答錯：「為什麼覺得這個最合理？」
-    │   │   │   ├─ 學生在底部 textarea 自由文字回覆 → 觸發 processStudentReply()
-    │   │   │   ├─ AI 引擎依學生回覆動態決定四種策略之一：
-    │   │   │   │   - deepen（情境 C：答對且呼應正確概念，延伸確認）
-    │   │   │   │   - guess（情境 D：答對但理由模糊，遷移情境釐清）
-    │   │   │   │   - fuzzy（情境 A：模糊回覆，提供具體情境引導）
-    │   │   │   │   - contrast（情境 B：呼應迷思推理，提供對比情境）
-    │   │   │   ├─ Round 2：依策略發出對應追問
-    │   │   │   ├─ Round 3：必要時觸發
-    │   │   │   │   - source（探究迷思來源）
-    │   │   │   │   - ab（二選一比較，降低開放度）
-    │   │   │   │   - transfer（遷移測試）
-    │   │   │   ├─ 任一輪達成終止條件 → 產出 finalDiagnosis
-    │   │   │   │   { finalStatus, misconceptionCode, reasoningQuality, aiSummary, statusChange }
+    │   │   ├─ 引擎：`followUpEngine.processStudentReply()`（async dispatcher）
+    │   │   │   - LLM 模式（12 個官方節點）：呼叫 `runFollowUpTurnLlm`，POE + 蘇格拉底結構
+    │   │   │   - Rule-based fallback（自訂迷思節點 / LLM 失敗）：原 3 輪 keyword/regex 啟發式
+    │   │   ├─ 對每一題執行 1~8 輪對話（LLM 模式硬上限 8 輪；fallback 仍 3 輪）：
+    │   │   │   ├─ Round 1：AI 用比較題 / 二選一探出信念，附 chips 快選
+    │   │   │   │   - buildRound1Message(option, isCorrect) 產生開場文字
+    │   │   │   │   - LLM phase = "belief"
+    │   │   │   ├─ 學生回覆方式（chips 與打字並存）：
+    │   │   │   │   - 點 chip 按鈕（推薦給國小生，無打字壓力）→ 直接送出
+    │   │   │   │   - 自由打字 → textarea 送出（含 chip 都不對時）
+    │   │   │   ├─ LLM 模式四階段對話結構（POE + 蘇格拉底）：
+    │   │   │   │   - belief（信念探索，1~3 輪）：用比較題挖出學生真正相信什麼
+    │   │   │   │   - challenge（認知挑戰，1~2 輪）：丟變體實驗（POE Observe），測試一致性
+    │   │   │   │   - cause（成因追溯，1~2 輪）：場景喚起 / 類比探測 / 詞彙確認 / 來源歸因 / 信心度
+    │   │   │   │   - final（收尾）：輸出 finalDiagnosis JSON
+    │   │   │   ├─ Rule-based fallback 策略（沿用既有）：
+    │   │   │   │   - deepen / guess / fuzzy / contrast / source / ab / transfer
+    │   │   │   ├─ 終止條件 → 產出 finalDiagnosis
+    │   │   │   │   { finalStatus, misconceptionCode, reasoningQuality, aiSummary,
+    │   │   │   │     statusChange, causeIds（LLM 模式自帶；fallback 為空） }
     │   │   │   ├─ 依 statusChange 反向修正 answers：
     │   │   │   │   - UPGRADED → 呼叫 removeMisconception() 將該題改為 CORRECT
     │   │   │   │   - DOWNGRADED → 將該題改為 misconceptionCode
@@ -307,38 +309,53 @@
 - 此階段**不給予任何對錯回饋**，學生不知道自己答對或答錯
 - 所有題目作答完成後，才進入第二層
 
-**第二層：AI 開放式追問（followUp phase）**
-- 由 `followUpEngine.processStudentReply()` 模擬 AI 動態決定追問策略
-- **對所有題目進行追問**（不論答對答錯），每題 1～3 輪
-- 學生以自由文字回覆，AI 依文字長度＋關鍵詞匹配判讀：
-  - 模糊關鍵詞（不知道／猜的／感覺等）→ 觸發具體情境引導或二選一
-  - 知識節點正確概念關鍵詞 → 確認 reasoningQuality 為 SOLID／PARTIAL
-  - 對應迷思的關鍵詞 → 確認迷思並探究來源
+**第二層：AI POE 追問 + 成因追溯（followUp phase）**
+- 由 `followUpEngine.processStudentReply()`（async dispatcher）執行；雙模式：
+  - **LLM 模式**（12 個官方節點）：呼叫 `runFollowUpTurnLlm` → `/api/llm/chat`
+  - **Rule-based fallback**（自訂迷思 / LLM 失敗）：原 3 輪 keyword/regex 啟發式
+- **對所有題目進行追問**（不論答對答錯）
+- LLM 模式對話結構（POE + 蘇格拉底，硬上限 8 輪）：
+  - **belief**（信念探索，1~3 輪）：用比較題、二選一探出學生真正相信什麼
+  - **challenge**（認知挑戰，1~2 輪）：丟變體實驗（POE Observe）測試信念一致性
+  - **cause**（成因追溯，1~2 輪）：場景喚起 / 類比探測 / 詞彙確認 / 來源歸因 / 信心度
+  - **final**（收尾）：輸出 finalDiagnosis JSON
+- 國小生短答友善設計（spec-09 §followup）：
+  - **Chip 快速回覆**：LLM 在每輪附 2~4 個選項（chips 欄位），前端渲染為按鈕，學生點擊即送
+  - **承擔語言展開**：bot 把學生的單詞翻譯成完整假設讓學生點頭/搖頭，學生不用組句
+  - **禁止抽象 why 提問**：改用具體場景比較題
+  - **每輪附「不知道」逃生口**
+- LLM 直接輸出結構化結果（每輪）：
+  - `{ phase, round, assistantMessage, chips, feedback, finalDiagnosis }`
 - 終止後產出 `finalDiagnosis`：
   - `finalStatus`: `'CORRECT' | 'MISCONCEPTION' | 'UNCERTAIN'`
   - `reasoningQuality`: `'SOLID' | 'PARTIAL' | 'WEAK' | 'GUESSING'`
-  - `statusChange.changeType`: `'CONFIRMED' | 'UPGRADED' | 'DOWNGRADED' | 'DISCOVERED'`
+  - `statusChange.changeType`: `'CONFIRMED' | 'UPGRADED' | 'DOWNGRADED'`
+  - `causeIds`: `number[]`（1~2 個 1-8 之成因 ID；LLM 模式自帶，fallback 為空）
+  - `causeEvidence`: `string`（LLM 在對話中蒐集到的成因證據引文）
 - 依 statusChange 自動修正第一層作答記錄：
-  - **UPGRADED**（學生選錯但追問展現正確理解）→ `removeMisconception(id)` 改為 CORRECT
+  - **UPGRADED**（學生選錯但追問展現正確理解）→ 改為 CORRECT
   - **DOWNGRADED**（學生選對但追問顯示猜測或迷思）→ 將 diagnosis 改為迷思碼
 - **注意**: `studentDetail`、`studentHint` 不在此階段顯示，僅在最終 StudentReport 中呈現
-- **目前實作備註**: 因尚未接後端 LLM，`followUpEngine` 為純前端模板＋啟發式判讀模擬；未來接上 LLM 後僅替換引擎內部，對外 API 不變
+- **fallback 行為**: LLM 失敗時自動降級到 rule-based 3 輪流程，對外 API 不變
 
 **第三層：迷思成因分析（finalize 時，若診斷為迷思）**
-- 追問對話結束、`finalDiagnosis` 產出後，當 `finalStatus === 'MISCONCEPTION'` 時，系統自動呼叫後端 `POST /api/llm/analyze-cause`
+- LLM 模式下，POE prompt 已要求對話過程蒐集成因證據，`finalDiagnosis.causeIds` 通常已自帶
+  → 此時 StudentQuiz 直接寫 DB，**跳過** `/api/llm/analyze-cause` 呼叫，省一次 LLM 推論成本
+- Rule-based fallback / 自訂迷思 / LLM 模式但 `causeIds` 為空時，系統自動呼叫後端 `POST /api/llm/analyze-cause`
 - 後端接收：
   - 對話紀錄（`conversationLog`）
   - 迷思代碼（`misconceptionCode`）
   - 知識節點 ID（`nodeId`）
-- LLM 根據對話內容與迷思特徵，從以下 **8 大成因類別** 中判斷 **1～2 個最可能的成因**：
-  - 1. Prior Knowledge（前科學概念）
-  - 2. Linguistic Misunderstanding（語言理解誤差）
-  - 3. Incomplete Knowledge（知識不完整）
-  - 4. Everyday Experience（日常經驗泛化）
-  - 5. Intuitive Reasoning（直覺推理）
-  - 6. Analogy Misapplication（類比誤用）
-  - 7. Social / Cultural Factors（社會／文化因素）
-  - 8. Instruction-Related（教學相關因素）
+- LLM 根據對話內容與迷思特徵，從以下 **8 大成因類別** 中判斷 **1～2 個最可能的成因**
+  （與 `backend/app/services/cause_analysis_service.py` 及 `src/data/misconceptionCauses.js` 完全對齊）：
+  - 1. 學科知識不足或缺乏
+  - 2. 概念不清楚或混淆
+  - 3. 不正確的推論或運算過程
+  - 4. 單憑個人直覺或關鍵字反應
+  - 5. 來自日常的經驗和生活中的觀察
+  - 6. 日常生活用語與科學用語的混淆
+  - 7. 教師的教學過程不當（conditional）
+  - 8. 實驗操作不當（conditional）
 - 成因 ID 以 `C{1-8}` 標記，存儲於 `followup_results.cause_ids`（JSONB array，最多 2 個）
 - **LLM 不可用時的降級**：若呼叫失敗，系統不阻擋流程（不拋錯），`cause_ids` 為空陣列 `[]`；前端會延後顯示成因徽章或不顯示
 - **報告顯示**：

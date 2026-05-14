@@ -284,21 +284,34 @@ export default function ScenarioChat() {
     }, sessionId);
 
     setIsThinking(true);
-    await new Promise((r) => setTimeout(r, 700));
 
-    const turn = runTreatmentTurn(
-      {
-        scenarioQuizId,
-        questionIndex: currentQuestionIndex,
-        history: messages.map((m) => ({ role: m.role, text: m.text })),
-        phase,
-        step,
-        stage,
-        hintLevel,
-        requiresRestatement,
-      },
-      text,
-    );
+    // history 不含當前輸入（runTreatmentTurn / buildMessages 會把 userMessage 接在最後）
+    let turn;
+    try {
+      turn = await runTreatmentTurn(
+        {
+          scenarioQuizId,
+          questionIndex: currentQuestionIndex,
+          history: messages.map((m) => ({ role: m.role, text: m.text })),
+          phase,
+          step,
+          stage,
+          hintLevel,
+          requiresRestatement,
+        },
+        text,
+      );
+    } catch (err) {
+      console.error('[ScenarioChat] runTreatmentTurn failed', err);
+      setIsThinking(false);
+      await persistMessage(currentQuestionIndex, {
+        id: newId(),
+        role: 'ai',
+        text: '抱歉，我這裡遇到了一點問題，可以再說一次你的想法嗎？',
+        createdAt: new Date().toISOString(),
+      }, sessionId);
+      return;
+    }
 
     await persistMessage(currentQuestionIndex, {
       id: newId(),

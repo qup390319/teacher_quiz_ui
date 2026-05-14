@@ -67,13 +67,15 @@ interface TreatmentState {
   scenarioQuizId: string;       // 情境考卷 ID（如 'scenario-001'）
   questionIndex: number;        // 題目 index（1-based，對應 ScenarioQuiz.questions）
   history: TreatmentMessage[];  // 該題目前為止的完整對話（按時序）
-  phase: 'diagnosis' | 'apprenticeship' | 'completed';
+  phase: 'diagnosis' | 'apprenticeship' | 'cer' | 'completed';
   step: number;                 // 1~7
   stage: 'claim' | 'evidence' | 'reasoning' | 'revise' | 'complete';
   hintLevel: 0 | 1 | 2 | 3;
   requiresRestatement: boolean;
 }
 ```
+
+> `cer` phase 為 LLM 驅動模式新增（2026-05-14），對應 step 6。詳見 §8B。
 
 > **`history` 簡化版相容性**：mock bot（v1）只需要 `{ role, text }` 兩個欄位即可運作（規則式推進不依賴 phase/step/feedback）。
 > 但**儲存層**（AppContext `treatmentSessions`）必須完整記錄 `TreatmentMessage`（含 phase/stage/hintLevel/feedback/createdAt 等標註）— 因為教師端 `TreatmentLogDetail` 與未來真實 LLM 切換都會用到。
@@ -83,7 +85,7 @@ interface TreatmentState {
 
 ```typescript
 interface BotResponse {
-  phase: 'diagnosis' | 'apprenticeship' | 'completed';  // 推進後的 phase
+  phase: 'diagnosis' | 'apprenticeship' | 'cer' | 'completed';  // 推進後的 phase（cer 為 LLM 模式新增）
   step: number;                  // 推進後的 step（1~7，只進不退）
   stage: 'claim' | 'evidence' | 'reasoning' | 'revise' | 'complete';
   assistantMessage: string;      // 主對話氣泡內容（給學生看）
@@ -268,17 +270,81 @@ StudentHome
 
 `src/data/treatmentBot.js` 是唯一切換點。其他 UI 元件**只**透過 `runTreatmentTurn(state, userMessage)` 呼叫，不直接寫入推進邏輯。
 
-### 8.2 未來接 LLM 時要做的事（不在本波範圍）
+### 8.2 雙模式：LLM 驅動 vs Mock fallback（2026-05-14 起）
 
-1. 把 `runTreatmentTurn` 改成 async，內部 `fetch` 後端 `/api/treatment/turn`
-2. 後端對接 OpenAI Responses API + Conversations API（仿 eh `server.js`）
-3. 後端用 hosted prompt 或 inline system prompt 控制 phase/stage/hintLevel 邏輯
-4. UI 完全不變
+`runTreatmentTurn` 已改為 **async**，依題目自動選擇推進方式：
+
+| 條件 | 路徑 | 行為 |
+|------|------|------|
+| `treatmentBotPrompts.js` 有登錄該題 system prompt | **LLM 路徑** | 組裝 system+history+student → 呼叫 `/api/llm/chat` → 解析 JSON → 回 BotResponse |
+| 未登錄 prompt，或 LLM 解析/網路失敗 | **Mock fallback** | `runTreatmentTurnMock` 規則式推進，console.warn 記錄 fallback 原因 |
+
+UI 層不知道用了哪條路徑，介面契約完全一致。
 
 ### 8.3 為什麼把 schema 對齊 eh
 
 - 介面預先「合約化」，未來換實作不用改前端
 - 對研究端：phase/stage/hintLevel 等變數已是學界既有概念（CER、認知師徒制、scaffolding fading），沿用學界詞彙便於日後撰寫論文
+
+---
+
+## 8B. LLM 驅動模式詳述（2026-05-14 起）
+
+### 8B.1 phase 擴增
+
+原本 `phase ∈ {diagnosis, apprenticeship, completed}`；LLM 模式新增 `cer`（對應 step 6 CER 整理）。
+DB / Pydantic schema 同步擴充，詳見 spec-11 §3.14。
+
+| phase | step 範圍 | 階段意義 |
+|-------|-----------|----------|
+| `diagnosis` | 1~2 | 診斷學生原始主張與依據 |
+| `apprenticeship` | 3~5 | Modeling → Coaching → Scaffolding |
+| `cer` | 6 | 學生用模板整段重述 CER |
+| `completed` | 7 | 鼓勵與收束 |
+
+### 8B.2 Prompt registry
+
+`src/data/treatmentBotPrompts.js` 是 LLM prompt 的單一來源，以 `${scenarioQuizId}#${questionIndex}` 為 key：
+
+| Key | 用途 |
+|-----|------|
+| `scenario-002#2` | 飽和糖水甜度 Q2「再加 3 匙糖會不會更甜」 |
+
+未登錄的題目走 mock。若要新增題目的 LLM 路徑，在此檔案註冊即可，不需改其他地方。
+
+### 8B.3 LLM JSON 輸出契約
+
+每個 prompt 的尾段都包含「【輸出格式（必須嚴格遵守）】」段，強制 LLM 回傳：
+
+```json
+{
+  "phase": "diagnosis" | "apprenticeship" | "cer" | "completed",
+  "step": 1..7,
+  "stage": "claim" | "evidence" | "reasoning" | "revise" | "complete",
+  "assistantMessage": "...",
+  "feedback": "8~25 字短評",
+  "hintLevel": 0..3,
+  "requiresRestatement": true/false
+}
+```
+
+前端 `treatmentBotLlm.js::extractJsonObject` 三段式容錯解析（直接 parse → 去 code fence → 抓 balanced `{}`），再用 `normalizeBotResponse` clamp 數值、補預設值。
+
+### 8B.4 對話狀態交接
+
+呼叫 LLM 時，除了 system prompt + 歷史對話 + 學生新訊息外，會額外注入一個 system 訊息：
+
+```
+【對話狀態交接】
+上一輪 phase=apprenticeship, step=4, stage=revise, hintLevel=1
+本輪 step 只能是 4 或 5。
+```
+
+用來幫 LLM 嚴守「step 只進 +0 / +1，不跳步」的 FSM 規則。
+
+### 8B.5 LLM 失敗時的行為
+
+`runTreatmentTurnLlm` 任何錯誤（網路、502、JSON 解析失敗）都會 throw；`runTreatmentTurn` 攔住後 `console.warn` + 改用 mock 推進。**學生看不到錯誤**，對話會繼續。
 
 ---
 

@@ -172,4 +172,136 @@ RAGFlow（spec-12）用於「檢索文獻 + 生成」場景（N1 / N2 / N6），
 - 後端 service: `app/services/cause_analysis_service.py`
 - 透過 `llm_service.chat()` 呼叫 vLLM，使用專門的 system prompt 讓 LLM 從 8 大成因中選擇
 - LLM 不可用時回傳空陣列 `[]`，不阻擋流程
+
+## 12. 治療對話 system prompt registry（2026-05-14 起）
+
+情境治療對話（spec-08 §8B）走 `/api/llm/chat`，每題的 system prompt 統一登錄在前端 registry，便於日後擴充。
+
+| 檔案 | 用途 |
+|------|------|
+| [src/data/treatmentBotPrompts.js](../src/data/treatmentBotPrompts.js) | 以 `${scenarioQuizId}#${questionIndex}` 為 key 的 prompt registry |
+| [src/data/treatmentBotLlm.js](../src/data/treatmentBotLlm.js) | LLM-driven turn engine（buildMessages + JSON 解析 + 欄位 clamp） |
+| [src/data/treatmentBot.js](../src/data/treatmentBot.js) | 對外入口 `runTreatmentTurn(state, msg)`；自動派遣 LLM ↔ mock |
+
+### 12.1 目前已登錄的 prompt
+
+| Key | 題目 | 對應節點 / 迷思 |
+|-----|------|------------------|
+| `scenario-002#2` | 飽和糖水甜度 Q2「再加 3 匙糖會不會更甜」 | INe-II-3-03 / M03-2 |
+
+### 12.2 Prompt 結構（必含區段）
+
+每個 prompt 必須包含：
+
+1. 角色定位（「診斷型科學論證 AI 導師」、教學對象、教學法）
+2. 說話方式 / 對話承接原則
+3. 本題核心概念 + 固定情境
+4. 圖表線索清單（可被 LLM 直接引用）
+5. FSM 定義（phase 對 step 對 stage 的映射）
+6. 每個 step（1~7）的目標、規則、可用提問
+7. hintLevel 0~3 的範例
+8. feedback 規則（8~25 字）
+9. **【輸出格式（必須嚴格遵守）】** — 強制 JSON schema
+10. step / stage 規則總結
+
+### 12.3 與後端的關係
+
+- 後端不持有 treatment prompt — `chat()` 只是純粹的 LLM proxy
+- 任何題目的對話策略都在前端 registry 控制，不需要後端 deploy 就能改 prompt
+- 缺點：prompt 與其他 system prompt 一樣會被夾帶到網路（**前端 bundle 仍可見**），但因為這是教學引導而非業務 secret，可接受
 - 需登入（任何角色）
+
+---
+
+## 13. 診斷追問對話 prompt（followup，2026-05-14 起）
+
+迷思診斷追問對話（spec-05 §2.2 第二層）也走 `/api/llm/chat`，但與治療對話分屬不同 prompt 體系。
+
+### 13.1 檔案結構
+
+| 檔案 | 用途 |
+|------|------|
+| [src/pages/student/followUp/followUpPrompts.js](../src/pages/student/followUp/followUpPrompts.js) | Shared SYSTEM_PROMPT_SKELETON（POE + 蘇格拉底 + chip 規則 + JSON schema）+ 12 個節點的 NODE_CONTEXT；`buildFollowUpSystemPrompt()` 動態組合 |
+| [src/pages/student/followUp/followUpLlm.js](../src/pages/student/followUp/followUpLlm.js) | LLM driver；`runFollowUpTurnLlm(state, userMessage)` |
+| [src/pages/student/followUp/followUpEngine.js](../src/pages/student/followUp/followUpEngine.js) | Async dispatcher；LLM 失敗時 fallback 到 rule-based 3 輪流程 |
+| [src/pages/student/followUp/AIFollowUpPanel.jsx](../src/pages/student/followUp/AIFollowUpPanel.jsx) | UI；渲染 chips 按鈕 + textarea |
+
+### 13.2 為什麼與治療對話分開
+
+| 特性 | 治療對話 | 追問對話 |
+|------|---------|---------|
+| 觸發時機 | 學生選 scenario quiz 後 | 學生答完選擇題後 |
+| 教學法 | Cognitive Apprenticeship + CER | POE + 蘇格拉底 + 成因追溯 |
+| 對話長度 | 7 step（≈ 7~10 輪） | ≤ 8 輪 |
+| 學生回覆方式 | 開放式長句（CER 訓練） | Chip 選項為主、長句為輔（國小生短答友善） |
+| 主要產出 | CER restatement + 完成感 | finalDiagnosis（含 causeIds） |
+| Prompt 載點 | per-(scenarioId, qIndex) | per-knowledgeNode（共 12 節點） |
+
+### 13.3 Prompt 結構（shared skeleton + per-node injection）
+
+shared skeleton（一份，所有 12 節點共用）：
+
+1. 角色設定（不是老師，是好奇小科學家；不知道答案）
+2. 教學對象限制（國小五年級短答模式列舉）
+3. 絕對禁止（否定字眼 / 過早肯定 / 抽象 why / 專有名詞 / 一輪兩問）
+4. POE 4 階段對話結構（belief → challenge → cause → final）
+5. 8 大成因類別（與 backend `cause_analysis_service.py` 對齊）
+6. **Chip 規則**（每輪 2~4 個選項，每個 ≤ 6 字，必含逃生口）
+7. JSON 輸出 schema（強制無 markdown / 無多餘文字）
+8. statusChange / reasoningQuality 推導規則
+
+per-node injection（NODE_CONTEXT[nodeId]，12 份）：
+
+- `coreTruth`：該節點的科學真相一句話
+- `variants[]`：2~3 個 POE Observe 階段可丟的變體實驗
+- `causeHints`：該節點常見的 1~3 個成因提示
+
+### 13.4 LLM 輸出 JSON schema
+
+```json
+{
+  "phase": "belief" | "challenge" | "cause" | "final",
+  "round": 1-8,
+  "assistantMessage": "string，1-2 句、≤ 60 字",
+  "chips": ["string", "..."] | null,
+  "feedback": "string | null，≤ 20 字",
+  "finalDiagnosis": null | {
+    "finalStatus": "CORRECT" | "MISCONCEPTION" | "UNCERTAIN",
+    "misconceptionCode": "M02-1" | null,
+    "reasoningQuality": "SOLID" | "PARTIAL" | "WEAK" | "GUESSING",
+    "causeIds": [1-8],
+    "causeEvidence": "string，學生哪段話顯示了該成因",
+    "aiSummary": "string，給學生的最終回饋",
+    "statusChange": { "from": "...", "to": "...",
+      "changeType": "CONFIRMED" | "UPGRADED" | "DOWNGRADED" }
+  }
+}
+```
+
+### 13.5 Chip 渲染協定（前後端約定）
+
+LLM 回應的 `chips` 欄位由 [AIFollowUpPanel.jsx](../src/pages/student/followUp/AIFollowUpPanel.jsx) 渲染：
+
+- chips 為 string array，每個元素是一個按鈕文字（≤ 6 字推薦）
+- 學生點擊 chip → 直接以該文字當作下一輪 user message 送回
+- chips 與打字輸入並存：學生若覺得選項都不對，可自由打字
+- final 階段 chips 必為 null
+- chips < 2 個時前端視為無 chips，僅顯示 textarea
+
+### 13.6 LLM 模式 vs Rule-based fallback
+
+| 條件 | 走哪一邊 |
+|------|---------|
+| 節點在 `NODE_CONTEXT` 中（12 個官方節點） | LLM 模式 |
+| 自訂迷思節點（教師自建，無 NODE_CONTEXT） | Rule-based |
+| LLM 模式但 `/api/llm/chat` 失敗 | 自動 fallback Rule-based |
+| LLM 模式但 JSON 解析失敗 | 自動 fallback Rule-based |
+
+Fallback 邏輯在 `processStudentReply()` 內透明處理，呼叫端 (StudentQuiz.jsx) 不感知。
+
+### 13.7 與成因分析端點的關係
+
+LLM 模式下，POE prompt 已要求 LLM 在 `cause` 階段蒐集證據並在 `finalDiagnosis.causeIds` 中輸出。
+StudentQuiz 偵測 `causeIds.length > 0` 時，**直接寫 DB**，不再呼叫 `/api/llm/analyze-cause`，省一次 LLM 推論。
+僅 fallback 路徑或 LLM 模式但 `causeIds` 為空時，才會走原本的 `/api/llm/analyze-cause` 端點（§11）。
+

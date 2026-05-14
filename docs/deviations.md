@@ -17,6 +17,40 @@
 
 ---
 
+### [2026-05-14] 治療對話加入 LLM 驅動模式（scenario-002 Q2）
+- **涉及 Spec**: spec-08 §2.3 / §8 / §8B、spec-09 §12、spec-11 §3.14
+- **問題**: 既有 `runTreatmentTurn` 是純 rule-based mock，所有題目共用同一套
+  prompt pool，AI 回應與學生實際輸入無關，無法執行認知衝突 / 概念驗證 /
+  CER 整理等真正的教學行為。研究端需要一份能依照「診斷型科學論證 AI 導師」
+  完整 prompt（含 FSM、hintLevel、feedback 規則）跑的 LLM 對話，先在
+  scenario-002 飽和糖水甜度 Q2 試行。
+- **替代方案**:
+  1. 新增 `src/data/treatmentBotPrompts.js` — 以 `${scenarioQuizId}#${questionIndex}`
+     為 key 的 prompt registry。目前只登錄 `scenario-002#2`。
+  2. 新增 `src/data/treatmentBotLlm.js` — `runTreatmentTurnLlm(state, msg)`：
+     組裝 system+history+「對話狀態交接」+ student → 呼叫 `chat()` → 三段式
+     JSON 解析（直接 parse → 去 code fence → 抓 balanced `{}`）→ `normalizeBotResponse`
+     clamp 數值與補預設。
+  3. `treatmentBot.js` 的 `runTreatmentTurn` 改為 async dispatcher：
+     - 有登錄 prompt → 走 LLM
+     - LLM 失敗（網路 / 解析）→ console.warn + fallback 到 `runTreatmentTurnMock`
+     - 沒登錄 → 直接走 mock
+  4. ScenarioChat 的 `handleSend` 改成 `await runTreatmentTurn(...)`，移除
+     原本 700ms 假思考延遲（LLM 本身就有 latency），並加上錯誤訊息泡泡。
+  5. **phase 擴增**：prompt FSM 把 step 6 標為 `phase=cer`，DB schema /
+     Pydantic Literal 同步加上 `cer`，新增 alembic migration `0008_treatment_phase_cer`
+     drop & re-add CHECK constraint。
+  6. **題目文字對齊**：把 scenario-002 Q2 的 scenarioText / initialMessage
+     改寫成 prompt 裡的固定情境（含第 1/2/3/6/7 匙紀錄、甜度變化圖、燒杯圖），
+     確保 LLM 看到的題目 = 學生看到的題目。前端 `scenarioQuizData.js` 與後端
+     `backend/app/seed/data/scenarios.json` 同步更新。
+- **驗證**: 在 dev preview 確認：
+  - Q1（無登錄 prompt）→ 沒打 `/api/llm/chat`，走 mock ✓
+  - Q2 LLM 路徑 → `POST /api/llm/chat 200` ✓，回傳結構化 JSON 並符合 step 1→2 / claim→evidence / hintLevel 0 等 FSM 規則 ✓
+- **Spec 已更新**: ✅（spec-08 §2.3 / §8 / §8B、spec-09 §12、spec-11 §3.14）
+
+---
+
 ### [2026-05-07] 引入教師範圍資料隔離 + 上線教師帳號 bbb001
 - **涉及 Spec**: spec-10 §6（routers）、spec-11 §3.3（classes）、spec-13 §2
 - **問題**: 系統準備上線，需要在 demo 教師（aaa001）之外另開一個正式使用的

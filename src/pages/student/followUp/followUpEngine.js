@@ -1,14 +1,18 @@
 /**
- * 第二層 AI 追問引擎（純前端模擬）
+ * 第二層 AI 追問引擎
  *
- * 純函式，依學生回覆動態決定下一輪追問或最終診斷。
- * 因為原型尚未接後端 LLM，使用模板＋啟發式判讀來模擬：
- *   - 文字長度與模糊關鍵詞 → 偵測「不知道／猜的」
- *   - 知識節點關鍵詞 → 偵測「正確概念」
- *   - 對應四種情境（A 模糊 / B 錯誤推理 / C 正確完整 / D 答對但理由錯）
+ * 雙模式：
+ *  1. LLM 模式（預設）：呼叫 followUpLlm.runFollowUpTurnLlm，採 POE + 蘇格拉底結構，
+ *     最多 8 輪，輸出含 chips / causeIds 的結構化結果。
+ *  2. Rule-based 模式（fallback）：原本的 3 輪 keyword/regex 啟發式，保留作 LLM
+ *     失敗或自訂迷思（無 LLM prompt）時的後援。
  *
- * 規格：spec-05 §2.2、scratch 文件 §3.5
+ * 對外的 processStudentReply 改為 async；rule-based 部分另存為
+ * processStudentReplyMock 供 dispatcher 內部調用。
+ *
+ * 規格：spec-05 §2.2、spec-09 §followup
  */
+import { hasLlmFollowUpFor, runFollowUpTurnLlm, FOLLOWUP_MAX_ROUNDS } from './followUpLlm.js';
 
 const FUZZY_KEYWORDS = ['不知道', '我不會', '忘記了', '猜的', '沒想法',
   '不確定', '亂選', '隨便選', '老師說', '上課有講', '課本上'];
@@ -149,11 +153,44 @@ export function buildRound1Message(option, isCorrect) {
 
 /**
  * 處理學生回覆，產出下一步 (next 追問 / final 診斷)。
- * @param {object} ctx - { round, strategy, isCorrect, misconceptionId, knowledgeNodeId }
+ *
+ * Async dispatcher：先嘗試 LLM；若該節點無 prompt 或 LLM 失敗，fallback 到 rule-based。
+ *
+ * @param {object} ctx - { round, strategy, isCorrect, misconceptionId, knowledgeNodeId,
+ *                         conversationLog, questionStem?, selectedOptionContent?, phase? }
  * @param {string} reply - 學生的最新回覆
- * @returns {object} { kind: 'next' | 'final', aiMessage?, strategy?, finalDiagnosis? }
+ * @returns {Promise<object>} { kind: 'next' | 'final', aiMessage?, strategy?, chips?, feedback?,
+ *                              phase?, round?, finalDiagnosis? }
  */
-export function processStudentReply(ctx, reply) {
+export async function processStudentReply(ctx, reply) {
+  if (hasLlmFollowUpFor(ctx.knowledgeNodeId)) {
+    try {
+      return await runFollowUpTurnLlm(
+        {
+          knowledgeNodeId: ctx.knowledgeNodeId,
+          misconceptionId: ctx.misconceptionId,
+          isCorrect: ctx.isCorrect,
+          questionStem: ctx.questionStem ?? '',
+          selectedOptionContent: ctx.selectedOptionContent
+            ?? ctx.selectedOption?.content ?? '',
+          conversationLog: ctx.conversationLog ?? [],
+          round: ctx.round ?? 1,
+          phase: ctx.phase ?? 'belief',
+        },
+        reply,
+      );
+    } catch (err) {
+      console.warn('[followUp] LLM turn failed, falling back to rule-based:', err?.message ?? err);
+      // fall through to mock
+    }
+  }
+  return processStudentReplyMock(ctx, reply);
+}
+
+/**
+ * Rule-based fallback。同步、不依賴 LLM。
+ */
+export function processStudentReplyMock(ctx, reply) {
   const fuzzy = isFuzzyReply(reply);
   const nonsense = isNonsenseReply(reply);
   const brief = !fuzzy && isBriefReply(reply);
@@ -172,6 +209,8 @@ export function processStudentReply(ctx, reply) {
   if (round === 2) return handleAfterRound2(ctx, reply, fuzzy, matchesCorrect);
   return handleAfterRound3(ctx, reply, fuzzy, matchesCorrect);
 }
+
+export { FOLLOWUP_MAX_ROUNDS };
 
 function handleAfterRound1(ctx, fuzzy, matchesCorrect) {
   const { isCorrect, knowledgeNodeId, misconceptionId } = ctx;
