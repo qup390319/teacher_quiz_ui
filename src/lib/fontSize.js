@@ -1,9 +1,9 @@
 const STORAGE_KEY = 'scilens-font-size';
 
 export const FONT_SIZE_OPTIONS = [
-  { value: 'small',  label: '小', px: 15 },
-  { value: 'medium', label: '中', px: 17 },
-  { value: 'large',  label: '大', px: 19 },
+  { value: 'small',  label: '小', px: 16 },
+  { value: 'medium', label: '中', px: 18 },
+  { value: 'large',  label: '大', px: 20 },
 ];
 
 export function getFontSize() {
