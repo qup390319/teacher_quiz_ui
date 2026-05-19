@@ -49,7 +49,7 @@ export default function RagflowSummaryPanel({ scope, payload, title }) {
     ? error instanceof ApiError && error.code === 'RAGFLOW_UNAVAILABLE'
       ? '文獻檢索服務暫時無法回應，請稍後再試。'
       : error instanceof ApiError && error.code === 'RAGFLOW_EMPTY'
-        ? '文獻無法生成摘要，請更換考卷或稍後再試。'
+        ? '文獻無法生成摘要，請更換題組或稍後再試。'
         : `請求失敗：${error.message ?? '未知錯誤'}`
     : '';
 

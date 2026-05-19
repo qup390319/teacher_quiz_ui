@@ -48,7 +48,7 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
     navigate(next === 'scenario' ? '/teacher/assignments/scenarios' : '/teacher/assignments/diagnosis');
   };
 
-  /* 兩種考卷的 published 列表 */
+  /* 兩種題組的 published 列表 */
   const publishedQuizzes = isScenarioTab
     ? scenarioQuizzes.filter((q) => q.status === 'published')
     : quizzes.filter((q) => q.status === 'published');
@@ -68,7 +68,8 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
   }));
 
   // 診斷分頁：整班派發（保留原行為）
-  const handleConfirmDiagnosis = async (quizId, classId, dueDate) => {
+  // eslint-disable-next-line no-unused-vars -- mode will be used when backend assignment model supports dispatch_mode
+  const handleConfirmDiagnosis = async (quizId, classId, dueDate, _mode) => {
     if (!dueDate) {
       alert('請選擇截止日期');
       return;
@@ -90,7 +91,7 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
     }
   };
 
-  // 情境分頁：以個別學生為單位派發
+  // 概念釐清分頁：以個別學生為單位派發
   const handleConfirmScenarioPicker = async ({ studentIds, dueDate }) => {
     if (!picker) return;
     const { quiz, cls, existing } = picker;
@@ -149,11 +150,11 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
         <div className="mb-4 sm:mb-6">
           <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">派題管理</h1>
           <p className="text-[#636E72] mt-1 text-sm">
-            點擊空格即可將考卷派發給班級，點擊已派格子可管理派發狀態或查看診斷報告
+            點擊空格即可將題組派發給班級，點擊已派格子可管理派發狀態或查看診斷報告
           </p>
         </div>
 
-        {/* Tab 切換：診斷／情境（spec-08）*/}
+        {/* Tab 切換：診斷／概念釐清（spec-08）*/}
         <div className="mb-4 sm:mb-6 flex flex-wrap items-center gap-1.5 bg-white border border-[#BDC3C7] rounded-2xl p-1.5
                         shadow-[0_2px_8px_rgba(0,0,0,0.04)] w-fit max-w-full">
           <button
@@ -164,7 +165,7 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
                          ? 'bg-[#FFF1D8] border border-[#F0B962] text-[#7A4A18]'
                          : 'text-[#636E72] hover:bg-[#EEF5E6]'}`}
           >
-            📝 診斷考卷
+            📝 診斷題組
           </button>
           <button
             type="button"
@@ -174,7 +175,7 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
                          ? 'bg-[#E0F0E8] border border-[#3F8B5E] text-[#2E6B47]'
                          : 'text-[#636E72] hover:bg-[#EEF5E6]'}`}
           >
-            🌱 情境考卷
+            🌱 概念釐清題組
           </button>
         </div>
 
@@ -187,14 +188,14 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
               </svg>
             </div>
             <p className="text-[#636E72] font-medium mb-1">
-              目前沒有已發佈的{isScenarioTab ? '情境考卷' : '考卷'}
+              目前沒有已發佈的{isScenarioTab ? '概念釐清題組' : '題組'}
             </p>
-            <p className="text-sm text-[#95A5A6] mb-5">請先建立考卷，再回來進行派發</p>
+            <p className="text-sm text-[#95A5A6] mb-5">請先建立題組，再回來進行派發</p>
             <button
               onClick={() => navigate(isScenarioTab ? '/teacher/scenarios' : '/teacher/quizzes')}
               className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#8FC87A] text-[#2D3436] border border-[#BDC3C7] rounded-2xl text-sm font-semibold hover:bg-[#76B563] transition-colors"
             >
-              前往{isScenarioTab ? '情境出題' : '出題管理'}
+              前往{isScenarioTab ? '概念釐清出題' : '出題管理'}
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
@@ -217,11 +218,11 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
               </div>
             ))}
           </div>
-          {/* 手機版：每張考卷一張卡片，班級狀態垂直堆疊（不需橫向卷軸） */}
+          {/* 手機版：每張題組一張卡片，班級狀態垂直堆疊（不需橫向卷軸） */}
           <div className="md:hidden space-y-4">
             {matrix.map(({ quiz, cells }) => (
               <div key={quiz.id} className="bg-white rounded-2xl border border-[#BDC3C7] shadow-[0_2px_12px_rgba(0,0,0,0.06)] overflow-hidden">
-                {/* 考卷標頭 */}
+                {/* 題組標頭 */}
                 <div className="px-4 py-3 bg-[#EEF5E6] border-b border-[#D5D8DC]">
                   <div className="flex items-center gap-1.5 mb-1">
                     <span
@@ -230,13 +231,13 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
                                    ? 'bg-[#E0F0E8] text-[#2E6B47] border-[#3F8B5E]'
                                    : 'bg-[#C8EAAE] text-[#3D5A3E] border-[#BDC3C7]'}`}
                     >
-                      {isScenarioTab ? '🌱 情境' : '已發佈'}
+                      {isScenarioTab ? '🌱 概念釐清' : '已發佈'}
                     </span>
                   </div>
                   <p className="text-sm font-semibold text-[#2D3436] leading-snug">{quiz.title}</p>
                   <p className="text-xs text-[#95A5A6] mt-0.5">
                     {isScenarioTab
-                      ? `${quiz.questions?.length ?? 0} 題情境 · 目標節點 ${quiz.targetNodeId}`
+                      ? `${quiz.questions?.length ?? 0} 題概念釐清 · 目標節點 ${quiz.targetNodeId}`
                       : `${quiz.questionCount} 題 · ${quiz.knowledgeNodeIds.length} 個節點`}
                   </p>
                 </div>
@@ -264,7 +265,7 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
                             <AssignPopover
                               quiz={quiz}
                               cls={cls}
-                              onConfirm={(dueDate) => handleConfirmDiagnosis(quiz.id, cls.id, dueDate)}
+                              onConfirm={(dueDate, mode) => handleConfirmDiagnosis(quiz.id, cls.id, dueDate, mode)}
                               onClose={() => setPopover(null)}
                             />
                           )}
@@ -300,7 +301,7 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
             ))}
           </div>
 
-          {/* 桌機版（≥ md）：考卷 × 班級 矩陣表格 */}
+          {/* 桌機版（≥ md）：題組 × 班級 矩陣表格 */}
           <div className="hidden md:block bg-white rounded-[32px] border border-[#BDC3C7] shadow-[0_2px_12px_rgba(0,0,0,0.06)] overflow-hidden">
             <div className="overflow-x-auto">
             <div
@@ -308,7 +309,7 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
               style={{ gridTemplateColumns: `220px repeat(${classes.length}, minmax(140px, 1fr))` }}
             >
               <div className="px-4 sm:px-5 py-3 flex items-center">
-                <span className="text-xs font-bold text-[#636E72] uppercase tracking-wide">考卷</span>
+                <span className="text-xs font-bold text-[#636E72] uppercase tracking-wide">題組</span>
               </div>
               {classes.map((cls) => (
                 <div key={cls.id} className="px-3 py-3 text-center border-l border-[#D5D8DC]">
@@ -335,13 +336,13 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
                                    ? 'bg-[#E0F0E8] text-[#2E6B47] border-[#3F8B5E]'
                                    : 'bg-[#C8EAAE] text-[#3D5A3E] border-[#BDC3C7]'}`}
                     >
-                      {isScenarioTab ? '🌱 情境' : '已發佈'}
+                      {isScenarioTab ? '🌱 概念釐清' : '已發佈'}
                     </span>
                   </div>
                   <p className="text-sm font-semibold text-[#2D3436] leading-snug mb-1">{quiz.title}</p>
                   <p className="text-xs text-[#95A5A6]">
                     {isScenarioTab
-                      ? `${quiz.questions?.length ?? 0} 題情境 · 目標節點 ${quiz.targetNodeId}`
+                      ? `${quiz.questions?.length ?? 0} 題概念釐清 · 目標節點 ${quiz.targetNodeId}`
                       : `${quiz.questionCount} 題 · ${quiz.knowledgeNodeIds.length} 個節點`}
                   </p>
                 </div>
@@ -363,7 +364,7 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
                           <AssignPopover
                             quiz={quiz}
                             cls={cls}
-                            onConfirm={(dueDate) => handleConfirmDiagnosis(quiz.id, cls.id, dueDate)}
+                            onConfirm={(dueDate, mode) => handleConfirmDiagnosis(quiz.id, cls.id, dueDate, mode)}
                             onClose={() => setPopover(null)}
                           />
                         )}
@@ -404,7 +405,7 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
         )}
       </div>
 
-      {/* 情境分頁：學生對象選擇器 Modal */}
+      {/* 概念釐清分頁：學生對象選擇器 Modal */}
       {picker && (
         <AssignTargetPicker
           quiz={picker.quiz}

@@ -4,7 +4,7 @@ import { knowledgeNodes } from '../../../data/knowledgeGraph';
  * Coverage Panel — 顯示每個節點的迷思覆蓋率，並列出尚未覆蓋的迷思 chip。
  * 點擊 chip 觸發 onAddForMisconception(nodeId, misconceptionId)，呼叫端負責建立題目並開啟編輯 modal。
  */
-export default function CoveragePanel({ questions, selectedNodeIds, onAddForMisconception }) {
+export default function CoveragePanel({ questions, selectedNodeIds, nodeQuestionCounts = {}, onAddForMisconception }) {
   const nodeCoverage = knowledgeNodes
     .filter((n) => selectedNodeIds.includes(n.id))
     .map((node) => {
@@ -41,7 +41,9 @@ export default function CoveragePanel({ questions, selectedNodeIds, onAddForMisc
             <div key={node.id} className="flex-1 min-w-[240px] bg-white border border-[#BDC3C7] rounded-xl p-3 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-sm font-mono text-[#636E72]">{node.id}</span>
-                <span className="text-sm font-semibold text-[#2D3436]">{questionCount} 題</span>
+                <span className="text-sm font-semibold text-[#2D3436]">
+                  {questionCount}{nodeQuestionCounts[node.id] ? `/${nodeQuestionCounts[node.id]}` : ''} 題
+                </span>
               </div>
               <p className="text-sm font-semibold text-[#2D3436] mb-2 leading-tight">{node.name}</p>
               <div className="w-full bg-[#EEF5E6] border border-[#D5D8DC] rounded-full h-2 mb-1 overflow-hidden">

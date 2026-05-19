@@ -873,7 +873,7 @@ ease-[cubic-bezier(0.34,1.56,0.64,1)]
 
 **禁用**：eh 系統的 owl GIF（`owl_intro.gif`），改用 SciLens 既有 `scilens_mascot.png`。
 
-**歷史變更**：v2.5 之前用 `position: fixed` 釘 viewport，但在兩欄佈局下會跨到情境欄上方造成跑版（issue #4），改為 absolute 後永遠跟著對話欄。
+**歷史變更**：v2.5 之前用 `position: fixed` 釘 viewport，但在兩欄佈局下會跨到概念釐清欄上方造成跑版（issue #4），改為 absolute 後永遠跟著對話欄。
 
 ### 12.5 結算過關木牌（CompletionWoodenSign）
 
@@ -937,15 +937,15 @@ ease-[cubic-bezier(0.34,1.56,0.64,1)]
 - 左欄已塵封的對話用 `text-white/40` 同等的暗化米色 `text-[#7A5232]/60`
 - 右欄反思對話用正常米紙氣泡
 
-### 12.7 「查看情境」摺疊按鈕（沿用既有 ChunkyButton ghost variant）
+### 12.7 「查看概念釐清」摺疊按鈕（沿用既有 ChunkyButton ghost variant）
 
-對話進行中可隨時喚回情境敘述：
+對話進行中可隨時喚回概念釐清敘述：
 
 ```jsx
 <ChunkyButton
   onClick={() => setExpanded(v => !v)}
   variant="ghost"
-  label={expanded ? '收起情境' : '查看情境'}
+  label={expanded ? '收起概念釐清' : '查看概念釐清'}
   icon={expanded ? 'expand_less' : 'expand_more'}
   small
 />
@@ -989,13 +989,13 @@ html.student-mode { font-size: 17px; }                /* mobile 6.25% 放大 */
 | 區塊 | 原字級 | 新字級 |
 |------|--------|--------|
 | 對話氣泡（`Bubble`，AI / 學生）| `text-sm sm:text-base` | `text-base sm:text-lg` |
-| 情境敘述（`ScenarioSideCard`、`ScenarioPanel`）| `text-xs sm:text-sm` | `text-sm sm:text-base` |
+| 概念釐清敘述（`ScenarioSideCard`、`ScenarioPanel`）| `text-xs sm:text-sm` | `text-sm sm:text-base` |
 | 吉祥物提示泡泡（`MascotHintBubble`）| `text-sm` | `text-base` |
 | 重述提示橫幅（`ChatStream` requiresRestatement）| `text-xs sm:text-sm` | `text-sm sm:text-base` |
 
-### 13.3 情境圖片尺寸（issue #2）
+### 13.3 概念釐清圖片尺寸（issue #2）
 
-學生對話頁的情境圖片預設過小，平板上難以辨認細節。改為：
+學生對話頁的概念釐清圖片預設過小，平板上難以辨認細節。改為：
 
 | 元件 | 原 max-w | 新 max-w |
 |------|----------|----------|

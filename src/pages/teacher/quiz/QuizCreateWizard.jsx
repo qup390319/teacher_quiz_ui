@@ -7,7 +7,7 @@ import { useUnsavedChangesPrompt } from '../../../hooks/useUnsavedChangesPrompt'
 import Step1Nodes from './Step1Nodes';
 import Step2Edit from './Step2Edit';
 
-const STEPS = ['決定出題範圍（選擇節點）', '製作考卷（編輯題目）'];
+const STEPS = ['決定出題範圍（選擇節點）', '製作題組（編輯題目）'];
 
 export default function QuizCreateWizard() {
   const [searchParams] = useSearchParams();
@@ -39,8 +39,26 @@ export default function QuizCreateWizard() {
   return (
     <TeacherLayout>
       <div className="p-4 sm:p-6 md:p-8">
-        {/* Top bar: back + page header */}
-        <div className="mb-5 sm:mb-7 flex items-start gap-3 sm:gap-4">
+        {/* Breadcrumb + page header */}
+        <nav className="mb-2 flex items-center gap-1 text-sm text-[#95A5A6]" aria-label="breadcrumb">
+          <button
+            onClick={() => guardedNavigate('/teacher/quizzes')}
+            className="hover:text-[#636E72] hover:underline transition-colors"
+          >
+            出題管理
+          </button>
+          <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+          <span className="text-[#636E72] font-medium">建立題組</span>
+          <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+          <span className="text-[#2D3436] font-semibold">
+            {currentStep === 1 ? '步驟一：決定出題範圍' : '步驟二：製作題組'}
+          </span>
+        </nav>
+        <div className="mb-5 sm:mb-7 flex items-center gap-3 sm:gap-4">
           <button
             onClick={() => guardedNavigate('/teacher/quizzes')}
             className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-[#636E72] border border-[#BDC3C7] rounded-xl hover:bg-[#EEF5E6] transition-colors flex-shrink-0"
@@ -52,7 +70,7 @@ export default function QuizCreateWizard() {
             返回
           </button>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436] mb-1">建立考卷</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436] mb-0.5">建立題組</h1>
             <p className="text-[#636E72] text-sm">水溶液單元 · 迷思概念診斷測驗</p>
           </div>
         </div>

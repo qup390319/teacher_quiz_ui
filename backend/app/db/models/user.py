@@ -25,8 +25,12 @@ class User(Base):
         server_default=func.now(), server_onupdate=func.now(), nullable=False,
     )
 
-    teacher: Mapped["Teacher | None"] = relationship(back_populates="user", uselist=False)
-    student: Mapped["Student | None"] = relationship(back_populates="user", uselist=False)
+    teacher: Mapped["Teacher | None"] = relationship(
+        back_populates="user", uselist=False, passive_deletes=True,
+    )
+    student: Mapped["Student | None"] = relationship(
+        back_populates="user", uselist=False, passive_deletes=True,
+    )
 
 
 class Teacher(Base):
@@ -55,7 +59,7 @@ class Student(Base):
     name: Mapped[str] = mapped_column(String(64), nullable=False)
     seat: Mapped[int] = mapped_column(nullable=False)
     class_id: Mapped[str] = mapped_column(
-        String(32), ForeignKey("classes.id"), nullable=False,
+        String(32), ForeignKey("classes.id", ondelete="CASCADE"), nullable=False,
     )
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
 

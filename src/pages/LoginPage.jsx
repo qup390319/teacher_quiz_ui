@@ -21,7 +21,7 @@ const TEACHER_FEATURES = [
 ];
 
 const STUDENT_FEATURES = [
-  { icon: 'forum',         text: '對話式情境作答' },
+  { icon: 'forum',         text: '對話式概念釐清作答' },
   { icon: 'explore',       text: '循序探索科學概念' },
   { icon: 'monitor_heart', text: '個人學習體檢表' },
 ];

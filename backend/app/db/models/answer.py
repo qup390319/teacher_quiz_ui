@@ -34,10 +34,10 @@ class StudentAnswer(Base):
         String(64), ForeignKey("assignments.id", ondelete="CASCADE"), nullable=False,
     )
     student_id: Mapped[str] = mapped_column(
-        String(64), ForeignKey("users.id"), nullable=False,
+        String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=False,
     )
-    question_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("quiz_questions.id"), nullable=False,
+    question_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("quiz_questions.id", ondelete="SET NULL"), nullable=True,
     )
     selected_tag: Mapped[str] = mapped_column(String(1), nullable=False)
     diagnosis: Mapped[str] = mapped_column(String(16), nullable=False)

@@ -13,8 +13,8 @@ const TABS = [
   { key: 'draft', label: '草稿' },
 ];
 
-/* 情境考卷庫（spec-08 §5.1）
- * 列出全部情境考卷，可預覽題數 / 目標節點 / 目標迷思，並可編輯／新增。
+/* 概念釐清題組庫（spec-08 §5.1）
+ * 列出全部概念釐清題組，可預覽題數 / 目標節點 / 目標迷思，並可編輯／新增。
  */
 export default function ScenarioLibrary() {
   const navigate = useNavigate();
@@ -32,7 +32,7 @@ export default function ScenarioLibrary() {
       setDeletingScenario(null);
     } catch (err) {
       console.error('[ScenarioLibrary] failed to delete', err);
-      alert('刪除情境考卷失敗：' + (err?.message ?? '未知錯誤'));
+      alert('刪除概念釐清題組失敗：' + (err?.message ?? '未知錯誤'));
     }
   };
 
@@ -62,9 +62,9 @@ export default function ScenarioLibrary() {
         {/* 頁首 */}
         <div className="flex flex-wrap items-start justify-between mb-3 gap-3">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">情境出題</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">概念釐清出題</h1>
             <p className="text-[#636E72] mt-1 text-sm">
-              情境考卷以「論證情境 + AI 對話治療」進行。流程：建立情境考卷 → 派發給班級 → 學生與 AI 對話 → 教師查紀錄。
+              概念釐清題組以「論證情境 + AI 對話治療」進行。流程：建立概念釐清題組 → 派發給班級 → 學生與 AI 對話 → 教師查紀錄。
             </p>
           </div>
           <button
@@ -75,7 +75,7 @@ export default function ScenarioLibrary() {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            新增情境考卷
+            新增概念釐清題組
           </button>
         </div>
 
@@ -106,7 +106,7 @@ export default function ScenarioLibrary() {
           </div>
         )}
 
-        {/* 情境考卷列表 */}
+        {/* 概念釐清題組列表 */}
         {isLoading && (
           <div className="text-[#636E72] text-sm mb-4">載入中…</div>
         )}
@@ -121,10 +121,10 @@ export default function ScenarioLibrary() {
               </svg>
             </div>
             <p className="text-[#636E72] font-medium">
-              {activeTab === 'draft' ? '目前沒有草稿' : '題庫尚未有已發布的情境考卷'}
+              {activeTab === 'draft' ? '目前沒有草稿' : '題庫尚未有已發布的概念釐清題組'}
             </p>
             <p className="text-sm text-[#95A5A6] mt-1">
-              {activeTab === 'draft' ? '建立情境考卷時可先儲存為草稿' : '建立完情境考卷後按發布即可加入題庫'}
+              {activeTab === 'draft' ? '建立概念釐清題組時可先儲存為草稿' : '建立完概念釐清題組後按發布即可加入題庫'}
             </p>
           </div>
         ) : (
@@ -144,7 +144,7 @@ export default function ScenarioLibrary() {
                       <div className="flex items-center gap-2 mb-2">
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#E0F0E8]
                                          border border-[#3F8B5E] text-[#2E6B47] text-xs font-bold">
-                          🌱 情境治療
+                          🌱 概念釐清治療
                         </span>
                         <span
                           className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold
@@ -157,7 +157,7 @@ export default function ScenarioLibrary() {
                       </div>
                       <h3 className="text-lg font-bold text-[#2D3436] mb-1">{sq.title}</h3>
                       <p className="text-xs text-[#95A5A6] mb-3">
-                        建立於 {sq.createdAt} · 共 {sq.questionCount} 題情境
+                        建立於 {sq.createdAt} · 共 {sq.questionCount} 題概念釐清
                       </p>
 
                       {/* 目標節點 */}
@@ -267,8 +267,8 @@ function EmptyState({ onCreate }) {
             d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
         </svg>
       </div>
-      <p className="text-[#636E72] font-medium">還沒有情境考卷</p>
-      <p className="text-sm text-[#95A5A6] mt-1 mb-4">情境考卷讓 AI 用「論證對話」引導學生治療迷思</p>
+      <p className="text-[#636E72] font-medium">還沒有概念釐清題組</p>
+      <p className="text-sm text-[#95A5A6] mt-1 mb-4">概念釐清題組讓 AI 用「論證對話」引導學生治療迷思</p>
       <button
         type="button"
         onClick={onCreate}
@@ -278,7 +278,7 @@ function EmptyState({ onCreate }) {
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
         </svg>
-        建立第一份情境考卷
+        建立第一份概念釐清題組
       </button>
     </div>
   );

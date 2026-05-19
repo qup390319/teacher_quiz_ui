@@ -26,11 +26,11 @@ class TreatmentSession(Base):
     )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
-    scenario_quiz_id: Mapped[str] = mapped_column(
-        String(32), ForeignKey("scenario_quizzes.id"), nullable=False,
+    scenario_quiz_id: Mapped[str | None] = mapped_column(
+        String(32), ForeignKey("scenario_quizzes.id", ondelete="SET NULL"), nullable=True,
     )
     student_id: Mapped[str] = mapped_column(
-        String(64), ForeignKey("users.id"), nullable=False,
+        String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=False,
     )
     status: Mapped[str] = mapped_column(String(16), default="active", nullable=False)
     current_question_index: Mapped[int] = mapped_column(default=1, nullable=False)

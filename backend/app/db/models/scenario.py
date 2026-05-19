@@ -33,7 +33,7 @@ class ScenarioQuiz(Base):
         ARRAY(String(16)), default=list, nullable=False, server_default="{}",
     )
     created_by: Mapped[str | None] = mapped_column(
-        String(64), ForeignKey("users.id"), nullable=True,
+        String(64), ForeignKey("users.id", ondelete="SET NULL"), nullable=True,
     )
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(

@@ -181,7 +181,7 @@ async def build_grade_summary_query_from_db(
     return (
         f"以下是「{title}」({quiz_id}) "
         f"在本年級各班的測驗結果：\n\n{blocks}\n\n"
-        f"本考卷涵蓋的知識節點：{nodes_str}\n\n"
+        f"本題組涵蓋的知識節點：{nodes_str}\n\n"
         + _common_summary_instructions()
     )
 
@@ -214,7 +214,7 @@ async def build_class_summary_query_from_db(
     return (
         f"以下是「{title}」({quiz_id}) "
         f"在 {cls_name}（{class_id}）的測驗結果：\n\n{cls_block}\n\n"
-        f"本考卷涵蓋的知識節點：{nodes_str}\n\n"
+        f"本題組涵蓋的知識節點：{nodes_str}\n\n"
         + _common_summary_instructions()
     )
 

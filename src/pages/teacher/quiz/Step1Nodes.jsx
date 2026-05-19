@@ -29,6 +29,11 @@ const SUBTOPIC_B_STAGES = [
   { ids: ['INe-Ⅲ-5-7'], color: 'purple', nextArrow: null },
 ];
 
+const SUBTOPIC_A_IDS = SUBTOPIC_A_STAGES.flatMap((s) => s.ids);
+const SUBTOPIC_B_IDS = SUBTOPIC_B_STAGES.flatMap((s) => s.ids);
+const TOTAL_A = SUBTOPIC_A_IDS.length;
+const TOTAL_B = SUBTOPIC_B_IDS.length;
+
 function Arrow({ multi = false }) {
   if (multi) {
     return (
@@ -92,7 +97,14 @@ function PathStage({ stage, nodes, selectedNodeIds, onToggle }) {
 }
 
 export default function Step1Nodes({ onNext }) {
-  const { selectedNodeIds, setSelectedNodeIds, setIsWizardDirty } = useApp();
+  const { selectedNodeIds, setSelectedNodeIds, nodeQuestionCounts, setNodeQuestionCounts, setIsWizardDirty } = useApp();
+
+  const getCount = (nodeId) => nodeQuestionCounts[nodeId] ?? 1;
+  const setCount = (nodeId, val) => {
+    const clamped = Math.max(1, Math.min(4, val));
+    setNodeQuestionCounts((prev) => ({ ...prev, [nodeId]: clamped }));
+    setIsWizardDirty(true);
+  };
 
   const toggleNode = (nodeId) => {
     setSelectedNodeIds((prev) =>
@@ -115,10 +127,13 @@ export default function Step1Nodes({ onNext }) {
     });
   });
 
+  const selectedCountA = selectedNodeIds.filter((id) => SUBTOPIC_A_IDS.includes(id)).length;
+  const selectedCountB = selectedNodeIds.filter((id) => SUBTOPIC_B_IDS.includes(id)).length;
   const canProceed = selectedNodeIds.length > 0;
   const totalMisconceptions = knowledgeNodes
     .filter((n) => selectedNodeIds.includes(n.id))
     .reduce((sum, n) => sum + n.misconceptions.length, 0);
+  const totalPlannedQuestions = selectedNodeIds.reduce((sum, id) => sum + getCount(id), 0);
 
   const rows = [];
   let nodeGroupIndex = 0;
@@ -149,7 +164,16 @@ export default function Step1Nodes({ onNext }) {
         <p className="text-xs font-semibold text-[#95A5A6] uppercase tracking-wide mb-4">知識學習路徑（箭頭表示先備關係，建議從左邊的基礎節點開始選起）</p>
 
         {/* 子主題 A */}
-        <p className="text-sm font-semibold text-[#2D3436] mb-2">子主題 A：水溶液中的變化（溶解）</p>
+        <div className="flex items-center gap-2 mb-2">
+          <p className="text-sm font-semibold text-[#2D3436]">子主題 A：水溶液中的變化（溶解）</p>
+          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${
+            selectedCountA > 0
+              ? 'bg-[#C8EAAE] text-[#3D5A3E] border-[#8FC87A]'
+              : 'bg-[#EEF5E6] text-[#95A5A6] border-[#D5D8DC]'
+          }`}>
+            {selectedCountA}/{TOTAL_A}
+          </span>
+        </div>
         <div className="flex items-center gap-0 overflow-x-auto pb-3 mb-4">
           {SUBTOPIC_A_STAGES.map((stage, idx) => (
             <PathStage key={`A-${idx}`} stage={stage} nodes={nodes} selectedNodeIds={selectedNodeIds} />
@@ -157,7 +181,16 @@ export default function Step1Nodes({ onNext }) {
         </div>
 
         {/* 子主題 B */}
-        <p className="text-sm font-semibold text-[#2D3436] mb-2 pt-3 border-t border-[#D5D8DC]">子主題 B：酸鹼反應</p>
+        <div className="flex items-center gap-2 mb-2 pt-3 border-t border-[#D5D8DC]">
+          <p className="text-sm font-semibold text-[#2D3436]">子主題 B：酸鹼反應</p>
+          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${
+            selectedCountB > 0
+              ? 'bg-[#C8EAAE] text-[#3D5A3E] border-[#8FC87A]'
+              : 'bg-[#EEF5E6] text-[#95A5A6] border-[#D5D8DC]'
+          }`}>
+            {selectedCountB}/{TOTAL_B}
+          </span>
+        </div>
         <div className="flex items-center gap-0 overflow-x-auto pb-1">
           {SUBTOPIC_B_STAGES.map((stage, idx) => (
             <PathStage key={`B-${idx}`} stage={stage} nodes={nodes} selectedNodeIds={selectedNodeIds} />
@@ -166,30 +199,95 @@ export default function Step1Nodes({ onNext }) {
       </div>
 
       {/* Sticky 摘要列 */}
-      <div className="sticky top-0 z-10 bg-[#C8EAAE] border border-[#BDC3C7] rounded-2xl px-4 py-3 mb-5 flex flex-wrap items-center justify-between gap-3 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
-        <div className="text-sm text-[#2D3436]">
-          {selectedNodeIds.length > 0 ? (
-            <>
-              已選 <span className="font-bold text-[#2D3436]">{selectedNodeIds.length}</span> 個節點，
-              將診斷 <span className="font-bold text-[#2D3436]">{totalMisconceptions}</span> 個迷思概念
-            </>
-          ) : (
-            <span className="text-[#95A5A6]">尚未選擇任何知識節點</span>
-          )}
+      <div className="sticky top-0 z-10 bg-[#C8EAAE] border border-[#BDC3C7] rounded-2xl px-4 py-3 mb-5 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="text-sm text-[#2D3436]">
+            {selectedNodeIds.length > 0 ? (
+              <>
+                已選 <span className="font-bold">{selectedNodeIds.length}</span> 個節點，
+                預計出 <span className="font-bold">{totalPlannedQuestions}</span> 題，
+                涵蓋 <span className="font-bold">{totalMisconceptions}</span> 個迷思概念
+                <span className="mx-2 text-[#95A5A6]">|</span>
+                <span className="text-[#3D5A3E]">
+                  子主題 A：{selectedCountA}/{TOTAL_A}
+                </span>
+                <span className="mx-1.5 text-[#95A5A6]">·</span>
+                <span className="text-[#3D5A3E]">
+                  子主題 B：{selectedCountB}/{TOTAL_B}
+                </span>
+              </>
+            ) : (
+              <span className="text-[#636E72]">
+                <svg className="w-4 h-4 inline-block mr-1 -mt-0.5 text-[#95A5A6]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z" />
+                </svg>
+                請從下方勾選至少 1 個知識節點以繼續
+              </span>
+            )}
+          </div>
+          <button
+            onClick={onNext}
+            disabled={!canProceed}
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold text-sm transition-all border ${canProceed
+                ? 'bg-[#8FC87A] text-[#2D3436] border-[#BDC3C7] hover:bg-[#76B563]'
+                : 'bg-[#EEF5E6] text-[#95A5A6] border-[#D5D8DC] cursor-not-allowed'
+              }`}
+          >
+            下一步：製作題組
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
         </div>
-        <button
-          onClick={onNext}
-          disabled={!canProceed}
-          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold text-sm transition-all border ${canProceed
-              ? 'bg-[#8FC87A] text-[#2D3436] border-[#BDC3C7] hover:bg-[#76B563]'
-              : 'bg-[#EEF5E6] text-[#95A5A6] border-[#D5D8DC] cursor-not-allowed'
-            }`}
-        >
-          下一步：製作考卷
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
+        {/* 已選節點 chip 列 */}
+        {selectedNodeIds.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-2.5 pt-2.5 border-t border-[#8FC87A]/40">
+            <span className="text-xs text-[#3D5A3E] font-medium self-center mr-1">已選：</span>
+            {selectedNodeIds.map((nodeId) => {
+              const node = knowledgeNodes.find((n) => n.id === nodeId);
+              if (!node) return null;
+              const count = getCount(nodeId);
+              return (
+                <div key={nodeId} className="inline-flex items-center gap-0 text-xs bg-white/80 border border-[#BDC3C7] text-[#2D3436] rounded-lg">
+                  <button
+                    onClick={() => toggleNode(nodeId)}
+                    className="inline-flex items-center gap-1 pl-2.5 pr-1 py-1 hover:bg-[#FAC8CC]/30 rounded-l-lg transition-all group"
+                    title={`取消選取 ${node.name}`}
+                  >
+                    <span className="font-mono text-[#95A5A6] mr-0.5">{node.id}</span>
+                    {node.name}
+                    <svg className="w-3.5 h-3.5 text-[#95A5A6] group-hover:text-[#E74C5E] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                  <span className="w-px h-4 bg-[#D5D8DC]" />
+                  <div className="flex items-center gap-0.5 px-1">
+                    <button
+                      onClick={() => setCount(nodeId, count - 1)}
+                      disabled={count <= 1}
+                      className="w-4 h-4 flex items-center justify-center rounded text-[#636E72] hover:bg-[#D5D8DC] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 12H4" />
+                      </svg>
+                    </button>
+                    <span className="w-4 text-center font-bold text-[#2D3436]">{count}</span>
+                    <button
+                      onClick={() => setCount(nodeId, count + 1)}
+                      disabled={count >= 4}
+                      className="w-4 h-4 flex items-center justify-center rounded text-[#636E72] hover:bg-[#D5D8DC] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                      </svg>
+                    </button>
+                    <span className="text-[10px] text-[#95A5A6] ml-0.5">題</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Warning Banner */}

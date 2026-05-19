@@ -18,6 +18,6 @@ class AssignmentStudent(Base):
     )
     student_id: Mapped[str] = mapped_column(
         String(64),
-        ForeignKey("users.id"),
+        ForeignKey("users.id", ondelete="CASCADE"),
         primary_key=True,
     )

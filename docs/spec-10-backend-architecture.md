@@ -64,7 +64,8 @@ backend/
     │   ├── scenario.py
     │   ├── assignment.py
     │   ├── answer.py
-    │   └── treatment.py
+    │   ├── treatment.py
+    │   └── adaptive.py     # 適性派題相關 schemas
     ├── auth/
     │   ├── __init__.py
     │   ├── password.py     # plaintext compare（P1）
@@ -81,14 +82,18 @@ backend/
     │   ├── answers.py      # /api/answers/*（P4）
     │   ├── treatment.py    # /api/treatment/*（P4）
     │   ├── llm.py          # /api/llm/*（P2）
-    │   └── ai.py           # /api/ai/*（P2 / P3）
+    │   ├── ai.py           # /api/ai/*（P2 / P3）
+    │   └── adaptive.py     # /api/adaptive/*（適性派題）
+    ├── data/
+    │   └── knowledge_graph.py  # 12 節點靜態先備圖譜 + BFS + topo sort
     ├── services/
     │   ├── __init__.py
     │   ├── llm_service.py            # P2
     │   ├── ragflow_service.py        # P2
     │   ├── diagnosis_service.py      # P4
     │   ├── summary_service.py        # P3
-    │   └── cause_analysis_service.py # P4
+    │   ├── cause_analysis_service.py # P4
+    │   └── adaptive_service.py       # 適性派題（先備精熟度 + 推薦邏輯）
     ├── seed/
     │   ├── __init__.py
     │   └── seed.py         # 把 src/data/*Data.js 轉成 SQL 灌入
@@ -112,6 +117,13 @@ backend/
 | `diagnosis_service.py` | P4 ✅ | 驅動兩階段診斷流程（自動診斷 + 迷思確認）；計算節點通過率、迷思命中學生清單 |
 | `summary_service.py` | P3 ✅ | 彙整學生作答 → 生成摘要（呼叫 RAGFlow N1/N2）；快取到 `AiSummaryCache` 表 |
 | `cause_analysis_service.py` | P4 ✅ | 分析學生迷思成因（透過 LLM）；接收追問對話日誌、迷思資訊與 8 個成因分類，產生 structured prompt，呼叫 LLM 取得分析，解析 JSON 回應提取成因 ID；LLM 不可用時優雅回傳空清單 |
+| `adaptive_service.py` | ✅ | 適性派題服務；根據學生歷史作答計算各節點精熟度，結合知識圖譜先備關係產生先備狀態報告與適性推薦（詳見 §10） |
+
+### 2.2 data/ 詳細說明
+
+| 資料模組 | 說明 |
+|---------|------|
+| `knowledge_graph.py` | 靜態知識節點先備圖譜（鏡射前端 `src/data/knowledgeGraph.js`）；包含 12 節點定義（`NODES` dict）、BFS 遞移先備查詢 `get_all_prerequisites()`、Kahn's algorithm 拓撲排序 `topo_sort()` |
 
 ---
 
@@ -283,7 +295,7 @@ HTTP status code：
 | `quizzes` | `POST/PUT/DELETE /api/quizzes[/{id}]` | P3 ✅ | 教師專屬（CRUD）；**PUT 採 smart upsert**（match by `order_index` 在原 `quiz_questions.id` 上 UPDATE，避免破壞 `student_answers.question_id` FK）；嘗試刪除有作答的題目會回 409 `QUESTION_HAS_ANSWERS` |
 | `scenarios` | `GET /api/scenarios` / `GET /api/scenarios/{id}` | P3 ✅ | 教師看全部；**學生只看自己班級已被派發的** |
 | `scenarios` | `POST/PUT/DELETE /api/scenarios[/{id}]` | P3 ✅ | 教師專屬（CRUD） |
-| `assignments` | `GET /api/assignments` | P3 ✅ | **教師範圍隔離**：教師只看 `class_id` 屬於自己班級的派題；學生隱式過濾為自己班級。回傳含 **`completionRate / submittedCount / totalStudents`** 即時統計；對學生身份額外回傳 **`myDiagnosisCompleted`**（該生於此 assignment 是否已有 ≥1 筆作答）與 **`myScenarioCompleted`**（該生對該情境考卷是否已完成 treatment session），用於學生首頁判斷任務是否做完，跨刷新仍正確 |
+| `assignments` | `GET /api/assignments` | P3 ✅ | **教師範圍隔離**：教師只看 `class_id` 屬於自己班級的派題；學生隱式過濾為自己班級。回傳含 **`completionRate / submittedCount / totalStudents`** 即時統計；對學生身份額外回傳 **`myDiagnosisCompleted`**（該生於此 assignment 是否已有 ≥1 筆作答）與 **`myScenarioCompleted`**（該生對該概念釐清題組是否已完成 treatment session），用於學生首頁判斷任務是否做完，跨刷新仍正確 |
 | `assignments` | `POST/PATCH/DELETE /api/assignments[/{id}]` | P3 ✅ | 教師專屬；POST/PATCH 寫入前驗證 `class_id` 屬於自己 |
 | `answers` | `POST /api/answers` | P4 ✅ | 學生作答（接收陣列以批次寫入） |
 | `answers` | `POST /api/answers/{id}/followup` | P4 ✅ | 追問結果回寫（驅動 statusChange） |
@@ -307,6 +319,11 @@ HTTP status code：
 | `misconceptions` | `GET /api/misconceptions/custom` | ✅ | **教師私有**：列出該老師自訂迷思（spec-04 §2.5.1） |
 | `misconceptions` | `POST /api/misconceptions/custom` | ✅ | 新增自訂迷思（`teacher_id` 由 cookie 帶入；驗證 `nodeId` ∈ 12 節點） |
 | `misconceptions` | `DELETE /api/misconceptions/custom/{id}` | ✅ | 只能刪自己的；他人/不存在皆回 404，避免列舉攻擊 |
+| `adaptive` | `GET /api/adaptive/prerequisite-status` | ✅ | 查詢班級學生對目標節點的先備精熟狀態（詳見 §10） |
+| `adaptive` | `GET /api/adaptive/recommend` | ✅ | 產生 per-student 適性派題推薦（diagnosis / review 兩種模式） |
+| `adaptive` | `GET /api/adaptive/sorted-nodes` | ✅ | 依先備關係拓撲排序指定節點 |
+| `adaptive` | `POST /api/adaptive/polish-stem` | ✅ | AI 潤飾題幹（透過 vLLM proxy） |
+| `adaptive` | `POST /api/adaptive/suggest-options` | ✅ | AI 產生 4 選項（1 正確 + 3 干擾，透過 vLLM proxy） |
 
 > P1 端點以外，其餘僅在後端骨架中保留 router 檔（裡面可能只有 `# TODO P2/P3/P4`），不實作。
 
@@ -333,6 +350,86 @@ HTTP status code：
 | spec-05 工作流 | §2.1 認證流程從「假登入」改為「帳密登入後 JWT cookie」 |
 | spec-06 部署 | docker-compose 加 postgres + backend，前後端分服務 |
 | spec-09 LLM 整合 | P2 起 `src/llm/` 不再直呼 vLLM，改呼叫後端 `/api/llm/*` |
+
+---
+
+## 10. 適性派題模組（Adaptive Dispatching）
+
+教師派題前，系統可依據學生歷史作答自動判斷先備知識精熟度，並推薦適合每位學生的診斷/複習節點。
+
+### 10.1 知識圖譜資料模組
+
+**檔案**：`backend/app/data/knowledge_graph.py`
+
+靜態 Python dict `NODES`，鏡射前端 `src/data/knowledgeGraph.js`，包含 12 個知識節點及其先備關係：
+
+- 子主題 A（水溶液中的變化）：`INe-II-3-01` → `02` → `03` → `05` → `04`（5 節點）
+- 子主題 B（酸鹼反應）：`INe-Ⅲ-5-1` → `2` → `3` → `4` → [`5`, `6` 平行] → `7`（7 節點）
+
+每個節點包含 `name`（節點名稱）、`level`（層級深度）、`subtopic`（A/B）、`prerequisites`（直接先備 ID 陣列）。
+
+提供兩個工具函式：
+
+| 函式 | 說明 |
+|------|------|
+| `get_all_prerequisites(node_id)` | BFS 遞移查詢：回傳該節點所有先備節點（由根到近），不含自身 |
+| `topo_sort(node_ids)` | Kahn's algorithm 拓撲排序：依先備關係排序給定的節點子集；同層級以 (subtopic, level, id) 排序確保結果確定性 |
+
+### 10.2 適性派題服務
+
+**檔案**：`backend/app/services/adaptive_service.py`
+
+#### 核心邏輯
+
+1. **精熟度計算** `_student_node_mastery(db, student_id)`：join `StudentAnswer` + `QuizQuestion`，回傳 `{nodeId: {total, correct}}`。精熟百分比 = `correct / total * 100`，四捨五入。
+2. **精熟閾值**（threshold）預設 70%，可由查詢參數覆寫。`total == 0`（無作答紀錄）視為未精熟。
+
+#### 先備狀態報告
+
+`get_class_prerequisite_status(db, class_id, target_node_ids, threshold)` → 回傳全班每位學生的先備精熟狀態：
+
+- 蒐集目標節點的所有遞移先備（不含目標自身）
+- 對每位學生逐一檢查各先備節點的精熟度
+- 產出：`ready`（全部先備精熟）、`weak_nodes`（未達標先備清單）、每個先備的 `mastered / mastery_pct / missing`
+
+#### 適性推薦
+
+`get_adaptive_recommendations(db, class_id, target_node_ids, mode, threshold)` → 兩種派題模式：
+
+| 模式 | 策略 |
+|------|------|
+| `diagnosis`（診斷） | 依拓撲序檢查目標節點；遇到未達標節點時**向上溯源**到未精熟的先備，插入推薦清單頭部；一旦某個先備未通過，停止派發更下游的目標節點（`skip`） |
+| `review`（複習） | 蒐集所有先備 + 目標節點的完整鏈，從最基礎的先備開始，推薦所有未達標節點 |
+
+### 10.3 適性派題端點
+
+**Router**：`backend/app/routers/adaptive.py`，掛載於 `/api/adaptive/`
+
+所有端點皆需 `require_teacher`。
+
+| 端點 | 方法 | 查詢參數 | 說明 |
+|------|------|---------|------|
+| `/api/adaptive/prerequisite-status` | GET | `classId`, `nodeIds`（逗號分隔）, `threshold`（預設 70） | 回傳全班先備精熟狀態報告 |
+| `/api/adaptive/recommend` | GET | `classId`, `nodeIds`, `mode`（diagnosis/review）, `threshold` | 回傳 per-student 推薦/跳過節點清單與原因說明 |
+| `/api/adaptive/sorted-nodes` | GET | `nodeIds` | 回傳拓撲排序後的節點 ID + 節點名稱/層級資訊 |
+| `/api/adaptive/polish-stem` | POST | Body: `{stem, nodeId, nodeName}` | AI 潤飾題幹（詳見 spec-09 §14.1） |
+| `/api/adaptive/suggest-options` | POST | Body: `{stem, nodeId, nodeName, misconceptions[]}` | AI 產生 4 選項（詳見 spec-09 §14.2） |
+
+### 10.4 Pydantic Schemas
+
+**檔案**：`backend/app/schemas/adaptive.py`
+
+| Schema | 用途 |
+|--------|------|
+| `NodeMastery` | 單一節點精熟度（nodeId, nodeName, level, totalQuestions, correctCount, masteryPct） |
+| `PrerequisiteStatus` | 先備節點狀態（nodeId, nodeName, mastered, masteryPct, missing） |
+| `StudentPrerequisiteReport` | 單一學生的先備報告（studentId, studentName, seat, ready, prerequisites[], weakNodes[]） |
+| `ClassPrerequisiteResponse` | prerequisite-status 端點回應（classId, targetNodeIds, masteryThreshold, students[]） |
+| `AdaptiveRecommendation` | 單一學生的推薦（studentId, studentName, seat, recommendedNodeIds[], skipNodeIds[], reason） |
+| `AdaptiveRecommendResponse` | recommend 端點回應（classId, mode, sortedNodeIds, students[]） |
+| `PolishStemRequest` / `PolishStemResponse` | AI 潤飾題幹（request: stem + nodeId + nodeName；response: polished） |
+| `SuggestOptionsRequest` / `SuggestOptionsResponse` | AI 產生選項（request: stem + nodeId + nodeName + misconceptions[]；response: options[]） |
+| `SuggestedOption` | 單一選項（tag: A/B/C/D, content, diagnosis） |
 
 ---
 

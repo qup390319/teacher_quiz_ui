@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
+from app.routers import adaptive as adaptive_router
 from app.routers import ai as ai_router
 from app.routers import answers as answers_router
 from app.routers import assignments as assignments_router
@@ -40,6 +41,7 @@ app.include_router(scenarios_router.router, prefix="/api/scenarios", tags=["scen
 app.include_router(assignments_router.router, prefix="/api/assignments", tags=["assignments"])
 app.include_router(llm_router.router, prefix="/api/llm", tags=["llm"])
 app.include_router(ai_router.router, prefix="/api/ai", tags=["ai"])
+app.include_router(adaptive_router.router, prefix="/api/adaptive", tags=["adaptive"])
 # P4: answers split into multiple mounts for clean URL design
 app.include_router(answers_router.router, prefix="/api", tags=["answers"])  # /api/answers, /api/answers/followups
 app.include_router(answers_router.quiz_router, prefix="/api/quizzes", tags=["answers"])  # /api/quizzes/{id}/answers, /stats

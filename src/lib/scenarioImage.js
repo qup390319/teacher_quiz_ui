@@ -1,5 +1,5 @@
 /**
- * 後端 scenarios.json 把情境圖檔記成純檔名（例：「2-1-2-sugar-saturation-chart.png」），
+ * 後端 scenarios.json 把概念釐清圖檔記成純檔名（例：「2-1-2-sugar-saturation-chart.png」），
  * 但實際檔案放在 src/assets/scenarios/ 下，dev / build 時都需要 Vite 將它打包成
  * 帶 hash 的 asset URL。本模組透過 import.meta.glob 預先載入所有檔案，
  * 讓元件用檔名查表拿到正確 URL。

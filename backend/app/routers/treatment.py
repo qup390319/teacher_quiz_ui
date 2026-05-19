@@ -245,7 +245,7 @@ async def list_treatment_logs(
     sessions = list(res.scalars().all())
 
     # Pre-load related rows
-    sq_ids = {s.scenario_quiz_id for s in sessions}
+    sq_ids = {s.scenario_quiz_id for s in sessions if s.scenario_quiz_id}
     student_ids = {s.student_id for s in sessions}
     sq_res = await db.execute(
         select(ScenarioQuiz).where(ScenarioQuiz.id.in_(sq_ids))
@@ -271,7 +271,7 @@ async def list_treatment_logs(
         rows.append(TreatmentLogRow(
             session_id=s.id,
             scenario_quiz_id=s.scenario_quiz_id,
-            scenario_title=sq.title if sq else s.scenario_quiz_id,
+            scenario_title=sq.title if sq else (s.scenario_quiz_id or "（已刪除）"),
             student_id=s.student_id,
             student_name=stu.name if stu else f"學生 {s.student_id}",
             class_id=cls.id if cls else None,

@@ -147,7 +147,7 @@ async def _upsert_questions_options(
             raise HTTPException(
                 status.HTTP_409_CONFLICT,
                 "QUESTION_HAS_ANSWERS: 部分要刪除的題目已有學生作答，無法刪除。"
-                "請改為修改題目內容，或建立新版本考卷。",
+                "請改為修改題目內容，或建立新版本題組。",
             )
 
     # 2) UPDATE existing or INSERT new for each payload question

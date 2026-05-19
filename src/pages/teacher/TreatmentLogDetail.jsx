@@ -167,7 +167,7 @@ export default function TreatmentLogDetail() {
                       <img
                         key={src}
                         src={resolveScenarioImage(src)}
-                        alt="情境圖"
+                        alt="概念釐清圖"
                         className="w-full rounded-lg border border-[#BDC3C7]"
                       />
                     ))}

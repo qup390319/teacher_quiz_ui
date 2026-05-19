@@ -280,7 +280,7 @@ idx_data = [
     ["assignments(class_id, due_date)", "班級任務列表查詢"],
     ["student_answers(assignment_id, student_id) UNIQUE", "防重複作答"],
     ["treatment_sessions(scenario_quiz_id, student_id) UNIQUE",
-     "同一學生對同一情境僅一個 session"],
+     "同一學生對同一概念釐清僅一個 session"],
     ["treatment_messages(session_id, question_index, created_at)",
      "對話依序讀取"],
     ["ai_summary_cache(scope, scope_id, quiz_id) UNIQUE", "摘要快取查找"],
@@ -303,14 +303,14 @@ POST   /api/classes/{class_id}/students        新增學生
 DELETE /api/classes/{class_id}/students/{id}   移除學生
 POST   /api/students/{id}/reset-password       教師重設學生密碼為預設
 
-# 診斷考卷
+# 診斷題組
 GET    /api/quizzes
 POST   /api/quizzes                 新增（含 questions + options）
 GET    /api/quizzes/{id}
 PUT    /api/quizzes/{id}
 DELETE /api/quizzes/{id}
 
-# 情境治療考卷
+# 概念釐清治療題組
 GET    /api/scenarios
 POST   /api/scenarios
 GET    /api/scenarios/{id}
@@ -416,7 +416,7 @@ phase_data = [
      "classes / students / quizzes / scenarios / assignments 全部從 mock 改成讀 DB；"
      "前端 AppContext 對應改寫；"
      "同時做 /api/ai/grade-summary、/api/ai/class-summary（N1/N2）",
-     "教師建的考卷、派的題能跨裝置看到；"
+     "教師建的題組、派的題能跨裝置看到；"
      "診斷儀表板顯示 N1/N2 RAGFlow 摘要"],
     ["P4\n學生作答資料貫通",
      "學生作答 / 追問對話 / 治療 session 全寫 DB；"

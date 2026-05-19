@@ -1,7 +1,7 @@
 /**
  * 第二層追問對話 — LLM System Prompt builder
  *
- * 與情境治療對話 (treatmentBotPrompts.js) 不同：本檔專供「迷思診斷追問」階段，
+ * 與概念釐清治療對話 (treatmentBotPrompts.js) 不同：本檔專供「迷思診斷追問」階段，
  * 學生作答完選擇題後，AI 與學生對話以確認 / 釐清迷思，並蒐集 8 大成因證據。
  *
  * 設計原則（詳見 spec-05 §2.2、spec-09 §followup）：

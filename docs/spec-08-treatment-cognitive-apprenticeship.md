@@ -1,10 +1,10 @@
 # SPEC-08: Treatment / 認知師徒制治療模組
 
-> **角色定位**：本文件是「迷思治療（情境考卷）」模組的單一真理來源。教師端派發、學生端對話、AI 機器人狀態機、教師端對話紀錄查閱皆以本文件為準。
+> **角色定位**：本文件是「迷思治療（概念釐清題組）」模組的單一真理來源。教師端派發、學生端對話、AI 機器人狀態機、教師端對話紀錄查閱皆以本文件為準。
 >
-> 本模組與既有「診斷考卷」（`Quiz` / `Question`）**並列獨立**：
-> - **診斷考卷**：四選一作答 → 系統判讀迷思 → 學生確認 → 報告（既有，spec-04 §2.1~2.2、spec-05 §2.1~2.2）
-> - **情境考卷**：論證情境（文字＋圖）→ AI 對話式引導（CER 主張/證據/推理/修正）→ 反思 → 教師查紀錄（**本文件規範**）
+> 本模組與既有「診斷題組」（`Quiz` / `Question`）**並列獨立**：
+> - **診斷題組**：四選一作答 → 系統判讀迷思 → 學生確認 → 報告（既有，spec-04 §2.1~2.2、spec-05 §2.1~2.2）
+> - **概念釐清題組**：論證情境（文字＋圖）→ AI 對話式引導（CER 主張/證據/推理/修正）→ 反思 → 教師查紀錄（**本文件規範**）
 
 ---
 
@@ -33,7 +33,7 @@
 
 ### 1.2 兩階段流程（phase）
 
-每一道情境題進行下列兩個階段，由 AI 機器人主導切換：
+每一道概念釐清題進行下列兩個階段，由 AI 機器人主導切換：
 
 | phase | 中文 | 何時進入 | 何時離開 | AI 行為 |
 |-------|------|----------|----------|---------|
@@ -64,7 +64,7 @@ runTreatmentTurn(state, userMessage) → BotResponse
 
 ```typescript
 interface TreatmentState {
-  scenarioQuizId: string;       // 情境考卷 ID（如 'scenario-001'）
+  scenarioQuizId: string;       // 概念釐清題組 ID（如 'scenario-001'）
   questionIndex: number;        // 題目 index（1-based，對應 ScenarioQuiz.questions）
   history: TreatmentMessage[];  // 該題目前為止的完整對話（按時序）
   phase: 'diagnosis' | 'apprenticeship' | 'cer' | 'completed';
@@ -165,10 +165,10 @@ interface BotResponse {
 
 | 型別 | 來源 | 用途 |
 |------|------|------|
-| `ScenarioQuestion` | `src/data/scenarioQuizData.js` | 單一情境題（情境敘述 + 圖 + 開場提問 + 目標迷思 + 專家示範範文） |
-| `ScenarioQuiz` | `src/data/scenarioQuizData.js` | 情境考卷（多題的容器） |
+| `ScenarioQuestion` | `src/data/scenarioQuizData.js` | 單一概念釐清題（概念釐清敘述 + 圖 + 開場提問 + 目標迷思 + 專家示範範文） |
+| `ScenarioQuiz` | `src/data/scenarioQuizData.js` | 概念釐清題組（多題的容器） |
 | `Assignment.type` | `'diagnosis' \| 'scenario'` | 派題類型，預設 `'diagnosis'`（向下相容） |
-| `TreatmentSession` | AppContext | 學生作答某情境考卷的整段對話狀態 |
+| `TreatmentSession` | AppContext | 學生作答某概念釐清題組的整段對話狀態 |
 | `TreatmentMessage` | AppContext | 對話中的一則訊息（AI 或學生）+ 該回合的 phase/stage/step/hintLevel 標註 |
 
 ---
@@ -177,34 +177,34 @@ interface BotResponse {
 
 僅總覽，細節見 spec-05。
 
-### 5.0 情境出題頁面 — 認知師徒制說明面板
+### 5.0 概念釐清出題頁面 — 認知師徒制說明面板
 
 `ScenarioCreateWizard`（路由：`/teacher/scenarios/create`、`/teacher/scenarios/:id/edit`）在頁首下方、「基本資訊」區塊之前，預設展開一塊綠底說明面板（`showGuide` state，預設 `true`），用四張卡片向教師解釋認知師徒制的四個階段，並對照本頁要填寫的欄位：
 
 | 階段 | AI 行為 | 教師要填寫 |
 |------|---------|-----------|
-| 1. 主張 Claim | 用情境提問引出學生判斷 | 情境敘述 + 開場提問 |
+| 1. 主張 Claim | 用概念釐清提問引出學生判斷 | 概念釐清敘述 + 開場提問 |
 | 2. 證據 Evidence | 追問觀察依據 | 目標迷思（系統會自動追問該迷思的證據） |
 | 3. 推理 Reasoning | 校準科學原理 | 專家示範 |
 | 4. 修正 Revision | 自動產生反例與引導 | 無需額外填寫 |
 
-設計動機：國小老師多數未接觸過認知師徒制，若僅顯示「情境敘述／開場提問／專家示範」三個欄位名稱，難以理解每個欄位在 AI 對話中扮演的角色。教師可點右上角 X 收起面板，或從頁首副標下方的「什麼是認知師徒制？」按鈕重新展開。
+設計動機：國小老師多數未接觸過認知師徒制，若僅顯示「概念釐清敘述／開場提問／專家示範」三個欄位名稱，難以理解每個欄位在 AI 對話中扮演的角色。教師可點右上角 X 收起面板，或從頁首副標下方的「什麼是認知師徒制？」按鈕重新展開。
 
 
 ```
 教師看診斷結果 → DashboardReport / StudentReport
-   │ 「派發情境考卷」按鈕
+   │ 「派發概念釐清題組」按鈕
    ▼
 TreatmentAssignment（新頁）
    ├─ 預填當前學生 / 班級的迷思清單
    ├─ 教師勾選想治療的迷思
-   ├─ 系統推薦對應的情境考卷
-   ├─ 教師選擇情境考卷 + 班級 + 截止日 → 派發
+   ├─ 系統推薦對應的概念釐清題組
+   ├─ 教師選擇概念釐清題組 + 班級 + 截止日 → 派發
    ▼
    addAssignment({ type: 'scenario', scenarioQuizId, classId, dueDate, ... })
 
 教師查看治療紀錄 → TreatmentLogs（新頁）
-   ├─ 列表：學生 × 情境考卷 × 完成狀態 × 最後 stage
+   ├─ 列表：學生 × 概念釐清題組 × 完成狀態 × 最後 stage
    └─ 點進去 → TreatmentLogDetail（單一 session 完整對話）
 ```
 
@@ -215,17 +215,17 @@ TreatmentAssignment（新頁）
 ```
 StudentHome
    ├─ 「📝 診斷測驗」區塊（既有任務卡，type=diagnosis）
-   └─ 「🌱 情境治療」區塊（新增任務卡，type=scenario）
+   └─ 「🌱 概念釐清治療」區塊（新增任務卡，type=scenario）
       點擊 → /student/scenario/:scenarioQuizId
                   │
                   ▼
               ScenarioChat
                   ├─ entryStage = 'intro'   吉祥物開場（「準備好了嗎？」）
-                  ├─ entryStage = 'scenario' 情境敘述卡（含可放大圖）
+                  ├─ entryStage = 'scenario' 概念釐清敘述卡（含可放大圖）
                   ├─ entryStage = 'chat'    AI 對話（兩欄佈局，見 §6.1）
                   │     ├─ flowStage = 'chat'          逐輪推進
                   │     ├─ flowStage = 'between-questions'  一題完成 → 「下一題」
-                  │     ├─ flowStage = 'next-scenario' 下一題情境敘述
+                  │     ├─ flowStage = 'next-scenario' 下一題概念釐清敘述
                   │     ├─ flowStage = 'settling'      結算動畫
                   │     ├─ flowStage = 'result'        過關木牌（含三星評等）
                   │     └─ flowStage = 'reflection'    雙欄反思頁
@@ -237,15 +237,15 @@ StudentHome
 ### 6.1 對話頁佈局（兩欄）
 
 平板與桌機（`md:` 斷點 ≥ 768px）：
-- **左欄**（固定 320–420px）：`<ScenarioSideCard>` — 情境題目永遠展開、隨對話一起捲動，**不需收合**
-- **右欄**（彈性）：`<ChatStream>` — 對話氣泡列表 + 輸入框；右下角 `<MascotHintBubble>` 用 `position: absolute` 定位於本欄內（不會跨到情境欄上）
+- **左欄**（固定 320–420px）：`<ScenarioSideCard>` — 概念釐清題目永遠展開、隨對話一起捲動，**不需收合**
+- **右欄**（彈性）：`<ChatStream>` — 對話氣泡列表 + 輸入框；右下角 `<MascotHintBubble>` 用 `position: absolute` 定位於本欄內（不會跨到概念釐清欄上）
 
 行動裝置（< md）：
-- 仍是單欄佈局，情境卡頂部以「查看情境 / 收起情境」按鈕收合（預設收合，節省空間）
+- 仍是單欄佈局，概念釐清卡頂部以「查看概念釐清 / 收起概念釐清」按鈕收合（預設收合，節省空間）
 
 實作元件：
-- `src/components/student/ScenarioSideCard.jsx`（新增）：負責情境內容渲染與行動裝置收合切換
-- `src/components/student/ChatStream.jsx`（簡化）：純對話氣泡列表 + 底部輸入；不再內嵌情境
+- `src/components/student/ScenarioSideCard.jsx`（新增）：負責概念釐清內容渲染與行動裝置收合切換
+- `src/components/student/ChatStream.jsx`（簡化）：純對話氣泡列表 + 底部輸入；不再內嵌概念釐清
 - `src/components/student/MascotHintBubble.jsx`：改為 `absolute`（父層必為 `relative`）
 
 ---
@@ -364,7 +364,7 @@ DB / Pydantic schema 同步擴充，詳見 spec-11 §3.14。
 
 ## 10. 範例素材對照表（1 份 Demo）
 
-| 情境考卷 ID | 標題 | 目標節點 | 題數 | 來源 |
+| 概念釐清題組 ID | 標題 | 目標節點 | 題數 | 來源 |
 |---|---|---|---|---|
 | `scenario-002` | 飽和糖水甜度 | INe-II-3-03 | 2 | eh Q3、Q4 |
 
@@ -372,4 +372,4 @@ DB / Pydantic schema 同步擴充，詳見 spec-11 §3.14。
 
 > 註：原本 5 份 demo（scenario-001/003/004/005）已於 2026-05-07 移除以收斂 demo 內容，僅保留 scenario-002。其餘 png 素材檔案保留於 `src/assets/scenarios/` 但暫無引用。
 
-> 題目文字、情境敘述均直接複製 eh `levels.ts` 中對應 `QUESTION_CONFIGS`，已轉成本系統 `ScenarioQuestion` 結構。
+> 題目文字、概念釐清敘述均直接複製 eh `levels.ts` 中對應 `QUESTION_CONFIGS`，已轉成本系統 `ScenarioQuestion` 結構。

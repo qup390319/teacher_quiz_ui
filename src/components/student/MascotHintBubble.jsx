@@ -2,7 +2,7 @@ import mascotImg from '../../assets/illustrations/scilens_mascot.png';
 
 /* 吉祥物提示泡泡（spec-07 §12.4，禁用 owl GIF）
  * 放在對話欄容器內（父層需 position: relative），absolute 釘在 input bar 上方右側。
- * Issue #4：以前用 fixed 跨整個 viewport 會在兩欄佈局時跑版到情境側欄；
+ * Issue #4：以前用 fixed 跨整個 viewport 會在兩欄佈局時跑版到概念釐清側欄；
  * 改為 absolute 後跟著對話欄寬度走，永遠在送出按鈕上方。
  */
 export default function MascotHintBubble({ feedback }) {

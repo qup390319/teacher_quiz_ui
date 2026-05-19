@@ -103,9 +103,10 @@ function useAnchoredFixedPosition(ref, onClose) {
   return coords;
 }
 
-// ─── Popover：派發考卷（診斷分頁，整班派發） ─────────────────────────────────
+// ─── Popover：派發題組（診斷分頁，整班派發） ─────────────────────────────────
 export function AssignPopover({ quiz, cls, onConfirm, onClose }) {
   const [dueDate, setDueDate] = useState('');
+  const [dispatchMode, setDispatchMode] = useState('diagnosis');
   const ref = useRef(null);
   const coords = useAnchoredFixedPosition(ref, onClose);
 
@@ -113,13 +114,45 @@ export function AssignPopover({ quiz, cls, onConfirm, onClose }) {
     <div
       ref={ref}
       style={coords ? { position: 'fixed', top: coords.top, left: coords.left } : { visibility: 'hidden', position: 'fixed' }}
-      className="z-50 bg-white border border-[#BDC3C7] rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.12)] p-4 w-56"
+      className="z-50 bg-white border border-[#BDC3C7] rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.12)] p-4 w-64"
     >
       <div className="mb-3">
         <p className="text-xs font-bold text-[#2D3436] leading-snug">
           派發給 <span style={{ color: cls.textColor }}>{cls.name}</span>
         </p>
         <p className="text-xs text-[#95A5A6] mt-0.5 truncate">{quiz.title}</p>
+      </div>
+      <div className="mb-3">
+        <label className="text-xs text-[#636E72] mb-1.5 block">派題模式</label>
+        <div className="flex gap-1.5">
+          <button
+            type="button"
+            onClick={() => setDispatchMode('diagnosis')}
+            className={`flex-1 px-2 py-1.5 text-[10px] font-semibold rounded-lg border transition-colors ${
+              dispatchMode === 'diagnosis'
+                ? 'bg-[#FFF1D8] border-[#F0B962] text-[#7A4A18]'
+                : 'bg-white border-[#D5D8DC] text-[#95A5A6] hover:bg-[#EEF5E6]'
+            }`}
+          >
+            診斷模式
+          </button>
+          <button
+            type="button"
+            onClick={() => setDispatchMode('review')}
+            className={`flex-1 px-2 py-1.5 text-[10px] font-semibold rounded-lg border transition-colors ${
+              dispatchMode === 'review'
+                ? 'bg-[#E0F0E8] border-[#3F8B5E] text-[#2E6B47]'
+                : 'bg-white border-[#D5D8DC] text-[#95A5A6] hover:bg-[#EEF5E6]'
+            }`}
+          >
+            複習模式
+          </button>
+        </div>
+        <p className="text-[10px] text-[#95A5A6] mt-1 leading-snug">
+          {dispatchMode === 'diagnosis'
+            ? '直接派發目標題目，答錯再溯源先備'
+            : '從基礎先備開始，由淺入深建立信心'}
+        </p>
       </div>
       <div className="mb-3">
         <label className="text-xs text-[#636E72] mb-1 block">截止日期（選填）</label>
@@ -138,7 +171,7 @@ export function AssignPopover({ quiz, cls, onConfirm, onClose }) {
           取消
         </button>
         <button
-          onClick={() => onConfirm(dueDate)}
+          onClick={() => onConfirm(dueDate, dispatchMode)}
           className="flex-1 py-1.5 text-xs font-semibold bg-[#8FC87A] text-[#2D3436] border border-[#BDC3C7] rounded-xl hover:bg-[#76B563] transition-colors"
         >
           確認派發
@@ -148,7 +181,7 @@ export function AssignPopover({ quiz, cls, onConfirm, onClose }) {
   );
 }
 
-// ─── Popover：管理已派發考卷（兩個分頁共用，依 isScenario 切換主按鈕） ───────
+// ─── Popover：管理已派發題組（兩個分頁共用，依 isScenario 切換主按鈕） ───────
 export function ManagePopover({
   assignment, quiz, cls, isScenario,
   onViewReport, onUpdateDueDate, onRemove, onEditTargets, onClose,

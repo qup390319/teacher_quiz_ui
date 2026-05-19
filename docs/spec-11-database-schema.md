@@ -26,13 +26,13 @@
 | 2 | `teachers` | 教師專屬欄位 | P1 |
 | 3 | `students` | 學生專屬欄位 | P1 |
 | 4 | `classes` | 班級 | P1 |
-| 5 | `quizzes` | 診斷考卷主檔 | P1（seed）/ P3（CRUD） |
-| 6 | `quiz_questions` | 考卷題目 | P1 / P3 |
+| 5 | `quizzes` | 診斷題組主檔 | P1（seed）/ P3（CRUD） |
+| 6 | `quiz_questions` | 題組題目 | P1 / P3 |
 | 7 | `quiz_options` | 題目選項 | P1 / P3 |
-| 8 | `scenario_quizzes` | 情境治療考卷 | P1 / P3 |
-| 9 | `scenario_questions` | 情境題目 | P1 / P3 |
+| 8 | `scenario_quizzes` | 概念釐清治療題組 | P1 / P3 |
+| 9 | `scenario_questions` | 概念釐清題目 | P1 / P3 |
 | 10 | `assignments` | 派發紀錄 | P1（seed）/ P3 |
-| 10b | `assignment_students` | 個別學生派發關聯（情境派題用）| P5（個別學生派發） |
+| 10b | `assignment_students` | 個別學生派發關聯（概念釐清派題用）| P5（個別學生派發） |
 | 11 | `student_answers` | 學生作答 | P4 |
 | 12 | `followup_results` | 追問結果 | P4 |
 | 13 | `treatment_sessions` | 治療對話 session | P4 |
@@ -403,9 +403,9 @@ CREATE INDEX custom_misconceptions_teacher_node_idx ON custom_misconceptions(tea
 | 教師 | `aaa001`（「示範老師」，密碼 `aaa001`，擁有所有 demo 班級）<br>`bbb001`（「黃老師」，密碼 `bbb001`，**正式上線使用**，無班級 / 學生 / 派題 / 作答） |
 | 班級 | `class-A` / `class-B` / `class-C`（`teacher_id` 全部 = `aaa001`） |
 | 學生 | 五年甲班 20 人（`115001~115020`）、五年乙班 18 人（`115101~115118`）、五年丙班 22 人（`115201~115222`） |
-| 診斷考卷 | `quiz-001`、`quiz-002`（沿用 `src/data/quizData.js`） |
-| 情境考卷 | `scenario-002`（沿用 `src/data/scenarioQuizData.js`，2026-05-07 後僅保留 1 份 demo） |
-| 派題 | `assign-001` ~ `assign-004`（診斷整班）+ `assign-006`（情境，指定 2 位學生）|
+| 診斷題組 | `quiz-001`、`quiz-002`（沿用 `src/data/quizData.js`） |
+| 概念釐清題組 | `scenario-002`（沿用 `src/data/scenarioQuizData.js`，2026-05-07 後僅保留 1 份 demo） |
+| 派題 | `assign-001` ~ `assign-004`（診斷整班）+ `assign-006`（概念釐清，指定 2 位學生）|
 
 學生帳號編號規則：
 - 五年甲班：`115001` ~ `115020`（座號 1~20）

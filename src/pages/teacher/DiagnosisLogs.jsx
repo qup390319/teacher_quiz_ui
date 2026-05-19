@@ -81,14 +81,14 @@ export default function DiagnosisLogs() {
             </select>
           </div>
           <div className="flex items-center gap-2">
-            <label className="text-xs font-semibold text-[#636E72]">診斷考卷</label>
+            <label className="text-xs font-semibold text-[#636E72]">診斷題組</label>
             <select
               value={quizFilter}
               onChange={(e) => setQuizFilter(e.target.value)}
               className="px-3 py-1.5 rounded-xl border border-[#BDC3C7] bg-white text-sm
                          focus:outline-none focus:ring-2 focus:ring-[#5BA47A]/40"
             >
-              <option value="all">全部考卷</option>
+              <option value="all">全部題組</option>
               {quizzes.map((q) => (
                 <option key={q.id} value={q.id}>{q.title}</option>
               ))}
@@ -108,7 +108,7 @@ export default function DiagnosisLogs() {
               </svg>
             </div>
             <p className="text-[#636E72] font-medium">還沒有診斷對話紀錄</p>
-            <p className="text-sm text-[#95A5A6] mt-1">當學生完成診斷考卷的追問對話後，紀錄會自動出現在這裡</p>
+            <p className="text-sm text-[#95A5A6] mt-1">當學生完成診斷題組的追問對話後，紀錄會自動出現在這裡</p>
           </div>
         ) : (
           <div className="bg-white rounded-2xl border border-[#BDC3C7] overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.04)]">

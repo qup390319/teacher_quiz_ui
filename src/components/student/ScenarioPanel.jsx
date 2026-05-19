@@ -1,7 +1,7 @@
 import { Icon, WOOD_OUTER, WOOD_INNER_CREAM } from '../ui/woodKit';
 import { resolveScenarioImage } from '../../lib/scenarioImage';
 
-/* 情境敘述頁（題目開始前 / 換題時，spec-08 §6） */
+/* 概念釐清敘述頁（題目開始前 / 換題時，spec-08 §6） */
 export default function ScenarioPanel({
   question,
   indexLabel,
@@ -38,7 +38,7 @@ export default function ScenarioPanel({
                   >
                     <img
                       src={resolved}
-                      alt={`情境圖 ${idx + 1}`}
+                      alt={`概念釐清圖 ${idx + 1}`}
                       className="block w-full h-auto rounded-xl border-2 border-[#C19A6B]
                                  max-w-[560px] sm:max-w-[720px] md:max-w-[820px] shadow-[0_4px_0_-1px_#5A3E22]"
                     />

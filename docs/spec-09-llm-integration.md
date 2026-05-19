@@ -175,7 +175,7 @@ RAGFlow（spec-12）用於「檢索文獻 + 生成」場景（N1 / N2 / N6），
 
 ## 12. 治療對話 system prompt registry（2026-05-14 起）
 
-情境治療對話（spec-08 §8B）走 `/api/llm/chat`，每題的 system prompt 統一登錄在前端 registry，便於日後擴充。
+概念釐清治療對話（spec-08 §8B）走 `/api/llm/chat`，每題的 system prompt 統一登錄在前端 registry，便於日後擴充。
 
 | 檔案 | 用途 |
 |------|------|
@@ -304,4 +304,96 @@ Fallback 邏輯在 `processStudentReply()` 內透明處理，呼叫端 (StudentQ
 LLM 模式下，POE prompt 已要求 LLM 在 `cause` 階段蒐集證據並在 `finalDiagnosis.causeIds` 中輸出。
 StudentQuiz 偵測 `causeIds.length > 0` 時，**直接寫 DB**，不再呼叫 `/api/llm/analyze-cause`，省一次 LLM 推論。
 僅 fallback 路徑或 LLM 模式但 `causeIds` 為空時，才會走原本的 `/api/llm/analyze-cause` 端點（§11）。
+
+---
+
+## 14. 適性派題 AI 端點（Adaptive AI Endpoints）
+
+教師在出題介面中，可透過以下兩個 AI 端點輔助產生題目內容。兩者皆掛載在 `/api/adaptive/` router，透過後端 `llm_service.chat()` 呼叫 vLLM（與 §7 同一條 proxy 路徑），僅限教師角色 (`require_teacher`)。
+
+### 14.1 POST /api/adaptive/polish-stem — AI 潤飾題幹
+
+教師輸入原始題幹後，AI 將題幹改寫為國小五年級學生能清楚理解的版本。
+
+**Request body:**
+
+```json
+{
+  "stem": "原始題幹文字",
+  "nodeId": "INe-II-3-03",
+  "nodeName": "攪拌與溶解速度"
+}
+```
+
+**Response:**
+
+```json
+{
+  "polished": "潤飾後的題幹文字"
+}
+```
+
+**System prompt 要點：**
+1. 保留原意和科學正確性
+2. 使用國小五年級能理解的用詞
+3. 句子簡潔，避免過長複合句
+4. 情境描述更生動具體
+5. 只回傳潤飾後的文字，不附加說明
+
+**參數：** `temperature=0.7`、`max_tokens=512`
+
+### 14.2 POST /api/adaptive/suggest-options — AI 產生選項
+
+根據題幹與該節點的迷思概念，AI 產生 4 個選項（1 正確 + 3 干擾）。
+
+**Request body:**
+
+```json
+{
+  "stem": "題幹文字",
+  "nodeId": "INe-II-3-03",
+  "nodeName": "攪拌與溶解速度",
+  "misconceptions": [
+    {"id": "M03-1", "label": "…", "detail": "…"},
+    {"id": "M03-2", "label": "…", "detail": "…"},
+    {"id": "M03-3", "label": "…", "detail": "…"}
+  ]
+}
+```
+
+**Response:**
+
+```json
+{
+  "options": [
+    {"tag": "A", "content": "選項文字", "diagnosis": "CORRECT"},
+    {"tag": "B", "content": "選項文字", "diagnosis": "M03-1"},
+    {"tag": "C", "content": "選項文字", "diagnosis": "M03-2"},
+    {"tag": "D", "content": "選項文字", "diagnosis": "M03-3"}
+  ]
+}
+```
+
+**System prompt 要點：**
+1. 正確答案必須科學正確且清楚
+2. 干擾選項貼近國小學生常見錯誤想法
+3. 每個選項 15-30 字，長度相近
+4. `diagnosis` 欄位：正確選項填 `CORRECT`，干擾選項填對應迷思編號
+5. 正確答案隨機放在 A~D 任一位置
+
+**參數：** `temperature=0.8`、`max_tokens=1024`
+
+**JSON 解析：** 後端以 regex 提取回應中的 JSON 陣列（`[...]`），解析失敗回 502 `LLM_PARSE_ERROR`。
+
+### 14.3 與其他 AI 路徑的關係
+
+| 路徑 | Router | 用途 | 底層服務 |
+|------|--------|------|---------|
+| `/api/llm/chat` | llm | N3/N4/N5 對話 | `llm_service.chat()` → vLLM |
+| `/api/llm/analyze-cause` | llm | 迷思成因分析 | `cause_analysis_service` → vLLM |
+| `/api/ai/distractor-suggest` | ai | N6 RAGFlow 出題輔助 | `ragflow_service` → RAGFlow |
+| `/api/adaptive/polish-stem` | adaptive | AI 潤飾題幹 | `llm_service.chat()` → vLLM |
+| `/api/adaptive/suggest-options` | adaptive | AI 產生選項 | `llm_service.chat()` → vLLM |
+
+`polish-stem` 與 `suggest-options` 複用既有的 `llm_service.chat()`，不引入新的外部依賴。與 RAGFlow 的 `distractor-suggest`（N6）互補：N6 從文獻檢索產生干擾選項建議，adaptive 端點則由 LLM 直接根據迷思概念生成完整選項組。
 

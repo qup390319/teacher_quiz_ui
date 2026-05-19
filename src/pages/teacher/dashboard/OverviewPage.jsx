@@ -1,6 +1,7 @@
 import { useOutletContext } from 'react-router-dom';
 import OverallAIDiagnosisSummary from './shared/OverallAIDiagnosisSummary';
 import ClassScatterChart from './shared/ClassScatterChart';
+import SubjectRadarChart from './shared/SubjectRadarChart';
 import RagflowSummaryPanel from '../../../components/teacher/RagflowSummaryPanel';
 import { buildGradeSummaryPayload } from './shared/summaryPayload';
 
@@ -10,8 +11,8 @@ export default function OverviewPage() {
   if (!overviewData || overviewData.classStats.length === 0) {
     return (
       <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-12 shadow-[0_2px_12px_rgba(0,0,0,0.06)] text-center">
-        <p className="text-[#636E72] font-medium mb-1">此考卷尚無派題資料</p>
-        <p className="text-sm text-[#95A5A6]">請先至派題管理將此考卷派發給班級</p>
+        <p className="text-[#636E72] font-medium mb-1">此題組尚無派題資料</p>
+        <p className="text-sm text-[#95A5A6]">請先至派題管理將此題組派發給班級</p>
       </div>
     );
   }
@@ -22,7 +23,7 @@ export default function OverviewPage() {
   const riskCount     = classStats.filter(c => c.completionRate < 60 || c.avgPassRate < 50).length;
 
   const cards = [
-    { label: '涵蓋班級', value: `${classStats.length} 個`, sub: '已派發此考卷的班級', color: 'text-[#3D5A3E]', bg: 'bg-[#C8EAAE]' },
+    { label: '涵蓋班級', value: `${classStats.length} 個`, sub: '已派發此題組的班級', color: 'text-[#3D5A3E]', bg: 'bg-[#C8EAAE]' },
     { label: '平均完成率', value: `${avgCompletion}%`, sub: '各班作答完成率平均',
       color: avgCompletion >= 80 ? 'text-[#3D5A3E]' : avgCompletion >= 60 ? 'text-[#B7950B]' : 'text-[#E74C5E]',
       bg:    avgCompletion >= 80 ? 'bg-[#C8EAAE]'   : avgCompletion >= 60 ? 'bg-[#FCF0C2]'   : 'bg-[#FAC8CC]' },
@@ -34,7 +35,7 @@ export default function OverviewPage() {
       bg:    riskCount === 0 ? 'bg-[#C8EAAE]'   : riskCount <= 1 ? 'bg-[#FCF0C2]'   : 'bg-[#FAC8CC]' },
   ];
 
-  const quizTitle = quizzes.find((q) => q.id === quizId)?.title ?? '本次考卷';
+  const quizTitle = quizzes.find((q) => q.id === quizId)?.title ?? '本次題組';
   const ragflowPayload = buildGradeSummaryPayload(quizId, quizTitle, classes);
 
   return (
@@ -57,8 +58,13 @@ export default function OverviewPage() {
         ))}
       </div>
 
-      <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-4 sm:p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-        <ClassScatterChart overviewData={overviewData} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-4 sm:p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+          <ClassScatterChart overviewData={overviewData} />
+        </div>
+        <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-4 sm:p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+          <SubjectRadarChart overviewData={overviewData} />
+        </div>
       </div>
     </div>
   );

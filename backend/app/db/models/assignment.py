@@ -18,8 +18,8 @@ class Assignment(Base):
             "target_type IN ('class','students')", name="assignments_target_type_chk",
         ),
         CheckConstraint(
-            "(type='diagnosis' AND quiz_id IS NOT NULL AND scenario_quiz_id IS NULL) "
-            "OR (type='scenario' AND scenario_quiz_id IS NOT NULL AND quiz_id IS NULL)",
+            "(type='diagnosis' AND scenario_quiz_id IS NULL) "
+            "OR (type='scenario' AND quiz_id IS NULL)",
             name="assignments_quiz_xor",
         ),
         Index("assignments_class_due_idx", "class_id", "due_date"),
@@ -30,13 +30,13 @@ class Assignment(Base):
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     type: Mapped[str] = mapped_column(String(16), default="diagnosis", nullable=False)
     quiz_id: Mapped[str | None] = mapped_column(
-        String(32), ForeignKey("quizzes.id"), nullable=True,
+        String(32), ForeignKey("quizzes.id", ondelete="SET NULL"), nullable=True,
     )
     scenario_quiz_id: Mapped[str | None] = mapped_column(
-        String(32), ForeignKey("scenario_quizzes.id"), nullable=True,
+        String(32), ForeignKey("scenario_quizzes.id", ondelete="SET NULL"), nullable=True,
     )
     class_id: Mapped[str] = mapped_column(
-        String(32), ForeignKey("classes.id"), nullable=False,
+        String(32), ForeignKey("classes.id", ondelete="CASCADE"), nullable=False,
     )
     target_type: Mapped[str] = mapped_column(
         String(16), default="class", nullable=False,

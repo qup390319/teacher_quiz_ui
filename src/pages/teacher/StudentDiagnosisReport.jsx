@@ -133,14 +133,14 @@ export default function StudentDiagnosisReport() {
 
             <div className="bg-white rounded-2xl border border-[#BDC3C7] p-3 mb-4 flex items-center gap-3
                             shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
-              <label className="text-xs font-semibold text-[#636E72]">考卷篩選</label>
+              <label className="text-xs font-semibold text-[#636E72]">題組篩選</label>
               <select
                 value={quizFilter}
                 onChange={(e) => setQuizFilter(e.target.value)}
                 className="px-3 py-1.5 rounded-xl border border-[#BDC3C7] bg-white text-sm
                            focus:outline-none focus:ring-2 focus:ring-[#5BA47A]/40"
               >
-                <option value="all">全部考卷</option>
+                <option value="all">全部題組</option>
                 {quizOptions.map((q) => (
                   <option key={q.id} value={q.id}>{q.title}</option>
                 ))}
@@ -327,7 +327,7 @@ function EmptyState() {
         </svg>
       </div>
       <p className="text-[#636E72] font-medium">這位學生還沒有診斷紀錄</p>
-      <p className="text-sm text-[#95A5A6] mt-1">完成診斷考卷的追問對話後，紀錄會自動出現在這裡</p>
+      <p className="text-sm text-[#95A5A6] mt-1">完成診斷題組的追問對話後，紀錄會自動出現在這裡</p>
     </div>
   );
 }

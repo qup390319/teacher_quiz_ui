@@ -48,7 +48,7 @@ export default function QuizLibrary() {
       navigate('/teacher/quiz/create?step=2');
     } catch (err) {
       console.error('[QuizLibrary] failed to load quiz', err);
-      alert('載入考卷失敗');
+      alert('載入題組失敗');
     }
   };
 
@@ -67,7 +67,7 @@ export default function QuizLibrary() {
       navigate('/teacher/quiz/create?step=2');
     } catch (err) {
       console.error('[QuizLibrary] failed to clone quiz', err);
-      alert('複製考卷失敗');
+      alert('複製題組失敗');
     }
   };
 
@@ -78,7 +78,7 @@ export default function QuizLibrary() {
       setDeletingQuiz(null);
     } catch (err) {
       console.error('[QuizLibrary] failed to delete', err);
-      alert('刪除考卷失敗：' + (err?.message ?? '未知錯誤'));
+      alert('刪除題組失敗：' + (err?.message ?? '未知錯誤'));
     }
   };
 
@@ -103,7 +103,7 @@ export default function QuizLibrary() {
         <div className="flex flex-wrap items-start justify-between mb-6 sm:mb-8 gap-3">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">出題管理</h1>
-            <p className="text-[#636E72] mt-1 text-sm">這裡是您所有的考卷。出題流程：選擇出題範圍 → 編輯考卷內容 → 儲存 → 到「派題管理」發給班級</p>
+            <p className="text-[#636E72] mt-1 text-sm">這裡是您所有的題組。出題流程：選擇出題範圍 → 編輯題組內容 → 儲存 → 到「派題管理」發給班級</p>
           </div>
           <button
             onClick={handleNew}
@@ -112,7 +112,7 @@ export default function QuizLibrary() {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            新增考卷
+            新增題組
           </button>
         </div>
 
@@ -143,7 +143,7 @@ export default function QuizLibrary() {
           </div>
         )}
 
-        {/* 考卷列表 */}
+        {/* 題組列表 */}
         {isLoading && (
           <div className="text-[#636E72] text-sm mb-4">載入中…</div>
         )}
@@ -155,8 +155,8 @@ export default function QuizLibrary() {
                   d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </div>
-            <p className="text-[#636E72] font-medium">目前還沒有考卷</p>
-            <p className="text-sm text-[#95A5A6] mt-1">點擊右上角「新增考卷」開始出題</p>
+            <p className="text-[#636E72] font-medium">目前還沒有題組</p>
+            <p className="text-sm text-[#95A5A6] mt-1">點擊右上角「新增題組」開始出題</p>
           </div>
         ) : !isLoading && visibleQuizzes.length === 0 ? (
           <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-12 text-center shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
@@ -167,7 +167,7 @@ export default function QuizLibrary() {
               </svg>
             </div>
             <p className="text-[#636E72] font-medium">
-              {activeTab === 'draft' ? '目前沒有草稿' : '題庫尚未有已發布的考卷'}
+              {activeTab === 'draft' ? '目前沒有草稿' : '題庫尚未有已發布的題組'}
             </p>
             <p className="text-sm text-[#95A5A6] mt-1">
               {activeTab === 'draft' ? '出題過程中按「儲存草稿」即可暫存' : '完成出題後按「儲存並發布」即可加入題庫'}
@@ -243,12 +243,12 @@ export default function QuizLibrary() {
                       <button
                         onClick={() => handleClone(quiz)}
                         className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-[#2E86C1] bg-[#BADDF4] border border-[#BDC3C7] rounded-xl hover:bg-[#A8D2EC] transition-colors"
-                        title="以這份為範本，建立新考卷"
+                        title="以這份為範本，建立新題組"
                       >
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                         </svg>
-                        複製為新考卷
+                        複製為新題組
                       </button>
                       <button
                         onClick={() => setDeletingQuiz(quiz)}

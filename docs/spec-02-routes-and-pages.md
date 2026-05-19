@@ -22,31 +22,31 @@
 |------|------|------|------|
 | `/` | `LoginPage` | 角色選擇（登入）頁 | 無（全螢幕） |
 | `/teacher` | `TeacherDashboard` | 教師主頁：三步驟工作流程總覽 | `TeacherLayout` |
-| `/teacher/dashboard` | `DashboardLayout` | 診斷結果共用 layout（標題 + 考卷選擇器 + 子分頁），自動 redirect 到 `overview` | `TeacherLayout` |
+| `/teacher/dashboard` | `DashboardLayout` | 診斷結果共用 layout（標題 + 題組選擇器 + 子分頁），自動 redirect 到 `overview` | `TeacherLayout` |
 | `/teacher/dashboard/overview` | `OverviewPage` | 子分頁：全年級診斷總覽（AI 摘要 + 4 指標卡 + 班級分布散佈圖） | `DashboardLayout` |
 | `/teacher/dashboard/classes` | `ClassesPage` | 子分頁：各班學習狀況總覽（班級狀態卡片，點擊跳轉 class-detail） | `DashboardLayout` |
 | `/teacher/dashboard/nodes` | `NodesPage` | 子分頁：知識節點跨班比較（並排長條圖） | `DashboardLayout` |
 | `/teacher/dashboard/misconceptions` | `MisconceptionsPage` | 子分頁：跨班高頻迷思 Top 6 + 班級 × 迷思熱力圖 | `DashboardLayout` |
 | `/teacher/dashboard/class-detail` | `ClassDetailPage` | 子分頁：各班詳細診斷報告（含派題完成率清單 + 該班 SingleClassReport） | `DashboardLayout` |
 | `/teacher/quiz/create` | `QuizCreateWizard` | 出題精靈（多步驟） | `TeacherLayout` |
-| `/teacher/quizzes` | `QuizLibrary` | 考卷庫：瀏覽與管理考卷 | `TeacherLayout` |
+| `/teacher/quizzes` | `QuizLibrary` | 題組庫：瀏覽與管理題組 | `TeacherLayout` |
 | `/teacher/assignments` | — | 舊路由，redirect 至 `/teacher/assignments/diagnosis` | — |
-| `/teacher/assignments/diagnosis` | `AssignmentManagement` | 派題管理：指派**診斷考卷**給班級 | `TeacherLayout` |
-| `/teacher/assignments/scenarios` | `AssignmentManagement` (initialTab="scenario") | 派題管理：指派**情境治療考卷**給班級（與診斷派題共用同一頁面、預設情境 tab） | `TeacherLayout` |
+| `/teacher/assignments/diagnosis` | `AssignmentManagement` | 派題管理：指派**診斷題組**給班級 | `TeacherLayout` |
+| `/teacher/assignments/scenarios` | `AssignmentManagement` (initialTab="scenario") | 派題管理：指派**概念釐清治療題組**給班級（與診斷派題共用同一頁面、預設概念釐清 tab） | `TeacherLayout` |
 | `/teacher/classes` | `ClassManagement` | 班級管理：檢視班級名冊 | `TeacherLayout` |
 | `/teacher/classes/:classId` | `ClassDetail` | 班級詳情：個別班級學生資訊 | `TeacherLayout` |
 | `/teacher/knowledge-map` | `KnowledgeMap` | (預設) 知識節點與迷思概念總覽：唯讀檢視系統預設迷思概念 | `TeacherLayout` |
 | `/teacher/custom-knowledge-map` | `CustomKnowledgeMap` | (自定義) 知識節點總覽：檢視預設＋自訂迷思概念，支援新增/刪除自訂迷思 | `TeacherLayout` |
 | `/teacher/misconception-causes` | `MisconceptionCauses` | 迷思概念成因：列出診斷對話中分類迷思成因的 8 種類別（特徵 + 常見樣態） | `TeacherLayout` |
 | `/teacher/report` | `TeacherReport` | 舊版診斷報告（保留向後相容） | `TeacherLayout` |
-| `/teacher/scenarios` | `ScenarioLibrary` | **（規劃，波次 2）** 情境考卷庫（治療模組，spec-08） | `TeacherLayout` |
-| `/teacher/scenarios/create` | `ScenarioCreateWizard` | **（規劃，波次 2）** 情境考卷出題精靈 | `TeacherLayout` |
-| `/teacher/scenarios/:scenarioQuizId/edit` | `ScenarioCreateWizard` | **（規劃，波次 2）** 編輯既有情境考卷 | `TeacherLayout` |
+| `/teacher/scenarios` | `ScenarioLibrary` | **（規劃，波次 2）** 概念釐清題組庫（治療模組，spec-08） | `TeacherLayout` |
+| `/teacher/scenarios/create` | `ScenarioCreateWizard` | **（規劃，波次 2）** 概念釐清題組出題精靈 | `TeacherLayout` |
+| `/teacher/scenarios/:scenarioQuizId/edit` | `ScenarioCreateWizard` | **（規劃，波次 2）** 編輯既有概念釐清題組 | `TeacherLayout` |
 | `/teacher/treatment-logs` | `TreatmentLogs` | **（規劃，波次 2）** 治療對話紀錄總覽 | `TeacherLayout` |
 | `/teacher/treatment-logs/:sessionId` | `TreatmentLogDetail` | **（規劃，波次 2）** 單一 session 完整對話紀錄 | `TeacherLayout` |
-| `/student` | `StudentHome` | 學生首頁：瀏覽可作答考卷（含診斷與情境兩區塊） | 簡易 Header |
+| `/student` | `StudentHome` | 學生首頁：瀏覽可作答題組（含診斷與概念釐清兩區塊） | 簡易 Header |
 | `/student/quiz/:quizId` | `StudentQuiz` | 對話式診斷測驗介面 | 簡易 Header |
-| `/student/scenario/:scenarioQuizId` | `ScenarioChat` | **（規劃，波次 3）** 情境治療對話頁（spec-08） | 全螢幕 |
+| `/student/scenario/:scenarioQuizId` | `ScenarioChat` | **（規劃，波次 3）** 概念釐清治療對話頁（spec-08） | 全螢幕 |
 | `/student/report` | `StudentReport` | 個人學習健康報告 | 簡易 Header |
 | `*` | `Navigate to /` | 404 重導向首頁 | — |
 
@@ -58,15 +58,15 @@
 | 參數 | 型別 | 使用頁面 | 說明 |
 |------|------|----------|------|
 | `:classId` | string | `ClassDetail` | 班級 ID（如 `class-A`） |
-| `:quizId` | string | `StudentQuiz` | 考卷 ID（如 `quiz-001`） |
-| `:scenarioQuizId` | string | `ScenarioChat` / `ScenarioCreateWizard`（編輯模式） | 情境考卷 ID（如 `scenario-002`） |
+| `:quizId` | string | `StudentQuiz` | 題組 ID（如 `quiz-001`） |
+| `:scenarioQuizId` | string | `ScenarioChat` / `ScenarioCreateWizard`（編輯模式） | 概念釐清題組 ID（如 `scenario-002`） |
 | `:sessionId` | string | `TreatmentLogDetail` | 治療 session ID |
 
 ### 1.3 URL Query 參數（診斷結果子分頁共用）
 
 | 參數 | 使用頁面 | 說明 |
 |------|----------|------|
-| `?quizId=...` | 所有 `/teacher/dashboard/*` 子分頁 | 由 `DashboardLayout` 讀寫，控制要查看的考卷；切換子分頁時保留；同步寫回 `AppContext.currentQuizId` 作「最近檢視」記憶 |
+| `?quizId=...` | 所有 `/teacher/dashboard/*` 子分頁 | 由 `DashboardLayout` 讀寫，控制要查看的題組；切換子分頁時保留；同步寫回 `AppContext.currentQuizId` 作「最近檢視」記憶 |
 | `?classId=...` | 僅 `/teacher/dashboard/class-detail` | 控制要查看哪一個班級的詳細報告；無此參數時顯示班級選擇空狀態；同步寫回 `AppContext.currentClassId` |
 
 ## 2. 各頁面詳細規格
@@ -138,15 +138,16 @@
 **功能描述**:
 - 教師端主頁，呈現兩條並列的工作流程：
   - **流程一：迷思概念診斷** — 出題管理 → 派題管理 → 診斷結果
-  - **流程二：迷思概念治療** — 情境出題 → 情境派題 → 治療對話紀錄
+  - **流程二：迷思概念治療** — 概念釐清出題 → 概念釐清派題 → 對話紀錄
 - 每個步驟卡片可點擊直接跳轉對應頁面
-- 提供快速操作按鈕（一鍵套用推薦題組、自訂出題）
+- 提供快速操作按鈕（推薦題組、快速出題）
 
 **UI 元素**:
-- 兩個流程區塊（各帶 chip 標籤識別流程一／流程二）
-- 每流程三步驟卡片（編號＋圖標＋說明）
-- 快速操作 CTA 卡片
-- 知識節點與迷思概念總覽入口
+- 頁面標題「首頁」旁帶 `?` 問號圖示（`HelpTip`），點擊顯示流程摘要 tooltip
+- 兩個流程區塊（各帶 chip 標籤 + Material Symbols 圖示識別流程一／流程二）
+- 每流程三步驟卡片（編號圓圈＋步驟名稱，無額外描述文字）
+- 快速操作 CTA 卡片（橫向佈局：圖示 + 標題 + 數字 badge + `HelpTip`），點擊 `?` 可查看詳細說明
+- 知識節點總覽入口（以數字統計呈現：N 節點 / N 迷思 / N 層級）
 
 **佈局**: 使用 `TeacherLayout` 側邊欄
 
@@ -155,20 +156,20 @@
 ### 2.3 診斷結果頁群（`/teacher/dashboard/*`）
 
 > 將原 `DashboardReport` 拆成 5 個子分頁，避免單頁資訊量過大。
-> 共用 `DashboardLayout` 提供標題列、考卷選擇器、5 個子分頁 tab；子頁透過 `useOutletContext()` 取得共享資料。
+> 共用 `DashboardLayout` 提供標題列、題組選擇器、5 個子分頁 tab；子頁透過 `useOutletContext()` 取得共享資料。
 
 #### 2.3.0 DashboardLayout (`/teacher/dashboard`)
 **檔案**: `src/pages/teacher/dashboard/DashboardLayout.jsx`
 
 **功能描述**:
 - 診斷結果頁群的共用容器
-- 讀取 `?quizId=` query，驗證是否為已派發的考卷；無效或未指定時自動 fallback 為 `AppContext.currentQuizId` 或第一張可用考卷，並寫回 URL（replace）
+- 讀取 `?quizId=` query，驗證是否為已派發的題組；無效或未指定時自動 fallback 為 `AppContext.currentQuizId` 或第一張可用題組，並寫回 URL（replace）
 - 透過 `<Outlet context={{ quizId, overviewData, classes, assignments, quizzes }}>` 把計算好的跨班 `overviewData` 傳給子頁
 - `/teacher/dashboard` 本身 index 路由 `<Navigate to="overview" replace />`
 
 **UI 元素**:
-- 頂部標題列：標題「診斷結果」+ 副標（顯示目前考卷）
-- 右上：考卷選擇器（下拉選單，切換時更新 query 並清掉 `classId`）
+- 頂部標題列：標題「診斷結果」+ 副標（顯示目前題組）
+- 右上：題組選擇器（下拉選單，切換時更新 query 並清掉 `classId`）
 - 子分頁 tab 列：5 個 NavLink，切換時保留 `searchParams`
 - 派題資料為空時：顯示空狀態（不渲染 `<Outlet />`）
 
@@ -179,30 +180,46 @@
 #### 2.3.1 OverviewPage (`/teacher/dashboard/overview`)
 **檔案**: `src/pages/teacher/dashboard/OverviewPage.jsx`
 
-**內容**: `OverallAIDiagnosisSummary` + 4 個指標卡（涵蓋班級 / 平均完成率 / 平均掌握率 / 需關注班級）+ `ClassScatterChart`（完成率 × 掌握率班級分布）
+**內容**: `OverallAIDiagnosisSummary` + 4 個指標卡（涵蓋班級 / 平均完成率 / 平均掌握率 / 需關注班級）+ 兩欄並排的圖表區：
+- 左：`ClassScatterChart`（完成率 × 掌握率班級分布）
+- 右：`SubjectRadarChart`（子主題 A 溶解 / B 酸鹼平均通過率雷達圖，三班 polygon overlay）
 
 #### 2.3.2 ClassesPage (`/teacher/dashboard/classes`)
 **檔案**: `src/pages/teacher/dashboard/ClassesPage.jsx`
 
-**內容**: `ClassStatusCards`（每班三項核心指標卡片）。點擊任一卡片 → 導航到 `class-detail?classId=...&quizId=...`
+**內容**: `ClassStatusCards`（每班三項核心指標卡片）+ `MasteryDistributionHistogram`（每位學生個人掌握率分 5 區間直方圖，補上「平均背後的分布形狀」資訊）。點擊任一班級卡片 → 導航到 `class-detail?classId=...&quizId=...`
 
 #### 2.3.3 NodesPage (`/teacher/dashboard/nodes`)
 **檔案**: `src/pages/teacher/dashboard/NodesPage.jsx`
 
-**內容**: `CrossClassNodeChart`（同一概念節點各班通過率並排長條比較）
+**內容**: `CrossClassNodeChart`（同一概念節點各班通過率並排長條比較）+ `OptionAttractionChart`（全年級每題的 A/B/C/D 選項選擇分布堆疊條，⭐ 標記正解，用於檢視選項設計品質）
 
 #### 2.3.4 MisconceptionsPage (`/teacher/dashboard/misconceptions`)
 **檔案**: `src/pages/teacher/dashboard/MisconceptionsPage.jsx`
 
-**內容**: `TopMisconceptionsChart`（跨班高頻迷思 Top 6 橫條圖）+ `ClassMisconceptionHeatmap`（班級 × 迷思熱力圖）
+**內容**: 由上至下：
+1. `MisconceptionCauseDonut` — 全年級迷思成因 8 類分布甜甜圈圖（資料源自 `useClassFollowups` rows 的 `causeIds[]`）
+2. `TopMisconceptionsChart` — 跨班高頻迷思 Top 6 橫條圖
+3. `FollowupStatusFunnel` — 追問後狀態變化漏斗（進入追問 → 仍持有迷思 / 已澄清 / 不確定），含各班澄清率
+4. `ClassMisconceptionHeatmap` — 班級 × 迷思熱力圖
 
 #### 2.3.5 ClassDetailPage (`/teacher/dashboard/class-detail`)
 **檔案**: `src/pages/teacher/dashboard/ClassDetailPage.jsx`
 
 **內容**:
-- 上方：各班派題完成率清單（每張卡片可點擊切換 `?classId=`，被選中的卡片顯示綠框）
-- 下方：依 `?classId=` 渲染對應班級的 `SingleClassReport`（4 個指標卡 + AI 診斷摘要 + 本週行動清單 + 各概念掌握程度 + 迷思概念分佈 + 題目明細矩陣 + **學生第二層追問對話完整紀錄**）
+- **班級選擇器**：下拉式選單，顯示各班派題完成率；選項標籤格式「班級名 · 完成率（已完成人數/總人數 人）」
+- **兩相位報告 Tab 系統**：
+  - **診斷相位**（`reportPhase === 'diagnosis'`）—「迷思概念診斷報告」tab
+    - 視覺風格：金色主題（`bg-[#FFF1D8] border-[#F0B962] text-[#7A4A18]`）
+    - 內容：`SingleClassReport`（4 個指標卡 + AI 診斷摘要 + 本週行動清單 + 各概念掌握程度 + 迷思概念分佈 + **各題錯誤率圖表** + 題目明細矩陣 + **學生第二層追問對話完整紀錄**）
+  - **治療相位**（`reportPhase === 'treatment'`）—「概念釐清成效報告」tab
+    - 視覺風格：綠色主題（`bg-[#E0F0E8] border-[#3F8B5E] text-[#2E6B47]`）
+    - 內容：`TreatmentEffectivenessPanel`（進度分布圓餅圖 + 3 個統計卡片 + 學生詳細表）
 - 無 `classId` 時顯示「請從上方清單選擇班級」空狀態
+
+**狀態**:
+- `reportPhase` state：`'diagnosis' | 'treatment'`（控制兩個 tab 的切換）
+- `setReportPhase()` 狀態更新函式
 
 **狀態依賴**:
 - 透過 `useOutletContext()` 取得 `quizId`, `overviewData`, `classes`, `assignments`, `quizzes`
@@ -211,7 +228,10 @@
 **共用元件**（位於 `src/pages/teacher/dashboard/shared/`）:
 - `helpers.js` — 常數（`CLASS_KEY_MAP`, `CLASS_CHART_COLORS`）與 `computeOverviewForQuiz`、`getAssignment`、`getAvailableQuizzesForClass`、`getAllAssignedQuizzes`、`getLatestQuizIdForClass`
 - `OverallAIDiagnosisSummary.jsx`、`ClassStatusCards.jsx`、`CrossClassNodeChart.jsx`、`TopMisconceptionsChart.jsx`、`ClassMisconceptionHeatmap.jsx`、`ClassScatterChart.jsx`
-- `SingleClassReport.jsx`（含 4 指標卡 + 子組件 `AIDiagnosisSummary.jsx`、`WeeklyActionChecklist.jsx`、`BreakdownChart.jsx`、`MisconceptionDistribution.jsx`、`HeatmapView.jsx`、`FollowupConversations.jsx`）
+- `SingleClassReport.jsx`（含 4 指標卡 + 子組件 `AIDiagnosisSummary.jsx`、`WeeklyActionChecklist.jsx`、`BreakdownChart.jsx`、`MisconceptionDistribution.jsx`、`QuestionErrorRateChart.jsx`、`ReasoningQualityBars.jsx`、`HeatmapView.jsx`、`FollowupConversations.jsx`）
+- **新增（2026-05）**：`SubjectRadarChart.jsx`（子主題雷達）、`MasteryDistributionHistogram.jsx`（學生掌握度分布）、`FollowupStatusFunnel.jsx`（追問後狀態漏斗）、`MisconceptionCauseDonut.jsx`（迷思成因 8 類甜甜圈）、`ReasoningQualityBars.jsx`（單班追問推理品質分布）、`OptionAttractionChart.jsx`（選項吸引力分析）
+- `QuestionErrorRateChart.jsx` — 水平長條圖，呈現全班各題的錯誤率；以紅色虛線標示班級平均錯誤率；顯示題幹、知識節點名稱、錯誤率、top misconception；根據錯誤率色碼：紅色（≥50%）、黃色（30-49%）、綠色（<30%）
+- `TreatmentEffectivenessPanel.jsx` — 概念釐清成效報告的主面板；包含：進度分布圓餅圖（已完成/進行中/未開始）、3 個統計卡片（完成率、進行中人數、未開始人數）、可展開的學生詳細表（依完成狀態排序）；透過 `useTreatmentLogs` hook 撈取該班治療紀錄；支援選填 `scenarioQuizId` 進行題組篩選
 - `FollowupConversations.jsx` — 透過 `useClassFollowups` 撈取該班所有學生在 N3 第二層追問的對話紀錄；以「學生 → 題目」兩層摺疊呈現，展開後以聊天泡泡顯示完整對話、AI 摘要與最終判定徽章。資料來源為後端 `GET /api/quizzes/{quizId}/followups?classId=`，撈 `FollowupResult.conversation_log` JSONB
 
 **資料來源**:
@@ -235,20 +255,28 @@
 #### Step 1: Step1Nodes
 **檔案**: `src/pages/teacher/quiz/Step1Nodes.jsx`
 - 互動式知識節點選擇介面
-- 顯示所有 8 個知識節點（按 level 分組）
-- 核取方塊勾選/取消節點
-- 選取的節點 ID 存入 `selectedNodeIds`
+- 顯示所有 12 個知識節點（兩條子主題路徑）
+- 核取方塊勾選/取消節點 → `selectedNodeIds`
+- **麵包屑導航**：頂部顯示 `出題管理 › 建立題組 › 步驟一/步驟二`，點擊「出題管理」可返回 QuizLibrary
+- **Sticky 摘要列**：即時顯示已選節點數、迷思概念數、子主題 A/B 各自的選取計數（如 `子主題 A：3/5 · 子主題 B：2/7`）；未選節點時顯示任務引導文字「請從下方勾選至少 1 個知識節點以繼續」。摘要列同時顯示「預計出 N 題」（N = 所有已選節點的 `nodeQuestionCounts` 之和，預設每節點 1 題）
+- **已選節點 chip 列（含彈性題數調整）**：摘要列下方列出已選節點的 chip 標籤，每個 chip 內含 +/- stepper（範圍 1–4），教師可為各節點調整預期出題數；點擊 chip 的 × 可取消選取（滾動表格時仍可回顧已選項目）
+- **子主題計數徽章**：學習路徑圖中每條子主題標題旁顯示 `N/M` 徽章，已選時為綠色、未選時為灰色
 
 #### Step 2: Step2Edit
 **檔案**: `src/pages/teacher/quiz/Step2Edit.jsx`
 - 根據選定的知識節點載入對應題目
 - 可編輯題幹（stem）與選項（options）
 - 可編輯各選項的迷思概念對應（diagnosis）
-- **CoveragePanel 補洞**：每個節點下列出尚未被任一選項覆蓋的迷思 chips；點擊 chip 直接建立預填的新題目（鎖定該節點 + 該迷思為 distractor），並開啟編輯 modal
-- **從題庫挑題**（`QuestionImportDrawer`）：右側抽屜列出所有考卷，展開後勾選題目即可深拷貝匯入；預設只顯示與當前 `selectedNodeIds` 有交集的考卷，可切換顯示全部
+- **CoveragePanel 補洞**：每個節點下列出尚未被任一選項覆蓋的迷思 chips；點擊 chip 直接建立預填的新題目（鎖定該節點 + 該迷思為 distractor），並開啟編輯 modal。同時從 `nodeQuestionCounts` 讀取各節點的目標題數，於面板顯示「實際 / 目標 題」
+- **自動排序**按鈕（工具列中介於「從題庫挑題」與「新增題目」之間）：依知識節點拓撲順序（Kahn's algorithm）對題目重新排序並編號，題目少於 2 題時 disabled；使用 `src/utils/topoSortNodes.js` 的 `sortQuestionsByNodeOrder`
+- **從題庫挑題**（`QuestionImportDrawer`）：右側抽屜列出所有題組，展開後勾選題目即可深拷貝匯入；預設只顯示與當前 `selectedNodeIds` 有交集的題組，可切換顯示全部
+- **拖曳重排題目**（HTML5 Drag and Drop）：問題表格的每一列左側新增 6 dot 手柄圖示（SVG），列本身 `draggable="true"`。拖曳時：
+  - 來源列透明度降低（視覺反饋）
+  - 拖曳至目標列時顯示綠色 ring 高亮
+  - 放開時重新排序 questions 陣列，並自動用 `renumber()` 更新題號
 - **草稿暫存**：
   - 「儲存草稿」按鈕：以 `status: 'draft'` 立即上傳；首次儲存後將回傳的 quiz id 寫入 `editingQuizId`，後續儲存改走 PUT
-  - 自動暫存：30 秒 debounce，依賴 `quizTitle / quizQuestions / selectedNodeIds`；底部 status pill 顯示「已自動儲存於 HH:mm」
+  - 自動暫存：30 秒 debounce，依賴 `quizTitle / quizQuestions / selectedNodeIds / nodeQuestionCounts`；底部 status pill 顯示「已自動儲存於 HH:mm」
   - 編輯既有 `published` 卷時自動暫存停用，避免降級為草稿（顯示「此卷已發布，自動暫存停用」）
 - 「儲存並發布」按鈕：以 `status: 'published'` 儲存後跳回 `/teacher/quizzes`，並清空 `editingQuizId`
 
@@ -259,7 +287,7 @@
 - `CoveragePanel` — 涵蓋率 + 補洞 chips
 - `QuestionImportDrawer` — 題庫挑題抽屜
 
-**狀態依賴**: `selectedNodeIds`, `setSelectedNodeIds`, `quizQuestions`, `setQuizQuestions`, `editingQuizId`, `setEditingQuizId`, `editingQuizStatus`, `setEditingQuizStatus`, `useSaveQuiz`
+**狀態依賴**: `selectedNodeIds`, `setSelectedNodeIds`, `quizQuestions`, `setQuizQuestions`, `nodeQuestionCounts`, `setNodeQuestionCounts`, `editingQuizId`, `setEditingQuizId`, `editingQuizStatus`, `setEditingQuizStatus`, `useSaveQuiz`
 
 ---
 
@@ -267,16 +295,16 @@
 **檔案**: `src/pages/teacher/QuizLibrary.jsx`
 
 **功能描述**:
-- 瀏覽所有已建立的考卷
-- 可進入編輯模式修改考卷（沿用同一 quiz id；草稿顯示「繼續編輯」）
-- **複製為新考卷**：以該卷為範本（深拷貝題目、節點），導向 `/teacher/quiz/create?step=2` 並清空 `editingQuizId`，儲存時走 POST 建立新考卷
-- 可刪除草稿狀態考卷（已發布卷不顯示刪除按鈕）
+- 瀏覽所有已建立的題組
+- 可進入編輯模式修改題組（沿用同一 quiz id；草稿顯示「繼續編輯」）
+- **複製為新題組**：以該卷為範本（深拷貝題目、節點），導向 `/teacher/quiz/create?step=2` 並清空 `editingQuizId`，儲存時走 POST 建立新題組
+- 可刪除草稿狀態題組（已發布卷不顯示刪除按鈕）
 
 **UI 元素**:
 - **頂部 tab 列**：`全部` / `題庫（已發布）` / `草稿`，每個 tab 帶數量徽章；預設停在「題庫（已發布）」（與「派題」流程的可選清單一致）
-- 考卷卡片列表（狀態徽章、標題、題數、節點 badges、已派班級、建立日期）
+- 題組卡片列表（狀態徽章、標題、題數、節點 badges、已派班級、建立日期）
 - 狀態徽章：`draft`（黃底「草稿」）/ `published`（綠底「已發布」）
-- 操作按鈕：編輯 / 繼續編輯、複製為新考卷、刪除草稿（僅草稿可見）
+- 操作按鈕：編輯 / 繼續編輯、複製為新題組、刪除草稿（僅草稿可見）
 - 各 tab 的空狀態：`草稿` tab 提示「按儲存草稿即可暫存」、`題庫` tab 提示「按儲存並發布即可加入題庫」
 
 **狀態依賴**: `quizzes`, `useDeleteQuiz`, `setEditingQuizId`, `setEditingQuizStatus`, `setQuizQuestions`, `setSelectedNodeIds`
@@ -287,38 +315,39 @@
 **檔案**: `src/pages/teacher/AssignmentManagement.jsx`
 
 **功能描述**:
-- 管理**診斷考卷**派發記錄（情境考卷派題請見 §2.6.1，沿用同一元件）
-- 新增派題：選擇考卷 → 選擇班級 → 設定截止日期
+- 管理**診斷題組**派發記錄（概念釐清題組派題請見 §2.6.1，沿用同一元件）
+- 新增派題：選擇題組 → 選擇班級 → 設定截止日期
 - 檢視已派題記錄及完成狀態
 - 可刪除或更新派題
 
 > **路由說明**：舊路由 `/teacher/assignments` 已改為 redirect 至 `/teacher/assignments/diagnosis`，
-> 以維持與既有書籤、舊連結的相容性。Sidebar「派題」群組展開後，「step 1. 診斷考卷」即指向此頁。
+> 以維持與既有書籤、舊連結的相容性。Sidebar「派題」群組展開後，「step 1. 診斷題組」即指向此頁。
 >
-> **Tab 切換**：頁面內的「📝 診斷考卷 / 🌱 情境考卷」按鈕直接呼叫 `useNavigate()` 切換到對應路由（`/diagnosis` ↔ `/scenarios`），讓 URL、側邊欄 active 狀態、瀏覽器歷史保持同步；元件內不再保留獨立的 tab state，`initialTab` prop 即為當前 tab。
+> **Tab 切換**：頁面內的「📝 診斷題組 / 🌱 概念釐清題組」按鈕直接呼叫 `useNavigate()` 切換到對應路由（`/diagnosis` ↔ `/scenarios`），讓 URL、側邊欄 active 狀態、瀏覽器歷史保持同步；元件內不再保留獨立的 tab state，`initialTab` prop 即為當前 tab。
 
 **UI 元素**:
 - 圖例（未派發／待作答／進行中／已完成）置於矩陣**上方**，方便對照後再點選格子
-- 派題矩陣（列為考卷、欄為班級）；格子最小高度 120px
+- 派題矩陣（列為題組、欄為班級）；格子最小高度 120px
 - 新增派題的 `AssignPopover` 與管理派題的 `ManagePopover` 採 `position: fixed` + 觸發按鈕 bounding rect 計算座標，避免被外層 `overflow-hidden / overflow-x-auto` 切掉
+- `AssignPopover` 含**派發模式選擇器**：兩個 toggle 按鈕「診斷模式」與「複習模式」，各附說明文字；`onConfirm` 回傳 `(dueDate, dispatchMode)`，`dispatchMode` 為 `'diagnosis'` 或 `'review'`
 - 完成率進度條與狀態徽章
 
 **狀態依賴**: `assignments`, `addAssignment`, `updateAssignment`, `removeAssignment`, `quizzes`, `classes`
 
 ---
 
-### 2.6.1 情境派題 (`/teacher/assignments/scenarios`)
+### 2.6.1 概念釐清派題 (`/teacher/assignments/scenarios`)
 **檔案**: `src/pages/teacher/AssignmentManagement.jsx`（同 §2.6，以 `initialTab="scenario"` prop 帶入）
 
 **功能描述**:
-- 將已 published 的情境治療考卷指派給班級
+- 將已 published 的概念釐清治療題組指派給班級
 - 與診斷派題共用 `AssignmentManagement` 元件；路由差異僅在於預設選中的 tab
-- 矩陣資料來源為 `assignments.filter(a => a.type === 'scenario')`，矩陣中以 `scenarioQuizId` 對應已 published 的情境考卷
+- 矩陣資料來源為 `assignments.filter(a => a.type === 'scenario')`，矩陣中以 `scenarioQuizId` 對應已 published 的概念釐清題組
 - 派題目標支援 `class`（整班）與 `students`（指定學生），後者透過 `AssignTargetPicker` modal 選取
 
 **UI 元素**:
-- 頁首：與診斷派題共用「派題管理」標題與 tab 列（📝 診斷考卷 / 🌱 情境考卷）
-- 矩陣：列為情境考卷、欄為班級；空格點擊開啟 `AssignTargetPicker`，已派格子點擊開啟 `ManagePopover`
+- 頁首：與診斷派題共用「派題管理」標題與 tab 列（📝 診斷題組 / 🌱 概念釐清題組）
+- 矩陣：列為概念釐清題組、欄為班級；空格點擊開啟 `AssignTargetPicker`，已派格子點擊開啟 `ManagePopover`
 
 **狀態依賴**: `assignments`, `scenarios` (via `useScenarios`), `classes`, `addAssignment`, `updateAssignment`, `removeAssignment`
 
@@ -370,6 +399,13 @@
 **UI 元素**:
 - 知識學習路徑視覺化（知識節點按 level 分層展示 + 先備知識連線/箭頭）
 - 各節點群組使用對應色彩（NODE_GROUP_COLORS）
+- **NodeRelationshipMatrix**（節點先備知識矩陣）：
+  - 整合於頁面中學習路徑與迷思表格之間
+  - 12×12 網格矩陣（行 = 節點，列 = 節點）
+  - 單元類型：`'self'`（黑色對角線）、`'direct'`（綠色，直接先備）、`'transitive'`（淺綠色，傳遞性先備）、`'none'`（白色）
+  - **子主題篩選器**：All / A (溶解) / B (酸鹼) 按鈕，可過濾顯示特定子主題的行列
+  - **Hover 互動**：游標懸停於某格時，該列與該欄以 ring 高亮標示；底部彈出詳情面板，顯示節點名稱、直接先備、全部先備（使用 `getAllPrerequisites()` from `src/utils/topoSortNodes.js`）
+  - **圖例**：底部顯示四種單元類型的色彩說明、子主題顏色標籤
 - 迷思概念表格（3 欄）：
   | 欄位 | 說明 |
   |------|------|
@@ -454,12 +490,12 @@
 
 **功能描述**:
 - 學生端首頁，呈現「我的任務看板」
-- 動態列出**老師指派給該生班級**的派題；不顯示全部考卷庫
+- 動態列出**老師指派給該生班級**的派題；不顯示全部題組庫
 - 派題視為平行任務（沒有先後順序），分為「待挑戰」與「已完成」兩個分區
 - 點擊任務卡的「開始挑戰」 → 進入作答；點擊「查看報告」 → 進入學習報告
 - **（波次 3 規劃）** 兩種派題類型獨立分區：
   - 「📝 診斷測驗」區塊（既有，`Assignment.type='diagnosis'`）
-  - 「🌱 情境治療」區塊（新增，`Assignment.type='scenario'`，spec-08）
+  - 「🌱 概念釐清治療」區塊（新增，`Assignment.type='scenario'`，spec-08）
   - 兩區塊使用相同 `TaskCard` 結構，靠**色相 + 標籤 chip** 區隔（治療任務改用青木 `#5BA47A` 系卡底 band）
 
 **視覺風格**: 沿用 spec-07 木框收集冊風 + **手遊養成系任務畫面**佈局（參考 Pokemon Trainer Rank 升級畫面：HUD + 米紙 panel + 白底厚棕邊任務卡）。

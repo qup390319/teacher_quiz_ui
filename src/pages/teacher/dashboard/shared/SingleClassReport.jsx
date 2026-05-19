@@ -17,6 +17,8 @@ import WeeklyActionChecklist from './WeeklyActionChecklist';
 import BreakdownChart from './BreakdownChart';
 import MisconceptionDistribution from './MisconceptionDistribution';
 import HeatmapView from './HeatmapView';
+import QuestionErrorRateChart from './QuestionErrorRateChart';
+import ReasoningQualityBars from './ReasoningQualityBars';
 
 export default function SingleClassReport({ cls, assignments, quizzes, quizId }) {
   const classId = cls.id;
@@ -46,7 +48,7 @@ export default function SingleClassReport({ cls, assignments, quizzes, quizId })
   }
 
   if (!hasData) {
-    const quizTitle = quizzes.find(q => q.id === quizId)?.title ?? '此考卷';
+    const quizTitle = quizzes.find(q => q.id === quizId)?.title ?? '此題組';
     return (
       <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-12 shadow-[0_2px_12px_rgba(0,0,0,0.06)] text-center">
         <div className="w-16 h-16 bg-[#EEF5E6] rounded-full flex items-center justify-center mx-auto mb-4">
@@ -117,7 +119,7 @@ export default function SingleClassReport({ cls, assignments, quizzes, quizId })
 
       <RagflowSummaryPanel
         scope="class"
-        payload={buildClassSummaryPayload(quizId, quizzes.find((q) => q.id === quizId)?.title ?? '本次考卷', cls)}
+        payload={buildClassSummaryPayload(quizId, quizzes.find((q) => q.id === quizId)?.title ?? '本次題組', cls)}
         title={`${cls.name} AI 診斷摘要（文獻引用版 · N2）`}
       />
       <AIDiagnosisSummary quizId={quizId} classId={classId} totalStudents={totalStudents} />
@@ -129,6 +131,12 @@ export default function SingleClassReport({ cls, assignments, quizzes, quizId })
       </div>
       <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
         <MisconceptionDistribution quizId={quizId} classId={classId} totalStudents={totalStudents} />
+      </div>
+      <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+        <QuestionErrorRateChart quizId={quizId} classId={classId} totalStudents={totalStudents} />
+      </div>
+      <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+        <ReasoningQualityBars quizId={quizId} classId={classId} />
       </div>
       <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
         <HeatmapView quizId={quizId} classId={classId} totalStudents={totalStudents} />

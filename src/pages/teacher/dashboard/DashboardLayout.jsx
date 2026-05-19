@@ -78,7 +78,7 @@ export default function DashboardLayout() {
 
           {availableQuizzes.length > 0 && (
             <div className="flex items-center gap-2 flex-shrink-0">
-              <span className="text-sm text-[#636E72] font-medium">查看考卷</span>
+              <span className="text-sm text-[#636E72] font-medium">查看題組</span>
               <div className="relative">
                 <select
                   value={effectiveQuizId ?? ''}
@@ -116,9 +116,9 @@ export default function DashboardLayout() {
         {availableQuizzes.length === 0 || !effectiveQuizId ? (
           <EmptyState
             title="目前尚無派題資料"
-            subtitle="請先至「派題管理」將考卷派發給班級，這裡才會顯示診斷結果。" />
+            subtitle="請先至「派題管理」將題組派發給班級，這裡才會顯示診斷結果。" />
         ) : (
-          <Outlet context={{ quizId: effectiveQuizId, overviewData, classes, assignments, quizzes }} />
+          <Outlet context={{ quizId: effectiveQuizId, overviewData, classes, assignments, quizzes, gradeStats }} />
         )}
       </div>
     </TeacherLayout>

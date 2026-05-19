@@ -133,12 +133,48 @@ async def get_class(
     )
 
 
-CLASS_ACCOUNT_OFFSET = {"class-A": 0, "class-B": 100, "class-C": 200}
+@router.delete("/{class_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_class(
+    class_id: str,
+    teacher: User = Depends(require_teacher),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """Delete a class together with all its students and assignments."""
+    from app.db.models import Assignment
+
+    cls = await db.get(Class, class_id)
+    if cls is None or cls.teacher_id != teacher.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "CLASS_NOT_FOUND")
+
+    # Delete student User rows (CASCADE removes Student rows)
+    for stu in list(cls.students):
+        user = await db.get(User, stu.user_id)
+        if user:
+            await db.delete(user)
+
+    # Delete assignments belonging to this class
+    res = await db.execute(
+        select(Assignment).where(Assignment.class_id == class_id),
+    )
+    for assignment in res.scalars().all():
+        await db.delete(assignment)
+
+    await db.delete(cls)
+    await db.commit()
 
 
 def _account_for(class_id: str, seat: int) -> str:
-    """Mirror the seed convention so manually-added students get a sensible account."""
-    offset = CLASS_ACCOUNT_OFFSET.get(class_id, 900)
+    """Derive a unique student account from class id + seat number.
+
+    Format: ``115{offset + seat:03d}`` where offset = letter_index * 100.
+    class-A → 0, class-B → 100, … class-Z → 2500.
+    Numeric fallback ids (class-27 etc.) start at offset 2600+.
+    """
+    suffix = class_id.removeprefix("class-")
+    if len(suffix) == 1 and suffix.isalpha():
+        offset = (ord(suffix.upper()) - ord("A")) * 100
+    else:
+        offset = 2600 + int(suffix, 36) * 100
     return f"115{(offset + seat):03d}"
 
 
@@ -189,12 +225,17 @@ async def update_class_students(
             db.add(user)
             db.add(Student(user_id=account, name=s.name, seat=s.seat, class_id=class_id))
         else:
-            # Update existing student
             stu = await db.get(Student, account)
+            if stu and stu.class_id != class_id:
+                raise HTTPException(
+                    status.HTTP_409_CONFLICT,
+                    f"ACCOUNT_IN_OTHER_CLASS:{account}",
+                )
             if stu:
                 stu.name = s.name
                 stu.seat = s.seat
-                stu.class_id = class_id
+            else:
+                db.add(Student(user_id=account, name=s.name, seat=s.seat, class_id=class_id))
 
     await db.commit()
     await db.refresh(cls)

@@ -10,11 +10,14 @@
 | `InfoButton` | `src/components/InfoButton.jsx` | 圓形資訊按鈕，觸發 InfoDrawer |
 | `InfoDrawer` | `src/components/InfoDrawer.jsx` | 側邊滑出面板，顯示資料計算說明 |
 | `DistractorSuggestPopover` | `src/components/teacher/DistractorSuggestPopover.jsx` | **N6** 干擾選項建議彈窗（出題精靈用，spec-12，P2） |
-| `EditQuestionModal` | `src/components/teacher/quizEditor/EditQuestionModal.jsx` | 出題精靈步驟二的單題編輯 modal（題幹 / 節點 / 選項 / N6 整合） |
+| `EditQuestionModal` | `src/components/teacher/quizEditor/EditQuestionModal.jsx` | 出題精靈步驟二的單題編輯 modal（題幹 / 節點 / 選項 / N6 整合 / AI 潤飾題幹 / AI 建議選項） |
+| `AssignPopover` | `src/pages/teacher/AssignmentMatrixParts.jsx` | 派題確認 popover（截止日期 + 派發模式選擇：診斷模式 / 複習模式） |
+| `AssignTargetPicker` | `src/components/teacher/AssignTargetPicker.jsx` | 概念釐清派題學生選擇 modal（含先備知識狀態徽章） |
 | `DeleteQuestionModal` | `src/components/teacher/quizEditor/DeleteQuestionModal.jsx` | 出題精靈刪除題目確認 modal |
 | `PreviewQuizModal` | `src/components/teacher/quizEditor/PreviewQuizModal.jsx` | 出題精靈步驟二的學生端預覽 modal |
 | `CoveragePanel` | `src/components/teacher/quizEditor/CoveragePanel.jsx` | 出題精靈步驟二的迷思涵蓋率 + 「補洞」chips；點擊未覆蓋的迷思 chip 觸發 `onAddForMisconception(nodeId, misconceptionId)` 建立預填新題 |
-| `QuestionImportDrawer` | `src/components/teacher/quizEditor/QuestionImportDrawer.jsx` | 出題精靈步驟二的「從題庫挑題」右側抽屜；展開既有考卷後勾選題目，匯入時 deep clone 並 append 到當前 `quizQuestions` |
+| `QuestionImportDrawer` | `src/components/teacher/quizEditor/QuestionImportDrawer.jsx` | 出題精靈步驟二的「從題庫挑題」右側抽屜；展開既有題組後勾選題目，匯入時 deep clone 並 append 到當前 `quizQuestions` |
+| `NodeRelationshipMatrix` | `src/components/teacher/NodeRelationshipMatrix.jsx` | 知識節點先備知識矩陣（12×12 網格，顯示節點間的先備關係），整合於 KnowledgeMap 頁面 |
 | `AIFollowUpPanel` | `src/pages/student/followUp/AIFollowUpPanel.jsx` | 第二層 AI 追問底部面板（題目回顧 + 輪次 + 文字輸入框） |
 | `BottomPanel` / `OptionsPanel` / `DonePanel` | `src/pages/student/studentQuizPanels.jsx` | StudentQuiz 第一層選項面板與完成 loading |
 
@@ -31,8 +34,8 @@
 **學生端（波次 3）**：
 | 元件名稱 | 檔案路徑 | 用途 |
 |---------|---------|------|
-| `ScenarioIntro` | `src/components/student/ScenarioIntro.jsx` | 木框吉祥物開場（情境治療入口） |
-| `ScenarioPanel` | `src/components/student/ScenarioPanel.jsx` | 情境敘述木框卡 + 圖片放大（lightbox） |
+| `ScenarioIntro` | `src/components/student/ScenarioIntro.jsx` | 木框吉祥物開場（概念釐清治療入口） |
+| `ScenarioPanel` | `src/components/student/ScenarioPanel.jsx` | 概念釐清敘述木框卡 + 圖片放大（lightbox） |
 | `ChatStream` | `src/components/student/ChatStream.jsx` | 木框風對話氣泡列表 + loading dots |
 | `WoodenProgressBar` | `src/components/student/WoodenProgressBar.jsx` | 木框風進度條（**禁用** Duolingo 綠） |
 | `MascotHintBubble` | `src/components/student/MascotHintBubble.jsx` | 吉祥物 + 木框泡泡顯示 feedback |
@@ -62,7 +65,7 @@
 
 ### 側邊欄導航項目
 
-導航選單依「教學工作流」分為四個區段（section divider）：**考卷 → 看結果 → 班級 → 其他**。
+導航選單依「教學工作流」分為四個區段（section divider）：**題組 → 看結果 → 班級 → 其他**。
 出題、派題、診斷結果採「可展開群組」設計（chevron + 點擊切換 + 路徑命中自動展開高亮）。
 
 **無分類（頂部）**:
@@ -70,7 +73,7 @@
 |----------|----------|------|
 | 首頁 | `/teacher` | Home icon |
 
-**考卷（section: 考卷）**:
+**題組（section: 題組）**:
 | 項目名稱 | 路由目標 | 圖示 | 備註 |
 |----------|----------|------|------|
 | 出題 | — | Pencil icon | **常駐展開群組**（`alwaysOpen: true`）。非互動標題（無 chevron、無 hover、無點擊行為），子項永遠顯示在下方 |
@@ -80,13 +83,13 @@
 | 子項名稱 | 路由目標 |
 |----------|----------|
 | step 1. 診斷出題 | `/teacher/quizzes` |
-| step 2. 情境出題 | `/teacher/scenarios` |
+| step 2. 概念釐清出題 | `/teacher/scenarios` |
 
 **「派題」子選單**:
 | 子項名稱 | 路由目標 |
 |----------|----------|
-| step 1. 診斷考卷 | `/teacher/assignments/diagnosis` |
-| step 2. 情境考卷 | `/teacher/assignments/scenarios` |
+| step 1. 診斷題組 | `/teacher/assignments/diagnosis` |
+| step 2. 概念釐清題組 | `/teacher/assignments/scenarios` |
 
 **看結果（section: 看結果）**:
 | 項目名稱 | 路由目標 | 圖示 | 備註 |
@@ -137,8 +140,8 @@
 - 底部按鈕文字為「切換角色」（非「登出」），點擊後清除角色並導航至 `/`
 
 ### 設計理由（2026-04-29 重構）
-- **「出題」「派題」改為對稱可展開群組**：每組各有「step 1. 診斷」「step 2. 情境」兩子項。視覺上反映「老師工作 = 診斷 → 情境治療」兩階段，並把過去拆在「考卷」「情境治療」兩 section 的兩個出題功能合併到單一入口，降低首次使用者的尋找成本。
-- **section 從 5 個（考卷 / 情境治療 / 班級 / 其他 + 頂部診斷結果）精簡為 4 個（考卷 / 看結果 / 班級 / 其他）**：「情境治療」section 拆解後，情境出題進「考卷」、治療對話紀錄進「看結果」，整體導覽列依教學工作流（出題 → 派題 → 看結果）排列。
+- **「出題」「派題」改為對稱可展開群組**：每組各有「step 1. 診斷」「step 2. 概念釐清」兩子項。視覺上反映「老師工作 = 診斷 → 概念釐清治療」兩階段，並把過去拆在「題組」「概念釐清治療」兩 section 的兩個出題功能合併到單一入口，降低首次使用者的尋找成本。
+- **section 從 5 個（題組 / 概念釐清治療 / 班級 / 其他 + 頂部診斷結果）精簡為 4 個（題組 / 看結果 / 班級 / 其他）**：「概念釐清治療」section 拆解後，概念釐清出題進「題組」、治療對話紀錄進「看結果」，整體導覽列依教學工作流（出題 → 派題 → 看結果）排列。
 - **「診斷結果」與「治療對話紀錄」合在「看結果」section**：兩者在心智模型上同類（檢視學生學習表現），用同一 section 包裹避免再做一層 step1/step2 巢狀。
 
 ---
@@ -150,8 +153,8 @@
 
 ### 功能
 - 為 `/teacher/dashboard/*` 五個子分頁提供共用容器
-- 顯示頁面標題、考卷選擇器、5 個子分頁 tab 列
-- 從 URL `?quizId=` 解析考卷，並透過 `<Outlet context>` 傳遞 `{ quizId, overviewData, classes, assignments, quizzes }` 給子頁
+- 顯示頁面標題、題組選擇器、5 個子分頁 tab 列
+- 從 URL `?quizId=` 解析題組，並透過 `<Outlet context>` 傳遞 `{ quizId, overviewData, classes, assignments, quizzes }` 給子頁
 - 包覆 `TeacherLayout` 作為外層佈局
 
 ### Props
@@ -160,15 +163,15 @@
 ### 子頁透過 `useOutletContext()` 取得的資料
 | 欄位 | 型別 | 說明 |
 |------|------|------|
-| `quizId` | `string \| null` | 目前選定的考卷 ID（已驗證為已派發） |
+| `quizId` | `string \| null` | 目前選定的題組 ID（已驗證為已派發） |
 | `overviewData` | `object \| null` | `computeOverviewForQuiz(quizId, classes, assignments)` 的回傳值（含 `classStats`、`nodePassRates`、`topMisconceptions`） |
 | `classes` | `Array` | 班級清單（從 `AppContext`） |
 | `assignments` | `Array` | 派題清單（從 `AppContext`） |
-| `quizzes` | `Array` | 考卷清單（從 `AppContext`） |
+| `quizzes` | `Array` | 題組清單（從 `AppContext`） |
 
 ### 視覺規格
 - Tab 列為單列圓角白底容器（`rounded-2xl border border-[#BDC3C7] p-1`），內含 5 個 NavLink；當前頁 tab 以 `bg-[#C8EAAE] border-[#8FC87A]` 高亮
-- 標題列右側為下拉式考卷選擇器（沿用 spec-07 表單元件樣式）
+- 標題列右側為下拉式題組選擇器（沿用 spec-07 表單元件樣式）
 
 ---
 
@@ -282,7 +285,55 @@
 
 ---
 
-## 6. AIFollowUpPanel
+## 6. NodeRelationshipMatrix
+
+### 檔案
+`src/components/teacher/NodeRelationshipMatrix.jsx`
+
+### 功能
+展示所有 12 個知識節點間的先備知識關係，以 12×12 矩陣網格呈現。整合於 KnowledgeMap 頁面，位於學習路徑圖與迷思概念表格之間。
+
+### Props
+| Prop | 型別 | 必填 | 說明 |
+|------|------|------|------|
+| `nodes` | `KnowledgeNode[]` | 是 | 12 個知識節點清單（from knowledgeGraph.js） |
+| `selectedSubtopic` | `'all' \| 'A' \| 'B'` | 否 | 篩選子主題，預設 `'all'` |
+
+### 狀態
+| 欄位 | 型別 | 說明 |
+|------|------|------|
+| `hoveredRow` | `string \| null` | hover 時的列節點 ID |
+| `hoveredCol` | `string \| null` | hover 時的欄節點 ID |
+| `detailPanel` | `{ nodeId, directPrereqs, allPrereqs } \| null` | hover 詳情面板內容 |
+
+### 視覺元素
+- **12×12 網格矩陣**：
+  - 行 = 被學節點（row header）
+  - 列 = 先備知識節點（column header）
+  - 單元顏色：
+    - `'self'`（對角線）：黑色 `#000000`
+    - `'direct'`（直接先備）：綠色 `#7DB044`
+    - `'transitive'`（傳遞先備）：淺綠 `#B8DC83`
+    - `'none'`（無先備）：白色 `#FFFFFF`
+- **子主題篩選器**：三個按鈕 All / A (溶解) / B (酸鹼)，篩選時隱藏不符節點的行列
+- **Hover 互動**：
+  - 懸停於某格時，該格行列分別以 ring 高亮標示（綠色 ring，`ring-2 ring-[#7DB044]`）
+  - 底部彈出詳情面板，顯示：
+    - 節點名稱（列節點 + 行節點）
+    - 直接先備：`prerequisites` 直接列出
+    - 全部先備：使用 `getAllPrerequisites()` 從 `src/utils/topoSortNodes.js` 計算傳遞閉包
+- **圖例**：
+  - 4 種單元類型色彩說明
+  - 子主題 A、B 的標籤顏色
+
+### 使用函式
+| 函式 | 來源 | 用途 |
+|------|------|------|
+| `getAllPrerequisites(nodeId, nodes)` | `src/utils/topoSortNodes.js` | 計算節點的全部先備知識（包含傳遞性） |
+
+---
+
+## 7. AIFollowUpPanel
 
 ### 檔案
 `src/pages/student/followUp/AIFollowUpPanel.jsx`
@@ -318,3 +369,151 @@
 - 沿用 spec-07 § 木框米紙風格（外層由 StudentQuiz 的 `BottomPanel` 包裹）
 - textarea 邊框 `#C19A6B`，focus ring `#5C8A2E`
 - 送出按鈕為綠色木質風格（同 ScenarioChat 送出鍵）
+
+---
+
+## 8. EditQuestionModal
+
+### 檔案
+`src/components/teacher/quizEditor/EditQuestionModal.jsx`
+
+### 功能
+- 出題精靈步驟二的單題編輯 modal
+- 編輯題幹（stem）、知識節點、4 個選項的 content 與 diagnosis
+- 整合 N6 干擾選項建議（`DistractorSuggestPopover`，spec-12 §7）
+- **AI 潤飾題幹**：題幹標籤旁的「AI 潤飾題幹」按鈕，呼叫 `usePolishStem()` mutation（`POST /api/adaptive/polish-stem`），將 LLM 潤飾後的題幹回填至 textarea；題幹為空或 mutation pending 時 disabled
+- **AI 建議選項**：選項區段標籤旁的「AI 建議選項」按鈕，呼叫 `useSuggestOptions()` mutation（`POST /api/adaptive/suggest-options`），將 LLM 建議的選項回填至各選項欄位；題幹為空或 mutation pending 時 disabled
+
+### 使用場景
+- `Step2Edit`（出題精靈步驟二）
+
+### 資料來源
+- React Query hooks：`usePolishStem`、`useSuggestOptions`（來自 `src/hooks/useAdaptive.js`）
+
+---
+
+## 9. AssignPopover
+
+### 檔案
+`src/pages/teacher/AssignmentMatrixParts.jsx`（`AssignPopover` 子元件）
+
+### 功能
+- 點擊派題矩陣未派發格子時顯示的確認 popover
+- 設定截止日期
+- **派發模式選擇器**：兩個 toggle 按鈕——「診斷模式」與「複習模式」，各附簡短說明文字
+  - 診斷模式：用於首次診斷學生是否持有迷思概念
+  - 複習模式：用於已完成診斷後的再次練習
+- `onConfirm` 回傳 `(dueDate, dispatchMode)`，其中 `dispatchMode` 為 `'diagnosis' | 'review'`
+
+### 使用場景
+- `AssignmentManagement`（§2.6 診斷派題分頁）
+
+---
+
+## 10. AssignTargetPicker
+
+### 檔案
+`src/components/teacher/AssignTargetPicker.jsx`
+
+### 功能
+- 概念釐清治療派題的學生選擇 modal
+- 顯示該班所有學生（座號排序，預設皆未勾選）
+- 提供「全部勾選 / 全部取消」快捷按鈕
+- **先備知識狀態徽章**：透過 `usePrerequisiteStatus(classId, nodeIds)` hook（`GET /api/adaptive/prerequisite-status`）取得每位學生的先備知識掌握狀態
+  - 每位學生行尾顯示徽章：「已具備先備」（綠色）或「N 個先備不足」（黃色）
+  - 點擊徽章展開詳細面板，顯示各先備節點的掌握百分比
+
+### 使用場景
+- `AssignmentManagement`（§2.6.1 概念釐清派題分頁）
+
+### 資料來源
+- React Query hook：`usePrerequisiteStatus`（來自 `src/hooks/useAdaptive.js`）
+
+---
+
+## 11. QuestionErrorRateChart
+
+### 檔案
+`src/pages/teacher/dashboard/shared/QuestionErrorRateChart.jsx`
+
+### 功能
+- 單班級診斷結果的各題錯誤率水平長條圖
+- 以 Recharts `BarChart` + `layout="vertical"` 呈現
+- 每題一列，X 軸為 0–100% 錯誤率
+- 平均錯誤率以紅色虛線標示，並於頂部標籤顯示數值
+- 自訂 Tooltip 顯示題幹、知識節點名稱、錯誤率、top misconception 標籤
+
+### Props
+| Prop | 型別 | 必填 | 說明 |
+|------|------|------|------|
+| `quizId` | `string` | 是 | 題組 ID |
+| `classId` | `string` | 是 | 班級 ID |
+| `totalStudents` | `number` | 是 | 班級學生總數 |
+
+### 色彩編碼（錯誤率）
+| 錯誤率範圍 | 顏色 | 含義 |
+|---------|------|------|
+| ≥ 50% | #F28B95（紅） | 高錯誤率 |
+| 30–49% | #F4D03F（黃） | 中等錯誤率 |
+| < 30% | #A7D696（綠） | 低錯誤率 |
+
+### 圖表說明文字
+- 標題：「各題錯誤率」
+- 副標：「全班各題的答錯比例，紅色虛線為班級平均錯誤率（**N**%）」
+- 圖例：三個色標行「高錯誤率（≥50%）」、「中等錯誤率（30–49%）」、「低錯誤率（<30%）」
+
+### 資料來源
+- `useQuiz(quizId)` — 取得題組與題目定義
+- `useQuizStats(quizId, classId)` — 取得統計資料
+- `buildQuestionStats()` — 輔助函式，將統計資料轉換為各題的選項計數
+
+### 使用場景
+- `SingleClassReport`（診斷報告中的一部分，位於 `HeatmapView` 之前）
+
+---
+
+## 12. TreatmentEffectivenessPanel
+
+### 檔案
+`src/pages/teacher/dashboard/shared/TreatmentEffectivenessPanel.jsx`
+
+### 功能
+- 概念釐清治療成效報告面板
+- 顯示該班學生在概念釐清治療題組中的進度分布（已完成 / 進行中 / 未開始）
+- 3 個統計卡片：完成率百分比、進行中學生數、未開始學生數
+- 可展開的學生詳細表，依完成狀態排序（已完成優先）
+
+### Props
+| Prop | 型別 | 必填 | 說明 |
+|------|------|------|------|
+| `classId` | `string` | 是 | 班級 ID |
+| `totalStudents` | `number` | 是 | 班級學生總數 |
+| `scenarioQuizId` | `string \| null` | 否 | 若提供，僅統計該題組的治療紀錄；省略時統計該班所有治療紀錄 |
+
+### 內部結構
+
+**1. 進度分布圓餅圖**：
+- 使用 Recharts `PieChart` 呈現三個狀態的分布
+- 色彩：已完成（#8FC87A 綠）、進行中（#F4D03F 黃）、未開始（#D5D8DC 灰）
+- 中心顯示完成率百分比（大字體）
+
+**2. 統計卡片區（3 欄網格）**：
+| 卡片 | 圖示 | 標籤 | 值 |
+|------|------|------|------|
+| 1 | check_circle | 完成率 | X% |
+| 2 | schedule | 進行中 | N 人 |
+| 3 | pending_actions | 未開始 | M 人 |
+
+**3. 學生詳細表（可展開）**：
+- 標籤：「展開查看學生詳情」或「摺疊」（toggle）
+- 表欄：座號、學生名稱、進度狀態（badge）、完成/啟動日期
+- 排序：依進度狀態排序（完成 → 進行中 → 未開始），同狀態內按座號升序
+
+### 資料來源
+- `useTreatmentLogs(classId, scenarioQuizId)` hook（`GET /api/classes/{classId}/treatment-logs?scenarioQuizId=...`）
+- 回傳 `TreatmentLog[]`，包含欄位：`studentId`, `studentName`, `status` ('completed' | 'in_progress' | 'not_started'), `completedAt`, `startedAt`
+
+### 使用場景
+- `ClassDetailPage`（治療相位報告，`reportPhase === 'treatment'` 時渲染）
+
+---

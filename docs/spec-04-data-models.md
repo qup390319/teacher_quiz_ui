@@ -49,13 +49,14 @@ const { currentUser, loading, role, login, logout } = useAuth();
 | ~~`role`~~ | — | — | **P1 移除**：改由 `useAuth().role` 提供 |
 | `quizQuestions` | `Question[]` | `[...defaultQuestions]` | 出題精靈中正在編輯的題目（純 UI 狀態） |
 | `selectedNodeIds` | `string[]` | `['INe-II-3-02', 'INe-II-3-03', 'INe-II-3-05', 'INe-Ⅲ-5-4', 'INe-Ⅲ-5-7']` | 出題精靈中選定的知識節點 |
-| `editingQuizId` | `string \| null` | `null` | 出題精靈當前正在編輯的 quiz id：`null` = 新建 / 複製模式（儲存走 POST）；有值 = 編輯既有 quiz（儲存走 PUT，含自動暫存覆蓋同一份）。由 QuizLibrary 的「編輯／繼續編輯」設置；「複製為新考卷」與 TeacherDashboard 的「新增考卷／推薦題組」皆會清空此值 |
+| `nodeQuestionCounts` | `Record<string, number>` | `{}` | 出題精靈中各節點的預期出題數（key = 節點 ID，value = 題數 1–4，預設 1）；由 Step1Nodes 的 chip stepper 管理，供 Step2Edit 用於 CoveragePanel 顯示「實際 / 目標」 |
+| `editingQuizId` | `string \| null` | `null` | 出題精靈當前正在編輯的 quiz id：`null` = 新建 / 複製模式（儲存走 POST）；有值 = 編輯既有 quiz（儲存走 PUT，含自動暫存覆蓋同一份）。由 QuizLibrary 的「編輯／繼續編輯」設置；「複製為新題組」與 TeacherDashboard 的「新增題組／推薦題組」皆會清空此值 |
 | `editingQuizStatus` | `'draft' \| 'published' \| null` | `null` | 編輯時帶入的原始 status，用於 Step2Edit 判定是否啟用自動暫存（`published` 卷自動暫存停用，避免被降級為 draft） |
 | ~~`classes`~~ | — | — | **P3 移除**：改用 `useClasses()` |
 | `currentClassId` | `string \| null` | `null` | 當前篩選的班級 ID（純 UI 狀態，配合 dashboard URL query 同步） |
 | ~~`currentClass`~~ | — | — | **P3 移除**：用 `useClass(currentClassId).data` |
 | ~~`quizzes`~~ | — | — | **P3 移除**：改用 `useQuizzes()` |
-| `currentQuizId` | `string \| null` | `null` | 當前選中的考卷 ID（純 UI 狀態） |
+| `currentQuizId` | `string \| null` | `null` | 當前選中的題組 ID（純 UI 狀態） |
 | ~~`assignments`~~ | — | — | **P3 移除**：改用 `useAssignments()` |
 | ~~`scenarioQuizzes`~~ | — | — | **P3 移除**：改用 `useScenarios()` |
 | ~~`treatmentSessions`~~ | — | — | **P4 移除**：改用 `useTreatmentSession() / useStartTreatmentSession() / useAppendTreatmentMessage()` 等 |
@@ -77,8 +78,9 @@ const { currentUser, loading, role, login, logout } = useAuth();
 |------|------|------|
 | `setQuizQuestions(questions)` | `Question[]` | 更新精靈中的題目 |
 | `setSelectedNodeIds(ids)` | `string[]` | 更新精靈中選定的節點 |
+| `setNodeQuestionCounts(counts)` | `Record<string, number>` | 更新各節點的預期出題數；亦可傳入部分更新（單個節點）的物件 |
 | `setCurrentClassId(id)` | `string \| null` | 切換篩選班級 |
-| `setCurrentQuizId(id)` | `string \| null` | 切換當前考卷 |
+| `setCurrentQuizId(id)` | `string \| null` | 切換當前題組 |
 | `startTreatmentSession` / `appendTreatmentMessage` / `updateTreatmentQuestionState` / `advanceTreatmentQuestion` / `completeTreatmentSession` / `getTreatmentSession` | — | 治療 session 管理（P4 才搬 DB） |
 | `recordAnswer` / `removeMisconception` / `resetStudentAnswers` / `addToHistory` / `setActiveStudentReport` | — | 學生作答相關（P4 才搬 DB） |
 
@@ -165,13 +167,13 @@ interface Option {
 }
 ```
 
-### 2.2 Quiz（考卷）
+### 2.2 Quiz（題組）
 **來源**: `src/data/quizData.js` (`QUIZZES_DATA`)
 
 ```typescript
 interface Quiz {
-  id: string;                    // 考卷 ID（如 'quiz-001'）
-  title: string;                 // 考卷標題
+  id: string;                    // 題組 ID（如 'quiz-001'）
+  title: string;                 // 題組標題
   status: 'draft' | 'published'; // 狀態
   questionCount: number;         // 題目數量
   knowledgeNodeIds: string[];    // 涵蓋的知識節點 ID 列表
@@ -221,8 +223,8 @@ interface Student {
 interface Assignment {
   id: string;             // 派題 ID（如 'assign-001'，新增時自動生成 'assign-{timestamp}'）
   type?: 'diagnosis' | 'scenario'; // 派題類型，缺省為 'diagnosis'（spec-08）
-  quizId?: string;        // 診斷考卷 ID（type='diagnosis' 時必填）
-  scenarioQuizId?: string;// 情境考卷 ID（type='scenario' 時必填）
+  quizId?: string;        // 診斷題組 ID（type='diagnosis' 時必填）
+  scenarioQuizId?: string;// 概念釐清題組 ID（type='scenario' 時必填）
   classId: string;        // 班級 ID
   // ── 派發對象（spec-05 §3.4）─────────────────────────────────
   // 'class'    = 整班派發（diagnosis 預設；studentIds 必為空陣列）
@@ -241,11 +243,11 @@ interface Assignment {
 **注意**：
 - 既有 `ASSIGNMENTS_DATA` 中所有資料 `type` 欄位為 `undefined`（視為 `'diagnosis'`，向下相容）
 - 診斷派題透過 `addAssignment({ type: 'diagnosis', quizId, classId, targetType: 'class', studentIds: [], ... })` 新增
-- 情境派題以**個別學生**為單位：`addAssignment({ type: 'scenario', scenarioQuizId, classId, targetType: 'students', studentIds: [...], ... })`
+- 概念釐清派題以**個別學生**為單位：`addAssignment({ type: 'scenario', scenarioQuizId, classId, targetType: 'students', studentIds: [...], ... })`
 - 學生端 `useAssignments` 過濾規則：班級命中 + （`targetType='class'` 或 `student.id ∈ studentIds`）
 
 **預設資料**:
-| ID | 考卷 | 班級 | targetType | 對象/完成率 |
+| ID | 題組 | 班級 | targetType | 對象/完成率 |
 |----|------|------|-----------|------------|
 | `assign-001` | quiz-001 | class-A | class | 全班 100% (20/20) |
 | `assign-002` | quiz-001 | class-B | class | 全班 72% (13/18) |
@@ -328,7 +330,7 @@ interface CustomMisconception {
 **API**（spec-10 §6）：`/api/misconceptions/custom`（GET / POST / DELETE，皆 `require_teacher`）
 
 **範圍限制**（v1）：
-- 學生端考卷 / 治療對話**目前不**自動帶入自訂迷思的 `confirmQuestion`（後端 `student_answers.diagnosis` 仍存原始 ID 字串）；之後可逐步把 `EditQuestionModal` / `CoveragePanel` / `ScenarioCreateWizard` 也改為合併後再渲染
+- 學生端題組 / 治療對話**目前不**自動帶入自訂迷思的 `confirmQuestion`（後端 `student_answers.diagnosis` 仍存原始 ID 字串）；之後可逐步把 `EditQuestionModal` / `CoveragePanel` / `ScenarioCreateWizard` 也改為合併後再渲染
 
 ### 2.6 StudentAnswer（學生作答記錄）
 ```typescript
@@ -393,15 +395,15 @@ interface FollowUpDiagnosis {
 | DOWNGRADED | 第一層答對但追問顯示猜測／迷思 | 該題 diagnosis 改為 misconceptionCode |
 | DISCOVERED | 追問中浮現第一層未偵測的新迷思 | 暫未實作（保留欄位） |
 
-### 2.8 ScenarioQuestion（情境題，治療模組）
+### 2.8 ScenarioQuestion（概念釐清題，治療模組）
 **來源**: `src/data/scenarioQuizData.js`
 
 ```typescript
 interface ScenarioQuestion {
   index: number;                    // 題目順序（1-based）
   title: string;                    // 標題（如 '論證議題 1'）
-  scenarioText: string;             // 情境敘述（多行，\n 為段落分隔）
-  scenarioImages?: string[];        // 情境圖片 import 路徑（0~2 張）
+  scenarioText: string;             // 概念釐清敘述（多行，\n 為段落分隔）
+  scenarioImages?: string[];        // 概念釐清圖片 import 路徑（0~2 張）
   scenarioImageZoomable?: boolean;  // 是否可點擊放大
   initialMessage: string;           // AI 開場提問（對應 stage=claim, step=1）
   targetMisconceptions: string[];   // 本題針對的迷思 ID（如 ['M02-1']）
@@ -409,13 +411,13 @@ interface ScenarioQuestion {
 }
 ```
 
-### 2.9 ScenarioQuiz（情境考卷，治療模組）
+### 2.9 ScenarioQuiz（概念釐清題組，治療模組）
 **來源**: `src/data/scenarioQuizData.js` (`SCENARIO_QUIZZES_DATA`)
 
 ```typescript
 interface ScenarioQuiz {
   id: string;                       // 'scenario-001' 格式
-  title: string;                    // 考卷標題
+  title: string;                    // 題組標題
   status: 'draft' | 'published';
   targetNodeId: string;             // 主目標節點 ID
   targetMisconceptions: string[];   // 全部目標迷思 ID 集合
@@ -424,11 +426,11 @@ interface ScenarioQuiz {
 }
 ```
 
-**預設資料**：1 份 demo 情境考卷（spec-08 §10）
+**預設資料**：1 份 demo 概念釐清題組（spec-08 §10）
 
 | ID | 標題 | 目標節點 | 題數 |
 |----|------|---------|------|
-| `scenario-002` | 情境治療 · 飽和糖水甜度 | INe-II-3-03 | 2 |
+| `scenario-002` | 概念釐清治療 · 飽和糖水甜度 | INe-II-3-03 | 2 |
 
 ### 2.10 TreatmentMessage / TreatmentSession（治療對話狀態）
 **來源**: AppContext 內部 state（不存於資料檔）
@@ -470,17 +472,17 @@ interface TreatmentSession {
 ```
 
 **儲存方式**：AppContext 中以 `treatmentSessions: { [key]: TreatmentSession }` 字典存放，
-key 為 ``${scenarioQuizId}__${studentId}``（同一學生對同一情境考卷 → 同一 session 累積）。
+key 為 ``${scenarioQuizId}__${studentId}``（同一學生對同一概念釐清題組 → 同一 session 累積）。
 
 ---
 
 ## 3. 資料存取函式
 
-### 3.1 考卷與作答相關（檔案: `src/data/quizData.js`）
+### 3.1 題組與作答相關（檔案: `src/data/quizData.js`）
 
 | 函式 | 參數 | 回傳值 | 說明 |
 |------|------|--------|------|
-| `getQuizQuestions(quizId)` | `string` | `Question[]` | 取得指定考卷的所有題目 |
+| `getQuizQuestions(quizId)` | `string` | `Question[]` | 取得指定題組的所有題目 |
 | `getClassAnswers(quizId, classId)` | `string, string` | `ClassAnswer[]` | 取得班級全部學生的作答資料 |
 | `getQuestionStats(questionIndex, quizId?, classId?)` | `number, string, string` | `{A:n, B:n, C:n, D:n}` | 取得某題各選項的選答人數 |
 | `getMisconceptionStudents(quizId?, classId?)` | `string, string` | `{[misconceptionId]: string[]}` | 取得各迷思概念對應的學生名單 |
@@ -493,14 +495,14 @@ key 為 ``${scenarioQuizId}__${studentId}``（同一學生對同一情境考卷 
 | `getNodeById(id)` | `string` | `KnowledgeNode \| undefined` | 依 ID 取得知識節點 |
 | `getMisconceptionById(mid)` | `string` | `Misconception & {nodeId, nodeName} \| null` | 依 ID 取得迷思概念及所屬節點 |
 
-### 3.3 情境考卷相關（檔案: `src/data/scenarioQuizData.js`，spec-08）
+### 3.3 概念釐清題組相關（檔案: `src/data/scenarioQuizData.js`，spec-08）
 
 | 函式 | 參數 | 回傳值 | 說明 |
 |------|------|--------|------|
-| `getScenarioQuiz(scenarioQuizId)` | `string` | `ScenarioQuiz \| null` | 依 ID 取得情境考卷 |
-| `getScenarioQuestions(scenarioQuizId)` | `string` | `ScenarioQuestion[]` | 取得情境考卷的題目陣列 |
-| `getScenarioQuizzesByNode(nodeId)` | `string` | `ScenarioQuiz[]` | 依目標節點推薦情境考卷 |
-| `getScenarioQuizzesByMisconception(misconceptionId)` | `string` | `ScenarioQuiz[]` | 依目標迷思推薦情境考卷 |
+| `getScenarioQuiz(scenarioQuizId)` | `string` | `ScenarioQuiz \| null` | 依 ID 取得概念釐清題組 |
+| `getScenarioQuestions(scenarioQuizId)` | `string` | `ScenarioQuestion[]` | 取得概念釐清題組的題目陣列 |
+| `getScenarioQuizzesByNode(nodeId)` | `string` | `ScenarioQuiz[]` | 依目標節點推薦概念釐清題組 |
+| `getScenarioQuizzesByMisconception(misconceptionId)` | `string` | `ScenarioQuiz[]` | 依目標迷思推薦概念釐清題組 |
 
 ### 3.4 治療 Bot（檔案: `src/data/treatmentBot.js`，spec-08 §2）
 

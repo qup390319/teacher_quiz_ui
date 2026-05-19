@@ -57,7 +57,7 @@ const ICONS = {
 const navItems = [
   { to: '/teacher', label: '首頁', icon: ICONS.home },
 
-  { section: '考卷' },
+  { section: '題組' },
   {
     group: 'quiz',
     label: '出題',
@@ -65,7 +65,7 @@ const navItems = [
     alwaysOpen: true,
     children: [
       { to: '/teacher/quizzes',  label: 'step 1. 診斷出題' },
-      { to: '/teacher/scenarios', label: 'step 2. 情境出題' },
+      { to: '/teacher/scenarios', label: 'step 2. 概念釐清出題' },
     ],
   },
   {
@@ -74,8 +74,8 @@ const navItems = [
     icon: ICONS.send,
     alwaysOpen: true,
     children: [
-      { to: '/teacher/assignments/diagnosis', label: 'step 1. 診斷考卷' },
-      { to: '/teacher/assignments/scenarios', label: 'step 2. 情境考卷' },
+      { to: '/teacher/assignments/diagnosis', label: 'step 1. 診斷題組' },
+      { to: '/teacher/assignments/scenarios', label: 'step 2. 概念釐清題組' },
     ],
   },
 
@@ -94,7 +94,7 @@ const navItems = [
     ],
   },
   { to: '/teacher/diagnosis-logs', label: '診斷對話紀錄', icon: ICONS.chat },
-  { to: '/teacher/treatment-logs', label: '情境對話紀錄', icon: ICONS.chat },
+  { to: '/teacher/treatment-logs', label: '概念釐清對話紀錄', icon: ICONS.chat },
 
   { section: '班級' },
   { to: '/teacher/classes', label: '班級名單管理', icon: ICONS.users },
@@ -104,6 +104,21 @@ const navItems = [
   { to: '/teacher/knowledge-map', label: '(預設) 知識節點總覽', icon: ICONS.grid },
   { to: '/teacher/custom-knowledge-map', label: '(自定義) 知識節點總覽', icon: ICONS.grid },
 ];
+
+const SECTION_STYLES = {
+  '題組':   { color: '#5C8A2E', bg: '#F0F7E8', label: '#3D5A3E' },
+  '看結果': { color: '#2E86C1', bg: '#EAF2FA', label: '#1A5276' },
+  '班級':   { color: '#D08B2E', bg: '#FDF5E8', label: '#7A4A18' },
+  '其他':   { color: '#8B5E3C', bg: '#F5EDE4', label: '#5A3E22' },
+};
+
+const navSectionMap = (() => {
+  let cur = null;
+  return navItems.map(item => {
+    if (item.section) cur = item.section;
+    return cur;
+  });
+})();
 
 function isGroupActive(children, pathname) {
   return children.some(c => pathname === c.to || pathname.startsWith(c.to + '/'));
@@ -161,27 +176,34 @@ export default function TeacherLayout({ children }) {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-2 space-y-0 overflow-y-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+      <nav className="flex-1 px-3 py-2 space-y-0.5 overflow-y-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
         {navItems.map((item, i) => {
+          const ss = navSectionMap[i] ? SECTION_STYLES[navSectionMap[i]] : null;
           if (item.section) {
             return (
-              <p key={`section-${i}`} className="px-3 pt-3 pb-0.5 text-xs font-semibold text-[#95A5A6] uppercase tracking-wider select-none">
-                {item.section}
-              </p>
+              <div
+                key={`section-${i}`}
+                className="mx-1 mt-4 mb-1 px-3 py-1.5 rounded-lg select-none"
+                style={{ borderLeft: `4px solid ${ss?.color}`, backgroundColor: ss?.bg }}
+              >
+                <p className="text-sm font-bold tracking-wider" style={{ color: ss?.label }}>
+                  {item.section}
+                </p>
+              </div>
             );
           }
           if (item.group) {
             const active = isGroupActive(item.children, location.pathname);
             const expanded = item.alwaysOpen || active || (openOverrides[item.group] ?? false);
             const childList = (
-              <div className="ml-3 pl-3 border-l border-[#D5D8DC]">
+              <div className="ml-4 pl-3" style={{ borderLeft: `2px solid ${ss?.color || '#D5D8DC'}` }}>
                 {item.children.map(child => (
                   <NavLink
                     key={child.to}
                     to={child.to}
                     onClick={closeDrawer}
                     className={({ isActive }) =>
-                      `block px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                      `block px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                         isActive
                           ? 'bg-[#EEF5E6] text-[#3D5A3E] border border-[#8FC87A]'
                           : 'text-[#636E72] hover:bg-[#EEF5E6] hover:text-[#2D3436] border border-transparent'
@@ -197,13 +219,11 @@ export default function TeacherLayout({ children }) {
               return (
                 <div key={item.group}>
                   <div
-                    className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium select-none ${
-                      active
-                        ? 'text-[#2D3436]'
-                        : 'text-[#636E72]'
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-base font-bold select-none [&_svg]:w-6 [&_svg]:h-6 ${
+                      active ? 'text-[#2D3436]' : 'text-[#4A4A4A]'
                     }`}
                   >
-                    {item.icon}
+                    <span className="flex-shrink-0" style={{ color: ss?.color }}>{item.icon}</span>
                     <span className="flex-1 text-left">{item.label}</span>
                   </div>
                   {childList}
@@ -215,13 +235,13 @@ export default function TeacherLayout({ children }) {
                 <button
                   type="button"
                   onClick={() => toggleGroup(item.group)}
-                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-base font-bold transition-colors [&_svg]:w-6 [&_svg]:h-6 ${
                     active
                       ? 'bg-[#C8EAAE] text-[#2D3436] border border-[#8FC87A]'
-                      : 'text-[#636E72] hover:bg-[#EEF5E6] hover:text-[#2D3436] border border-transparent'
+                      : 'text-[#4A4A4A] hover:bg-[#EEF5E6] hover:text-[#2D3436] border border-transparent'
                   }`}
                 >
-                  {item.icon}
+                  <span className="flex-shrink-0" style={{ color: ss?.color }}>{item.icon}</span>
                   <span className="flex-1 text-left">{item.label}</span>
                   <svg className={`w-4 h-4 transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -238,14 +258,14 @@ export default function TeacherLayout({ children }) {
               end={item.to === '/teacher'}
               onClick={closeDrawer}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
+                `flex items-center gap-3 px-3 py-2.5 rounded-xl text-[15px] font-semibold transition-colors [&_svg]:w-6 [&_svg]:h-6 ${
                   isActive
                     ? 'bg-[#C8EAAE] text-[#2D3436] border border-[#8FC87A]'
                     : 'text-[#636E72] hover:bg-[#EEF5E6] hover:text-[#2D3436]'
                 }`
               }
             >
-              {item.icon}
+              <span className="flex-shrink-0" style={{ color: ss?.color }}>{item.icon}</span>
               {item.label}
             </NavLink>
           );

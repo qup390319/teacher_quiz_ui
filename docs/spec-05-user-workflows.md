@@ -32,19 +32,19 @@
 
 ```
 步驟一：出題管理
-    → 點擊後導航至 /teacher/quizzes（考卷庫）
-    → 從考卷庫可進入 /teacher/quiz/create（出題精靈）
+    → 點擊後導航至 /teacher/quizzes（題組庫）
+    → 從題組庫可進入 /teacher/quiz/create（出題精靈）
     → 也可從主頁 CTA「快速出題」直接進入 /teacher/quiz/create
     → 或使用「一鍵使用推薦題組」直接跳至 /teacher/quiz/create?step=2
 
 步驟二：派題管理
     → /teacher/assignments
-    → 選擇考卷 + 班級 + 截止日期
+    → 選擇題組 + 班級 + 截止日期
     → 建立派題記錄
 
 步驟三：診斷結果
     → /teacher/dashboard（DashboardReport）
-    → 篩選班級 / 考卷
+    → 篩選班級 / 題組
     → 檢視圖表與分析
 ```
 
@@ -53,16 +53,20 @@
 進入點（皆會把 `editingQuizId` 重置為 `null`，除「編輯／繼續編輯」外）：
 - TeacherDashboard 主頁的「快速出題」CTA → `/teacher/quiz/create`
 - TeacherDashboard 主頁的「一鍵使用推薦題組」 → `/teacher/quiz/create?step=2`（預載 defaultQuestions）
-- QuizLibrary「新增考卷」按鈕 → `/teacher/quiz/create`
-- QuizLibrary「複製為新考卷」按鈕 → `/teacher/quiz/create?step=2`，預載複製品
+- QuizLibrary「新增題組」按鈕 → `/teacher/quiz/create`
+- QuizLibrary「複製為新題組」按鈕 → `/teacher/quiz/create?step=2`，預載複製品
 - QuizLibrary「編輯／繼續編輯」按鈕 → `/teacher/quiz/create?step=2`，**保留** `editingQuizId` + `editingQuizStatus`
 
 ```
 教師進入 /teacher/quiz/create
     │
     ├─ 步驟一：選擇知識節點 (Step1Nodes)
-    │   ├─ 瀏覽 12 個知識節點（兩條子主題路徑）
+    │   ├─ 麵包屑導航：出題管理 › 建立題組 › 步驟一：決定出題範圍
+    │   ├─ 瀏覽 12 個知識節點（兩條子主題路徑，各有 N/M 計數徽章）
     │   ├─ 勾選/取消勾選節點 → selectedNodeIds
+    │   ├─ Sticky 摘要列：已選節點數 + 迷思概念數 + 子主題 A/B 計數
+    │   │   └─ 已選節點 chip 列（可點 × 取消選取，滾動時仍可見）
+    │   ├─ 未選任何節點時顯示任務引導「請從下方勾選至少 1 個知識節點以繼續」
     │   ├─ 系統提示尚未選的先備節點，可一鍵加入
     │   └─ 點擊「下一步」
     │
@@ -74,16 +78,25 @@
         │             B 為正解，C/D 從該節點剩餘且未覆蓋的迷思補滿）→ 開啟編輯 modal
         │
         ├─ 「從題庫挑題」按鈕 → 開啟 QuestionImportDrawer（右側抽屜）
-        │   ├─ 預設只顯示與當前 selectedNodeIds 有交集的考卷
+        │   ├─ 預設只顯示與當前 selectedNodeIds 有交集的題組
         │   ├─ 可勾選「顯示全部」切換
         │   └─ 勾選若干題目 → deep clone 並 append 到 quizQuestions（重新編號 1..N）
+        │
+        ├─ 「自動排序」按鈕（工具列，介於「從題庫挑題」與「新增題目」之間）
+        │   ├─ 依知識節點拓撲順序（Kahn's algorithm）重排題目並重新編號
+        │   ├─ 使用 src/utils/topoSortNodes.js 的 sortQuestionsByNodeOrder
+        │   └─ 題目少於 2 題時 disabled
         │
         ├─ 「新增題目」→ 建立空骨架後開啟編輯 modal
         │
         ├─ EditQuestionModal（單題編輯）
         │   ├─ 題幹、節點、4 個選項各自的 content + diagnosis
-        │   └─ 每個非正解選項旁有「✨ 建議」按鈕（N6, spec-12 §7）
-        │       → DistractorSuggestPopover → 後端 RAGFlow → 學生真實說法 3 條
+        │   ├─ 每個非正解選項旁有「✨ 建議」按鈕（N6, spec-12 §7）
+        │   │   → DistractorSuggestPopover → 後端 RAGFlow → 學生真實說法 3 條
+        │   ├─ 「AI 潤飾題幹」按鈕（題幹標籤旁）→ POST /api/adaptive/polish-stem
+        │   │   → LLM 潤飾後回填題幹 textarea；題幹為空或 pending 時 disabled
+        │   └─ 「AI 建議選項」按鈕（選項區段標籤旁）→ POST /api/adaptive/suggest-options
+        │       → LLM 建議的選項回填至各欄位；題幹為空或 pending 時 disabled
         │
         ├─ 草稿暫存
         │   ├─ 「儲存草稿」按鈕：以 status=draft 立即上傳；首次儲存後將回傳的
@@ -99,12 +112,12 @@
 
 ### 1.3 派題流程 (Assignment)
 
-頁面分兩個分頁：「📝 診斷考卷」（整班派發）與「🌱 情境考卷」（個別學生派發）。
+頁面分兩個分頁：「📝 診斷題組」（整班派發）與「🌱 概念釐清題組」（個別學生派發）。
 
 ```
 教師進入 /teacher/assignments
     │
-    ├─ 以矩陣/網格 UI 呈現（考卷為列 × 班級為欄）
+    ├─ 以矩陣/網格 UI 呈現（題組為列 × 班級為欄）
     │   ├─ 每格顯示：完成率%、submittedCount/totalStudents、截止日期
     │   │   * scenario 分頁的 totalStudents 為「該派題指派的學生數」，非班級總人數
     │   ├─ 已派發格子依完成率顯示不同顏色：
@@ -116,16 +129,22 @@
     ├─ 診斷分頁（整班派發）
     │   ├─ 點擊未派發格子 → AssignPopover（小型 popover）
     │   │   ├─ 設定截止日期
-    │   │   ├─ 確認派發 → addAssignment({ targetType:'class', studentIds:[], ... })
+    │   │   ├─ 選擇派發模式（toggle 按鈕）：
+    │   │   │   ├─ 「診斷模式」— 首次診斷學生是否持有迷思概念（預設）
+    │   │   │   └─ 「複習模式」— 已完成診斷後的再次練習
+    │   │   ├─ 確認派發 → addAssignment({ targetType:'class', studentIds:[], dispatchMode, ... })
     │   │   └─ 自動生成 ID: assign-{timestamp}
     │   └─ 點擊已派發格子 → ManagePopover
     │       ├─ 可修改截止日期 → updateAssignment()
     │       ├─ 可查看診斷報告（若有作答資料）
     │       └─ 可取消派題 → removeAssignment()
     │
-    └─ 情境分頁（個別學生派發；spec-08）
+    └─ 概念釐清分頁（個別學生派發；spec-08）
         ├─ 點擊未派發格子 → AssignTargetPicker（modal-style 學生選擇器）
         │   ├─ 顯示該班所有學生（座號排序，預設皆未勾選）
+        │   ├─ 每位學生行尾顯示先備知識狀態徽章（透過 usePrerequisiteStatus hook）：
+        │   │   ├─ 「已具備先備」（綠色）— 該生所有先備節點皆達標
+        │   │   └─ 「N 個先備不足」（黃色）— 點擊展開各先備節點掌握百分比
         │   ├─ 教師勾選對象（提供「全部勾選 / 全部取消」快捷）
         │   ├─ 設定截止日期
         │   └─ 確認 → addAssignment({
@@ -134,7 +153,7 @@
         │           })
         │   * 跨班派發：分別點擊各班的格子，各自派發一次（單筆派題對應單一班級）
         │
-        └─ 點擊已派發格子 → ManagePopover（情境分頁顯示「指派對象 N 位」）
+        └─ 點擊已派發格子 → ManagePopover（概念釐清分頁顯示「指派對象 N 位」）
             ├─ 可修改截止日期
             ├─ 「調整派發對象」→ 再次開啟 AssignTargetPicker（existing 帶入既有 studentIds）
             │       └─ 確認 → updateAssignment({ studentIds })
@@ -143,15 +162,15 @@
 
 ### 1.4 診斷結果查看流程
 
-「診斷結果」拆為 5 個子分頁，由 `DashboardLayout` 共用「考卷選擇器」+ tab 列。
-進入 `/teacher/dashboard` 自動 redirect 到 `/teacher/dashboard/overview`，並從 `?quizId=` 載入考卷（無則 fallback 到最近檢視 / 第一張可用考卷）。
+「診斷結果」拆為 5 個子分頁，由 `DashboardLayout` 共用「題組選擇器」+ tab 列。
+進入 `/teacher/dashboard` 自動 redirect 到 `/teacher/dashboard/overview`，並從 `?quizId=` 載入題組（無則 fallback 到最近檢視 / 第一張可用題組）。
 
 ```
 教師進入 /teacher/dashboard
     │
     ├─（自動 redirect → /teacher/dashboard/overview?quizId=...）
     │
-    ├─ 頂部考卷選擇器（DashboardLayout 共用，切換時保留所在子分頁）
+    ├─ 頂部題組選擇器（DashboardLayout 共用，切換時保留所在子分頁）
     │
     ├─ 子分頁：全年級總覽（/overview）
     │   ├─ 全年級 AI 診斷摘要（年級健康狀態 + 跨班診斷句 + 優先介入順序 + 行動建議）
@@ -232,9 +251,9 @@
 學生從首頁選擇「學生端」
     │
     ├─ 進入 /student (StudentHome)
-    │   ├─ 瀏覽可作答的已發佈考卷列表
+    │   ├─ 瀏覽可作答的已發佈題組列表
     │   ├─ 檢視歷史作答記錄
-    │   └─ 點擊考卷 → 進入作答
+    │   └─ 點擊題組 → 進入作答
     │
     ├─ 進入 /student/quiz/:quizId (StudentQuiz)
     │   │
@@ -368,15 +387,15 @@
 
 > 完整規格見 `docs/spec-08-treatment-cognitive-apprenticeship.md`。本節僅勾勒流程接點。
 
-### 3.1 教師端：建立 / 編輯情境考卷
+### 3.1 教師端：建立 / 編輯概念釐清題組
 
 ```
-教師進入 /teacher/scenarios（情境考卷庫）
+教師進入 /teacher/scenarios（概念釐清題組庫）
     │
     ├─ 瀏覽既有 1 份 demo（scenario-002 · 飽和糖水甜度）+ 自製
     ├─ 點擊「新增」 → /teacher/scenarios/create
     │   ├─ 步驟一：選目標節點 + 標目標迷思
-    │   ├─ 步驟二：撰寫情境敘述（textarea）+ 上傳圖片
+    │   ├─ 步驟二：撰寫概念釐清敘述（textarea）+ 上傳圖片
     │   ├─ 步驟三：撰寫每題 initialMessage + expertModel
     │   └─ 儲存 → saveScenarioQuiz()
     │
@@ -386,12 +405,12 @@
 
 ### 3.2 教師端：派發治療任務（個別學生派發）
 
-情境治療派題以**個別學生**為單位（spec-04 §2.4 `targetType='students'`）。教師看一個班級、勾選需要治療的學生，再看下一個班級。
+概念釐清治療派題以**個別學生**為單位（spec-04 §2.4 `targetType='students'`）。教師看一個班級、勾選需要治療的學生，再看下一個班級。
 
 ```
-教師進入 /teacher/assignments → 切到「🌱 情境考卷」分頁
+教師進入 /teacher/assignments → 切到「🌱 概念釐清題組」分頁
     │
-    ├─ 點擊（情境考卷 × 班級）的未派發格子
+    ├─ 點擊（概念釐清題組 × 班級）的未派發格子
     │   └─ 開啟 AssignTargetPicker（modal）
     │       ├─ 顯示該班全體學生（座號 + 姓名 + 帳號）
     │       ├─ 教師手動勾選需要派發的學生（不預選）
@@ -401,39 +420,39 @@
     │                 targetType:'students', studentIds:[...], dueDate, ...
     │               })
     │
-    ├─ 點擊（情境考卷 × 班級）的已派發格子
+    ├─ 點擊（概念釐清題組 × 班級）的已派發格子
     │   └─ ManagePopover 顯示「指派對象 N 位」+ 完成進度
     │       ├─ 「調整派發對象」→ 再次開啟 AssignTargetPicker（含既有勾選）
     │       │   → updateAssignment({ studentIds })
     │       ├─ 修改截止日期 → updateAssignment({ dueDate })
     │       └─ 取消派題 → removeAssignment()
     │
-    └─ 完成派發後，被勾選的學生在 StudentHome「情境治療」區塊看到此任務
+    └─ 完成派發後，被勾選的學生在 StudentHome「概念釐清治療」區塊看到此任務
        （後端 useAssignments 對學生角色過濾：班級命中且 student.id ∈ studentIds）
 ```
 
-> 未來可擴充入口：在 DashboardReport 的迷思列表旁加「📤 派發情境治療」按鈕，
+> 未來可擴充入口：在 DashboardReport 的迷思列表旁加「📤 派發概念釐清治療」按鈕，
 > 帶入 `{ classId, scenarioQuizId 候選 }` 跳到此分頁並自動展開對應格子的 picker（教師仍手動勾學生）。
 > 目前主要入口是 `/teacher/assignments` 的 scenario 分頁。
 
-### 3.3 學生端：情境對話流程（spec-08 §6）
+### 3.3 學生端：概念釐清對話流程（spec-08 §6）
 
 ```
-學生在 StudentHome 點擊「情境治療」任務卡
+學生在 StudentHome 點擊「概念釐清治療」任務卡
     │
     ├─ 進入 /student/scenario/:scenarioQuizId (ScenarioChat)
     │
     ├─ entryStage = 'intro'（吉祥物開場）
     │   └─ 點擊「開始挑戰」 → entryStage='scenario'
     │
-    ├─ entryStage = 'scenario'（情境敘述頁，含可放大圖）
+    ├─ entryStage = 'scenario'（概念釐清敘述頁，含可放大圖）
     │   └─ 點擊「我已閱讀完成，開始挑戰」 → entryStage='chat'
     │       同時 startTreatmentSession(scenarioQuizId, studentId)
     │
     ├─ entryStage = 'chat'（AI 對話），flowStage 多階段切換：
     │   ├─ 'chat'：runTreatmentTurn() 推進，每輪 appendTreatmentMessage()
     │   ├─ 'between-questions'：該題完成 → 顯示「下一題」按鈕
-    │   ├─ 'next-scenario'：下一題情境敘述頁 → advanceTreatmentQuestion()
+    │   ├─ 'next-scenario'：下一題概念釐清敘述頁 → advanceTreatmentQuestion()
     │   ├─ 'settling'：結算動畫（dots 約 3 秒）
     │   ├─ 'result'：過關木牌（含 StarRating） → completeTreatmentSession()
     │   └─ 'reflection'：雙欄反思頁（左=回顧 Tabs / 右=反思對話）
@@ -446,11 +465,11 @@
 ```
 教師進入 /teacher/treatment-logs
     │
-    ├─ 列表：學生 × 情境考卷 × 完成狀態 × 最後 phase/stage × 開始時間
-    ├─ 篩選：依班級 / 情境考卷 / 完成狀態
+    ├─ 列表：學生 × 概念釐清題組 × 完成狀態 × 最後 phase/stage × 開始時間
+    ├─ 篩選：依班級 / 概念釐清題組 / 完成狀態
     │
     └─ 點選任一列 → /teacher/treatment-logs/:sessionId (TreatmentLogDetail)
-        ├─ 左欄：情境考卷的題目列表（情境敘述 + 圖）
+        ├─ 左欄：概念釐清題組的題目列表（概念釐清敘述 + 圖）
         └─ 右欄：完整對話氣泡時序展開
             └─ 每則 AI 訊息標註該回合的 phase / stage / step / hintLevel
             （為教師提供「派發治療是否成功」的判斷依據）
@@ -461,17 +480,17 @@
 ## 4. 跨角色交互
 
 ```
-教師 → 建立考卷 (saveQuiz)
+教師 → 建立題組 (saveQuiz)
          ↓
-教師 → 派發考卷 (addAssignment)
+教師 → 派發題組 (addAssignment)
          ↓
-學生 → 作答考卷 (recordAnswer)
+學生 → 作答題組 (recordAnswer)
          ↓
 教師 → 檢視診斷結果 (getClassAnswers, getNodePassRates, etc.)
          ↓ 若診斷出迷思
-教師 → 建立情境考卷 / 沿用 demo (saveScenarioQuiz)
+教師 → 建立概念釐清題組 / 沿用 demo (saveScenarioQuiz)
          ↓
-教師 → 派發情境考卷 (addAssignment with type='scenario')
+教師 → 派發概念釐清題組 (addAssignment with type='scenario')
          ↓
 學生 → 與 AI 對話治療 (runTreatmentTurn / appendTreatmentMessage)
          ↓

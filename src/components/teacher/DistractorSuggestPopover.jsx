@@ -12,7 +12,7 @@ import { api, ApiError } from '../../lib/api';
  *   misconceptionId, misconceptionLabel, misconceptionDetail
  *                                ─ 該選項要對應的迷思（從 knowledgeGraph 取出）
  *   currentText                  ─ 教師目前已輸入的選項文字（可空）
- *   stem                         ─ 教師輸入的題幹（必傳，建議內容會以此為情境脈絡）
+ *   stem                         ─ 教師輸入的題幹（必傳，建議內容會以此為概念釐清脈絡）
  *   onAdopt(text)                ─ 教師點「採用」時呼叫，將文字填回選項
  *   onClose()                    ─ 關閉
  */

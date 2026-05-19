@@ -1,6 +1,7 @@
 ﻿import { useNavigate } from 'react-router-dom';
 import TeacherLayout from '../../components/TeacherLayout';
 import { knowledgeNodes } from '../../data/knowledgeGraph';
+import NodeRelationshipMatrix from '../../components/teacher/NodeRelationshipMatrix';
 
 const STAGE_COLORS = {
   blue:   { bg: 'bg-[#BADDF4]', text: 'text-[#2E86C1]', border: 'border-[#BDC3C7]' },
@@ -146,7 +147,12 @@ export default function KnowledgeMap() {
           </div>
         </div>
 
-        {/* B 區：表格 */}
+        {/* B 區：先備關係矩陣 */}
+        <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-5 mb-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+          <NodeRelationshipMatrix />
+        </div>
+
+        {/* C 區：表格 */}
         <div className="bg-white rounded-[32px] border border-[#BDC3C7] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
           <table className="w-full border-collapse text-sm">
             <thead>

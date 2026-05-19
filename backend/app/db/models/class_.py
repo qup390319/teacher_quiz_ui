@@ -27,5 +27,5 @@ class Class(Base):
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
 
     students: Mapped[list["Student"]] = relationship(  # type: ignore[name-defined] # noqa: F821
-        back_populates="class_", lazy="selectin",
+        back_populates="class_", lazy="selectin", passive_deletes=True,
     )

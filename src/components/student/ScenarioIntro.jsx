@@ -22,7 +22,7 @@ export default function ScenarioIntro({ quiz, studentName, onStart }) {
                 {quiz.title}
               </h2>
               <p className="text-sm sm:text-base text-[#7A5232] font-bold leading-relaxed">
-                嗨 {studentName}！這是一場「情境治療」對話練習。<br />
+                嗨 {studentName}！這是一場「概念釐清治療」對話練習。<br />
                 跟我一起，把你的想法用「主張・證據・推理」說清楚！
               </p>
             </div>

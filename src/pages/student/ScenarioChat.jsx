@@ -204,7 +204,7 @@ export default function ScenarioChat() {
       <div className="min-h-screen flex items-center justify-center bg-[#FBE9C7] p-6">
         <div className={WOOD_OUTER + ' max-w-sm'}>
           <div className={WOOD_INNER_CREAM + ' p-6 text-center'}>
-            <h2 className="font-game text-2xl font-black text-[#5A3E22] mb-3">找不到情境考卷</h2>
+            <h2 className="font-game text-2xl font-black text-[#5A3E22] mb-3">找不到概念釐清題組</h2>
             <p className="text-sm text-[#7A5232] mb-4">{scenarioQuizId}</p>
             <button
               type="button"
@@ -467,7 +467,7 @@ export default function ScenarioChat() {
 
         {entryStage === 'chat' && (flowStage === 'chat' || flowStage === 'between-questions') && (
           <div className="flex-1 flex flex-col md:grid md:grid-cols-[minmax(320px,420px)_1fr] md:gap-4 md:px-4 md:overflow-hidden min-h-0">
-            {/* 左欄：情境側欄（md+ 固定顯示；mobile 可收合） */}
+            {/* 左欄：概念釐清側欄（md+ 固定顯示；mobile 可收合） */}
             {!flowStage.startsWith('between') && (
               <ScenarioSideCard
                 question={currentQuestion}

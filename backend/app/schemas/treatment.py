@@ -24,7 +24,7 @@ class TreatmentMessageIO(BaseModel):
 
 class TreatmentSessionBrief(BaseModel):
     id: str
-    scenario_quiz_id: str = Field(serialization_alias="scenarioQuizId")
+    scenario_quiz_id: str | None = Field(serialization_alias="scenarioQuizId")
     student_id: str = Field(serialization_alias="studentId")
     status: Literal["active", "completed"]
     current_question_index: int = Field(serialization_alias="currentQuestionIndex")
@@ -68,7 +68,7 @@ class AdvanceQuestionRequest(BaseModel):
 class TreatmentLogRow(BaseModel):
     """One row in the teacher TreatmentLogs list view."""
     session_id: str = Field(serialization_alias="sessionId")
-    scenario_quiz_id: str = Field(serialization_alias="scenarioQuizId")
+    scenario_quiz_id: str | None = Field(serialization_alias="scenarioQuizId")
     scenario_title: str = Field(serialization_alias="scenarioTitle")
     student_id: str = Field(serialization_alias="studentId")
     student_name: str = Field(serialization_alias="studentName")

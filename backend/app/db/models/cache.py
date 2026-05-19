@@ -24,7 +24,7 @@ class AiSummaryCache(Base):
     scope: Mapped[str] = mapped_column(String(16), nullable=False)
     scope_id: Mapped[str] = mapped_column(String(64), nullable=False)
     quiz_id: Mapped[str] = mapped_column(
-        String(32), ForeignKey("quizzes.id"), nullable=False,
+        String(32), ForeignKey("quizzes.id", ondelete="CASCADE"), nullable=False,
     )
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     citations: Mapped[list[Any]] = mapped_column(

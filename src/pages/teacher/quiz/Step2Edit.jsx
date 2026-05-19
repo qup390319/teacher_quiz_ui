@@ -9,6 +9,7 @@ import DeleteQuestionModal from '../../../components/teacher/quizEditor/DeleteQu
 import PreviewQuizModal from '../../../components/teacher/quizEditor/PreviewQuizModal';
 import CoveragePanel from '../../../components/teacher/quizEditor/CoveragePanel';
 import QuestionImportDrawer from '../../../components/teacher/quizEditor/QuestionImportDrawer';
+import { sortQuestionsByNodeOrder } from '../../../utils/topoSortNodes';
 
 const AUTO_SAVE_DELAY_MS = 30000;
 
@@ -67,7 +68,7 @@ function formatTime(date) {
 
 export default function Step2Edit({ onBack }) {
   const {
-    quizQuestions, setQuizQuestions, selectedNodeIds,
+    quizQuestions, setQuizQuestions, selectedNodeIds, nodeQuestionCounts,
     editingQuizId, setEditingQuizId,
     editingQuizStatus, setEditingQuizStatus,
     editingQuizTitle, setEditingQuizTitle,
@@ -90,6 +91,8 @@ export default function Step2Edit({ onBack }) {
   const [deletingQuestion, setDeletingQuestion] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [dragIdx, setDragIdx] = useState(null);
+  const [dropIdx, setDropIdx] = useState(null);
 
   // 自動暫存狀態
   const [lastSavedAt, setLastSavedAt] = useState(null);
@@ -156,6 +159,26 @@ export default function Step2Edit({ onBack }) {
     setShowImport(false);
   };
 
+  const handleDragStart = (idx) => { setDragIdx(idx); };
+  const handleDragOver = (e, idx) => {
+    e.preventDefault();
+    if (dragIdx === null || idx === dragIdx) { setDropIdx(null); return; }
+    setDropIdx(idx);
+  };
+  const handleDragEnd = () => {
+    if (dragIdx !== null && dropIdx !== null && dragIdx !== dropIdx) {
+      setQuizQuestions((prev) => {
+        const next = [...prev];
+        const [moved] = next.splice(dragIdx, 1);
+        next.splice(dropIdx, 0, moved);
+        return renumber(next);
+      });
+      setIsWizardDirty(true);
+    }
+    setDragIdx(null);
+    setDropIdx(null);
+  };
+
   const buildPayload = (status) => ({
     id: editingQuizId || undefined,
     title: quizTitle || generateDefaultTitle(quizzes),
@@ -220,7 +243,7 @@ export default function Step2Edit({ onBack }) {
       setEditingQuizTitle('');
       navigate('/teacher/quizzes');
     } catch (err) {
-      alert('儲存考卷失敗：' + (err?.message ?? '未知錯誤'));
+      alert('儲存題組失敗：' + (err?.message ?? '未知錯誤'));
     }
   };
 
@@ -235,23 +258,24 @@ export default function Step2Edit({ onBack }) {
   return (
     <div>
       <div className="mb-5">
-        <h2 className="text-xl font-bold text-[#2D3436] mb-1">步驟二：製作考卷</h2>
+        <h2 className="text-xl font-bold text-[#2D3436] mb-1">步驟二：製作題組</h2>
         <p className="text-[#636E72] text-sm">請確認以下題目內容，可點擊「編輯」修改、「新增題目」加題、或從題庫挑現成題</p>
       </div>
 
       <CoveragePanel
         questions={quizQuestions}
         selectedNodeIds={selectedNodeIds}
+        nodeQuestionCounts={nodeQuestionCounts}
         onAddForMisconception={addQuestionForMisconception}
       />
 
       <div className="flex flex-wrap items-center justify-between mb-3 gap-3 sm:gap-4">
         <div className="flex items-center gap-2 flex-1 min-w-[220px]">
-          <label className="text-sm font-semibold text-[#2D3436] whitespace-nowrap">考卷名稱</label>
+          <label className="text-sm font-semibold text-[#2D3436] whitespace-nowrap">題組名稱</label>
           <input
             value={quizTitle}
             onChange={(e) => { setQuizTitle(e.target.value); setIsWizardDirty(true); }}
-            placeholder="請輸入考卷名稱"
+            placeholder="請輸入題組名稱"
             className="flex-1 min-w-0 border border-[#BDC3C7] rounded-xl px-3 py-2 text-sm text-[#2D3436] focus:outline-none focus:ring-2 focus:ring-[#8FC87A]"
           />
         </div>
@@ -264,6 +288,21 @@ export default function Step2Edit({ onBack }) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3" />
             </svg>
             從題庫挑題
+          </button>
+          <button
+            onClick={() => {
+              const sorted = renumber(sortQuestionsByNodeOrder(quizQuestions, selectedNodeIds));
+              setQuizQuestions(sorted);
+              setIsWizardDirty(true);
+            }}
+            disabled={quizQuestions.length < 2}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-[#5B3D8F] border border-[#B39DDB] bg-[#EDE7F6] rounded-xl hover:bg-[#D1C4E9] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            title="按知識節點的先備關係自動排序題目"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+            </svg>
+            自動排序
           </button>
           <button
             onClick={addNewQuestion}
@@ -281,6 +320,7 @@ export default function Step2Edit({ onBack }) {
         <table className="w-full text-sm border-collapse bg-white" style={{ minWidth: '900px' }}>
           <thead>
             <tr className="bg-[#C8EAAE] border-b border-[#BDC3C7]">
+              <th className="w-8 px-1"></th>
               <th className="px-4 py-3 text-center text-xs font-bold text-[#636E72] uppercase tracking-wide w-14">題號</th>
               <th className="px-4 py-3 text-left text-xs font-bold text-[#636E72] uppercase tracking-wide" style={{ minWidth: '220px' }}>題幹內容</th>
               <th className="px-4 py-3 text-left text-xs font-bold text-[#636E72] uppercase tracking-wide" style={{ minWidth: '160px' }}>對應知識節點</th>
@@ -291,8 +331,24 @@ export default function Step2Edit({ onBack }) {
           <tbody className="divide-y divide-[#D5D8DC]">
             {quizQuestions.map((q, qIdx) => {
               const node = getNodeById(q.knowledgeNodeId);
+              const isDragging = dragIdx === qIdx;
+              const isDropTarget = dropIdx === qIdx;
               return (
-                <tr key={q.id} className={qIdx % 2 === 0 ? 'bg-white' : 'bg-[#EEF5E6]'}>
+                <tr
+                  key={q.id}
+                  draggable
+                  onDragStart={() => handleDragStart(qIdx)}
+                  onDragOver={(e) => handleDragOver(e, qIdx)}
+                  onDragEnd={handleDragEnd}
+                  className={`${qIdx % 2 === 0 ? 'bg-white' : 'bg-[#EEF5E6]'} ${isDragging ? 'opacity-40' : ''} ${isDropTarget ? 'ring-2 ring-inset ring-[#8FC87A]' : ''} transition-all`}
+                >
+                  <td className="px-1 py-5 text-center cursor-grab active:cursor-grabbing">
+                    <svg className="w-4 h-4 mx-auto text-[#BDC3C7]" viewBox="0 0 24 24" fill="currentColor">
+                      <circle cx="9" cy="6" r="1.5" /><circle cx="15" cy="6" r="1.5" />
+                      <circle cx="9" cy="12" r="1.5" /><circle cx="15" cy="12" r="1.5" />
+                      <circle cx="9" cy="18" r="1.5" /><circle cx="15" cy="18" r="1.5" />
+                    </svg>
+                  </td>
                   <td className="px-4 py-5 text-center">
                     <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#C8EAAE] border border-[#BDC3C7] text-[#3D5A3E] text-sm font-bold">
                       {qIdx + 1}
@@ -365,7 +421,7 @@ export default function Step2Edit({ onBack }) {
             })}
             {quizQuestions.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-12 text-center text-[#95A5A6] text-sm">
+                <td colSpan={6} className="px-4 py-12 text-center text-[#95A5A6] text-sm">
                   目前沒有題目，請點擊「新增題目」開始出題，或點上方「從題庫挑題」匯入現成題目
                 </td>
               </tr>

@@ -2,7 +2,7 @@ import { Icon } from '../ui/woodKit';
 
 /* 對話面板（純對話氣泡列表 + 輸入框 / 下一題按鈕）
  * spec-07 §12.3 對話氣泡。
- * 情境題目在側欄（ScenarioSideCard）獨立顯示，不再放這裡。 */
+ * 概念釐清題目在側欄（ScenarioSideCard）獨立顯示，不再放這裡。 */
 export default function ChatStream({
   messages,
   isThinking,

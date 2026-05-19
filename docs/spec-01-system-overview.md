@@ -112,7 +112,7 @@ teacher_quiz_0223/
 │       ├── teacher/
 │       │   ├── TeacherDashboard.jsx     # 教師主頁（三步驟流程）
 │       │   ├── DashboardReport.jsx      # 診斷結果儀表板
-│       │   ├── QuizLibrary.jsx          # 考卷庫
+│       │   ├── QuizLibrary.jsx          # 題組庫
 │       │   ├── AssignmentManagement.jsx # 派題管理
 │       │   ├── ClassManagement.jsx      # 班級管理
 │       │   ├── ClassDetail.jsx          # 班級詳情

@@ -40,6 +40,17 @@ export function useUpdateClass() {
   });
 }
 
+/** Delete a class and all its students / assignments. */
+export function useDeleteClass() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (classId) => api.del(`/classes/${classId}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['classes'] });
+    },
+  });
+}
+
 /** Replace the entire roster of a class. payload: { classId, students: [{name, seat, account?}] } */
 export function useUpdateClassStudents() {
   const qc = useQueryClient();

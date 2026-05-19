@@ -51,6 +51,7 @@ def _to_detail(sq: ScenarioQuiz) -> ScenarioDetail:
 
 
 async def _replace_questions(db: AsyncSession, sq: ScenarioQuiz, payload_questions: list[ScenarioQuestionIO]) -> None:
+    await db.refresh(sq, ["questions"])
     for q in list(sq.questions):
         await db.delete(q)
     await db.flush()

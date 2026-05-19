@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 
 /* 圖片放大檢視（spec-08 §6 / spec-07 §12）
- * 用於情境敘述頁與對話中的查看情境面板。
+ * 用於概念釐清敘述頁與對話中的查看概念釐清面板。
  * 點背景或 Esc 關閉。 */
 export default function ScenarioImageLightbox({ src, alt = '放大圖', onClose }) {
   useEffect(() => {

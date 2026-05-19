@@ -341,12 +341,12 @@ export default function StudentHome() {
                   </>
                 )}
 
-                {/* ── 情境治療區（spec-08）──────── */}
+                {/* ── 概念釐清治療區（spec-08）──────── */}
                 {hasScenario && (
                   <>
                     {scenarioTasks.pending.length > 0 && (
                       <Section
-                        title="情境治療"
+                        title="概念釐清治療"
                         subtitle="與 AI 對話練習科學論證，治療你的迷思"
                         accentColor="#3F8B5E"
                         icon="forum"

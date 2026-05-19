@@ -4,8 +4,8 @@ import TeacherLayout from '../../../components/TeacherLayout';
 import { useScenario, useSaveScenario } from '../../../hooks/useScenarios';
 import { knowledgeNodes, getNodeById } from '../../../data/knowledgeGraph';
 
-/* 情境考卷出題精靈（spec-08 §5.1）
- * 單頁式表單；一份考卷可有多題情境；每題含 情境敘述、開場提問、專家示範、目標迷思。
+/* 概念釐清題組出題精靈（spec-08 §5.1）
+ * 單頁式表單；一份題組可有多題概念釐清；每題含 概念釐清敘述、開場提問、專家示範、目標迷思。
  * 同時支援新建（路由 /teacher/scenarios/create）與編輯（/teacher/scenarios/:scenarioQuizId/edit）。
  */
 const TODAY = new Date().toISOString().slice(0, 10);
@@ -101,7 +101,7 @@ export default function ScenarioCreateWizard() {
 
   const handleSave = async (status) => {
     if (!draft.title.trim()) {
-      alert('請填寫考卷標題');
+      alert('請填寫題組標題');
       return;
     }
     if (!draft.targetNodeId) {
@@ -132,7 +132,7 @@ export default function ScenarioCreateWizard() {
         <div className="mb-4 sm:mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">
-              {isEditing ? '編輯情境考卷' : '新增情境考卷'}
+              {isEditing ? '編輯概念釐清題組' : '新增概念釐清題組'}
             </h1>
             <p className="text-[#636E72] mt-1 text-sm">
               每一題由 AI 以「論證對話」（主張 → 證據 → 推理 → 重述）引導學生對話。
@@ -192,7 +192,7 @@ export default function ScenarioCreateWizard() {
                   step: '1',
                   name: '主張 Claim',
                   what: '學生先提出自己對問題的立場與判斷。',
-                  teacher: '您要寫：情境敘述 + AI 開場提問（引導學生提出主張）',
+                  teacher: '您要寫：概念釐清敘述 + AI 開場提問（引導學生提出主張）',
                   example: '例：AI 問「你認為 A 杯和 B 杯的糖水，哪一杯喝起來比較甜？請先提出你的主張。」',
                 },
                 {
@@ -232,7 +232,7 @@ export default function ScenarioCreateWizard() {
             </div>
 
             <p className="text-xs text-[#7A4A18] mt-4">
-              💡 對應到下方欄位：<strong>情境敘述／開場提問</strong>＝鷹架 ·
+              💡 對應到下方欄位：<strong>概念釐清敘述／開場提問</strong>＝鷹架 ·
               <strong>本題目標迷思</strong>＝指導切點 ·
               <strong>專家示範</strong>＝示範文本 ·
               <strong>反思</strong>由系統自動產生。
@@ -252,7 +252,7 @@ export default function ScenarioCreateWizard() {
                 type="text"
                 value={draft.title}
                 onChange={(e) => updateField('title', e.target.value)}
-                placeholder="例：情境治療 · 溶解現象判斷"
+                placeholder="例：概念釐清治療 · 溶解現象判斷"
                 className="w-full px-3 py-2 rounded-xl border border-[#BDC3C7] bg-white text-sm
                            focus:outline-none focus:ring-2 focus:ring-[#5BA47A]/40 focus:border-[#5BA47A]"
               />
@@ -303,7 +303,7 @@ export default function ScenarioCreateWizard() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base font-bold text-[#2D3436] flex items-center gap-2">
               <span className="w-1.5 h-5 bg-[#5BA47A] rounded-full" />
-              情境題目（共 {draft.questions.length} 題）
+              概念釐清題目（共 {draft.questions.length} 題）
             </h2>
             <button
               type="button"
@@ -311,7 +311,7 @@ export default function ScenarioCreateWizard() {
               className="flex items-center gap-1 px-3 py-1.5 text-sm font-semibold text-[#3F8B5E]
                          border border-[#5BA47A] rounded-xl hover:bg-[#EEF5E6] transition"
             >
-              + 新增情境題
+              + 新增概念釐清題
             </button>
           </div>
 
@@ -410,7 +410,7 @@ function ImageUploader({ images, onChange }) {
             >
               <img
                 src={src}
-                alt={`情境圖 ${idx + 1}`}
+                alt={`概念釐清圖 ${idx + 1}`}
                 className="block max-h-32 max-w-[180px] object-contain"
               />
               <button
@@ -499,7 +499,7 @@ function QuestionEditor({ question, availableMisconceptions, canRemove, onUpdate
         )}
       </div>
       <div className="space-y-3">
-        <Field label="情境敘述">
+        <Field label="概念釐清敘述">
           <textarea
             rows={5}
             value={question.scenarioText}
@@ -509,7 +509,7 @@ function QuestionEditor({ question, availableMisconceptions, canRemove, onUpdate
                        focus:outline-none focus:ring-2 focus:ring-[#5BA47A]/40 focus:border-[#5BA47A]"
           />
         </Field>
-        <Field label="情境圖片（選填，可上傳 1~2 張，學生對話時可放大檢視）">
+        <Field label="概念釐清圖片（選填，可上傳 1~2 張，學生對話時可放大檢視）">
           <ImageUploader
             images={question.scenarioImages ?? []}
             onChange={(imgs) => onUpdate({ scenarioImages: imgs })}

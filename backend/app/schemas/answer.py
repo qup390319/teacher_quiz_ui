@@ -23,7 +23,7 @@ class AnswerOut(BaseModel):
     id: int
     assignment_id: str = Field(serialization_alias="assignmentId")
     student_id: str = Field(serialization_alias="studentId")
-    question_id: int = Field(serialization_alias="questionId")
+    question_id: int | None = Field(serialization_alias="questionId")
     selected_tag: str = Field(serialization_alias="selectedTag")
     diagnosis: str
     answered_at: datetime = Field(serialization_alias="answeredAt")

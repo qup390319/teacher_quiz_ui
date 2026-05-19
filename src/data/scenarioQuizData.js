@@ -1,13 +1,13 @@
 /**
- * 情境考卷資料（治療模組）
+ * 概念釐清題組資料（治療模組）
  *
  * 定義詳見 docs/spec-08-treatment-cognitive-apprenticeship.md §10
- * 與診斷考卷 (quizData.js) 並列獨立。
+ * 與診斷題組 (quizData.js) 並列獨立。
  *
- * 目前僅保留 1 份 demo 情境考卷：
+ * 目前僅保留 1 份 demo 概念釐清題組：
  *   scenario-002 → 飽和糖水甜度（節點 INe-II-3-03）
  *
- * 題目文字、情境敘述、開場提問皆移植自 eh 系統 levels.ts 的 QUESTION_CONFIGS，
+ * 題目文字、概念釐清敘述、開場提問皆移植自 eh 系統 levels.ts 的 QUESTION_CONFIGS，
  * 圖片素材複製到 src/assets/scenarios/。
  */
 import sugarLayerImg from '../assets/scenarios/2-1-2-sugar-saturation-chart.png';
@@ -16,8 +16,8 @@ import sugarLayerImg from '../assets/scenarios/2-1-2-sugar-saturation-chart.png'
  * @typedef {Object} ScenarioQuestion
  * @property {number} index - 題目順序（1-based）
  * @property {string} title - 標題（如「論證議題 1」）
- * @property {string} scenarioText - 情境敘述（多行字串，\n 為段落分隔）
- * @property {string[]=} scenarioImages - 情境圖片 import 路徑（0~2 張）
+ * @property {string} scenarioText - 概念釐清敘述（多行字串，\n 為段落分隔）
+ * @property {string[]=} scenarioImages - 概念釐清圖片 import 路徑（0~2 張）
  * @property {boolean=} scenarioImageZoomable - 是否可點擊放大（預設 false）
  * @property {string} initialMessage - AI 開場提問（步驟 1 由 AI 主動說）
  * @property {string[]} targetMisconceptions - 該題針對的迷思 ID（M01-1 等）
@@ -41,7 +41,7 @@ export const SCENARIO_QUIZZES_DATA = [
   // ───────────────────────────────────────────────────────────────
   {
     id: 'scenario-002',
-    title: '情境治療 · 飽和糖水甜度',
+    title: '概念釐清治療 · 飽和糖水甜度',
     status: 'published',
     targetNodeId: 'INe-II-3-03',
     targetMisconceptions: ['M03-1', 'M03-2'],
@@ -97,24 +97,24 @@ export const SCENARIO_QUIZZES_DATA = [
 
 /* ── 查詢輔助函式 ───────────────────────────────────────────── */
 
-/** 依 ID 取得情境考卷 */
+/** 依 ID 取得概念釐清題組 */
 export function getScenarioQuiz(scenarioQuizId) {
   return SCENARIO_QUIZZES_DATA.find((q) => q.id === scenarioQuizId) ?? null;
 }
 
-/** 依目標節點 ID 找推薦的情境考卷 */
+/** 依目標節點 ID 找推薦的概念釐清題組 */
 export function getScenarioQuizzesByNode(nodeId) {
   return SCENARIO_QUIZZES_DATA.filter((q) => q.targetNodeId === nodeId);
 }
 
-/** 依目標迷思 ID 找推薦的情境考卷 */
+/** 依目標迷思 ID 找推薦的概念釐清題組 */
 export function getScenarioQuizzesByMisconception(misconceptionId) {
   return SCENARIO_QUIZZES_DATA.filter((q) =>
     q.targetMisconceptions.includes(misconceptionId)
   );
 }
 
-/** 取得情境考卷的題目陣列（語意對齊 quizData.getQuizQuestions） */
+/** 取得概念釐清題組的題目陣列（語意對齊 quizData.getQuizQuestions） */
 export function getScenarioQuestions(scenarioQuizId) {
   return getScenarioQuiz(scenarioQuizId)?.questions ?? [];
 }

@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import { knowledgeNodes, getNodeById } from '../../../data/knowledgeGraph';
 import DistractorSuggestPopover from '../DistractorSuggestPopover';
+import { usePolishStem, useSuggestOptions } from '../../../hooks/useAdaptive';
 
 export default function EditQuestionModal({ question, selectedNodeIds, onSave, onClose }) {
   const [stem, setStem] = useState(question.stem);
   const [nodeId, setNodeId] = useState(question.knowledgeNodeId);
   const [options, setOptions] = useState(question.options.map((o) => ({ ...o })));
   const [suggestForIdx, setSuggestForIdx] = useState(null);
+  const polishMut = usePolishStem();
+  const suggestOptsMut = useSuggestOptions();
 
   const currentNode = getNodeById(nodeId);
   const availableMisconceptions = currentNode ? currentNode.misconceptions : [];
@@ -34,10 +37,32 @@ export default function EditQuestionModal({ question, selectedNodeIds, onSave, o
         </div>
         <div className="p-6 space-y-5">
           <div>
-            <label className="block text-sm font-semibold text-[#2D3436] mb-2">
-              題幹內容
-              <span className="text-xs font-normal text-[#95A5A6] ml-2">（請先輸入題幹再產生選項建議）</span>
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-semibold text-[#2D3436]">
+                題幹內容
+                <span className="text-xs font-normal text-[#95A5A6] ml-2">（請先輸入題幹再產生選項建議）</span>
+              </label>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!hasStem || !currentNode) return;
+                  try {
+                    const res = await polishMut.mutateAsync({
+                      stem, nodeId: currentNode.id, nodeName: currentNode.name,
+                    });
+                    if (res?.polished) setStem(res.polished);
+                  } catch { /* toast handled by react-query */ }
+                }}
+                disabled={!hasStem || polishMut.isPending}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold
+                           text-[#5B3D8F] bg-[#EDE7F6] border border-[#B39DDB] rounded-lg
+                           hover:bg-[#D1C4E9] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                title="AI 會將題幹改寫為國小五年級學生更容易理解的語言"
+              >
+                <span aria-hidden="true">✨</span>
+                {polishMut.isPending ? 'AI 潤飾中…' : 'AI 潤飾題幹'}
+              </button>
+            </div>
             <textarea
               value={stem}
               onChange={(e) => setStem(e.target.value)}
@@ -60,7 +85,38 @@ export default function EditQuestionModal({ question, selectedNodeIds, onSave, o
             </select>
           </div>
           <div>
-            <label className="block text-sm font-semibold text-[#2D3436] mb-3">選項內容與答案判定</label>
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-sm font-semibold text-[#2D3436]">選項內容與答案判定</label>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!hasStem || !currentNode) return;
+                  try {
+                    const res = await suggestOptsMut.mutateAsync({
+                      stem,
+                      nodeId: currentNode.id,
+                      nodeName: currentNode.name,
+                      misconceptions: availableMisconceptions.map((m) => ({
+                        id: m.id, label: m.label, detail: m.detail,
+                      })),
+                    });
+                    if (res?.options?.length === 4) {
+                      setOptions(res.options.map((o) => ({
+                        tag: o.tag, content: o.content, diagnosis: o.diagnosis,
+                      })));
+                    }
+                  } catch { /* toast handled by react-query */ }
+                }}
+                disabled={!hasStem || suggestOptsMut.isPending}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold
+                           text-[#7A5232] bg-[#FBE9C7] border border-[#D9C58E] rounded-lg
+                           hover:bg-[#F4DDA8] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                title="AI 根據題幹與迷思概念自動產生一組四選項"
+              >
+                <span aria-hidden="true">✨</span>
+                {suggestOptsMut.isPending ? 'AI 產生中…' : 'AI 建議選項'}
+              </button>
+            </div>
             <div className="space-y-3">
               {options.map((opt, idx) => (
                 <div key={opt.tag} className="bg-[#EEF5E6] border border-[#D5D8DC] rounded-2xl p-4">

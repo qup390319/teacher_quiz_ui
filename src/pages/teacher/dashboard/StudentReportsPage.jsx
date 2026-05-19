@@ -89,7 +89,7 @@ export default function StudentReportsPage() {
             </svg>
           </div>
           <p className="text-[#636E72] font-medium">尚無學生診斷紀錄</p>
-          <p className="text-sm text-[#95A5A6] mt-1">當學生完成診斷考卷的追問對話後，紀錄會自動出現在這裡</p>
+          <p className="text-sm text-[#95A5A6] mt-1">當學生完成診斷題組的追問對話後，紀錄會自動出現在這裡</p>
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-[#BDC3C7] overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.04)]">

@@ -6,7 +6,7 @@ import { getNodeById } from '../../../data/knowledgeGraph';
 /**
  * 從題庫挑題抽屜（右側 slide-over）。
  * - 列出所有 quizzes，展開後 lazy 載入該 quiz 的 questions
- * - 預設過濾「與 selectedNodeIds 有交集」的考卷；可切換顯示全部
+ * - 預設過濾「與 selectedNodeIds 有交集」的題組；可切換顯示全部
  * - 勾選的題目以 deep clone append 到當前 quizQuestions（呼叫端負責重新編號）
  */
 export default function QuestionImportDrawer({
@@ -95,7 +95,7 @@ export default function QuestionImportDrawer({
         <div className="px-5 py-4 border-b border-[#D5D8DC] flex items-center justify-between flex-shrink-0">
           <div>
             <h3 className="text-base font-bold text-[#2D3436]">從題庫挑題</h3>
-            <p className="text-xs text-[#636E72] mt-0.5">展開考卷、勾選題目，匯入後可再編輯</p>
+            <p className="text-xs text-[#636E72] mt-0.5">展開題組、勾選題目，匯入後可再編輯</p>
           </div>
           <button onClick={onClose} className="text-[#95A5A6] hover:text-[#636E72]">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -112,7 +112,7 @@ export default function QuestionImportDrawer({
               onChange={(e) => setShowAll(e.target.checked)}
               className="w-4 h-4 accent-[#8FC87A]"
             />
-            顯示全部考卷（不限當前選中的節點）
+            顯示全部題組（不限當前選中的節點）
           </label>
         </div>
 
@@ -121,7 +121,7 @@ export default function QuestionImportDrawer({
           {!isLoading && filteredQuizzes.length === 0 && (
             <div className="text-center py-12">
               <p className="text-sm text-[#95A5A6]">
-                {showAll ? '題庫中沒有可挑選的考卷' : '沒有與當前節點相關的考卷，可勾選「顯示全部」查看其他考卷'}
+                {showAll ? '題庫中沒有可挑選的題組' : '沒有與當前節點相關的題組，可勾選「顯示全部」查看其他題組'}
               </p>
             </div>
           )}
@@ -162,7 +162,7 @@ export default function QuestionImportDrawer({
                     <div className="px-3 pb-3 border-t border-[#D5D8DC] pt-2">
                       {loading && <p className="text-xs text-[#95A5A6] py-2">載入題目中…</p>}
                       {!loading && detail && detail.questions.length === 0 && (
-                        <p className="text-xs text-[#95A5A6] py-2">此考卷沒有題目</p>
+                        <p className="text-xs text-[#95A5A6] py-2">此題組沒有題目</p>
                       )}
                       {!loading && detail && detail.questions.map((q) => {
                         const node = getNodeById(q.knowledgeNodeId);

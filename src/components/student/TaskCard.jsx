@@ -13,7 +13,7 @@ import magKuma  from '../../assets/illustrations/magnifiers/magnifier_animal_kum
 import magNeko  from '../../assets/illustrations/magnifiers/magnifier_animal_neko.png';
 import magUsagi from '../../assets/illustrations/magnifiers/magnifier_animal_usagi.png';
 
-/* 圖示池：診斷=燒杯（7 色）／情境=放大鏡（6 款）— 每張任務卡用 quizId hash 穩定選一張 */
+/* 圖示池：診斷=燒杯（7 色）／概念釐清=放大鏡（6 款）— 每張任務卡用 quizId hash 穩定選一張 */
 const FLASKS     = [flaskBlue, flaskGreen, flaskYellow, flaskOrange, flaskPink, flaskPurple, flaskClear];
 const MAGNIFIERS = [magBoy, magGirl, magInu, magKuma, magNeko, magUsagi];
 
@@ -67,7 +67,7 @@ const DiagnosisStatusConfig = {
   },
 };
 
-/* 情境治療任務（spec-07 §12.1，青木綠系 + forum icon） */
+/* 概念釐清治療任務（spec-07 §12.1，青木綠系 + forum icon） */
 const ScenarioStatusConfig = {
   next: {
     iconBg: 'bg-[#D8EEE2]',
@@ -159,7 +159,7 @@ export default function TaskCard({
 
       {/* 主內容 */}
       <div className="flex items-center gap-3 p-3 sm:p-4 pr-3 sm:pr-4">
-        {/* 左：大圖示方框（診斷=燒杯插圖／情境=forum icon） */}
+        {/* 左：大圖示方框（診斷=燒杯插圖／概念釐清=forum icon） */}
         <div
           className={`flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-2xl
                      ${cfg.iconBg} border-2 ${cfg.iconBorder}
@@ -187,7 +187,7 @@ export default function TaskCard({
                         }`}
           >
             <Icon name={isScenario ? 'forum' : 'quiz'} filled className="text-[10px] sm:text-xs" />
-            {isScenario ? '情境治療' : '迷思診斷'}
+            {isScenario ? '概念釐清治療' : '迷思診斷'}
           </span>
           {/* 標題 */}
           <h3 className={`font-black text-lg sm:text-xl text-[#5A3E22] mb-2 truncate ${isExpired ? 'opacity-70' : ''}`}>

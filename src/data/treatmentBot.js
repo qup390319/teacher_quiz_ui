@@ -92,7 +92,7 @@ export async function runTreatmentTurn(state, userMessage) {
 
 /**
  * Rule-based fallback。同步、不依賴 NLP；
- * 對話品質由情境考卷的 expertModel 文本提供，bot 只負責「依 step 切換 stage / 包裝對話文字」。
+ * 對話品質由概念釐清題組的 expertModel 文本提供，bot 只負責「依 step 切換 stage / 包裝對話文字」。
  */
 export function runTreatmentTurnMock(state, userMessage) {
   const trimmed = (userMessage ?? '').trim();
