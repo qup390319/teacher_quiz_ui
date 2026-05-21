@@ -61,47 +61,40 @@ export default function DashboardLayout() {
     ? buildOverviewFromStats(gradeStats, classes, assignments, effectiveQuizId)
     : null;
 
-  const selectedQuizTitle = quizzes.find(q => q.id === effectiveQuizId)?.title;
-
   const tabSearch = searchParams.toString() ? `?${searchParams.toString()}` : '';
 
   return (
     <TeacherLayout>
       <div className="p-4 sm:p-6 md:p-8">
-        <div className="flex flex-wrap items-start justify-between mb-4 sm:mb-6 gap-3 sm:gap-4">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">診斷結果</h1>
-            <p className="text-[#636E72] mt-1 text-sm">
-              {selectedQuizTitle ? `全部班級 · ${selectedQuizTitle}` : '全部班級 · 派題完成率與診斷總覽'}
-            </p>
-          </div>
+        <div className="mb-4 sm:mb-6">
+          <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">診斷結果</h1>
+        </div>
 
+        {/* B4：題組選擇器整合進 tab 列左側，確保使用者隨時知道「在看哪份題組的哪個維度」 */}
+        <div className="bg-white rounded-2xl border-2 border-[#BDC3C7] p-1 mb-6 inline-flex items-center gap-1 shadow-[0_2px_8px_rgba(0,0,0,0.04)] flex-wrap">
           {availableQuizzes.length > 0 && (
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <span className="text-sm text-[#636E72] font-medium">查看題組</span>
+            <div className="flex items-center gap-2 bg-[#EEF5E6] border-2 border-[#8FC87A] rounded-xl pl-3 pr-2 py-1.5 mr-1">
+              <span className="text-xs font-bold text-[#3D5A3E] whitespace-nowrap">題組</span>
               <div className="relative">
                 <select
                   value={effectiveQuizId ?? ''}
                   onChange={e => handleQuizChange(e.target.value)}
-                  className="appearance-none bg-white border border-[#BDC3C7] rounded-xl pl-3 pr-8 py-2 text-sm font-medium text-[#2D3436] focus:outline-none focus:ring-2 focus:ring-[#8FC87A] shadow-[0_2px_8px_rgba(0,0,0,0.04)] cursor-pointer"
+                  className="appearance-none bg-white border border-[#BDC3C7] rounded-lg pl-2 pr-7 py-1 text-sm font-semibold text-[#2D3436] focus:outline-none focus:ring-2 focus:ring-[#8FC87A] cursor-pointer"
                 >
                   {availableQuizzes.map(q => (<option key={q.id} value={q.id}>{q.title}</option>))}
                 </select>
-                <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#636E72] pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#636E72] pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </div>
             </div>
           )}
-        </div>
-
-        <div className="bg-white rounded-2xl border border-[#BDC3C7] p-1 mb-6 inline-flex gap-1 shadow-[0_2px_8px_rgba(0,0,0,0.04)] flex-wrap">
           {TABS.map(tab => (
             <NavLink
               key={tab.to}
               to={`/teacher/dashboard/${tab.to}${tabSearch}`}
               className={({ isActive }) =>
-                `px-4 py-2 rounded-xl text-sm font-medium transition-colors border ${
+                `px-4 py-2 rounded-xl text-sm font-medium transition-colors border-2 ${
                   isActive
                     ? 'bg-[#C8EAAE] text-[#2D3436] border-[#8FC87A]'
                     : 'text-[#636E72] hover:bg-[#EEF5E6] hover:text-[#2D3436] border-transparent'
