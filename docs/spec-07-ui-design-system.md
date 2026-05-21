@@ -1044,6 +1044,18 @@ html.student-mode { font-size: 17px; }                /* mobile 6.25% 放大 */
 
 **禁止**：在任何頁面自寫 `<span>INe-II-3-02</span>` 或類似節點 ID 顯示，必須用 NodeBadge。
 
+### 14.3 KnowledgeMap 節點顯示（2026-05）
+
+**問題**：知識路徑圖（KnowledgeMap）原本每個節點 pill 同時顯示 ID + 完整名稱，導致路徑圖視覺擁擠、難以辨認子主題層級。
+
+**規則**：
+- 預設只顯示**短編號**（`INe-` 前綴去除，如 `II-3-02`）；節點名稱透過 hover tooltip 顯示
+- 提供「顯示節點名稱」核取方塊讓使用者切換完整顯示模式
+- pill 加上 `cursor-help` + hover scale 1.05 + shadow，讓使用者知道可互動
+- Hover tooltip 為深灰底白字（`bg-[#2D3436] text-white`），定位於節點下方
+
+**適用範圍**：`/teacher/knowledge-map`（預設）、`/teacher/custom-knowledge-map`（自定義）
+
 ### 14.2 教師端側邊欄對比強化（2026-05）
 
 **問題**：原配色 section 背景過淡，在部分螢幕（如老舊投影機 / 低亮度筆電）綠 / 橘 / 棕難以辨認。

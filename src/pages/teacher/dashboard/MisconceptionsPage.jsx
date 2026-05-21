@@ -1,11 +1,11 @@
 import { useOutletContext } from 'react-router-dom';
-import TopMisconceptionsChart from './shared/TopMisconceptionsChart';
+import MisconceptionRankingTable from './shared/MisconceptionRankingTable';
 import ClassMisconceptionHeatmap from './shared/ClassMisconceptionHeatmap';
 import MisconceptionCauseDonut from './shared/MisconceptionCauseDonut';
 import FollowupStatusFunnel from './shared/FollowupStatusFunnel';
 
 export default function MisconceptionsPage() {
-  const { overviewData, classes, quizId } = useOutletContext();
+  const { overviewData, classes, quizId, gradeStats } = useOutletContext();
 
   if (!overviewData || overviewData.classStats.length === 0) {
     return (
@@ -18,11 +18,12 @@ export default function MisconceptionsPage() {
 
   return (
     <div className="space-y-6">
+      {/* C2：完整迷思排行表（取代原 TopMisconceptionsChart） */}
       <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-        <MisconceptionCauseDonut overviewData={overviewData} classes={classes} quizId={quizId} />
+        <MisconceptionRankingTable gradeStats={gradeStats} />
       </div>
       <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-        <TopMisconceptionsChart overviewData={overviewData} />
+        <MisconceptionCauseDonut overviewData={overviewData} classes={classes} quizId={quizId} />
       </div>
       <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
         <FollowupStatusFunnel overviewData={overviewData} classes={classes} quizId={quizId} />

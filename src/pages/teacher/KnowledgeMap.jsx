@@ -1,4 +1,5 @@
-﻿import { useNavigate } from 'react-router-dom';
+﻿import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import TeacherLayout from '../../components/TeacherLayout';
 import { knowledgeNodes } from '../../data/knowledgeGraph';
 import NodeRelationshipMatrix from '../../components/teacher/NodeRelationshipMatrix';
@@ -54,25 +55,35 @@ function Arrow({ multi = false }) {
   );
 }
 
-function NodePill({ node, colorClass }) {
+function NodePill({ node, colorClass, showNames }) {
+  const shortId = node.id.replace(/^INe-/, '');
   return (
     <div
-      title={node.name}
-      className={`rounded-xl border px-3 py-1.5 min-w-[100px] max-w-[160px] ${colorClass.bg} ${colorClass.border}`}
+      title={`${node.id} · ${node.name}`}
+      className={`group relative rounded-xl border-2 px-3 py-2 ${
+        showNames ? 'min-w-[120px] max-w-[160px]' : 'min-w-[72px] text-center'
+      } ${colorClass.bg} ${colorClass.border} cursor-help transition-all hover:shadow-md hover:scale-105`}
     >
-      <p className="text-xs font-mono text-[#95A5A6] leading-tight">{node.id}</p>
-      <p className={`text-sm font-semibold leading-snug line-clamp-3 ${colorClass.text}`}>{node.name}</p>
+      <p className={`text-sm font-mono font-bold leading-tight ${colorClass.text}`}>{shortId}</p>
+      {showNames ? (
+        <p className={`text-xs font-medium leading-snug line-clamp-3 mt-0.5 ${colorClass.text}`}>{node.name}</p>
+      ) : (
+        // Hover tooltip
+        <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity bg-[#2D3436] text-white text-xs font-medium px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap max-w-[200px]">
+          {node.name}
+        </div>
+      )}
     </div>
   );
 }
 
-function PathStage({ stage, nodes }) {
+function PathStage({ stage, nodes, showNames }) {
   const colorClass = STAGE_COLORS[stage.color];
   return (
     <>
       <div className="flex-shrink-0 flex flex-col gap-1.5">
         {nodes(stage.ids).map((node) => (
-          <NodePill key={node.id} node={node} colorClass={colorClass} />
+          <NodePill key={node.id} node={node} colorClass={colorClass} showNames={showNames} />
         ))}
       </div>
       {stage.nextArrow === 'multi' && <Arrow multi />}
@@ -84,6 +95,8 @@ function PathStage({ stage, nodes }) {
 export default function KnowledgeMap() {
   const navigate = useNavigate();
   const totalDefault = knowledgeNodes.reduce((s, n) => s + n.misconceptions.length, 0);
+  // C3：預設只顯示節點編號（更乾淨），按鈕切換顯示完整名稱
+  const [showNames, setShowNames] = useState(false);
 
   const rows = [];
   let nodeGroupIndex = 0;
@@ -128,13 +141,24 @@ export default function KnowledgeMap() {
 
         {/* A 區：知識路徑圖（兩個子主題各一條） */}
         <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-5 mb-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-          <p className="text-xs font-semibold text-[#95A5A6] uppercase tracking-wide mb-4">知識學習路徑(知識節點)</p>
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-xs font-semibold text-[#95A5A6] uppercase tracking-wide">知識學習路徑(知識節點)</p>
+            <label className="flex items-center gap-2 text-xs text-[#636E72] cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={showNames}
+                onChange={(e) => setShowNames(e.target.checked)}
+                className="w-3.5 h-3.5 accent-[#3F8B5E]"
+              />
+              顯示節點名稱（預設僅顯示編號，hover 看名稱）
+            </label>
+          </div>
 
           {/* 子主題 A */}
           <p className="text-sm font-semibold text-[#2D3436] mb-2">子主題 A：水溶液中的變化（溶解）</p>
           <div className="flex items-center flex-wrap gap-y-2 pb-3 mb-4">
             {SUBTOPIC_A_STAGES.map((stage, idx) => (
-              <PathStage key={`A-${idx}`} stage={stage} nodes={nodes} />
+              <PathStage key={`A-${idx}`} stage={stage} nodes={nodes} showNames={showNames} />
             ))}
           </div>
 
@@ -142,7 +166,7 @@ export default function KnowledgeMap() {
           <p className="text-sm font-semibold text-[#2D3436] mb-2 pt-3 border-t border-[#D5D8DC]">子主題 B：酸鹼反應</p>
           <div className="flex items-center flex-wrap gap-y-2 pb-1">
             {SUBTOPIC_B_STAGES.map((stage, idx) => (
-              <PathStage key={`B-${idx}`} stage={stage} nodes={nodes} />
+              <PathStage key={`B-${idx}`} stage={stage} nodes={nodes} showNames={showNames} />
             ))}
           </div>
         </div>

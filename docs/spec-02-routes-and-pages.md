@@ -215,10 +215,12 @@
 **子分頁名稱**：「**所有班級高頻迷思排行**」（原「跨班高頻迷思」）
 
 **內容（重排版後）**：
-1. **完整迷思排行表**：每列 = 迷思 label + 對應節點 NodeBadge + 出現人次 + 佔比 bar + 「查看涉及學生」按鈕（跳轉至「個別學生診斷報告」並預過濾）
+1. **完整迷思排行表（`MisconceptionRankingTable`）**：從 `gradeStats.perClass[].topMisconceptions` 重新聚合所有班級的迷思，依持有總人次降序列出（不只 Top 6）；每列含排名、NodeBadge、迷思 label、持有人次、持有率 bar、「查看涉及學生」按鈕（跳轉 `/teacher/dashboard/students?misconceptionId=...`）
 2. `MisconceptionCauseDonut` — 所有班級迷思成因 8 類分布甜甜圈圖
 3. `FollowupStatusFunnel` — 追問後狀態變化漏斗
 4. `ClassMisconceptionHeatmap` — 班級 × 迷思熱力圖
+
+> 原 `TopMisconceptionsChart` 已由 `MisconceptionRankingTable` 取代（前者只顯示 Top 6 橫條圖，後者列出完整排行並支援涉及學生跳轉）
 
 #### 2.3.5 ClassDetailPage (`/teacher/dashboard/class-detail`)
 **檔案**: `src/pages/teacher/dashboard/ClassDetailPage.jsx`
