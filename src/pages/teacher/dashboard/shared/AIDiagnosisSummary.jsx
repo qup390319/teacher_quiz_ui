@@ -43,13 +43,13 @@ export default function AIDiagnosisSummary({ quizId, classId, totalStudents }) {
 
   let coreSentence;
   if (isGood) {
-    coreSentence = `概念平均掌握率 ${avgPassRate}%，無高頻迷思需要補救，建議維持現有教學節奏並可安排延伸挑戰活動。`;
+    coreSentence = `概念平均答對率 ${avgPassRate}%，無高頻迷思需要補救，建議維持現有教學節奏並可安排延伸挑戰活動。`;
   } else if (topMiscon && avgPassRate < 70) {
-    coreSentence = `${topMiscon.pct}% 學生持有「${topMisconLabel}」迷思，概念平均掌握率僅 ${avgPassRate}%，建議優先針對此概念進行補救教學。`;
+    coreSentence = `${topMiscon.pct}% 學生持有「${topMisconLabel}」迷思，概念平均答對率僅 ${avgPassRate}%，建議優先針對此概念進行補救教學。`;
   } else if (topMiscon) {
     coreSentence = `${topMiscon.pct}% 學生持有「${topMisconLabel}」迷思，建議安排針對性補救教學以澄清概念。`;
   } else {
-    coreSentence = `概念平均掌握率 ${avgPassRate}%，整體學習情形需要進一步強化，請參考下方各概念分析。`;
+    coreSentence = `概念平均答對率 ${avgPassRate}%，整體學習情形需要進一步強化，請參考下方各概念分析。`;
   }
 
   const seenNodeIds = new Set();

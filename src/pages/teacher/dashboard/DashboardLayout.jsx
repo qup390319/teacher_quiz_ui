@@ -9,10 +9,10 @@ import { useQuizStats } from '../../../hooks/useAnswers';
 import { buildOverviewFromStats, getAllAssignedQuizzes } from './shared/helpers';
 
 const TABS = [
-  { to: 'overview',       label: '全年級總覽' },
-  { to: 'classes',        label: '各班學習狀況' },
-  { to: 'nodes',          label: '知識節點跨班比較' },
-  { to: 'misconceptions', label: '跨班高頻迷思' },
+  { to: 'overview',       label: '所有班級答題分布' },
+  { to: 'classes',        label: '各班級成績比較' },
+  { to: 'nodes',          label: '所有班級知識節點答對率' },
+  { to: 'misconceptions', label: '所有班級高頻迷思排行' },
   { to: 'students',       label: '個別學生診斷報告' },
 ];
 

@@ -86,10 +86,10 @@ const navItems = [
     icon: ICONS.chart,
     alwaysOpen: true,
     children: [
-      { to: '/teacher/dashboard/overview',       label: '全年級總覽' },
-      { to: '/teacher/dashboard/classes',        label: '各班學習狀況' },
-      { to: '/teacher/dashboard/nodes',          label: '知識節點跨班比較' },
-      { to: '/teacher/dashboard/misconceptions', label: '跨班高頻迷思' },
+      { to: '/teacher/dashboard/overview',       label: '所有班級答題分布' },
+      { to: '/teacher/dashboard/classes',        label: '各班級成績比較' },
+      { to: '/teacher/dashboard/nodes',          label: '所有班級知識節點答對率' },
+      { to: '/teacher/dashboard/misconceptions', label: '所有班級高頻迷思排行' },
       { to: '/teacher/dashboard/students',       label: '個別學生診斷報告' },
     ],
   },
@@ -105,20 +105,13 @@ const navItems = [
   { to: '/teacher/custom-knowledge-map', label: '(自定義) 知識節點總覽', icon: ICONS.grid },
 ];
 
+// A3 強化側邊欄對比：加深 section 背景與邊框、active 邊框加粗
 const SECTION_STYLES = {
-  '題組':   { color: '#5C8A2E', bg: '#F0F7E8', label: '#3D5A3E' },
-  '看結果': { color: '#2E86C1', bg: '#EAF2FA', label: '#1A5276' },
-  '班級':   { color: '#D08B2E', bg: '#FDF5E8', label: '#7A4A18' },
-  '其他':   { color: '#8B5E3C', bg: '#F5EDE4', label: '#5A3E22' },
+  '題組':   { color: '#4A7324', bg: '#E4F1CE', border: '#8FC87A', label: '#2E4A1A', activeBg: '#C8DFAA', activeBorder: '#5C8A2E', hoverBg: '#D8E9BC' },
+  '看結果': { color: '#1F6FAB', bg: '#D6EAF8', border: '#5DADE2', label: '#0E3A5C', activeBg: '#A9CCE3', activeBorder: '#2E86C1', hoverBg: '#C5DFF2' },
+  '班級':   { color: '#A86E1E', bg: '#FAE8C4', border: '#D4A244', label: '#5C3712', activeBg: '#F1D294', activeBorder: '#A86E1E', hoverBg: '#F5DDAC' },
+  '其他':   { color: '#6B4426', bg: '#EBDACC', border: '#B08968', label: '#3F2A14', activeBg: '#D9C4AF', activeBorder: '#8B5E3C', hoverBg: '#E0CFB8' },
 };
-
-const navSectionMap = (() => {
-  let cur = null;
-  return navItems.map(item => {
-    if (item.section) cur = item.section;
-    return cur;
-  });
-})();
 
 function isGroupActive(children, pathname) {
   return children.some(c => pathname === c.to || pathname.startsWith(c.to + '/'));
@@ -149,6 +142,151 @@ export default function TeacherLayout({ children }) {
     navigate('/', { replace: true });
   };
 
+  const groupedSections = (() => {
+    const sections = [];
+    let topItems = [];
+    let currentSection = null;
+    let currentItems = [];
+    for (const item of navItems) {
+      if (item.section) {
+        if (currentSection) sections.push({ section: currentSection, items: currentItems });
+        currentSection = item.section;
+        currentItems = [];
+      } else if (!currentSection) {
+        topItems.push(item);
+      } else {
+        currentItems.push(item);
+      }
+    }
+    if (currentSection) sections.push({ section: currentSection, items: currentItems });
+    return { topItems, sections };
+  })();
+
+  const renderNavItem = (item, ss) => {
+    if (item.group) {
+      const active = isGroupActive(item.children, location.pathname);
+      const expanded = item.alwaysOpen || active || (openOverrides[item.group] ?? false);
+      const childList = (
+        <div className="ml-4 pl-3" style={{ borderLeft: `2px solid ${ss?.color || '#D5D8DC'}` }}>
+          {item.children.map(child => (
+            <NavLink
+              key={child.to}
+              to={child.to}
+              onClick={closeDrawer}
+              className={({ isActive }) =>
+                `block px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  isActive
+                    ? 'border-l-4 -ml-px'
+                    : 'border border-transparent'
+                }`
+              }
+              style={({ isActive }) =>
+                isActive
+                  ? { backgroundColor: ss?.activeBg, color: ss?.label, borderLeftColor: ss?.color }
+                  : undefined
+              }
+              onMouseEnter={(e) => { if (!e.currentTarget.classList.contains('border-l-4')) e.currentTarget.style.backgroundColor = ss?.hoverBg || ''; }}
+              onMouseLeave={(e) => { if (!e.currentTarget.classList.contains('border-l-4')) e.currentTarget.style.backgroundColor = ''; }}
+            >
+              {child.label}
+            </NavLink>
+          ))}
+        </div>
+      );
+      if (item.alwaysOpen) {
+        return (
+          <div key={item.group}>
+            <div
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-base font-bold select-none [&_svg]:w-6 [&_svg]:h-6 ${
+                active ? 'text-[#2D3436]' : 'text-[#4A4A4A]'
+              }`}
+            >
+              <span className="flex-shrink-0" style={{ color: ss?.color }}>{item.icon}</span>
+              <span className="flex-1 text-left">{item.label}</span>
+            </div>
+            {childList}
+          </div>
+        );
+      }
+      return (
+        <div key={item.group}>
+          <button
+            type="button"
+            onClick={() => toggleGroup(item.group)}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-base font-bold transition-colors [&_svg]:w-6 [&_svg]:h-6 ${
+              active ? 'text-[#2D3436]' : 'text-[#4A4A4A]'
+            }`}
+            style={active ? { backgroundColor: ss?.activeBg, border: `2px solid ${ss?.activeBorder}` } : { border: '2px solid transparent' }}
+          >
+            <span className="flex-shrink-0" style={{ color: ss?.color }}>{item.icon}</span>
+            <span className="flex-1 text-left">{item.label}</span>
+            <svg className={`w-4 h-4 transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          {expanded && childList}
+        </div>
+      );
+    }
+    return (
+      <NavLink
+        key={item.to}
+        to={item.to}
+        end={item.to === '/teacher'}
+        onClick={closeDrawer}
+        className={({ isActive }) =>
+          `flex items-center gap-3 px-3 py-2.5 rounded-xl text-[15px] font-semibold transition-colors [&_svg]:w-6 [&_svg]:h-6 ${
+            isActive ? 'text-[#2D3436]' : 'text-[#636E72]'
+          }`
+        }
+        style={({ isActive }) =>
+          isActive
+            ? { backgroundColor: ss?.activeBg, border: `2px solid ${ss?.activeBorder}` }
+            : undefined
+        }
+        onMouseEnter={(e) => { if (!e.currentTarget.style.backgroundColor) e.currentTarget.style.backgroundColor = ss?.hoverBg || ''; }}
+        onMouseLeave={(e) => { if (!e.currentTarget.style.backgroundColor?.includes(ss?.activeBg)) e.currentTarget.style.backgroundColor = ''; }}
+      >
+        <span className="flex-shrink-0" style={{ color: ss?.color }}>{item.icon}</span>
+        {item.label}
+      </NavLink>
+    );
+  };
+
+  const renderNavSections = () => (
+    <>
+      {groupedSections.topItems.map(item => renderNavItem(item, null))}
+      {groupedSections.sections.map(({ section, items }) => {
+        const ss = SECTION_STYLES[section];
+        return (
+          <div
+            key={section}
+            className="mt-3 rounded-xl overflow-hidden"
+            style={{
+              backgroundColor: ss?.bg,
+              border: `2px solid ${ss?.border}`,
+            }}
+          >
+            <div
+              className="px-3 py-1.5 select-none"
+              style={{ borderBottom: `2px solid ${ss?.border}` }}
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-4 rounded-full" style={{ backgroundColor: ss?.color }} />
+                <p className="text-sm font-bold tracking-wider" style={{ color: ss?.label }}>
+                  {section}
+                </p>
+              </div>
+            </div>
+            <div className="px-1 py-1.5 space-y-0.5">
+              {items.map(item => renderNavItem(item, ss))}
+            </div>
+          </div>
+        );
+      })}
+    </>
+  );
+
   const sidebar = (
     <>
       {/* Logo */}
@@ -176,100 +314,8 @@ export default function TeacherLayout({ children }) {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-2 space-y-0.5 overflow-y-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
-        {navItems.map((item, i) => {
-          const ss = navSectionMap[i] ? SECTION_STYLES[navSectionMap[i]] : null;
-          if (item.section) {
-            return (
-              <div
-                key={`section-${i}`}
-                className="mx-1 mt-4 mb-1 px-3 py-1.5 rounded-lg select-none"
-                style={{ borderLeft: `4px solid ${ss?.color}`, backgroundColor: ss?.bg }}
-              >
-                <p className="text-sm font-bold tracking-wider" style={{ color: ss?.label }}>
-                  {item.section}
-                </p>
-              </div>
-            );
-          }
-          if (item.group) {
-            const active = isGroupActive(item.children, location.pathname);
-            const expanded = item.alwaysOpen || active || (openOverrides[item.group] ?? false);
-            const childList = (
-              <div className="ml-4 pl-3" style={{ borderLeft: `2px solid ${ss?.color || '#D5D8DC'}` }}>
-                {item.children.map(child => (
-                  <NavLink
-                    key={child.to}
-                    to={child.to}
-                    onClick={closeDrawer}
-                    className={({ isActive }) =>
-                      `block px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                        isActive
-                          ? 'bg-[#EEF5E6] text-[#3D5A3E] border border-[#8FC87A]'
-                          : 'text-[#636E72] hover:bg-[#EEF5E6] hover:text-[#2D3436] border border-transparent'
-                      }`
-                    }
-                  >
-                    {child.label}
-                  </NavLink>
-                ))}
-              </div>
-            );
-            if (item.alwaysOpen) {
-              return (
-                <div key={item.group}>
-                  <div
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-base font-bold select-none [&_svg]:w-6 [&_svg]:h-6 ${
-                      active ? 'text-[#2D3436]' : 'text-[#4A4A4A]'
-                    }`}
-                  >
-                    <span className="flex-shrink-0" style={{ color: ss?.color }}>{item.icon}</span>
-                    <span className="flex-1 text-left">{item.label}</span>
-                  </div>
-                  {childList}
-                </div>
-              );
-            }
-            return (
-              <div key={item.group}>
-                <button
-                  type="button"
-                  onClick={() => toggleGroup(item.group)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-base font-bold transition-colors [&_svg]:w-6 [&_svg]:h-6 ${
-                    active
-                      ? 'bg-[#C8EAAE] text-[#2D3436] border border-[#8FC87A]'
-                      : 'text-[#4A4A4A] hover:bg-[#EEF5E6] hover:text-[#2D3436] border border-transparent'
-                  }`}
-                >
-                  <span className="flex-shrink-0" style={{ color: ss?.color }}>{item.icon}</span>
-                  <span className="flex-1 text-left">{item.label}</span>
-                  <svg className={`w-4 h-4 transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-                {expanded && childList}
-              </div>
-            );
-          }
-          return (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to === '/teacher'}
-              onClick={closeDrawer}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-xl text-[15px] font-semibold transition-colors [&_svg]:w-6 [&_svg]:h-6 ${
-                  isActive
-                    ? 'bg-[#C8EAAE] text-[#2D3436] border border-[#8FC87A]'
-                    : 'text-[#636E72] hover:bg-[#EEF5E6] hover:text-[#2D3436]'
-                }`
-              }
-            >
-              <span className="flex-shrink-0" style={{ color: ss?.color }}>{item.icon}</span>
-              {item.label}
-            </NavLink>
-          );
-        })}
+      <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+        {renderNavSections()}
       </nav>
 
       {/* Logout */}

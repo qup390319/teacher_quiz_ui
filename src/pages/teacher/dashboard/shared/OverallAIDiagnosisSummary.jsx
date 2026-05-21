@@ -18,10 +18,10 @@ export default function OverallAIDiagnosisSummary({ overviewData }) {
     : { label: '多班需要介入',   color: 'bg-[#FAC8CC] text-[#E74C5E] border-[#F5B8BA]' };
 
   const coreSentence = riskClasses.length === 0
-    ? `全年級平均完成率 ${avgCompletion}%，平均掌握率 ${avgPassRate}%，整體學習情形穩定，建議維持現有教學節奏並規劃進階診斷。`
+    ? `所有班級平均完成率 ${avgCompletion}%，平均答對率 ${avgPassRate}%，整體學習情形穩定，建議維持現有教學節奏並規劃進階診斷。`
     : incompleteClasses.length > 0
-    ? `${incompleteClasses.map(c => c.name).join('、')} 作答完成率偏低（最低 ${incompleteClasses[0].completionRate}%），全年級平均掌握率僅 ${avgPassRate}%，建議優先補齊作答後再進行概念補救。`
-    : `全年級平均掌握率 ${avgPassRate}%，${riskClasses.map(c => c.name).join('、')} 高頻迷思嚴重，建議安排跨班補救資源。`;
+    ? `${incompleteClasses.map(c => c.name).join('、')} 作答完成率偏低（最低 ${incompleteClasses[0].completionRate}%），所有班級平均答對率僅 ${avgPassRate}%，建議優先補齊作答後再進行概念補救。`
+    : `所有班級平均答對率 ${avgPassRate}%，${riskClasses.map(c => c.name).join('、')} 高頻迷思嚴重，建議安排跨班補救資源。`;
 
   const nextStep = riskClasses.length === 0
     ? '可設計跨班交流活動，分享高通過率班級的學習策略，促進年級整體學習品質提升。'
@@ -41,7 +41,7 @@ export default function OverallAIDiagnosisSummary({ overviewData }) {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-base font-bold text-[#2D3436]">全年級診斷總覽</h3>
+              <h3 className="text-base font-bold text-[#2D3436]">所有班級診斷總覽</h3>
               <InfoButton onClick={() => setInfoOpen(true)} />
             </div>
             <p className="text-xs text-[#636E72]">依各班診斷結果彙整學習狀況，提供跨班趨勢與優先介入順序</p>
@@ -51,8 +51,8 @@ export default function OverallAIDiagnosisSummary({ overviewData }) {
       </div>
       <div className="grid grid-cols-3 gap-3 mb-4">
         {[
-          { label: '全年級平均完成率', value: `${avgCompletion}%`, color: avgCompletion >= 80 ? 'text-[#3D5A3E]' : avgCompletion >= 60 ? 'text-[#B7950B]' : 'text-[#E74C5E]' },
-          { label: '全年級平均掌握率', value: `${avgPassRate}%`,   color: avgPassRate  >= 70 ? 'text-[#3D5A3E]' : avgPassRate  >= 50 ? 'text-[#B7950B]' : 'text-[#E74C5E]' },
+          { label: '所有班級平均完成率', value: `${avgCompletion}%`, color: avgCompletion >= 80 ? 'text-[#3D5A3E]' : avgCompletion >= 60 ? 'text-[#B7950B]' : 'text-[#E74C5E]' },
+          { label: '所有班級平均答對率', value: `${avgPassRate}%`,   color: avgPassRate  >= 70 ? 'text-[#3D5A3E]' : avgPassRate  >= 50 ? 'text-[#B7950B]' : 'text-[#E74C5E]' },
           { label: '需關注班級數',    value: `${riskClasses.length} 班`, color: riskClasses.length === 0 ? 'text-[#3D5A3E]' : riskClasses.length <= 1 ? 'text-[#B7950B]' : 'text-[#E74C5E]' },
         ].map(item => (
           <div key={item.label} className="bg-[#EEF5E6] rounded-2xl border border-[#D5D8DC] p-3 text-center">
@@ -83,7 +83,7 @@ export default function OverallAIDiagnosisSummary({ overviewData }) {
               </div>
             ))}
           </div>
-          <p className="text-[10px] text-[#95A5A6] mt-2">括號內：完成率 / 平均掌握率</p>
+          <p className="text-[10px] text-[#95A5A6] mt-2">括號內：完成率 / 平均答對率</p>
         </div>
         <div className="bg-[#EEF5E6] rounded-2xl border border-[#D5D8DC] p-4">
           <p className="text-xs font-bold text-[#636E72] uppercase tracking-wide mb-2">年級層級行動建議</p>

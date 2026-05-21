@@ -17,7 +17,7 @@ export default function ClassStatusCards({ overviewData, onSelectClass }) {
 
   const metrics = [
     { key: 'completionRate', label: '完成率', unit: '%', color: (v) => v >= 80 ? 'text-[#3D5A3E]' : v >= 60 ? 'text-[#B7950B]' : 'text-[#E74C5E]' },
-    { key: 'avgPassRate', label: '掌握率', unit: '%', color: (v) => v >= 70 ? 'text-[#3D5A3E]' : v >= 50 ? 'text-[#B7950B]' : 'text-[#E74C5E]' },
+    { key: 'avgPassRate', label: '答對率', unit: '%', color: (v) => v >= 70 ? 'text-[#3D5A3E]' : v >= 50 ? 'text-[#B7950B]' : 'text-[#E74C5E]' },
     { key: 'highFreqMisconCount', label: '高頻迷思', unit: ' 個', color: (v) => v === 0 ? 'text-[#3D5A3E]' : v <= 2 ? 'text-[#B7950B]' : 'text-[#E74C5E]' },
   ];
 

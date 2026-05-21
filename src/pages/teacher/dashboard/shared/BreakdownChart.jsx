@@ -43,12 +43,12 @@ export default function BreakdownChart({ quizId, classId }) {
   return (
     <div>
       <div className="flex items-center gap-2 mb-1">
-        <h3 className="text-base font-bold text-[#2D3436]">各概念掌握程度分析</h3>
+        <h3 className="text-base font-bold text-[#2D3436]">各概念答對率</h3>
         <InfoButton onClick={() => setInfoOpen(true)} />
       </div>
-      <p className="text-sm text-[#636E72] mb-2">每個概念對應一道診斷題，長條越高代表全班答對比例越高、掌握程度越佳</p>
+      <p className="text-sm text-[#636E72] mb-2">每個概念對應一道診斷題，長條高度 = 該題答對人數 ÷ 全班作答人數</p>
       <div className="flex items-center gap-4 mb-4">
-        {[{ color: '#8FC87A', label: '≥70% 多數學生掌握' }, { color: '#F4D03F', label: '50–69% 部分學生有迷思' }, { color: '#F28B95', label: '<50% 多數學生需補救' }].map(item => (
+        {[{ color: '#8FC87A', label: '≥70% 多數答對' }, { color: '#F4D03F', label: '50–69% 部分有迷思' }, { color: '#F28B95', label: '<50% 多數答錯' }].map(item => (
           <div key={item.label} className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: item.color }} />
             <span className="text-xs text-[#636E72]">{item.label}</span>

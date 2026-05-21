@@ -27,10 +27,10 @@ export default function OverviewPage() {
     { label: '平均完成率', value: `${avgCompletion}%`, sub: '各班作答完成率平均',
       color: avgCompletion >= 80 ? 'text-[#3D5A3E]' : avgCompletion >= 60 ? 'text-[#B7950B]' : 'text-[#E74C5E]',
       bg:    avgCompletion >= 80 ? 'bg-[#C8EAAE]'   : avgCompletion >= 60 ? 'bg-[#FCF0C2]'   : 'bg-[#FAC8CC]' },
-    { label: '平均掌握率', value: `${avgPassRate}%`, sub: '各班概念平均通過率',
+    { label: '平均答對率', value: `${avgPassRate}%`, sub: '答對題數 ÷ 總題數（各班平均）',
       color: avgPassRate >= 70 ? 'text-[#3D5A3E]' : avgPassRate >= 50 ? 'text-[#B7950B]' : 'text-[#E74C5E]',
       bg:    avgPassRate >= 70 ? 'bg-[#C8EAAE]'   : avgPassRate >= 50 ? 'bg-[#FCF0C2]'   : 'bg-[#FAC8CC]' },
-    { label: '需關注班級', value: `${riskCount} 班`, sub: '完成率<60% 或掌握率<50%',
+    { label: '需關注班級', value: `${riskCount} 班`, sub: '完成率<60% 或答對率<50%',
       color: riskCount === 0 ? 'text-[#3D5A3E]' : riskCount <= 1 ? 'text-[#B7950B]' : 'text-[#E74C5E]',
       bg:    riskCount === 0 ? 'bg-[#C8EAAE]'   : riskCount <= 1 ? 'bg-[#FCF0C2]'   : 'bg-[#FAC8CC]' },
   ];
@@ -43,7 +43,7 @@ export default function OverviewPage() {
       <RagflowSummaryPanel
         scope="grade"
         payload={ragflowPayload}
-        title="全年級 AI 診斷摘要（文獻引用版 · N1）"
+        title="所有班級 AI 診斷摘要（文獻引用版 · N1）"
       />
 
       <OverallAIDiagnosisSummary overviewData={overviewData} />

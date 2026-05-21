@@ -42,7 +42,7 @@ export default function SubjectRadarChart({ overviewData }) {
   if (!hasAnyData) {
     return (
       <div>
-        <h3 className="text-lg font-bold text-[#2D3436] mb-3">子主題掌握度比較（雷達）</h3>
+        <h3 className="text-lg font-bold text-[#2D3436] mb-3">子主題答對率比較（雷達）</h3>
         <p className="text-sm text-[#95A5A6]">此題組未涵蓋任何已分類的子主題節點</p>
       </div>
     );
@@ -51,8 +51,8 @@ export default function SubjectRadarChart({ overviewData }) {
   return (
     <div>
       <div className="flex items-baseline justify-between mb-3">
-        <h3 className="text-lg font-bold text-[#2D3436]">子主題掌握度比較（雷達）</h3>
-        <span className="text-xs text-[#95A5A6]">各班在兩個子主題（溶解 / 酸鹼）平均通過率</span>
+        <h3 className="text-lg font-bold text-[#2D3436]">子主題答對率比較（雷達）</h3>
+        <span className="text-xs text-[#95A5A6]">各班在兩個子主題（溶解 / 酸鹼）的平均答對率</span>
       </div>
       <div className="h-72">
         <ResponsiveContainer width="100%" height="100%">

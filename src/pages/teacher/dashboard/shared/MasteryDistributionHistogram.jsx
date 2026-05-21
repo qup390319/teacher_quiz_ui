@@ -94,8 +94,8 @@ export default function MasteryDistributionHistogram({ overviewData, classes, qu
   return (
     <div>
       <div className="flex items-baseline justify-between mb-3">
-        <h3 className="text-lg font-bold text-[#2D3436]">學生掌握度分布</h3>
-        <span className="text-xs text-[#95A5A6]">把每位學生的個人通過率分成 5 個區間</span>
+        <h3 className="text-lg font-bold text-[#2D3436]">學生答對率分布</h3>
+        <span className="text-xs text-[#95A5A6]">把每位學生的答對率（答對題數 ÷ 總題數）分成 5 個區間</span>
       </div>
 
       <div className="h-72">

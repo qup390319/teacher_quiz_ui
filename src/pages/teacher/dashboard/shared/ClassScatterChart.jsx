@@ -19,7 +19,7 @@ function ScatterTooltip({ active, payload }) {
           <span className="font-bold text-[#2D3436]">{d.name}</span>
         </div>
         <div className="space-y-0.5 text-xs text-[#636E72]">
-          <p>掌握率：<span className="font-semibold text-[#2D3436]">{d.x}%</span></p>
+          <p>答對率：<span className="font-semibold text-[#2D3436]">{d.x}%</span></p>
           <p>完成率：<span className="font-semibold text-[#2D3436]">{d.y}%</span></p>
           <p>高頻迷思：<span className="font-semibold text-[#2D3436]">{d.miscon} 個</span></p>
         </div>
@@ -49,7 +49,7 @@ export default function ClassScatterChart({ overviewData }) {
   return (
     <div>
       <div className="flex items-center gap-2 mb-1">
-        <h3 className="text-base font-bold text-[#2D3436]">完成率 × 掌握率 班級分布</h3>
+        <h3 className="text-base font-bold text-[#2D3436]">完成率 × 答對率 班級分布</h3>
         <InfoButton onClick={() => setInfoOpen(true)} />
       </div>
       <p className="text-sm text-[#636E72] mb-3">右上角 = 作答完整且掌握良好；左下角 = 優先介入</p>
@@ -63,7 +63,7 @@ export default function ClassScatterChart({ overviewData }) {
           <ScatterChart margin={{ top: 24, right: 40, bottom: 30, left: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#C8EAAE" />
             <XAxis type="number" dataKey="x" domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 11, fill: '#636E72' }}
-              label={{ value: '掌握率', position: 'insideBottom', offset: -14, fontSize: 11, fill: '#636E72' }} />
+              label={{ value: '答對率', position: 'insideBottom', offset: -14, fontSize: 11, fill: '#636E72' }} />
             <YAxis type="number" dataKey="y" domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 11, fill: '#636E72' }}
               label={{ value: '完成率', angle: -90, position: 'insideLeft', offset: 14, fontSize: 11, fill: '#636E72' }} />
             <ZAxis range={[100, 100]} />

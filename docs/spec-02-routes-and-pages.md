@@ -23,10 +23,10 @@
 | `/` | `LoginPage` | 角色選擇（登入）頁 | 無（全螢幕） |
 | `/teacher` | `TeacherDashboard` | 教師主頁：三步驟工作流程總覽 | `TeacherLayout` |
 | `/teacher/dashboard` | `DashboardLayout` | 診斷結果共用 layout（標題 + 題組選擇器 + 子分頁），自動 redirect 到 `overview` | `TeacherLayout` |
-| `/teacher/dashboard/overview` | `OverviewPage` | 子分頁：全年級診斷總覽（AI 摘要 + 4 指標卡 + 班級分布散佈圖） | `DashboardLayout` |
-| `/teacher/dashboard/classes` | `ClassesPage` | 子分頁：各班學習狀況總覽（班級狀態卡片，點擊跳轉 class-detail） | `DashboardLayout` |
-| `/teacher/dashboard/nodes` | `NodesPage` | 子分頁：知識節點跨班比較（並排長條圖） | `DashboardLayout` |
-| `/teacher/dashboard/misconceptions` | `MisconceptionsPage` | 子分頁：跨班高頻迷思 Top 6 + 班級 × 迷思熱力圖 | `DashboardLayout` |
+| `/teacher/dashboard/overview` | `OverviewPage` | 子分頁「**所有班級答題分布**」：4 指標卡（含全對/對一半/全錯人數分布）+ 3 個 Top3 縮圖（最弱班級 / 最弱節點 / 高頻迷思）。AI 文字摘要折疊收起 | `DashboardLayout` |
+| `/teacher/dashboard/classes` | `ClassesPage` | 子分頁「**各班級成績比較**」：每班一張獨立 Card（答題分布 / 最弱節點 / 高頻迷思 Top3 / 進入詳情按鈕） | `DashboardLayout` |
+| `/teacher/dashboard/nodes` | `NodesPage` | 子分頁「**所有班級知識節點答對率**」：12 個節點的答對率排行 + 跨班 heatmap，節點用 NodeBadge 顯示 | `DashboardLayout` |
+| `/teacher/dashboard/misconceptions` | `MisconceptionsPage` | 子分頁「**所有班級高頻迷思排行**」：48 條迷思的觸發人次完整排行（label + NodeBadge + 人次 + 佔比 bar + 涉及學生跳轉） | `DashboardLayout` |
 | `/teacher/dashboard/class-detail` | `ClassDetailPage` | 子分頁：各班詳細診斷報告（含派題完成率清單 + 該班 SingleClassReport） | `DashboardLayout` |
 | `/teacher/quiz/create` | `QuizCreateWizard` | 出題精靈（多步驟） | `TeacherLayout` |
 | `/teacher/quizzes` | `QuizLibrary` | 題組庫：瀏覽與管理題組 | `TeacherLayout` |
@@ -180,27 +180,44 @@
 #### 2.3.1 OverviewPage (`/teacher/dashboard/overview`)
 **檔案**: `src/pages/teacher/dashboard/OverviewPage.jsx`
 
-**內容**: `OverallAIDiagnosisSummary` + 4 個指標卡（涵蓋班級 / 平均完成率 / 平均掌握率 / 需關注班級）+ 兩欄並排的圖表區：
-- 左：`ClassScatterChart`（完成率 × 掌握率班級分布）
-- 右：`SubjectRadarChart`（子主題 A 溶解 / B 酸鹼平均通過率雷達圖，三班 polygon overlay）
+**子分頁名稱**：「**所有班級答題分布**」（原「所有班級總覽」）
+
+**用語修正**：所有「掌握度 / 掌握率 / 掌握程度」一律改為「**答對率**」（公式：答對題數 ÷ 總題數 × 100%）。「掌握」一詞會被誤解為「已學會」，但實際只是客觀題正確率，不含迷思加權。
+
+**內容（重排版後）**：4 個指標卡 + 3 個 Top3 縮圖：
+- **指標卡 1 答題分布**：全對 X 人 / 對一半 Y 人 / 全錯 Z 人（呼應教授「不只看平均」需求）
+- **指標卡 2~4**：派題完成率 / 平均答對率 / 已派班級數
+- **Top3 縮圖**：最弱班級 / 最弱節點（NodeBadge）/ 高頻迷思（含 NodeBadge），點擊跳轉對應深度 tab
+- **AI 文字摘要**：折疊收起，點「展開完整 AI 分析」抽屜開啟
 
 #### 2.3.2 ClassesPage (`/teacher/dashboard/classes`)
 **檔案**: `src/pages/teacher/dashboard/ClassesPage.jsx`
 
-**內容**: `ClassStatusCards`（每班三項核心指標卡片）+ `MasteryDistributionHistogram`（每位學生個人掌握率分 5 區間直方圖，補上「平均背後的分布形狀」資訊）。點擊任一班級卡片 → 導航到 `class-detail?classId=...&quizId=...`
+**子分頁名稱**：「**各班級成績比較**」（原「各班學習狀況」）
+
+**內容（重排版後）**：每個班級一張獨立 Card（縱向排列，`gap-6`）：
+- Card header：班級名 + 班級色 bar
+- 答題分布：全對 / 對一半 / 全錯人數
+- 最弱節點 Top2（NodeBadge）
+- 高頻迷思 Top3（label + NodeBadge）
+- 「進入該班詳情」按鈕 → 跳轉 `class-detail`
 
 #### 2.3.3 NodesPage (`/teacher/dashboard/nodes`)
 **檔案**: `src/pages/teacher/dashboard/NodesPage.jsx`
 
-**內容**: `CrossClassNodeChart`（同一概念節點各班通過率並排長條比較）+ `OptionAttractionChart`（全年級每題的 A/B/C/D 選項選擇分布堆疊條，⭐ 標記正解，用於檢視選項設計品質）
+**子分頁名稱**：「**所有班級知識節點答對率**」（原「知識節點跨班比較」）
+
+**內容**: `CrossClassNodeChart`（同一概念節點各班答對率並排長條比較，節點軸以 NodeBadge 顯示短編號）+ `OptionAttractionChart`（所有班級每題的 A/B/C/D 選項選擇分布堆疊條，⭐ 標記正解，用於檢視選項設計品質）
 
 #### 2.3.4 MisconceptionsPage (`/teacher/dashboard/misconceptions`)
 **檔案**: `src/pages/teacher/dashboard/MisconceptionsPage.jsx`
 
-**內容**: 由上至下：
-1. `MisconceptionCauseDonut` — 全年級迷思成因 8 類分布甜甜圈圖（資料源自 `useClassFollowups` rows 的 `causeIds[]`）
-2. `TopMisconceptionsChart` — 跨班高頻迷思 Top 6 橫條圖
-3. `FollowupStatusFunnel` — 追問後狀態變化漏斗（進入追問 → 仍持有迷思 / 已澄清 / 不確定），含各班澄清率
+**子分頁名稱**：「**所有班級高頻迷思排行**」（原「跨班高頻迷思」）
+
+**內容（重排版後）**：
+1. **完整迷思排行表**：每列 = 迷思 label + 對應節點 NodeBadge + 出現人次 + 佔比 bar + 「查看涉及學生」按鈕（跳轉至「個別學生診斷報告」並預過濾）
+2. `MisconceptionCauseDonut` — 所有班級迷思成因 8 類分布甜甜圈圖
+3. `FollowupStatusFunnel` — 追問後狀態變化漏斗
 4. `ClassMisconceptionHeatmap` — 班級 × 迷思熱力圖
 
 #### 2.3.5 ClassDetailPage (`/teacher/dashboard/class-detail`)

@@ -562,6 +562,23 @@ ease-[cubic-bezier(0.34,1.56,0.64,1)]
   - 開啟時 lock body scroll
 - `≥ md`：抽屜隱藏，回到 `w-60` 固定側欄
 
+#### 教師端側欄分區色卡設計
+
+每個分區（題組 / 看結果 / 班級 / 其他）以**整塊色卡**呈現，加強視覺區隔：
+
+| 分區 | 底色 | 邊框 | accent 色 | active 底色 | active 邊框 | hover 底色 |
+|------|------|------|-----------|------------|------------|-----------|
+| 題組 | `#F0F7E8` | `#C8DFAA` | `#5C8A2E` | `#DFF0C8` | `#8FC87A` | `#E8F3DA` |
+| 看結果 | `#EAF2FA` | `#A9CCE3` | `#2E86C1` | `#C5DFF2` | `#5DADE2` | `#D6EAF8` |
+| 班級 | `#FDF5E8` | `#E8CFA0` | `#D08B2E` | `#FAE8C4` | `#D4A244` | `#FDF0D8` |
+| 其他 | `#F5EDE4` | `#D9C4AF` | `#8B5E3C` | `#EBDACC` | `#B08968` | `#F0E4D8` |
+
+- 卡片外框：`1px solid {border}`、`rounded-xl`
+- 標題列：底部分隔線 `1px solid {border}`，左側 `4px` 圓角 accent bar
+- **Active 狀態**：子項目 active 時使用所屬分區的 `activeBg` + 左邊框 `4px solid {color}`（非全站統一綠色）
+- **Hover 狀態**：使用所屬分區的 `hoverBg`（非全站統一 `#EEF5E6`）
+- 「首頁」連結位於所有分區卡片之上，不屬於任何分區
+
 實作參考：`src/components/TeacherLayout.jsx`
 
 #### 表格 overflow 範例
@@ -1003,6 +1020,47 @@ html.student-mode { font-size: 17px; }                /* mobile 6.25% 放大 */
 | `ScenarioPanel`（題目開始前的大卡片）| `420px / sm:480px` | `560px / sm:720px / md:820px` |
 
 點擊圖片仍可開 `<ScenarioImageLightbox>` 看全尺寸。
+
+---
+
+## 14. 教師端診斷結果元件（2026-05 改版）
+
+### 14.1 NodeBadge 知識節點徽章
+
+**檔案**：`src/components/NodeBadge.jsx`
+
+**用途**：在任何顯示知識節點 ID 的位置（圖表軸、表格列、迷思排行、學生報告）統一使用，避免散落不同樣式。
+
+**規則**：
+- 根據 node ID 前綴自動判定子主題並上色：
+  - 子主題 A（溶解 `INe-II-3-*`）→ 藍系（bg `#E6F2FB` / border `#3B8BC2` / text `#0E3A5C`）
+  - 子主題 B（酸鹼 `INe-Ⅲ-5-*`）→ 橘系（bg `#FBEFE0` / border `#D4843C` / text `#7A4A18`）
+  - 其他 → 灰系（fallback）
+- 預設顯示**短編號**（去掉 `INe-` 前綴，如 `II-3-02`），完整 ID + 節點名稱放在 `title` 屬性提供 hover tooltip
+- 字體 `font-mono font-bold`，邊框 `border-2`
+- 三種尺寸：`sm` / `md`（預設）/ `lg`
+
+**Props**：`nodeId`（必填）、`name`（hover 顯示）、`size`、`showFullId`、`className`
+
+**禁止**：在任何頁面自寫 `<span>INe-II-3-02</span>` 或類似節點 ID 顯示，必須用 NodeBadge。
+
+### 14.2 教師端側邊欄對比強化（2026-05）
+
+**問題**：原配色 section 背景過淡，在部分螢幕（如老舊投影機 / 低亮度筆電）綠 / 橘 / 棕難以辨認。
+
+**規則**：
+- Section 容器：背景色加深 ~ 1 階、邊框 `2px`（原 `1px`）
+- Active NavLink：邊框 `2px`（原 `1px`）+ 加深 activeBg、加深 activeBorder
+- Section 配色（教師端）以下表為準：
+
+| Section | bg | border | activeBg | activeBorder |
+|---------|-----|--------|---------|--------------|
+| 題組 | `#E4F1CE` | `#8FC87A` | `#C8DFAA` | `#5C8A2E` |
+| 看結果 | `#D6EAF8` | `#5DADE2` | `#A9CCE3` | `#2E86C1` |
+| 班級 | `#FAE8C4` | `#D4A244` | `#F1D294` | `#A86E1E` |
+| 其他 | `#EBDACC` | `#B08968` | `#D9C4AF` | `#8B5E3C` |
+
+**禁止**：自行調整教師端側邊欄 section 顏色，須遵守上表。
 
 ---
 
