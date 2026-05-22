@@ -3,6 +3,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTeacherStageStatus } from '../hooks/useTeacherStageStatus';
 import AIBadge from './AIBadge';
+import GuidedTour from './GuidedTour';
 import teacherAvatar from '../assets/illustrations/irasutoya_teacher_boy.png';
 
 const ICONS = {
@@ -157,6 +158,7 @@ export default function TeacherLayout({ children }) {
   const stageStatus = useTeacherStageStatus();
   const [openOverrides, setOpenOverrides] = useState({});
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [tourKey, setTourKey] = useState(0);
   const closeDrawer = () => setDrawerOpen(false);
 
   useEffect(() => {
@@ -306,10 +308,12 @@ export default function TeacherLayout({ children }) {
         const { section, meta, items } = sec;
         const ss = SECTION_STYLES[section];
         const isNext = meta?.flow && stageStatus.nextStep === meta.flow;
+        const tourKey = meta?.flow ? `flow-${meta.flow}` : section === '班級' ? 'flow-classes' : undefined;
         return (
           <div
             key={section}
             className="rounded-xl overflow-hidden mt-3"
+            data-tour={tourKey}
             style={{
               backgroundColor: ss?.bg,
               border: `2px solid ${ss?.border}`,
@@ -368,7 +372,17 @@ export default function TeacherLayout({ children }) {
         {renderNavSections()}
       </nav>
 
-      <div className="px-3 py-3 border-t border-[#D5D8DC]">
+      <div className="px-3 py-3 border-t border-[#D5D8DC] space-y-1">
+        <button
+          onClick={() => setTourKey(k => k + 1)}
+          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[#636E72] hover:text-[#2D3436] hover:bg-[#EEF5E6] rounded-xl transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          操作導覽
+        </button>
         <button
           onClick={handleLogout}
           className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[#636E72] hover:text-[#2D3436] hover:bg-[#EEF5E6] rounded-xl transition-colors"
@@ -385,7 +399,8 @@ export default function TeacherLayout({ children }) {
 
   return (
     <div className="flex h-screen bg-[#EEF5E6]">
-      <aside className="hidden md:flex w-60 bg-white border-r border-[#D5D8DC] flex-col flex-shrink-0 shadow-[2px_0_8px_rgba(0,0,0,0.02)]">
+      <GuidedTour tourKey={tourKey || null} onFinish={() => setTourKey(0)} />
+      <aside data-tour="sidebar" className="hidden md:flex w-60 bg-white border-r border-[#D5D8DC] flex-col flex-shrink-0 shadow-[2px_0_8px_rgba(0,0,0,0.02)]">
         {sidebar}
       </aside>
 

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TeacherLayout from '../../components/TeacherLayout';
+import SchoolYearFilter from '../../components/SchoolYearFilter';
 import { useScenarios } from '../../hooks/useScenarios';
 import { useClasses } from '../../hooks/useClasses';
 import { useTreatmentLogs } from '../../hooks/useTreatment';
@@ -64,7 +65,12 @@ export default function TreatmentLogs() {
           </p>
         </div>
 
-        {/* 篩選 */}
+        {/* 全域學年篩選器（與其他頁面共用 AppContext 狀態，spec-05 §1.5） */}
+        <div className="mb-4">
+          <SchoolYearFilter />
+        </div>
+
+        {/* 頁面內篩選（班級 / 概念釐清題組） */}
         <div className="bg-white rounded-2xl border border-[#BDC3C7] p-4 mb-4 flex flex-wrap items-center gap-3
                         shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
           <div className="flex items-center gap-2">

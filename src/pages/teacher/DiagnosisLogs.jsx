@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import TeacherLayout from '../../components/TeacherLayout';
+import SchoolYearFilter from '../../components/SchoolYearFilter';
 import { useDiagnosisLogs } from '../../hooks/useAnswers';
 import { useClasses } from '../../hooks/useClasses';
 import { useQuizzes } from '../../hooks/useQuizzes';
@@ -62,6 +63,11 @@ export default function DiagnosisLogs() {
           <p className="text-[#636E72] mt-1 text-sm">
             點擊學生查看完整的追問對話內容與診斷結果
           </p>
+        </div>
+
+        {/* 全域學年篩選器（spec-05 §1.5）*/}
+        <div className="mb-4">
+          <SchoolYearFilter />
         </div>
 
         <div className="bg-white rounded-2xl border border-[#BDC3C7] p-4 mb-4 flex flex-wrap items-center gap-3

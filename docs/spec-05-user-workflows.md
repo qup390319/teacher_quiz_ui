@@ -275,10 +275,22 @@
 
 #### 1.5.3 篩選器與診斷結果的關聯
 
-- DashboardLayout（spec-02 §2.3.0）共用同一組 AppContext 篩選器狀態（`currentSchoolYear` / `currentSemester` / `includeArchivedClasses`）
+**全域 AppContext 篩選器狀態**：`currentSchoolYear` / `currentSemester` / `includeArchivedClasses`，於下列頁面顯示 `<SchoolYearFilter />` 元件、跨頁共用同一份選擇：
+
+| 頁面 | 顯式顯示 SchoolYearFilter | 說明 |
+|---|---|---|
+| `/teacher/classes` (ClassManagement) | ✅ 頁首 | 班級瀏覽 |
+| `/teacher/dashboard/*` (DashboardLayout) | ✅ 頁首 | 跨班診斷統計 |
+| `/teacher/diagnosis-logs` (DiagnosisLogs) | ✅ 頁首 | 歷史診斷對話 |
+| `/teacher/treatment-logs` (TreatmentLogs) | ✅ 頁首 | 歷史治療對話 |
+| 其他用 `useClasses()` 的頁面 | ❌ 沉默繼承 | 例如 AssignmentManagement / TreatmentOutcomes 預設只看當前學年班級，不顯示 chip 但仍受全域 state 影響 |
+
+**規則**：
 - 跨班統計（OverviewPage / ClassesPage / MisconceptionsPage / NodesPage）只聚合篩選後的班級
+- 歷史紀錄頁（DiagnosisLogs / TreatmentLogs）允許教師切換到舊學年，查閱已封存班級的對話歷史
 - 學生個人報告（StudentReportsPage / StudentDiagnosisReport）**保留完整歷史**——學生跨學期表現有教學價值，不受班級封存影響
 - 題組（quizzes）與班級解耦：題組是教師資產可重複派發，assignments 才綁定班級與學年
+- `QuizLibrary` / `ScenarioLibrary` 的「已派班級」chip 使用 `useClasses({})`（不過濾），因為題組是長期資產、需顯示所有歷史派發對象
 
 ### 1.6 知識地圖查看流程
 
