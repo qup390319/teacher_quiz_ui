@@ -153,14 +153,14 @@ export default function CrossClassNodeChart({ overviewData }) {
         </label>
       </div>
       <p className="text-[15px] text-[#636E72] mb-5 leading-relaxed">
-        虛線是 <span className="font-semibold text-[#DC2626]">70% 掌握門檻</span>，
+        虛線是 <span className="font-semibold text-[#DC2626]">70% 達標門檻</span>，
         長條低於虛線代表該班該節點需要補救（背景紅 = 嚴重 / 黃 = 警示 / 綠 = 已掌握）
       </p>
 
       {/* Headline 摘要：三張小卡（左 = 指標 label，右 = 數值，中間以細線分隔） */}
       {metrics.totalNodes > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-4">
-          {/* 未達掌握門檻數量 */}
+          {/* 未達達標門檻數量 */}
           <div className={`group relative rounded-lg px-3 py-2 border flex items-center justify-between gap-3 cursor-help ${
             metrics.belowThreshold.length > 0
               ? 'bg-[#FEE2E2] border-[#FCA5A5]'
@@ -267,7 +267,7 @@ export default function CrossClassNodeChart({ overviewData }) {
         ))}
         <div className="flex items-center gap-1.5">
           <div className="w-7 border-t-[3px] border-dashed border-[#DC2626]" />
-          <span className="text-[15px] text-[#DC2626] font-semibold">70% 掌握門檻</span>
+          <span className="text-[15px] text-[#DC2626] font-semibold">70% 達標門檻</span>
         </div>
         <div className="flex items-center gap-3 ml-auto text-[15px]">
           <span className="inline-flex items-center gap-1">

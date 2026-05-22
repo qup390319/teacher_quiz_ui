@@ -79,12 +79,9 @@ export default function AIDiagnosisSummary({ quizId, classId, totalStudents }) {
                 d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.347.35A3.001 3.001 0 0112 20.4a3.001 3.001 0 01-2.121-.872l-.347-.347z" />
             </svg>
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-base font-bold text-[#2D3436]">班級診斷摘要</h3>
-              <InfoButton onClick={() => setInfoOpen(true)} />
-            </div>
-            <p className="text-sm text-[#636E72]">根據本班診斷結果分析，提供該班學習狀況與具體行動建議</p>
+          <div className="flex items-center gap-2">
+            <h3 className="text-base font-bold text-[#2D3436]">班級診斷摘要</h3>
+            <InfoButton onClick={() => setInfoOpen(true)} />
           </div>
         </div>
         <span className={`text-sm font-bold px-3 py-1.5 rounded-full border flex-shrink-0 ${health.color}`}>

@@ -189,7 +189,7 @@ const ANSWER_DISTRIBUTIONS_MAP = {
     // Q5 correct=B：5A, 9B, 4C, 4D（41%）
     ['A','A','A','A','A','B','B','B','B','B','B','B','B','B','C','C','C','C','D','D','D','D'],
   ],
-  // ── quiz-002 × class-A（20 人）── 第二次施測，掌握率有改善
+  // ── quiz-002 × class-A（20 人）── 第二次施測，答對率有改善
   'quiz-002__class-A': [
     // Q1 correct=B：4A, 12B, 2C, 2D（60%）
     ['A','A','A','A','B','B','B','B','B','B','B','B','B','B','B','B','C','C','D','D'],

@@ -80,48 +80,48 @@ export default function SingleClassReport({ cls, assignments, quizzes, quizId })
     <div className="space-y-6">
       <div className="grid grid-cols-4 gap-4">
         {[
-          { label: '參與學生', value: `${totalStudents} 人`, sub: '已完成診斷測驗', color: 'text-[#3D5A3E]', bg: 'bg-[#C8EAAE]',
+          { label: '參與學生', value: `${totalStudents} 人`, tip: '已完成診斷測驗的學生數', color: 'text-[#3D5A3E]', bg: 'bg-[#C8EAAE]',
             infoKey: 'stat-card-participants', dynamicStatus: `目前有 ${totalStudents} 位學生已完成本次診斷測驗並提交作答。` },
-          { label: '作答完成率', value: `${completionRate}%`, sub: `${submittedCount} / ${totalStudentsAssign} 人已提交`,
+          { label: '作答完成率', value: `${completionRate}%`, tip: `${submittedCount} / ${totalStudentsAssign} 人已提交`,
             color: completionRate === 100 ? 'text-[#3D5A3E]' : completionRate >= 60 ? 'text-[#B7950B]' : 'text-[#E74C5E]',
             bg: completionRate === 100 ? 'bg-[#C8EAAE]' : completionRate >= 60 ? 'bg-[#FCF0C2]' : 'bg-[#FAC8CC]',
-            infoKey: 'stat-card-completion', dynamicStatus: `目前班級作答完成率為 ${completionRate}%（${submittedCount}/${totalStudentsAssign} 人已提交）。${completionRate < 80 ? '完成率偏低，建議補齊作答後再解讀診斷報告。' : '完成率良好，診斷結果具代表性。'}` },
-          { label: '平均答對率', value: `${avgPassRate}%`, sub: '全班各概念的答對題數 ÷ 總題數',
+            infoKey: 'stat-card-completion', dynamicStatus: `作答完成率 ${completionRate}%（${submittedCount}/${totalStudentsAssign} 人）。${completionRate < 80 ? '建議補齊作答後再解讀。' : '具代表性。'}` },
+          { label: '平均答對率', value: `${avgPassRate}%`, tip: '各概念答對率的平均值',
             color: avgPassRate >= 70 ? 'text-[#3D5A3E]' : avgPassRate >= 50 ? 'text-[#B7950B]' : 'text-[#E74C5E]',
             bg: avgPassRate >= 70 ? 'bg-[#C8EAAE]' : avgPassRate >= 50 ? 'bg-[#FCF0C2]' : 'bg-[#FAC8CC]',
-            infoKey: 'stat-card-mastery', dynamicStatus: `目前班級 5 個知識節點的平均答對率為 ${avgPassRate}%。${avgPassRate >= 70 ? '整體表現良好。' : avgPassRate >= 50 ? '整體表現中等，建議針對低答對率節點進行補強。' : '整體掌握不足，建議安排系統性補救教學。'}` },
-          { label: '最高風險迷思', value: topMisconEntry ? `${topMisconEntry.pct}%` : '—', sub: topMisconLabel ?? '無高頻迷思',
+            infoKey: 'stat-card-mastery', dynamicStatus: `平均答對率 ${avgPassRate}%。${avgPassRate >= 70 ? '整體表現良好。' : avgPassRate >= 50 ? '建議針對低答對率節點補強。' : '建議安排補救教學。'}` },
+          { label: '最高風險迷思', value: topMisconEntry ? `${topMisconEntry.pct}%` : '—', tip: topMisconLabel ?? '無高頻迷思',
             color: topMisconEntry && topMisconEntry.pct >= 30 ? 'text-[#E74C5E]' : 'text-[#3D5A3E]',
             bg: topMisconEntry && topMisconEntry.pct >= 30 ? 'bg-[#FAC8CC]' : 'bg-[#C8EAAE]',
             infoKey: 'stat-card-top-misconception',
             dynamicStatus: topMisconEntry
-              ? `目前持有率最高的迷思為「${topMisconLabel}」，持有率 ${topMisconEntry.pct}%（${Math.round(topMisconEntry.pct / 100 * totalStudents)} 位學生）。${topMisconEntry.pct >= 30 ? '已達高頻迷思門檻，建議優先安排補救。' : '持有率低於 30%，暫不需要緊急介入。'}`
-              : '目前無偵測到任何迷思。' },
+              ? `最高風險：「${topMisconLabel}」${topMisconEntry.pct}%。${topMisconEntry.pct >= 30 ? '建議優先補救。' : '暫不需緊急介入。'}`
+              : '無偵測到迷思。' },
         ].map(s => (
-          <div key={s.label} className={`rounded-2xl border border-[#BDC3C7] p-4 ${s.bg} shadow-[0_2px_12px_rgba(0,0,0,0.06)]`}>
+          <div key={s.label} className={`group relative rounded-2xl border border-[#BDC3C7] p-4 ${s.bg} shadow-[0_2px_12px_rgba(0,0,0,0.06)] cursor-help`}>
             <p className={`text-2xl font-bold ${s.color} mb-0.5`}>{s.value}</p>
             <div className="flex items-center gap-1.5">
               <p className="text-sm font-semibold text-[#2D3436]">{s.label}</p>
               <InfoButton onClick={() => setStatInfoKey(s.infoKey)} />
             </div>
-            <p className="text-sm text-[#636E72] mt-0.5 leading-snug">{s.sub}</p>
+            {s.tip && (
+              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-56 max-w-[85vw] opacity-0 group-hover:opacity-100 transition-opacity z-30" role="tooltip">
+                <div className="bg-[#2D3436] text-white text-[15px] font-medium leading-relaxed px-3 py-2 rounded-lg shadow-lg">{s.tip}</div>
+                <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0" style={{ borderLeft: '6px solid transparent', borderRight: '6px solid transparent', borderTop: '6px solid #2D3436' }} />
+              </div>
+            )}
           </div>
         ))}
       </div>
       <InfoDrawer isOpen={statInfoKey !== null} onClose={() => setStatInfoKey(null)}
         config={statInfoKey ? CHART_INFO[statInfoKey] : null}
         dynamicStatus={statInfoKey ? [
-          { infoKey: 'stat-card-participants', dynamicStatus: `目前有 ${totalStudents} 位學生已完成本次診斷測驗並提交作答。` },
-          { infoKey: 'stat-card-completion', dynamicStatus: `目前班級作答完成率為 ${completionRate}%（${submittedCount}/${totalStudentsAssign} 人已提交）。${completionRate < 80 ? '完成率偏低，建議補齊作答後再解讀診斷報告。' : '完成率良好，診斷結果具代表性。'}` },
-          { infoKey: 'stat-card-mastery', dynamicStatus: `目前班級 5 個知識節點的平均答對率為 ${avgPassRate}%。${avgPassRate >= 70 ? '整體表現良好。' : avgPassRate >= 50 ? '整體表現中等，建議針對低答對率節點進行補強。' : '整體掌握不足，建議安排系統性補救教學。'}` },
-          { infoKey: 'stat-card-top-misconception', dynamicStatus: topMisconEntry ? `目前持有率最高的迷思為「${topMisconLabel}」，持有率 ${topMisconEntry.pct}%。${topMisconEntry.pct >= 30 ? '已達高頻迷思門檻，建議優先安排補救。' : '持有率低於 30%，暫不需要緊急介入。'}` : '目前無偵測到任何迷思。' },
+          { infoKey: 'stat-card-participants', dynamicStatus: `${totalStudents} 位學生已完成作答。` },
+          { infoKey: 'stat-card-completion', dynamicStatus: `完成率 ${completionRate}%（${submittedCount}/${totalStudentsAssign} 人）。${completionRate < 80 ? '建議補齊後再解讀。' : '具代表性。'}` },
+          { infoKey: 'stat-card-mastery', dynamicStatus: `平均答對率 ${avgPassRate}%。${avgPassRate >= 70 ? '表現良好。' : avgPassRate >= 50 ? '建議補強低答對率節點。' : '建議安排補救教學。'}` },
+          { infoKey: 'stat-card-top-misconception', dynamicStatus: topMisconEntry ? `最高風險：「${topMisconLabel}」${topMisconEntry.pct}%。${topMisconEntry.pct >= 30 ? '建議優先補救。' : '暫不需介入。'}` : '無迷思。' },
         ].find(item => item.infoKey === statInfoKey)?.dynamicStatus : undefined} />
 
-      <RagflowSummaryPanel
-        scope="class"
-        payload={buildClassSummaryPayload(quizId, quizzes.find((q) => q.id === quizId)?.title ?? '本次題組', cls)}
-        title={`${cls.name} AI 診斷摘要（文獻引用版 · N2）`}
-      />
       <AIDiagnosisSummary quizId={quizId} classId={classId} totalStudents={totalStudents} />
       <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
         <WeeklyActionChecklist quizId={quizId} classId={classId} totalStudents={totalStudents} />
@@ -129,18 +129,64 @@ export default function SingleClassReport({ cls, assignments, quizzes, quizId })
       <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
         <BreakdownChart quizId={quizId} classId={classId} />
       </div>
-      <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-        <MisconceptionDistribution quizId={quizId} classId={classId} totalStudents={totalStudents} />
-      </div>
-      <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-        <QuestionErrorRateChart quizId={quizId} classId={classId} totalStudents={totalStudents} />
-      </div>
-      <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-        <ReasoningQualityBars quizId={quizId} classId={classId} />
-      </div>
-      <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-        <HeatmapView quizId={quizId} classId={classId} totalStudents={totalStudents} />
-      </div>
+
+      {/* ─── 進階分析（預設摺疊，減少首屏捲動量） ─── */}
+      <AdvancedSection title="迷思概念詳細分析" subtitle="迷思分布 · 題目錯誤率 · 選項明細矩陣">
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl border border-[#D5D8DC] p-6">
+            <MisconceptionDistribution quizId={quizId} classId={classId} totalStudents={totalStudents} />
+          </div>
+          <div className="bg-white rounded-2xl border border-[#D5D8DC] p-6">
+            <QuestionErrorRateChart quizId={quizId} classId={classId} totalStudents={totalStudents} />
+          </div>
+          <div className="bg-white rounded-2xl border border-[#D5D8DC] p-6">
+            <HeatmapView quizId={quizId} classId={classId} totalStudents={totalStudents} />
+          </div>
+        </div>
+      </AdvancedSection>
+
+      <AdvancedSection title="追問對話分析" subtitle="學生推理品質 · AI 文獻診斷摘要">
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl border border-[#D5D8DC] p-6">
+            <ReasoningQualityBars quizId={quizId} classId={classId} />
+          </div>
+          <RagflowSummaryPanel
+            scope="class"
+            payload={buildClassSummaryPayload(quizId, quizzes.find((q) => q.id === quizId)?.title ?? '本次題組', cls)}
+            title={`${cls.name} AI 診斷摘要（文獻引用版 · N2）`}
+          />
+        </div>
+      </AdvancedSection>
+    </div>
+  );
+}
+
+function AdvancedSection({ title, subtitle, children }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="bg-white rounded-[32px] border border-[#BDC3C7] shadow-[0_2px_12px_rgba(0,0,0,0.06)] overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full px-6 py-4 flex items-center justify-between gap-3 hover:bg-[#FAFBFC] transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <span className="material-symbols-rounded text-[#636E72]" style={{ fontSize: 22 }}>tune</span>
+          <div className="text-left">
+            <p className="font-bold text-[#2D3436]">{title}</p>
+            <p className="text-sm text-[#95A5A6] mt-0.5">{subtitle}</p>
+          </div>
+        </div>
+        <svg className={`w-5 h-5 text-[#636E72] transition-transform ${open ? 'rotate-180' : ''}`}
+          fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {open && (
+        <div className="px-6 pb-6 border-t border-[#EFF1F3]">
+          {children}
+        </div>
+      )}
     </div>
   );
 }

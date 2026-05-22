@@ -197,7 +197,7 @@ export default function AssignTargetPicker({ quiz, cls, existing = null, onConfi
                       </label>
                       {showPrereqDetail === s.id && prereq?.prerequisites?.length > 0 && (
                         <div className="ml-10 mt-1 mb-1 px-3 py-2 bg-[#FAFBFC] border border-[#D5D8DC] rounded-lg">
-                          <p className="text-[15px] font-semibold text-[#636E72] mb-1">先備節點掌握度</p>
+                          <p className="text-[15px] font-semibold text-[#636E72] mb-1">先備節點答對率</p>
                           {prereq.prerequisites.map((p) => (
                             <div key={p.nodeId} className="flex items-center gap-2 text-[15px] py-0.5">
                               <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
