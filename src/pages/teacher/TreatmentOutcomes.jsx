@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TeacherLayout from '../../components/TeacherLayout';
 import { useScenarios } from '../../hooks/useScenarios';
@@ -86,7 +86,7 @@ export default function TreatmentOutcomes() {
             </button>
           </div>
           <p className="text-[#636E72] mt-1 text-sm">
-            一頁掌握每位學生在概念釐清治療對話中的釐清狀況，協助你決定下一步教學。
+            一頁掌握每位學生在概念釐清對話中的釐清狀況，協助你決定下一步教學。
           </p>
         </div>
 
@@ -353,7 +353,7 @@ function EmptyState() {
         </svg>
       </div>
       <p className="text-[#636E72] font-medium">尚無概念釐清結果</p>
-      <p className="text-sm text-[#95A5A6] mt-1">學生完成概念釐清治療後，成效彙整會出現在這裡</p>
+      <p className="text-sm text-[#95A5A6] mt-1">學生完成概念釐清對話後，成效彙整會出現在這裡</p>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 /**
- * 治療對話 AI（Cognitive Apprenticeship 機器人）
+ * 概念釐清對話 AI（Cognitive Apprenticeship 機器人）
  *
  * 規格詳見 docs/spec-08-treatment-cognitive-apprenticeship.md §2-3, §7。
  *

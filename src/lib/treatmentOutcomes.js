@@ -1,5 +1,5 @@
 /**
- * 概念釐清治療成效衍生規則（spec-08 §5.5）
+ * 概念釐清成效衍生規則（spec-08 §5.5）
  *
  * 全部從 treatment_messages 反推，避免後端新增欄位；後續 P5 會搬到
  * app/services/treatment_outcome_service.py。

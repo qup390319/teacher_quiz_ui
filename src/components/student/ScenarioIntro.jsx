@@ -1,7 +1,7 @@
 import { Icon, WOOD_OUTER, WOOD_INNER_CREAM } from '../ui/woodKit';
 import mascotImg from '../../assets/illustrations/scilens_mascot.png';
 
-/* 治療對話入場頁（spec-08 §6 / spec-07 §12）
+/* 概念釐清對話入場頁（spec-08 §6 / spec-07 §12）
  * 吉祥物 + 大標題木牌 + 開始挑戰 CTA
  */
 export default function ScenarioIntro({ quiz, studentName, onStart }) {
@@ -22,7 +22,7 @@ export default function ScenarioIntro({ quiz, studentName, onStart }) {
                 {quiz.title}
               </h2>
               <p className="text-sm sm:text-base text-[#7A5232] font-bold leading-relaxed">
-                嗨 {studentName}！這是一場「概念釐清治療」對話練習。<br />
+                嗨 {studentName}！這是一場「概念釐清」對話練習。<br />
                 跟我一起，把你的想法用「主張・證據・推理」說清楚！
               </p>
             </div>

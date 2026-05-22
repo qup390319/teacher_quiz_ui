@@ -268,7 +268,7 @@ export default function ScenarioCreateWizard() {
                 type="text"
                 value={draft.title}
                 onChange={(e) => updateField('title', e.target.value)}
-                placeholder="例：概念釐清治療 · 溶解現象判斷"
+                placeholder="例：概念釐清 · 溶解現象判斷"
                 className="w-full px-3 py-2 rounded-xl border border-[#BDC3C7] bg-white text-sm
                            focus:outline-none focus:ring-2 focus:ring-[#5BA47A]/40 focus:border-[#5BA47A]"
               />
@@ -289,7 +289,7 @@ export default function ScenarioCreateWizard() {
               </select>
             </Field>
             {targetNode && (
-              <Field label="目標迷思（從節點下的 4 條中勾選想治療的）">
+              <Field label="目標迷思（從節點下的 4 條中勾選想釐清的）">
                 <div className="flex flex-wrap gap-2">
                   {availableMisconceptions.map((m) => {
                     const checked = draft.targetMisconceptions.includes(m.id);

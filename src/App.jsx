@@ -70,7 +70,7 @@ export default function App() {
             <Route path="/teacher/knowledge-map" element={<Teacher><KnowledgeMap /></Teacher>} />
             <Route path="/teacher/custom-knowledge-map" element={<Teacher><CustomKnowledgeMap /></Teacher>} />
             <Route path="/teacher/misconception-causes" element={<Teacher><MisconceptionCauses /></Teacher>} />
-            {/* 概念釐清治療模組（spec-08） */}
+            {/* 概念釐清模組（spec-08） */}
             <Route path="/teacher/scenarios" element={<Teacher><ScenarioLibrary /></Teacher>} />
             <Route path="/teacher/scenarios/create" element={<Teacher><ScenarioCreateWizard /></Teacher>} />
             <Route path="/teacher/scenarios/:scenarioQuizId/edit" element={<Teacher><ScenarioCreateWizard /></Teacher>} />

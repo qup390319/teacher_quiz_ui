@@ -1,5 +1,5 @@
 /**
- * 概念釐清題組資料（治療模組）
+ * 概念釐清題組資料
  *
  * 定義詳見 docs/spec-08-treatment-cognitive-apprenticeship.md §10
  * 與診斷題組 (quizData.js) 並列獨立。
@@ -21,7 +21,7 @@ import sugarLayerImg from '../assets/scenarios/2-1-2-sugar-saturation-chart.png'
  * @property {boolean=} scenarioImageZoomable - 是否可點擊放大（預設 false）
  * @property {string} initialMessage - AI 開場提問（步驟 1 由 AI 主動說）
  * @property {string[]} targetMisconceptions - 該題針對的迷思 ID（M01-1 等）
- * @property {string} expertModel - 專家示範範文（治療階段「示範」期 AI 引用）
+ * @property {string} expertModel - 專家示範範文（概念釐清「示範」期 AI 引用）
  */
 
 /**
@@ -41,7 +41,7 @@ export const SCENARIO_QUIZZES_DATA = [
   // ───────────────────────────────────────────────────────────────
   {
     id: 'scenario-002',
-    title: '概念釐清治療 · 飽和糖水甜度',
+    title: '概念釐清 · 飽和糖水甜度',
     status: 'published',
     targetNodeId: 'INe-II-3-03',
     targetMisconceptions: ['M03-1', 'M03-2'],

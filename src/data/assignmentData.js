@@ -51,7 +51,7 @@ export const ASSIGNMENTS_DATA = [
     submittedCount: 17,
     totalStudents: 20,
   },
-  // ── 概念釐清治療派題（spec-08）：以學生為單位派發 ────────────────────────────
+  // ── 概念釐清派題（spec-08）：以學生為單位派發 ────────────────────────────
   {
     id: 'assign-006',
     type: 'scenario',

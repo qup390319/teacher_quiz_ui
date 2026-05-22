@@ -137,7 +137,7 @@ export default function TeacherDashboard() {
         {/* Page Header */}
         <div className="mb-4 flex items-center gap-2 flex-wrap">
           <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">首頁</h1>
-          <HelpTip text="完成一次迷思診斷與治療的完整流程：出題 → 派題 → 看結果 → 釐清補救" />
+          <HelpTip text="完成一次迷思診斷與概念釐清的完整流程：出題 → 派題 → 看結果 → 釐清補救" />
 
           {/* 右側操作區：操作導覽（永遠可用）+ 重新開啟歡迎卡（只在已關閉時顯示） */}
           <div className="ml-auto flex items-center gap-2">
@@ -274,13 +274,13 @@ export default function TeacherDashboard() {
           </div>
         </div>
 
-        {/* 流程二：迷思概念治療（對應 sidebar ④）*/}
+        {/* 流程二：概念釐清補救（對應 sidebar ④）*/}
         <div className="mb-3 flex items-center gap-2.5 flex-wrap">
           <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-[#F2DDED] to-[#D2A6C5] border-2 border-[#8A3F76] text-sm font-bold text-[#502047] shadow-[0_2px_6px_rgba(138,63,118,0.18)]">
             <Icon name="psychiatry" className="text-base" />
             <span>步驟 ④→⑤→⑥</span>
           </span>
-          <h2 className="text-base font-bold text-[#2D3436]">迷思概念治療・概念釐清補救</h2>
+          <h2 className="text-base font-bold text-[#2D3436]">概念釐清・補救教學</h2>
           <span className="text-sm text-[#636E72]">釐清出題 → 派題 → 看概念釐清結果</span>
         </div>
         <div className="bg-white border border-[#BDC3C7] rounded-[24px] sm:rounded-[32px] p-4 sm:p-6 mb-6 sm:mb-8 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">

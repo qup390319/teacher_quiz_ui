@@ -48,8 +48,8 @@ export default function StudentHome() {
     setActiveStudentReport,
   } = useApp();
 
-  // P4 起治療 session 改由 React Query 取得；此頁先以 assignment.status 推斷完成度，
-  // 真正完成判定由 ScenarioChat 在治療結束後 invalidate 並由 StudentReport 顯示。
+  // P4 起概念釐清 session 改由 React Query 取得；此頁先以 assignment.status 推斷完成度，
+  // 真正完成判定由 ScenarioChat 在概念釐清結束後 invalidate 並由 StudentReport 顯示。
   const STUDENT_CLASS_ID = currentUser?.classId ?? 'class-A';
   const studentName = currentUser?.name ?? '探險者';
 
@@ -181,7 +181,7 @@ export default function StudentHome() {
 
   const handleViewTaskReport = (task) => {
     if (task.taskType === 'scenario') {
-      // 治療紀錄 view（暫時導去 ScenarioChat — 後續可加專屬報告頁）
+      // 概念釐清紀錄 view（暫時導去 ScenarioChat — 後續可加專屬報告頁）
       navigate(`/student/scenario/${task.scenarioQuizId}`);
       return;
     }
@@ -341,13 +341,13 @@ export default function StudentHome() {
                   </>
                 )}
 
-                {/* ── 概念釐清治療區（spec-08）──────── */}
+                {/* ── 概念釐清區（spec-08）──────── */}
                 {hasScenario && (
                   <>
                     {scenarioTasks.pending.length > 0 && (
                       <Section
-                        title="概念釐清治療"
-                        subtitle="與 AI 對話練習科學論證，治療你的迷思"
+                        title="概念釐清"
+                        subtitle="與 AI 對話練習科學論證，釐清你的迷思概念"
                         accentColor="#3F8B5E"
                         icon="forum"
                         className={hasDiagnosis ? 'mt-6' : ''}
@@ -366,7 +366,7 @@ export default function StudentHome() {
 
                     {scenarioTasks.completed.length > 0 && (
                       <Section
-                        title="已完成的治療"
+                        title="已完成的概念釐清"
                         count={scenarioTasks.completed.length}
                         collapsible
                         open={scenarioHistoryOpen}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TeacherLayout from '../../../components/TeacherLayout';
 import ConfirmDeleteModal from '../../../components/ConfirmDeleteModal';
@@ -84,7 +84,7 @@ export default function ScenarioLibrary() {
               </button>
             </div>
             <p className="text-[#636E72] mt-1 text-sm">
-              概念釐清題組以「論證情境 + AI 對話治療」進行。流程：建立概念釐清題組 → 派發給班級 → 學生與 AI 對話 → 教師查紀錄。
+              概念釐清題組以「論證情境 + AI 對話」進行。流程：建立概念釐清題組 → 派發給班級 → 學生與 AI 對話 → 教��查紀錄。
             </p>
           </div>
           <button
@@ -168,7 +168,7 @@ export default function ScenarioLibrary() {
                       <div className="flex items-center gap-2 mb-2">
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#E0F0E8]
                                          border border-[#3F8B5E] text-[#2E6B47] text-sm font-bold">
-                          🌱 概念釐清治療
+                          🌱 概念釐清
                         </span>
                         <span
                           className={`inline-flex items-center px-2 py-0.5 rounded-full text-sm font-semibold
@@ -432,7 +432,7 @@ function EmptyState({ onCreate }) {
         </svg>
       </div>
       <p className="text-[#636E72] font-medium">還沒有概念釐清題組</p>
-      <p className="text-sm text-[#95A5A6] mt-1 mb-4">概念釐清題組讓 AI 用「論證對話」引導學生治療迷思</p>
+      <p className="text-sm text-[#95A5A6] mt-1 mb-4">概念��清題組讓 AI 用「論證對話」引導學生釐清迷思</p>
       <button
         type="button"
         onClick={onCreate}

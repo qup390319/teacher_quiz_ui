@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+﻿import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TeacherLayout from '../../components/TeacherLayout';
 import SchoolYearFilter from '../../components/SchoolYearFilter';
@@ -15,7 +15,7 @@ const CLASS_COLORS = {
   'class-C': { bg: '#FCF0C2', fg: '#B7950B' },
 };
 
-/* 治療對話紀錄總覽（spec-08 §5.4 / §3.4）
+/* 概念釐清對話紀錄總覽（spec-08 §5.4 / §3.4）
  * P4 起：直接從 /api/teachers/treatment-logs 拉取。
  */
 export default function TreatmentLogs() {
@@ -74,7 +74,7 @@ export default function TreatmentLogs() {
             </button>
           </div>
           <p className="text-[#636E72] mt-1 text-sm">
-            檢視學生與 AI 的概念釐清治療對話內容，作為派發治療成效的判斷依據
+            檢視學生與 AI 的概念釐清對話內容，作為評估釐清成效的判斷依據
           </p>
         </div>
 
@@ -129,7 +129,7 @@ export default function TreatmentLogs() {
               </svg>
             </div>
             <p className="text-[#636E72] font-medium">還沒有概念釐清對話紀錄</p>
-            <p className="text-sm text-[#95A5A6] mt-1">當學生開始概念釐清治療對話後，紀錄會自動出現在這裡</p>
+            <p className="text-sm text-[#95A5A6] mt-1">當學生開始概念釐清對話後，紀錄會自動出現在這裡</p>
           </div>
         ) : (
           <div className="bg-white rounded-2xl border border-[#BDC3C7] overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.04)]" data-tour="treatment-logs-table">

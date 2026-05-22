@@ -9,7 +9,7 @@ import { PHASE_LABEL, STAGE_LABEL } from '../../data/treatmentBot';
 import { knowledgeNodes, getMisconceptionById } from '../../data/knowledgeGraph';
 import { resolveScenarioImage } from '../../lib/scenarioImage';
 
-/* 治療對話紀錄詳情頁（spec-08 §5.4）
+/* 概念釐清對話紀錄詳情頁（spec-08 §5.4）
  * P4 起：直接從 /api/teachers/treatment-logs/{sessionId} 拉 session + messages
  */
 export default function TreatmentLogDetail() {
@@ -54,7 +54,7 @@ export default function TreatmentLogDetail() {
       <TeacherLayout>
         <div className="p-8 max-w-3xl">
           <div className="bg-white rounded-2xl border border-[#BDC3C7] p-8 text-center">
-            <p className="text-[#636E72] mb-4">找不到此治療紀錄（{sessionId}）</p>
+            <p className="text-[#636E72] mb-4">找不到此概念釐清紀錄（{sessionId}）</p>
             <button
               type="button"
               onClick={() => navigate('/teacher/treatment-logs')}

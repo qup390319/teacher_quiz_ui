@@ -151,7 +151,7 @@ export default function StudentSettingsDrawer({ open, onClose }) {
                 <div className="space-y-2 text-sm text-[#5A3E22] leading-relaxed">
                   <AboutItem icon="science" text="針對國小五年級「水溶液」單元設計" />
                   <AboutItem icon="quiz" text="透過診斷測驗找出你的迷思概念" />
-                  <AboutItem icon="forum" text="透過概念釐清治療對話修正迷思概念" />
+                  <AboutItem icon="forum" text="透過概念釐清對話修正迷思概念" />
                   <AboutItem icon="insights" text="完成後查看個人學習報告" />
                 </div>
 

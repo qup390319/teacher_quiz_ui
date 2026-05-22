@@ -101,7 +101,7 @@ export default function AssignTargetPicker({ quiz, cls, existing = null, onConfi
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="font-bold text-[#2D3436] leading-snug">
-                {existing ? '調整派發對象' : '派發概念釐清治療題組'}
+                {existing ? '調整派發對象' : '派發概念釐清題組'}
               </h3>
               <p className="text-sm text-[#95A5A6] mt-0.5 truncate">{quiz.title}</p>
               <div className="flex items-center gap-1.5 mt-1.5">

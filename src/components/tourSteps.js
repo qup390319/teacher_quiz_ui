@@ -383,7 +383,7 @@ export const TREATMENT_LOGS_STEPS = [
   {
     target: '[data-tour="treatment-logs-header"]',
     content:
-      '概念釐清對話紀錄\n\n記錄每位學生與 AI 的完整概念釐清治療對話歷程。\n方便您了解學生在對話中的表現。',
+      '概念釐清對話紀錄\n\n記錄每位學生與 AI 的完整概念釐清對話歷程。\n方便您了解學生在對話中的表現。',
     placement: 'bottom',
     skipBeacon: true,
   },
@@ -408,7 +408,7 @@ export const TREATMENT_OUTCOMES_STEPS = [
   {
     target: '[data-tour="treatment-outcomes-header"]',
     content:
-      '概念釐清結果\n\n彙整每位學生在概念釐清治療對話後的釐清成效。\n協助您快速決定下一步教學行動。',
+      '概念釐清結果\n\n彙整每位學生在概念釐清對話後的釐清成效。\n協助您快速決定下一步教學行動。',
     placement: 'bottom',
     skipBeacon: true,
   },

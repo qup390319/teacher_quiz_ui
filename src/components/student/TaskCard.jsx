@@ -67,7 +67,7 @@ const DiagnosisStatusConfig = {
   },
 };
 
-/* 概念釐清治療任務（spec-07 §12.1，青木綠系 + forum icon） */
+/* 概念釐清任務（spec-07 §12.1，青木綠系 + forum icon） */
 const ScenarioStatusConfig = {
   next: {
     iconBg: 'bg-[#D8EEE2]',
@@ -187,7 +187,7 @@ export default function TaskCard({
                         }`}
           >
             <Icon name={isScenario ? 'forum' : 'quiz'} filled className="text-[10px] sm:text-xs" />
-            {isScenario ? '概念釐清治療' : '迷思診斷'}
+            {isScenario ? '概念釐清' : '迷思診斷'}
           </span>
           {/* 標題 */}
           <h3 className={`font-black text-lg sm:text-xl text-[#5A3E22] mb-2 truncate ${isExpired ? 'opacity-70' : ''}`}>
