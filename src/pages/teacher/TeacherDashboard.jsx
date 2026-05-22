@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TeacherLayout from '../../components/TeacherLayout';
-import { useApp } from '../../context/AppContext';
+import AIBadge from '../../components/AIBadge';
+import { useTeacherStageStatus } from '../../hooks/useTeacherStageStatus';
 import { knowledgeNodes } from '../../data/knowledgeGraph';
-import { defaultQuestions } from '../../data/quizData';
 import { Icon } from '../../components/ui/woodKit';
 
 function HelpTip({ text }) {
@@ -32,7 +32,7 @@ function HelpTip({ text }) {
         <Icon name="help" className="text-base text-[#636E72]" />
       </span>
       {open && (
-        <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-50 w-56 px-3 py-2 rounded-xl bg-[#2D3436] text-white text-xs leading-relaxed shadow-lg">
+        <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-50 w-56 px-3 py-2 rounded-xl bg-[#2D3436] text-white text-sm leading-relaxed shadow-lg">
           {text}
           <div className="absolute left-1/2 -translate-x-1/2 -top-1.5 w-3 h-3 bg-[#2D3436] rotate-45" />
         </div>
@@ -41,193 +41,264 @@ function HelpTip({ text }) {
   );
 }
 
+// 與 sidebar 對齊的步驟色票（綠→青→藍 for 流程一；紫紅漸層 for 流程二）
+const STEP_COLORS = {
+  green:  { circle: 'bg-[#5C8A2E] text-white', ring: '#5C8A2E', tint: '#EEF5E6' },   // ① 出題
+  teal:   { circle: 'bg-[#1F7A8C] text-white', ring: '#1F7A8C', tint: '#E1F0F4' },   // ② 派題
+  blue:   { circle: 'bg-[#2E86C1] text-white', ring: '#2E86C1', tint: '#D6EAF8' },   // ③ 看結果
+  purple1:{ circle: 'bg-[#C77DBA] text-white', ring: '#8A3F76', tint: '#F2DDED' },   // ④-1 釐清出題
+  purple2:{ circle: 'bg-[#A75696] text-white', ring: '#8A3F76', tint: '#E5C2DA' },   // ④-2 釐清派題
+  purple3:{ circle: 'bg-[#8A3F76] text-white', ring: '#502047', tint: '#D2A6C5' },   // ④-3 釐清對話
+};
+
+// 單一流程步驟卡
+function FlowStep({ stepIdx, label, color, to, statusLabel, statusReady, isNext, ai, onNavigate }) {
+  const c = STEP_COLORS[color];
+  return (
+    <button
+      type="button"
+      onClick={() => onNavigate(to)}
+      className="flex-1 flex flex-col items-center text-center p-4 rounded-2xl hover:bg-[#FAFBF9] transition-all group relative"
+      style={isNext ? {
+        backgroundColor: c.tint,
+        boxShadow: `0 0 0 2px ${c.ring}55, 0 2px 12px ${c.ring}22`,
+      } : undefined}
+    >
+      {isNext && (
+        <span
+          className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-2 py-px rounded-full text-[15px] font-bold text-white whitespace-nowrap shadow-sm"
+          style={{ background: c.ring }}
+        >
+          建議下一步
+        </span>
+      )}
+      <div className={`w-10 h-10 rounded-full ${c.circle} text-base font-bold flex items-center justify-center mb-2 transition-transform group-hover:scale-110`}>
+        {stepIdx}
+      </div>
+      <div className="flex items-center gap-1 flex-wrap justify-center mb-1">
+        <p className="text-sm font-bold text-[#2D3436]">{label}</p>
+        {ai && <AIBadge description={ai} size="xs" showPill={false} />}
+      </div>
+      {statusLabel && statusLabel !== '—' && (
+        <p
+          className="text-[15px] font-semibold"
+          style={{ color: statusReady ? c.ring : '#95A5A6' }}
+        >
+          {statusLabel}
+        </p>
+      )}
+    </button>
+  );
+}
+
+function FlowArrow() {
+  return (
+    <svg className="w-6 h-6 text-[#BDC3C7] flex-shrink-0 self-center" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+    </svg>
+  );
+}
+
+const WELCOME_DISMISSED_KEY = 'scilens-teacher-welcome-dismissed';
+
 export default function TeacherDashboard() {
   const navigate = useNavigate();
-  const {
-    setQuizQuestions, setSelectedNodeIds,
-    setEditingQuizId, setEditingQuizStatus, setEditingQuizTitle,
-  } = useApp();
+  const stage = useTeacherStageStatus();
 
-  const handleUsePreset = () => {
-    setQuizQuestions([...defaultQuestions]);
-    setSelectedNodeIds(['INe-II-3-02', 'INe-II-3-03', 'INe-II-3-05', 'INe-Ⅲ-5-4', 'INe-Ⅲ-5-7']);
-    setEditingQuizId(null);
-    setEditingQuizStatus(null);
-    setEditingQuizTitle('');
-    navigate('/teacher/quiz/create?step=2');
+  // 首次使用引導 banner（localStorage 記住 dismiss）
+  const [showWelcome, setShowWelcome] = useState(() => {
+    try { return localStorage.getItem(WELCOME_DISMISSED_KEY) !== '1'; }
+    catch { return true; }
+  });
+  const dismissWelcome = () => {
+    setShowWelcome(false);
+    try { localStorage.setItem(WELCOME_DISMISSED_KEY, '1'); } catch { /* ignore */ }
+  };
+  const reopenWelcome = () => {
+    setShowWelcome(true);
+    try { localStorage.removeItem(WELCOME_DISMISSED_KEY); } catch { /* ignore */ }
   };
 
-  const handleNewQuiz = () => {
-    setQuizQuestions([]);
-    setSelectedNodeIds([]);
-    setEditingQuizId(null);
-    setEditingQuizStatus(null);
-    setEditingQuizTitle('');
-    navigate('/teacher/quiz/create');
-  };
+  // 流程二的子狀態（仍掛 remediation flow，但分配給不同步驟）
+  const remediationStep1Status = stage.remediation.count > 0
+    ? `${stage.remediation.count} 份釐清題組`
+    : (stage.assign.ready ? '尚未建立' : '—');
+  const remediationStep2Status = stage.remediation.assignCount > 0
+    ? `${stage.remediation.assignCount} 班已派`
+    : (stage.remediation.ready ? '尚未派發' : '—');
+  const remediationStep3Status = stage.remediation.assignCount > 0 ? '可查看' : '等待派發';
 
   return (
     <TeacherLayout>
       <div className="p-4 sm:p-6 md:p-8">
         {/* Page Header */}
-        <div className="mb-6 sm:mb-8 flex items-center gap-2">
+        <div className="mb-4 flex items-center gap-2 flex-wrap">
           <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">首頁</h1>
-          <HelpTip text="完成一次迷思診斷與治療的完整流程：出題 → 派題 → 查看結果" />
+          <HelpTip text="完成一次迷思診斷與治療的完整流程：出題 → 派題 → 看結果 → 釐清補救" />
+          {/* 若引導已關閉，提供重新開啟入口（不顯眼但找得到） */}
+          {!showWelcome && (
+            <button
+              type="button"
+              onClick={reopenWelcome}
+              className="ml-auto inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-[#D4A244] text-[#7A4A18] text-sm font-semibold hover:bg-[#FBE9C7] transition-colors"
+              title="重新顯示歡迎引導"
+            >
+              <Icon name="help_outline" className="text-sm" />
+              重新開啟引導
+            </button>
+          )}
         </div>
 
-        {/* 流程一：迷思概念診斷 */}
-        <div className="mb-3 flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFF1D8] border border-[#F0B962] text-xs font-bold text-[#7A4A18]">
-            <Icon name="edit_note" className="text-sm" /> 流程一
-          </span>
-          <h2 className="text-sm font-bold text-[#2D3436]">迷思概念診斷</h2>
-        </div>
-        <div className="bg-white border border-[#BDC3C7] rounded-[24px] sm:rounded-[32px] p-4 sm:p-6 mb-6 sm:mb-8 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-          <div className="flex flex-wrap items-stretch justify-between gap-2">
-            {/* 步驟 1 */}
+        {/* 首次使用引導 banner — 強調「依序操作」，不提供跳過流程的快速鍵 */}
+        {showWelcome && (
+          <div className="mb-6 bg-gradient-to-r from-[#FFF8E7] to-[#FBE9C7] border-2 border-[#F0B962] rounded-2xl p-4 sm:p-5 shadow-[0_2px_12px_rgba(208,139,46,0.18)] relative">
             <button
-              onClick={() => navigate('/teacher/quizzes')}
-              className="flex-1 flex flex-col items-center text-center p-4 rounded-2xl hover:bg-[#EEF5E6] transition-colors group"
+              type="button"
+              onClick={dismissWelcome}
+              className="absolute top-2 right-2 p-1 rounded-lg text-[#7A4A18] hover:bg-[#F4D58C] transition-colors"
+              aria-label="關閉歡迎訊息"
             >
-              <div className="w-10 h-10 rounded-full bg-[#8FC87A] border border-[#BDC3C7] text-white text-base font-bold flex items-center justify-center mb-3 group-hover:bg-[#76B563] transition-colors">
-                1
-              </div>
-              <p className="text-sm font-bold text-[#2D3436]">出題管理</p>
+              <Icon name="close" className="text-lg" />
             </button>
-
-            {/* 箭頭 */}
-            <svg className="w-6 h-6 text-[#BDC3C7] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-
-            {/* 步驟 2 */}
-            <button
-              onClick={() => navigate('/teacher/assignments')}
-              className="flex-1 flex flex-col items-center text-center p-4 rounded-2xl hover:bg-[#EEF5E6] transition-colors group"
-            >
-              <div className="w-10 h-10 rounded-full bg-[#BADDF4] border border-[#BDC3C7] text-[#2E86C1] text-base font-bold flex items-center justify-center mb-3 group-hover:bg-[#A8D2EC] transition-colors">
-                2
-              </div>
-              <p className="text-sm font-bold text-[#2D3436]">派題管理</p>
-            </button>
-
-            {/* 箭頭 */}
-            <svg className="w-6 h-6 text-[#BDC3C7] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-
-            {/* 步驟 3 */}
-            <button
-              onClick={() => navigate('/teacher/dashboard')}
-              className="flex-1 flex flex-col items-center text-center p-4 rounded-2xl hover:bg-[#EEF5E6] transition-colors group"
-            >
-              <div className="w-10 h-10 rounded-full bg-[#FCF0C2] border border-[#BDC3C7] text-[#B7950B] text-base font-bold flex items-center justify-center mb-3 group-hover:bg-[#F8E89A] transition-colors">
-                3
-              </div>
-              <p className="text-sm font-bold text-[#2D3436]">診斷結果</p>
-            </button>
-          </div>
-        </div>
-
-        {/* 流程二：迷思概念治療 */}
-        <div className="mb-3 flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#E0F0E8] border border-[#3F8B5E] text-xs font-bold text-[#2E6B47]">
-            <Icon name="psychiatry" className="text-sm" /> 流程二
-          </span>
-          <h2 className="text-sm font-bold text-[#2D3436]">迷思概念治療</h2>
-        </div>
-        <div className="bg-white border border-[#BDC3C7] rounded-[24px] sm:rounded-[32px] p-4 sm:p-6 mb-6 sm:mb-8 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-          <div className="flex flex-wrap items-stretch justify-between gap-2">
-            {/* 步驟 1：概念釐清出題 */}
-            <button
-              onClick={() => navigate('/teacher/scenarios')}
-              className="flex-1 flex flex-col items-center text-center p-4 rounded-2xl hover:bg-[#EEF5E6] transition-colors group"
-            >
-              <div className="w-10 h-10 rounded-full bg-[#5BA47A] border border-[#3F8B5E] text-white text-base font-bold flex items-center justify-center mb-3 group-hover:bg-[#3F8B5E] transition-colors">
-                1
-              </div>
-              <p className="text-sm font-bold text-[#2D3436]">概念釐清出題</p>
-            </button>
-
-            <svg className="w-6 h-6 text-[#BDC3C7] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-
-            {/* 步驟 2：概念釐清派題 */}
-            <button
-              onClick={() => navigate('/teacher/assignments/scenarios')}
-              className="flex-1 flex flex-col items-center text-center p-4 rounded-2xl hover:bg-[#EEF5E6] transition-colors group"
-            >
-              <div className="w-10 h-10 rounded-full bg-[#BADDF4] border border-[#BDC3C7] text-[#2E86C1] text-base font-bold flex items-center justify-center mb-3 group-hover:bg-[#A8D2EC] transition-colors">
-                2
-              </div>
-              <p className="text-sm font-bold text-[#2D3436]">概念釐清派題</p>
-            </button>
-
-            <svg className="w-6 h-6 text-[#BDC3C7] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-
-            {/* 步驟 3：概念釐清對話紀錄 */}
-            <button
-              onClick={() => navigate('/teacher/treatment-logs')}
-              className="flex-1 flex flex-col items-center text-center p-4 rounded-2xl hover:bg-[#EEF5E6] transition-colors group"
-            >
-              <div className="w-10 h-10 rounded-full bg-[#FCF0C2] border border-[#BDC3C7] text-[#B7950B] text-base font-bold flex items-center justify-center mb-3 group-hover:bg-[#F8E89A] transition-colors">
-                3
-              </div>
-              <p className="text-sm font-bold text-[#2D3436]">對話紀錄</p>
-            </button>
-          </div>
-        </div>
-
-        {/* CTA Cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-10">
-          {/* 一鍵推薦題組 */}
-          <button
-            onClick={handleUsePreset}
-            className="bg-[#8FC87A] border border-[#BDC3C7] rounded-[32px] p-5 text-left hover:bg-[#76B563] transition-all duration-200 group shadow-[0_2px_12px_rgba(0,0,0,0.06)]"
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-white border border-[#BDC3C7] rounded-2xl flex items-center justify-center flex-shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
-                <Icon name="bolt" className="text-2xl text-[#3D5A3E]" />
+            <div className="flex items-start gap-3 pr-6">
+              <div className="relative w-10 h-10 rounded-full bg-[#F0B962] text-white flex items-center justify-center flex-shrink-0 animate-pulse-soft">
+                <span className="absolute inset-0 rounded-full bg-[#F0B962] opacity-50 animate-ping" aria-hidden="true" />
+                <span className="relative animate-wave">
+                  <Icon name="waving_hand" className="text-xl" />
+                </span>
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <h3 className="text-base font-bold text-[#2D3436]">推薦題組</h3>
-                  <span className="text-xs font-semibold text-[#3D5A3E] bg-white/50 px-2 py-0.5 rounded-full">5 題</span>
-                  <HelpTip text="系統已準備好 5 題範例題組，涵蓋 5 個知識節點，可直接使用或修改後派發" />
-                </div>
-                <div className="flex items-center text-sm font-semibold text-[#2D3436]">
-                  立即套用
-                  <Icon name="chevron_right" className="text-lg group-hover:translate-x-1 transition-transform" />
+                <h3 className="text-base font-bold text-[#5C3712] mb-1">歡迎使用 SciLens 教師後台！</h3>
+                <p className="text-sm text-[#7A4A18] leading-relaxed mb-3">
+                  系統已為您準備好<span className="font-bold">示範資料</span>（題組、班級、學生作答）。
+                  請<span className="font-bold">依照流程順序操作</span>，由 ① 開始：
+                </p>
+                <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+                  <ul className="text-sm text-[#7A4A18] space-y-1 flex-1 min-w-0">
+                    <li className="flex items-center gap-2">
+                      <span className="text-[#5C8A2E] font-bold text-xl leading-none">①</span>
+                      <span><span className="font-semibold">出診斷題</span>：建立或檢視診斷題組</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-[#1F7A8C] font-bold text-xl leading-none">②</span>
+                      <span><span className="font-semibold">派題給班級</span>：把題組指派給班級</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-[#2E86C1] font-bold text-xl leading-none">③</span>
+                      <span><span className="font-semibold">看診斷結果</span>：學生作答完後查看儀表板</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-[#8A3F76] font-bold text-xl leading-none">④</span>
+                      <span><span className="font-semibold">概念釐清・補救</span>：檢視釐清題組與學生 AI 對話紀錄</span>
+                    </li>
+                  </ul>
+                  <button
+                    type="button"
+                    onClick={() => { dismissWelcome(); navigate('/teacher/quizzes'); }}
+                    className="inline-flex items-center gap-1 px-4 py-2 rounded-xl bg-[#5C8A2E] text-white text-sm font-semibold hover:bg-[#4A7324] hover:animation-none transition-colors self-start sm:self-end flex-shrink-0 animate-cta-glow-green"
+                  >
+                    從 ① 開始
+                    <span className="animate-arrow-nudge">
+                      <Icon name="arrow_forward" className="text-base" />
+                    </span>
+                  </button>
                 </div>
               </div>
             </div>
-          </button>
+          </div>
+        )}
 
-          {/* 快速出題 */}
-          <button
-            onClick={handleNewQuiz}
-            className="bg-[#BADDF4] border border-[#BDC3C7] rounded-[32px] p-5 text-left hover:bg-[#A8D2EC] transition-all duration-200 group shadow-[0_2px_12px_rgba(0,0,0,0.06)]"
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-white border border-[#BDC3C7] rounded-2xl flex items-center justify-center flex-shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
-                <Icon name="add" className="text-2xl text-[#2E86C1]" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <h3 className="text-base font-bold text-[#2D3436]">快速出題</h3>
-                  <span className="text-xs font-semibold text-[#2E86C1] bg-white/50 px-2 py-0.5 rounded-full">2 步驟</span>
-                  <HelpTip text="引導流程：先選擇出題範圍（知識節點），再製作題組內容" />
-                </div>
-                <div className="flex items-center text-sm font-semibold text-[#2E86C1]">
-                  開始出題
-                  <Icon name="chevron_right" className="text-lg group-hover:translate-x-1 transition-transform" />
-                </div>
-              </div>
-            </div>
-          </button>
+        {/* 流程一：迷思概念診斷（對應 sidebar ①②③）*/}
+        <div className="mb-3 flex items-center gap-2.5 flex-wrap">
+          <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-[#C8DFAA] to-[#A9CCE3] border-2 border-[#5C8A2E] text-sm font-bold text-[#2E4A1A] shadow-[0_2px_6px_rgba(92,138,46,0.18)]">
+            <Icon name="edit_note" className="text-base" />
+            <span>步驟 ①→②→③</span>
+          </span>
+          <h2 className="text-base font-bold text-[#2D3436]">迷思概念診斷</h2>
+          <span className="text-sm text-[#636E72]">出題 → 派題 → 看結果</span>
+        </div>
+        <div className="bg-white border border-[#BDC3C7] rounded-[24px] sm:rounded-[32px] p-4 sm:p-6 mb-6 sm:mb-8 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+          <div className="flex flex-wrap items-stretch justify-between gap-2">
+            <FlowStep
+              stepIdx={1}
+              label="出診斷題"
+              color="green"
+              to="/teacher/quizzes"
+              statusLabel={stage.quiz.statusLabel}
+              statusReady={stage.quiz.ready}
+              isNext={stage.nextStep === 'quiz'}
+              ai="出題輔助：RAGFlow 從教材檢索並建議題目"
+              onNavigate={navigate}
+            />
+            <FlowArrow />
+            <FlowStep
+              stepIdx={2}
+              label="派題給班級"
+              color="teal"
+              to="/teacher/assignments/diagnosis"
+              statusLabel={stage.assign.statusLabel}
+              statusReady={stage.assign.ready}
+              isNext={stage.nextStep === 'assign'}
+              onNavigate={navigate}
+            />
+            <FlowArrow />
+            <FlowStep
+              stepIdx={3}
+              label="看診斷結果"
+              color="blue"
+              to="/teacher/dashboard/overview"
+              statusLabel={stage.dashboard.statusLabel}
+              statusReady={stage.dashboard.ready}
+              isNext={stage.nextStep === 'dashboard'}
+              ai="AI 報告摘要：LLM 彙整班級表現重點"
+              onNavigate={navigate}
+            />
+          </div>
+        </div>
+
+        {/* 流程二：迷思概念治療（對應 sidebar ④）*/}
+        <div className="mb-3 flex items-center gap-2.5 flex-wrap">
+          <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-[#F2DDED] to-[#D2A6C5] border-2 border-[#8A3F76] text-sm font-bold text-[#502047] shadow-[0_2px_6px_rgba(138,63,118,0.18)]">
+            <Icon name="psychiatry" className="text-base" />
+            <span>步驟 ④→⑤→⑥</span>
+          </span>
+          <h2 className="text-base font-bold text-[#2D3436]">迷思概念治療・概念釐清補救</h2>
+          <span className="text-sm text-[#636E72]">釐清出題 → 派題 → 看概念釐清結果</span>
+        </div>
+        <div className="bg-white border border-[#BDC3C7] rounded-[24px] sm:rounded-[32px] p-4 sm:p-6 mb-6 sm:mb-8 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+          <div className="flex flex-wrap items-stretch justify-between gap-2">
+            <FlowStep
+              stepIdx={4}
+              label="釐清題組編輯"
+              color="purple1"
+              to="/teacher/scenarios"
+              statusLabel={remediationStep1Status}
+              statusReady={stage.remediation.count > 0}
+              isNext={stage.nextStep === 'remediation'}
+              onNavigate={navigate}
+            />
+            <FlowArrow />
+            <FlowStep
+              stepIdx={5}
+              label="派發釐清題組"
+              color="purple2"
+              to="/teacher/assignments/scenarios"
+              statusLabel={remediationStep2Status}
+              statusReady={stage.remediation.assignCount > 0}
+              onNavigate={navigate}
+            />
+            <FlowArrow />
+            <FlowStep
+              stepIdx={6}
+              label="概念釐清結果"
+              color="purple3"
+              to="/teacher/treatment-outcomes"
+              statusLabel={remediationStep3Status}
+              statusReady={stage.remediation.assignCount > 0}
+              ai="AI 補救對話：LLM 引導 CER 概念釐清"
+              onNavigate={navigate}
+            />
+          </div>
         </div>
 
         {/* Knowledge Nodes Entry */}
@@ -247,9 +318,9 @@ export default function TeacherDashboard() {
                   <span className="w-2 h-2 rounded-full bg-[#F28B95] inline-block"></span>
                   {knowledgeNodes.reduce((s, n) => s + n.misconceptions.length, 0)} 迷思
                 </span>
-                <span className="flex items-center gap-1.5 text-sm font-semibold text-[#C9A825]">
-                  <span className="w-2 h-2 rounded-full bg-[#F4D03F] inline-block"></span>
-                  4 層級
+                <span className="flex items-center gap-1.5 text-sm font-semibold text-[#7A4A18]">
+                  <span className="w-2 h-2 rounded-full bg-[#F0B962] inline-block"></span>
+                  2 子主題（A 溶解 / B 酸鹼）
                 </span>
               </div>
             </div>

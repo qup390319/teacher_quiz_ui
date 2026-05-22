@@ -3,6 +3,7 @@
 P1: teacher (aaa001) + 3 classes + ~60 students with accounts.
 P3: quizzes / scenarios / assignments (loaded from app/seed/data/*.json).
 P4: student_answers (~280 rows) so the dashboard demo has data without manual quiz-taking.
+P4b: treatment sessions (5 sessions × ~22 messages) so 概念釐清結果 / 釐清對話紀錄 have data.
 
 Run:
     uv run python -m app.seed.seed              # seed (idempotent: skips existing rows)
@@ -12,7 +13,7 @@ Run:
 import argparse
 import asyncio
 import json
-from datetime import date
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from sqlalchemy import select
@@ -31,6 +32,8 @@ from app.db.models import (
     Student,
     StudentAnswer,
     Teacher,
+    TreatmentMessage,
+    TreatmentSession,
     User,
 )
 from app.db.session import AsyncSessionLocal, engine
@@ -113,6 +116,7 @@ async def seed_classes_and_students(db: AsyncSession) -> None:
                 id=cls["id"], name=cls["name"], grade=cls["grade"],
                 subject=cls["subject"], color=cls["color"], text_color=cls["text_color"],
                 teacher_id=TEACHER_ACCOUNT,
+                school_year=2025, semester="second", status="active", archived_at=None,
             ))
         elif existing_class.teacher_id is None:
             # Older DB rows from before per-teacher isolation — claim for demo teacher.
@@ -201,14 +205,29 @@ async def seed_scenarios(db: AsyncSession) -> int:
 
 
 async def seed_assignments(db: AsyncSession) -> int:
-    """Load assignments from JSON."""
+    """Load assignments from JSON.
+
+    Idempotent on the assignment row itself, AND reconciles missing
+    AssignmentStudent rows for student-targeted assignments so that
+    expanding studentIds in assignments.json picks up on re-seed.
+    """
     payload = json.loads((DATA_DIR / "assignments.json").read_text(encoding="utf-8"))
     inserted = 0
     for a in payload:
-        if await db.get(Assignment, a["id"]):
-            continue
         target_type = a.get("targetType", "class")
         student_ids = a.get("studentIds", []) or []
+        if await db.get(Assignment, a["id"]):
+            # Reconcile missing student rows so JSON edits propagate
+            if target_type == "students" and student_ids:
+                existing_res = await db.execute(
+                    select(AssignmentStudent.student_id)
+                    .where(AssignmentStudent.assignment_id == a["id"]),
+                )
+                existing_set = {row[0] for row in existing_res.all()}
+                for sid in student_ids:
+                    if sid not in existing_set:
+                        db.add(AssignmentStudent(assignment_id=a["id"], student_id=sid))
+            continue
         db.add(Assignment(
             id=a["id"],
             type=a.get("type", "diagnosis"),
@@ -343,6 +362,303 @@ async def seed_followups(db: AsyncSession) -> int:
     return inserted
 
 
+# --- Treatment session demo data -------------------------------------------
+# Hand-crafted Cognitive-Apprenticeship dialogues for the demo teacher. Each
+# (scenarioQuizId, studentId) gets one TreatmentSession; the outcome label
+# below maps to the (stage, hintLevel) shape that deriveSessionOutcome expects
+# (see src/lib/treatmentOutcomes.js).
+#
+# Outcomes per question:
+#   "mastered"   — student walks through claim → evidence → reasoning → complete with hintLevel=0
+#   "light"      — like mastered but the reasoning step bumps hintLevel to 1
+#   "moderate"   — full mock flow including modeling (hintLevel peaks at 2) then complete
+#   "heavy"      — modeling + strong coaching (hintLevel peaks at 3)
+#   "unresolved" — never reaches stage='complete' (session ends mid-flow)
+
+Q1_CONTEXT = {  # scenario-002 / Q1 — A vs B 杯甜度
+    "step1_text": (
+        "主張，就是你對這個問題的看法和想法。\n\n"
+        "請先說說你的主張：你覺得 A 杯（上層）和 B 杯（下層）哪一杯比較甜？"
+    ),
+    "step2_text": (
+        "證據，就是支持你主張的線索，讓你的想法更有說服力。\n\n"
+        "你的證據是什麼呢？你可以從題目資訊或生活經驗中找線索喔。"
+    ),
+    "modeling_text": (
+        "如果是我，我會先比較兩杯糖水的顏色。"
+        "題目說 A 杯和 B 杯看起來顏色一樣，這個線索代表什麼呢？\n\n"
+        "你覺得，如果兩杯糖的濃度不同，顏色會一樣嗎？"
+    ),
+    "coaching_text": "把你剛剛說的「下面有糖」跟「兩杯顏色一樣」這兩件事一起想，你覺得會發現什麼呢？",
+    "coaching_strong_text": "你可以這樣想：杯底的固體砂糖沒有溶進水裡，這些糖會讓上面的糖水變甜嗎？",
+    "scaffolding_text": (
+        "我先幫你整理一下：你已經注意到「兩杯顏色一樣」這個線索。"
+        "糖溶在水裡會均勻分散，所以沉澱在底部的固體糖，不會讓上面的水變甜。"
+        "你覺得這樣是不是比較清楚呢？"
+    ),
+    "cer_template_text": (
+        "你剛剛已經提到兩杯顏色一樣這個重點。你可以用這個方式整理成一段話：\n\n"
+        "我覺得 A 杯和 B 杯＿＿＿＿。因為我看到＿＿＿＿。這表示＿＿＿＿。所以我覺得＿＿＿＿。"
+    ),
+    "claim_student": "B 比較甜吧",
+    "evidence_student": "下面有糖啊",
+    "reasoning_student": "嗯…顏色一樣耶",
+    "coaching_student": "喔…那是不是糖都散開了？",
+    "coaching_student_struggle": "嗯…我不太會講",
+    "scaffolding_student": "嗯，比較清楚了",
+    "cer_student": "兩杯一樣甜 顏色一樣 糖會散開",
+}
+Q2_CONTEXT = {  # scenario-002 / Q2 — 飽和後再加糖
+    "step1_text": (
+        "主張，就是你對這個問題的看法和想法。\n\n"
+        "請先說說你的主張：你同不同意小明說『再加 3 匙糖後，這杯糖水一定會更甜』？"
+    ),
+    "step2_text": (
+        "證據，就是支持你主張的線索，讓你的想法更有說服力。\n\n"
+        "你的證據是什麼呢？你可以從題目資訊、圖表、紀錄表，或生活經驗中找線索喔。"
+    ),
+    "modeling_text": (
+        "如果是我，我會先看甜度變化圖。"
+        "前面加糖時甜度一直上升，那到了第 7 匙之後，甜度有沒有繼續上升呢？\n\n"
+        "你看圖表，到第 7 匙後，甜度有繼續增加嗎？"
+    ),
+    "coaching_text": "你看到圖上第 7 匙後，甜度線還有繼續往上嗎？",
+    "coaching_strong_text": "你可以這樣想：多加進去的糖如果沒有再溶解，會算進糖水的甜度嗎？",
+    "scaffolding_text": (
+        "我先幫你整理一下：你已經注意到「第 7 匙後甜度不再上升」和「開始出現沉澱」這兩個線索。"
+        "甜度看的是已經溶解的糖，沒溶解的就只會沉在底下。"
+        "你覺得這樣是不是比較清楚呢？"
+    ),
+    "cer_template_text": (
+        "你剛剛已經提到第 7 匙後甜度不再增加、也開始出現沉澱。你可以用這個方式整理成一段話：\n\n"
+        "我＿＿＿＿小明的想法。因為我看到＿＿＿＿。這表示＿＿＿＿。所以我覺得＿＿＿＿。"
+    ),
+    "claim_student": "會更甜啊",
+    "evidence_student": "因為多加 3 匙糖",
+    "reasoning_student": "嗯…好像沒有耶",
+    "coaching_student": "對啊，圖上後面是平的",
+    "coaching_student_struggle": "嗯…我不太會講",
+    "scaffolding_student": "嗯，比較清楚了",
+    "cer_student": "不會更甜 因為糖溶不下去了 都沉在底下",
+}
+
+
+SCENARIO_002_TOTAL_QUESTIONS = 2  # keep aligned with scenarios.json
+
+
+def _complete_text(is_last_question: bool) -> str:
+    """Mirrors PROMPTS_BY_STAGE.complete in src/data/treatmentBot.js."""
+    if is_last_question:
+        return "太棒了！你已經能用主張、證據、推理把整個想法說清楚了。整份概念釐清題組到這裡就完成了，辛苦你了！"
+    return "太棒了！你已經能用主張、證據、推理把整個想法說清楚了。這題我們先到這裡，準備進入下一題！"
+
+
+def _question_messages(
+    question_index: int,
+    outcome: str,
+    ctx: dict,
+) -> list[dict]:
+    """Build the AI/student message sequence for one question of one session.
+
+    對齊原系統 prompt【新版狀態機】：
+      step1 claim → step2 evidence → step3 modeling → step4 coaching
+      → step5 scaffolding → step6 CER restatement → step7 complete
+
+    Outcome → hintLevel 對照（影響教師端「概念釐清結果」的三色階）：
+      mastered   全程 hint=0 — 學生表現好，AI 從未加碼提示
+      light      step6 CER template hint=1 — 模板給得很輕
+      moderate   step4/5 hint=1、step6 hint=2 — 預設完整鷹架
+      heavy      step4 多停一輪 hint=2、step6 hint=3 — 強鷹架
+      unresolved 走到 step3 modeling 後就卡住（沒有 step6 complete）
+    """
+    msgs: list[dict] = []
+    is_last = question_index >= SCENARIO_002_TOTAL_QUESTIONS
+
+    # step 1 — claim（介紹「主張」+ 提問）
+    msgs.append({
+        "role": "ai", "step": 1, "stage": "claim", "phase": "diagnosis",
+        "hint_level": 0,
+        "text": ctx["step1_text"],
+        "feedback": "試著說說你的看法吧！",
+    })
+    msgs.append({"role": "student", "text": ctx["claim_student"]})
+
+    # step 2 — evidence（介紹「證據」+ 提問）
+    msgs.append({
+        "role": "ai", "step": 2, "stage": "evidence", "phase": "diagnosis",
+        "hint_level": 0,
+        "text": ctx["step2_text"],
+        "feedback": "你做得很棒，繼續！",
+    })
+    msgs.append({"role": "student", "text": ctx["evidence_student"]})
+
+    if outcome == "unresolved":
+        # 走到 step3 modeling 後學生卡住、session 仍 active、未到達 complete
+        msgs.append({
+            "role": "ai", "step": 3, "stage": "reasoning", "phase": "apprenticeship",
+            "hint_level": 0,
+            "text": ctx["modeling_text"],
+            "feedback": "認真想想看！",
+        })
+        msgs.append({"role": "student", "text": "嗯…我不太懂"})
+        return msgs
+
+    # step 3 — Modeling（專家示範切入點，不公開答案）
+    msgs.append({
+        "role": "ai", "step": 3, "stage": "reasoning", "phase": "apprenticeship",
+        "hint_level": 0,
+        "text": ctx["modeling_text"],
+        "feedback": "認真想想看！",
+    })
+    msgs.append({"role": "student", "text": ctx["reasoning_student"]})
+
+    # step 4 — Coaching（依學生狀況做認知衝突 / 概念驗證）
+    coaching_hint = 1 if outcome in {"moderate", "heavy"} else 0
+    msgs.append({
+        "role": "ai", "step": 4, "stage": "reasoning", "phase": "apprenticeship",
+        "hint_level": coaching_hint,
+        "text": ctx["coaching_text"],
+        "feedback": "好線索！",
+    })
+    msgs.append({"role": "student", "text": ctx["coaching_student"]})
+
+    if outcome == "heavy":
+        # heavy：coaching 再停一輪、升到 mechanism hint
+        msgs.append({
+            "role": "ai", "step": 4, "stage": "reasoning", "phase": "apprenticeship",
+            "hint_level": 2,
+            "text": ctx["coaching_strong_text"],
+            "feedback": "再試一次就更穩了！",
+        })
+        msgs.append({"role": "student", "text": ctx["coaching_student_struggle"]})
+
+    # step 5 — Scaffolding（AI 統整 + 確認）
+    scaffolding_hint = 1 if outcome in {"moderate", "heavy"} else 0
+    msgs.append({
+        "role": "ai", "step": 5, "stage": "reasoning", "phase": "apprenticeship",
+        "hint_level": scaffolding_hint,
+        "text": ctx["scaffolding_text"],
+        "feedback": "論證越來越完整了！",
+    })
+    msgs.append({"role": "student", "text": ctx["scaffolding_student"]})
+
+    # step 6 — CER restatement（提供模板、requiresRestatement=true）
+    cer_hint = {
+        "mastered": 0,
+        "light": 1,
+        "moderate": 2,
+        "heavy": 3,
+    }[outcome]
+    msgs.append({
+        "role": "ai", "step": 6, "stage": "revise", "phase": "cer",
+        "hint_level": cer_hint,
+        "text": ctx["cer_template_text"],
+        "feedback": "你做得很棒，繼續！",
+        "requires_restatement": True,
+    })
+    msgs.append({"role": "student", "text": ctx["cer_student"]})
+
+    # step 7 — 收束（先鼓勵、不問新問題）
+    msgs.append({
+        "role": "ai", "step": 7, "stage": "complete", "phase": "completed",
+        "hint_level": 0,
+        "text": _complete_text(is_last),
+        "feedback": "完成這一題！",
+    })
+    return msgs
+
+
+# scenarioQuizId + (per-question outcome) plan. Order of students matters
+# only because started_at is staggered for prettier sort order.
+TREATMENT_PLAN = [
+    # (student_id, [outcome_q1, outcome_q2], final_status)
+    ("115001", ["mastered", "mastered"], "completed"),
+    ("115002", ["moderate", "moderate"], "completed"),
+    ("115003", ["light", "unresolved"], "active"),   # Q2 沒完成 → session 仍為 active
+    ("115004", ["heavy", "heavy"], "completed"),
+    ("115007", ["unresolved", "unresolved"], "active"),  # 學生只走到 Q1 一半
+]
+
+
+async def seed_treatment_sessions(db: AsyncSession) -> int:
+    """Seed scenario-002 treatment sessions for class-A demo students.
+
+    Idempotent: skip if a (scenario_quiz_id, student_id) pair already exists.
+    Each session gets ~6-12 messages spread across the 2 questions so the
+    teacher dashboard for 概念釐清結果 / 概念釐清對話紀錄 has data.
+    """
+    scenario_id = "scenario-002"
+    sq = await db.get(ScenarioQuiz, scenario_id)
+    if sq is None:
+        return 0  # nothing to seed against
+
+    inserted = 0
+    base_started = datetime.utcnow() - timedelta(days=3)
+    for idx, (sid, outcomes, final_status) in enumerate(TREATMENT_PLAN):
+        # Skip if session already exists (idempotent)
+        existing = await db.execute(
+            select(TreatmentSession).where(
+                TreatmentSession.scenario_quiz_id == scenario_id,
+                TreatmentSession.student_id == sid,
+            ),
+        )
+        if existing.scalar_one_or_none() is not None:
+            continue
+        if await db.get(User, sid) is None:
+            continue  # student missing — can't FK
+
+        started_at = base_started + timedelta(hours=idx * 2)
+        last_outcome_q1_complete = outcomes[0] != "unresolved"
+        last_outcome_q2_complete = outcomes[1] != "unresolved"
+        current_q = 2 if last_outcome_q1_complete else 1
+        completed_at = (
+            started_at + timedelta(minutes=18 + idx * 3)
+            if final_status == "completed"
+            else None
+        )
+
+        session_id = f"seed-treatment-{scenario_id}-{sid}"
+        db.add(TreatmentSession(
+            id=session_id,
+            scenario_quiz_id=scenario_id,
+            student_id=sid,
+            status=final_status,
+            current_question_index=current_q if final_status == "active" else 2,
+            started_at=started_at,
+            completed_at=completed_at,
+        ))
+
+        # Build messages for both questions, staggering created_at by ~30s
+        msg_offset = timedelta(seconds=0)
+        for q_idx, q_outcome in enumerate(outcomes, start=1):
+            ctx = Q1_CONTEXT if q_idx == 1 else Q2_CONTEXT
+            # Only emit Q2 messages if Q1 completed (mirrors UI flow)
+            if q_idx == 2 and not last_outcome_q1_complete:
+                continue
+            if q_idx == 2 and not last_outcome_q2_complete and q_outcome == "unresolved":
+                # We DO want some Q2 messages to appear (so the row shows
+                # progress) — just don't include the complete bubble.
+                pass
+            msgs = _question_messages(q_idx, q_outcome, ctx)
+            for m in msgs:
+                msg_offset += timedelta(seconds=45)
+                db.add(TreatmentMessage(
+                    session_id=session_id,
+                    question_index=q_idx,
+                    role=m["role"],
+                    text=m["text"],
+                    phase=m.get("phase"),
+                    stage=m.get("stage"),
+                    step=m.get("step"),
+                    hint_level=m.get("hint_level"),
+                    feedback=m.get("feedback"),
+                    requires_restatement=m.get("requires_restatement", False),
+                    created_at=started_at + msg_offset,
+                ))
+        inserted += 1
+    return inserted
+
+
 async def run_seed(*, if_empty: bool, reset: bool) -> None:
     async with AsyncSessionLocal() as db:
         if reset:
@@ -361,11 +677,14 @@ async def run_seed(*, if_empty: bool, reset: bool) -> None:
         await db.commit()
         n_fup = await seed_followups(db)
         await db.commit()
+        n_tx = await seed_treatment_sessions(db)
+        await db.commit()
         print(
             f"[seed] done — teachers {TEACHER_ACCOUNT} (demo) + {PROD_TEACHER_ACCOUNT} ({PROD_TEACHER_NAME}, empty), "
             f"{sum(len(c['students']) for c in CLASSES)} students across {len(CLASSES)} classes, "
             f"{n_quiz} quizzes, {n_scen} scenarios, {n_asg} assignments, "
-            f"{n_ans} student answers, {n_fup} follow-up conversations.",
+            f"{n_ans} student answers, {n_fup} follow-up conversations, "
+            f"{n_tx} treatment sessions.",
         )
 
 

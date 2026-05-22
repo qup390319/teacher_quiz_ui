@@ -76,7 +76,7 @@ export default function FollowupStatusFunnel({ overviewData, classes, quizId }) 
     <div>
       <div className="flex items-baseline justify-between mb-3">
         <h3 className="text-lg font-bold text-[#2D3436]">追問後狀態變化</h3>
-        <span className="text-xs text-[#95A5A6]">
+        <span className="text-sm text-[#95A5A6]">
           共 {agg.total} 筆 · 澄清率 <span className="font-bold text-[#3D5A3E]">{correctedPct}%</span>
         </span>
       </div>
@@ -87,13 +87,13 @@ export default function FollowupStatusFunnel({ overviewData, classes, quizId }) 
           const pct = Math.round((val / maxVal) * 100);
           return (
             <div key={s.key} className="flex items-center gap-3">
-              <span className="w-28 sm:w-32 text-xs font-medium text-[#2D3436] flex-shrink-0">{s.label}</span>
+              <span className="w-28 sm:w-32 text-sm font-medium text-[#2D3436] flex-shrink-0">{s.label}</span>
               <div className="flex-1 h-7 bg-[#F4F6F8] rounded-md overflow-hidden relative">
                 <div
                   className="h-full rounded-md transition-all"
                   style={{ width: `${pct}%`, backgroundColor: s.color }}
                 />
-                <span className="absolute inset-0 flex items-center px-2 text-xs font-bold text-white drop-shadow-sm">
+                <span className="absolute inset-0 flex items-center px-2 text-sm font-bold text-white drop-shadow-sm">
                   {val} 筆（{pct}%）
                 </span>
               </div>
@@ -103,15 +103,15 @@ export default function FollowupStatusFunnel({ overviewData, classes, quizId }) 
       </div>
 
       <div className="mt-4 pt-3 border-t border-[#EEE]">
-        <p className="text-xs font-semibold text-[#636E72] mb-2">各班澄清率</p>
+        <p className="text-sm font-semibold text-[#636E72] mb-2">各班澄清率</p>
         <div className="grid grid-cols-3 gap-2">
           {byClass.map((c) => {
             const pct = c.total ? Math.round((c.corrected / c.total) * 100) : 0;
             return (
               <div key={c.classId} className="text-center bg-[#FAFBFC] rounded-lg p-2">
-                <p className="text-xs text-[#636E72]">{c.className}</p>
+                <p className="text-sm text-[#636E72]">{c.className}</p>
                 <p className="text-lg font-bold text-[#3D5A3E]">{pct}%</p>
-                <p className="text-[10px] text-[#95A5A6]">{c.corrected} / {c.total}</p>
+                <p className="text-[15px] text-[#95A5A6]">{c.corrected} / {c.total}</p>
               </div>
             );
           })}

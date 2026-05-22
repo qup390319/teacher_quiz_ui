@@ -140,12 +140,37 @@ td, th {
 }
 .animate-wiggle { animation: wiggle 3s ease-in-out infinite; transform-origin: bottom center; }
 
+/* 揮手動畫（welcome banner 用） */
+@keyframes wave {
+  0%, 60%, 100% { transform: rotate(0deg); }
+  10%           { transform: rotate(14deg); }
+  20%           { transform: rotate(-8deg); }
+  30%           { transform: rotate(14deg); }
+  40%           { transform: rotate(-4deg); }
+  50%           { transform: rotate(10deg); }
+}
+.animate-wave { animation: wave 2.4s ease-in-out infinite; transform-origin: 70% 70%; display: inline-block; }
+
 /* 心跳脈衝（emphasis 元素，例如 CTA 提示） */
 @keyframes pulseSoft {
   0%, 100% { transform: scale(1); }
   50%      { transform: scale(1.04); }
 }
 .animate-pulse-soft { animation: pulseSoft 2.4s ease-in-out infinite; }
+
+/* CTA 注意力動畫：光暈呼吸（綠系） */
+@keyframes ctaGlowGreen {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(92,138,46,0.5), 0 2px 4px rgba(0,0,0,0.1); }
+  50%      { box-shadow: 0 0 0 8px rgba(92,138,46,0), 0 4px 12px rgba(92,138,46,0.4); }
+}
+.animate-cta-glow-green { animation: ctaGlowGreen 1.8s ease-in-out infinite; }
+
+/* 箭頭右側輕推 */
+@keyframes arrowNudge {
+  0%, 80%, 100% { transform: translateX(0); }
+  20%, 40%      { transform: translateX(4px); }
+}
+.animate-arrow-nudge { animation: arrowNudge 2s ease-in-out infinite; display: inline-block; }
 
 /* 旋轉（背景裝飾用） */
 @keyframes spinSlow {

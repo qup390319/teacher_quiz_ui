@@ -8,79 +8,7 @@ import {
   useDeleteCustomMisconception,
 } from '../../hooks/useCustomMisconceptions';
 import AddCustomMisconceptionModal from '../../components/teacher/AddCustomMisconceptionModal';
-
-const STAGE_COLORS = {
-  blue:   { bg: 'bg-[#BADDF4]', text: 'text-[#2E86C1]', border: 'border-[#BDC3C7]' },
-  pink:   { bg: 'bg-[#FAC8CC]', text: 'text-[#E74C5E]', border: 'border-[#BDC3C7]' },
-  green:  { bg: 'bg-[#C8EAAE]', text: 'text-[#3D5A3E]', border: 'border-[#BDC3C7]' },
-  yellow: { bg: 'bg-[#FCF0C2]', text: 'text-[#B7950B]', border: 'border-[#BDC3C7]' },
-  mint:   { bg: 'bg-[#A8E6CF]', text: 'text-[#1E8449]', border: 'border-[#BDC3C7]' },
-  purple: { bg: 'bg-[#F3E5F5]', text: 'text-[#7D3C98]', border: 'border-[#BDC3C7]' },
-};
-
-const SUBTOPIC_A_STAGES = [
-  { ids: ['INe-II-3-01'], color: 'blue',   nextArrow: 'single' },
-  { ids: ['INe-II-3-02'], color: 'pink',   nextArrow: 'single' },
-  { ids: ['INe-II-3-03'], color: 'green',  nextArrow: 'single' },
-  { ids: ['INe-II-3-05'], color: 'yellow', nextArrow: 'single' },
-  { ids: ['INe-II-3-04'], color: 'purple', nextArrow: null },
-];
-
-const SUBTOPIC_B_STAGES = [
-  { ids: ['INe-Ⅲ-5-1'], color: 'blue',   nextArrow: 'single' },
-  { ids: ['INe-Ⅲ-5-2'], color: 'pink',   nextArrow: 'single' },
-  { ids: ['INe-Ⅲ-5-3'], color: 'green',  nextArrow: 'single' },
-  { ids: ['INe-Ⅲ-5-4'], color: 'yellow', nextArrow: 'multi' },
-  { ids: ['INe-Ⅲ-5-5', 'INe-Ⅲ-5-6'], color: 'mint', nextArrow: 'multi' },
-  { ids: ['INe-Ⅲ-5-7'], color: 'purple', nextArrow: null },
-];
-
-function Arrow({ multi = false }) {
-  if (multi) {
-    return (
-      <div className="flex-shrink-0 flex flex-col items-center justify-center self-stretch px-1">
-        <div className="flex flex-col items-center justify-center h-full">
-          <div className="w-px flex-1 bg-[#BDC3C7]"></div>
-          <svg className="w-4 h-4 text-[#95A5A6] flex-shrink-0 my-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-          <div className="w-px flex-1 bg-[#BDC3C7]"></div>
-        </div>
-      </div>
-    );
-  }
-  return (
-    <div className="flex-shrink-0 flex items-center px-1">
-      <svg className="w-4 h-4 text-[#95A5A6]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-      </svg>
-    </div>
-  );
-}
-
-function NodePill({ node, colorClass }) {
-  return (
-    <div className={`rounded-xl border px-3 py-1.5 min-w-[128px] ${colorClass.bg} ${colorClass.border}`}>
-      <p className="text-xs font-mono text-[#95A5A6] leading-tight">{node.id}</p>
-      <p className={`text-sm font-semibold leading-snug ${colorClass.text}`}>{node.name}</p>
-    </div>
-  );
-}
-
-function PathStage({ stage, nodes }) {
-  const colorClass = STAGE_COLORS[stage.color];
-  return (
-    <>
-      <div className="flex-shrink-0 flex flex-col gap-1.5">
-        {nodes(stage.ids).map((node) => (
-          <NodePill key={node.id} node={node} colorClass={colorClass} />
-        ))}
-      </div>
-      {stage.nextArrow === 'multi' && <Arrow multi />}
-      {stage.nextArrow === 'single' && <Arrow />}
-    </>
-  );
-}
+import KnowledgeSkillTree from '../../components/teacher/KnowledgeSkillTree';
 
 export default function CustomKnowledgeMap() {
   const navigate = useNavigate();
@@ -108,7 +36,6 @@ export default function CustomKnowledgeMap() {
     nodeGroupIndex++;
   });
 
-  const nodes = (ids) => knowledgeNodes.filter((n) => ids.includes(n.id));
 
   const handleSubmitCustom = async (payload) => {
     try {
@@ -163,42 +90,28 @@ export default function CustomKnowledgeMap() {
               </svg>
               新增自訂迷思
             </button>
-            <span className="ml-2 text-xs text-[#95A5A6]">
+            <span className="ml-2 text-sm text-[#95A5A6]">
               （只儲存在您的帳戶，其他老師看不到）
             </span>
           </div>
         </div>
 
-        {/* A 區：知識路徑圖 */}
-        <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-5 mb-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-          <p className="text-xs font-semibold text-[#95A5A6] uppercase tracking-wide mb-4">知識學習路徑</p>
-
-          <p className="text-sm font-semibold text-[#2D3436] mb-2">子主題 A：水溶液中的變化（溶解）</p>
-          <div className="flex items-center gap-0 overflow-x-auto pb-3 mb-4">
-            {SUBTOPIC_A_STAGES.map((stage, idx) => (
-              <PathStage key={`A-${idx}`} stage={stage} nodes={nodes} />
-            ))}
-          </div>
-
-          <p className="text-sm font-semibold text-[#2D3436] mb-2 pt-3 border-t border-[#D5D8DC]">子主題 B：酸鹼反應</p>
-          <div className="flex items-center gap-0 overflow-x-auto pb-1">
-            {SUBTOPIC_B_STAGES.map((stage, idx) => (
-              <PathStage key={`B-${idx}`} stage={stage} nodes={nodes} />
-            ))}
-          </div>
+        {/* A 區：知識路徑技能樹（與預設總覽共用同一元件） */}
+        <div className="mb-6">
+          <KnowledgeSkillTree />
         </div>
 
         {/* B 區：表格（預設 + 自訂混合顯示） */}
         <div className="bg-white rounded-[32px] border border-[#BDC3C7] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
           {/* 圖例 */}
-          <div className="px-4 py-3 border-b border-[#D5D8DC] bg-[#FAFAFA] flex items-center gap-4 text-xs">
+          <div className="px-4 py-3 border-b border-[#D5D8DC] bg-[#FAFAFA] flex items-center gap-4 text-sm">
             <span className="text-[#636E72] font-medium">圖例：</span>
             <span className="inline-flex items-center gap-1.5">
-              <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-[#F0F0F0] border border-[#D5D8DC] text-[#95A5A6] text-[10px] font-bold">預設</span>
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-[#F0F0F0] border border-[#D5D8DC] text-[#95A5A6] text-[15px] font-bold">預設</span>
               <span className="text-[#95A5A6]">系統預設迷思（不可修改）</span>
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-[#FFF1D8] border border-[#F0B962] text-[#7A4A18] text-[10px] font-bold">自訂</span>
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-[#FFF1D8] border border-[#F0B962] text-[#7A4A18] text-[15px] font-bold">自訂</span>
               <span className="text-[#636E72]">您新增的迷思概念</span>
             </span>
           </div>
@@ -230,13 +143,13 @@ export default function CustomKnowledgeMap() {
                         rowSpan={row.nodeRowSpan}
                         className={`border-r border-[#BDC3C7] px-4 py-3 align-top ${row.nodeGroupIndex % 2 === 0 ? 'bg-white' : 'bg-[#EEF5E6]'}`}
                       >
-                        <p className="text-xs font-mono text-[#95A5A6] mb-0.5">{row.node.id}</p>
+                        <p className="text-sm font-mono text-[#95A5A6] mb-0.5">{row.node.id}</p>
                         <p className="font-semibold text-[#2D3436] mb-1">{row.node.name}</p>
-                        <p className="text-xs text-[#636E72] leading-relaxed mb-2">{row.node.description}</p>
+                        <p className="text-sm text-[#636E72] leading-relaxed mb-2">{row.node.description}</p>
                         <button
                           type="button"
                           onClick={() => setAddModalNodeId(row.node.id)}
-                          className="inline-flex items-center gap-1 text-xs font-semibold text-[#7A4A18]
+                          className="inline-flex items-center gap-1 text-sm font-semibold text-[#7A4A18]
                                      bg-[#FFF1D8] border border-[#F0B962] rounded-lg px-2 py-0.5
                                      hover:bg-[#FBE9C7]"
                         >
@@ -252,12 +165,12 @@ export default function CustomKnowledgeMap() {
                         <span>{row.misconception.label}</span>
                         {isCustom ? (
                           <span className="inline-flex items-center px-1.5 py-0.5 rounded-md
-                                           bg-[#FFF1D8] border border-[#F0B962] text-[#7A4A18] text-[10px] font-bold">
+                                           bg-[#FFF1D8] border border-[#F0B962] text-[#7A4A18] text-[15px] font-bold">
                             自訂
                           </span>
                         ) : (
                           <span className="inline-flex items-center px-1.5 py-0.5 rounded-md
-                                           bg-[#F0F0F0] border border-[#D5D8DC] text-[#95A5A6] text-[10px] font-bold">
+                                           bg-[#F0F0F0] border border-[#D5D8DC] text-[#95A5A6] text-[15px] font-bold">
                             預設
                           </span>
                         )}
@@ -271,7 +184,7 @@ export default function CustomKnowledgeMap() {
                         <button
                           type="button"
                           onClick={() => handleDelete(row.misconception.id, row.misconception.label)}
-                          className="inline-flex items-center gap-1 text-xs font-semibold text-[#E74C5E]
+                          className="inline-flex items-center gap-1 text-sm font-semibold text-[#E74C5E]
                                      bg-[#FAC8CC] border border-[#F5B8BA] rounded-lg px-2 py-1
                                      hover:bg-[#F5B8BA]"
                         >

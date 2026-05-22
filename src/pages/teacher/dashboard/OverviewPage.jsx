@@ -55,8 +55,10 @@ export default function OverviewPage() {
   return (
     <div className="space-y-6">
       {/* ─── 4 KPI 卡 ─── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <DistributionCard dist={dist} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+        <div className="lg:col-span-2">
+          <DistributionCard dist={dist} classCount={classStats.length} />
+        </div>
         <KpiCard label="平均答對率" value={`${avgPassRate}%`}
           sub="答對題數 ÷ 總題數（各班平均）"
           color={avgPassRate >= 70 ? 'good' : avgPassRate >= 50 ? 'warn' : 'bad'} />
@@ -102,8 +104,8 @@ export default function OverviewPage() {
             const node = knowledgeNodes.find((n) => n.misconceptions?.find((mm) => mm.id === m.id));
             return {
               badge: node ? <NodeBadge nodeId={node.id} name={node.name} size="sm" /> : null,
-              primary: m.label,
-              secondary: `持有率 ${m.avg}%`,
+              primary: m.label || '—',
+              secondary: `${m.node ? `${m.node} · ` : ''}持有率 ${m.avg}%`,
               valueClass: m.avg >= 45 ? 'text-[#E74C5E]' : m.avg >= 30 ? 'text-[#B7950B]' : 'text-[#3D5A3E]',
             };
           })} />
@@ -119,7 +121,7 @@ export default function OverviewPage() {
           <div className="flex items-center gap-3">
             <span className="material-symbols-rounded text-[#3D5A3E]" style={{ fontSize: 24 }}>auto_awesome</span>
             <span className="font-bold text-[#2D3436]">AI 文字診斷摘要</span>
-            <span className="text-xs text-[#95A5A6]">（文獻引用版 · N1）</span>
+            <span className="text-sm text-[#95A5A6]">（文獻引用版 · N1）</span>
           </div>
           <svg className={`w-5 h-5 text-[#636E72] transition-transform ${showAISummary ? 'rotate-180' : ''}`}
             fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -150,20 +152,40 @@ function KpiCard({ label, value, sub, color = 'good' }) {
   }[color];
 
   return (
-    <div className={`rounded-2xl border-2 border-[#BDC3C7] p-3 sm:p-4 ${palette.bg} shadow-[0_2px_12px_rgba(0,0,0,0.06)]`}>
-      <p className={`text-xl sm:text-2xl font-bold ${palette.text} mb-0.5`}>{value}</p>
-      <p className="text-sm font-semibold text-[#2D3436]">{label}</p>
-      <p className="text-xs text-[#636E72] mt-0.5 leading-snug">{sub}</p>
+    <div
+      className={`group relative rounded-2xl border-2 border-[#BDC3C7] p-3 sm:p-4 ${palette.bg} shadow-[0_2px_12px_rgba(0,0,0,0.06)] ${sub ? 'cursor-help' : ''}`}
+    >
+      <p className={`text-2xl sm:text-3xl font-bold ${palette.text} mb-1 leading-tight`}>{value}</p>
+      <p className="text-[15px] font-semibold text-[#2D3436]">{label}</p>
+      {/* Hover 提示泡泡：取代原本擠在卡內的副說明 */}
+      {sub && (
+        <div
+          className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-60 max-w-[85vw] opacity-0 group-hover:opacity-100 transition-opacity z-30"
+          role="tooltip"
+        >
+          <div className="bg-[#2D3436] text-white text-[15px] font-medium leading-relaxed px-3 py-2 rounded-lg shadow-lg">
+            {sub}
+          </div>
+          <div
+            className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0"
+            style={{
+              borderLeft: '6px solid transparent',
+              borderRight: '6px solid transparent',
+              borderTop: '6px solid #2D3436',
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
 
-function DistributionCard({ dist }) {
+function DistributionCard({ dist, classCount = 0 }) {
   if (dist.loading) {
     return (
       <div className="rounded-2xl border-2 border-[#BDC3C7] p-3 sm:p-4 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-        <p className="text-sm font-semibold text-[#2D3436] mb-1">答題分布</p>
-        <p className="text-xs text-[#95A5A6]">載入中…</p>
+        <p className="text-[15px] font-semibold text-[#2D3436] mb-1">答題分布</p>
+        <p className="text-[15px] text-[#95A5A6]">載入中…</p>
       </div>
     );
   }
@@ -173,8 +195,13 @@ function DistributionCard({ dist }) {
 
   return (
     <div className="rounded-2xl border-2 border-[#BDC3C7] p-3 sm:p-4 bg-[#EEF5E6] shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-      <p className="text-sm font-semibold text-[#2D3436] mb-2">答題分布（{total} 位學生）</p>
-      <div className="space-y-1">
+      <p className="text-[15px] font-semibold text-[#2D3436] mb-2">
+        答題分布
+        <span className="ml-1 text-[#5A6663] font-normal">
+          （{total} 位學生{classCount > 0 ? ` · 共 ${classCount} 個班級` : ''}）
+        </span>
+      </p>
+      <div className="space-y-1.5">
         <DistributionRow label="全對" count={fullCorrect} pct={pct(fullCorrect)} color="#5BA47A" />
         <DistributionRow label="對一半" count={partial} pct={pct(partial)} color="#D4A244" />
         <DistributionRow label="全錯" count={allWrong} pct={pct(allWrong)} color="#E74C5E" />
@@ -185,12 +212,12 @@ function DistributionCard({ dist }) {
 
 function DistributionRow({ label, count, pct, color }) {
   return (
-    <div className="flex items-center gap-2 text-xs">
-      <span className="w-12 flex-shrink-0 text-[#636E72]">{label}</span>
-      <div className="flex-1 h-3 bg-white rounded-full border border-[#D5D8DC] overflow-hidden">
+    <div className="flex items-center gap-2.5 text-[15px]">
+      <span className="w-14 flex-shrink-0 text-[#636E72]">{label}</span>
+      <div className="flex-1 h-3.5 bg-white rounded-full border border-[#D5D8DC] overflow-hidden">
         <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
       </div>
-      <span className="w-14 text-right font-bold text-[#2D3436] font-mono">{count} 人</span>
+      <span className="w-16 text-right font-bold text-[#2D3436] font-mono tabular-nums">{count} 人</span>
     </div>
   );
 }
@@ -198,29 +225,29 @@ function DistributionRow({ label, count, pct, color }) {
 function Top3Card({ title, subtitle, linkTo, linkLabel, items }) {
   return (
     <div className="bg-white rounded-2xl border-2 border-[#BDC3C7] p-4 sm:p-5 shadow-[0_2px_12px_rgba(0,0,0,0.06)] flex flex-col">
-      <div className="mb-3">
-        <p className="text-base font-bold text-[#2D3436]">{title}</p>
-        <p className="text-xs text-[#95A5A6] mt-0.5">{subtitle}</p>
+      <div className="mb-4">
+        <p className="text-lg font-bold text-[#2D3436]">{title}</p>
+        <p className="text-[15px] text-[#95A5A6] mt-1">{subtitle}</p>
       </div>
-      <ol className="space-y-2 flex-1">
+      <ol className="space-y-2.5 flex-1">
         {items.length === 0 ? (
-          <li className="text-sm text-[#95A5A6] py-4 text-center">無資料</li>
+          <li className="text-[15px] text-[#95A5A6] py-4 text-center">無資料</li>
         ) : items.map((item, idx) => (
-          <li key={idx} className="flex items-start gap-2 px-2 py-1.5 bg-[#FAFBFC] rounded-lg">
-            <span className="w-5 h-5 rounded-full bg-[#3D5A3E] text-white text-[10px] flex items-center justify-center font-bold flex-shrink-0 mt-0.5">{idx + 1}</span>
+          <li key={idx} className="flex items-start gap-3 px-3 py-2.5 bg-[#FAFBFC] rounded-lg">
+            <span className="w-7 h-7 rounded-full bg-[#3D5A3E] text-white text-[15px] flex items-center justify-center font-bold flex-shrink-0">{idx + 1}</span>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap">
                 {item.badge}
-                <span className="text-sm font-semibold text-[#2D3436] truncate">{item.primary}</span>
+                <span className="text-[15px] font-semibold text-[#2D3436] truncate">{item.primary}</span>
               </div>
-              <p className={`text-xs font-medium mt-0.5 ${item.valueClass ?? 'text-[#636E72]'}`}>{item.secondary}</p>
+              <p className={`text-[15px] font-medium mt-1 leading-relaxed ${item.valueClass ?? 'text-[#636E72]'}`}>{item.secondary}</p>
             </div>
           </li>
         ))}
       </ol>
-      <Link to={linkTo} className="mt-3 text-xs font-semibold text-[#3D5A3E] hover:text-[#2D3436] transition-colors text-right flex items-center justify-end gap-1">
+      <Link to={linkTo} className="mt-4 text-[15px] font-semibold text-[#3D5A3E] hover:text-[#2D3436] transition-colors text-right flex items-center justify-end gap-1.5">
         {linkLabel}
-        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
         </svg>
       </Link>

@@ -88,7 +88,7 @@ export default function TreatmentLogDetail() {
             <button
               type="button"
               onClick={() => navigate('/teacher/treatment-logs')}
-              className="text-xs text-[#3F8B5E] hover:underline mb-2"
+              className="text-sm text-[#3F8B5E] hover:underline mb-2"
             >
               ← 回紀錄列表
             </button>
@@ -107,13 +107,13 @@ export default function TreatmentLogDetail() {
               )}
             </div>
           </div>
-          <div className="text-right text-xs text-[#95A5A6]">
+          <div className="text-right text-sm text-[#95A5A6]">
             <p>開始：{session.startedAt && new Date(session.startedAt).toLocaleString('zh-TW')}</p>
             {session.completedAt && (
               <p>完成：{new Date(session.completedAt).toLocaleString('zh-TW')}</p>
             )}
             <span
-              className={`inline-flex items-center px-2 py-0.5 mt-1 rounded-full text-xs font-semibold
+              className={`inline-flex items-center px-2 py-0.5 mt-1 rounded-full text-sm font-semibold
                          ${session.status === 'completed'
                            ? 'bg-[#C8EAAE] text-[#2F4A1A]'
                            : 'bg-[#FCF0C2] text-[#7A5232]'}`}
@@ -126,7 +126,7 @@ export default function TreatmentLogDetail() {
         {/* 題目 tabs */}
         <div className="flex gap-2 mb-4 flex-wrap">
           {scenarioQuiz.questions.map((q) => {
-            const qState = session.perQuestion?.[q.index];
+            const qState = perQuestion[q.index];
             const hasMessages = (qState?.messages?.length ?? 0) > 0;
             return (
               <button
@@ -141,7 +141,7 @@ export default function TreatmentLogDetail() {
                                : 'bg-white border-[#BDC3C7] text-[#95A5A6]'}`}
               >
                 {q.title}
-                {!hasMessages && <span className="ml-1 text-xs opacity-60">（未作答）</span>}
+                {!hasMessages && <span className="ml-1 text-sm opacity-60">（未作答）</span>}
               </button>
             );
           })}
@@ -157,7 +157,7 @@ export default function TreatmentLogDetail() {
             </h2>
             {activeQuestion && (
               <>
-                <div className="mb-3 text-xs leading-6 text-[#636E72] whitespace-pre-line border border-[#EEF5E6]
+                <div className="mb-3 text-sm leading-6 text-[#636E72] whitespace-pre-line border border-[#EEF5E6]
                                 rounded-xl p-3 bg-[#F9FBF7]">
                   {activeQuestion.scenarioText}
                 </div>
@@ -175,7 +175,7 @@ export default function TreatmentLogDetail() {
                 )}
                 {activeQuestion.targetMisconceptions?.length > 0 && (
                   <div>
-                    <p className="text-xs font-semibold text-[#636E72] mb-1">針對迷思</p>
+                    <p className="text-sm font-semibold text-[#636E72] mb-1">針對迷思</p>
                     <div className="flex flex-wrap gap-1.5">
                       {activeQuestion.targetMisconceptions.map((mid) => {
                         const misc = getMisconceptionById(mid);
@@ -184,7 +184,7 @@ export default function TreatmentLogDetail() {
                             key={mid}
                             title={misc?.detail}
                             className="inline-flex px-2 py-0.5 rounded-full bg-[#FFF1D8] border border-[#F0B962]
-                                       text-[#7A4A18] text-xs"
+                                       text-[#7A4A18] text-sm"
                           >
                             <span className="font-mono">{mid}</span>
                             {misc?.label && (
@@ -236,7 +236,7 @@ function TranscriptMessage({ message, studentName }) {
 
   return (
     <div className={`flex flex-col gap-1 ${isAi ? 'items-start' : 'items-end'}`}>
-      <div className="flex items-center gap-1.5 text-xs">
+      <div className="flex items-center gap-1.5 text-sm">
         <span className="font-bold text-[#636E72]">
           {isAi ? '🤖 AI' : `👦 ${studentName}`}
         </span>
@@ -262,20 +262,20 @@ function TranscriptMessage({ message, studentName }) {
             <span
               key={c}
               className="inline-flex px-1.5 py-0.5 rounded bg-[#EEF5E6] border border-[#5BA47A]/40
-                         text-[10px] text-[#3F8B5E] font-mono font-semibold"
+                         text-[15px] text-[#3F8B5E] font-mono font-semibold"
             >
               {c}
             </span>
           ))}
           {message.feedback && (
             <span className="inline-flex px-1.5 py-0.5 rounded bg-[#FFF1D8] border border-[#F0B962]/40
-                             text-[10px] text-[#7A4A18] font-medium">
+                             text-[15px] text-[#7A4A18] font-medium">
               💬 {message.feedback}
             </span>
           )}
           {message.requiresRestatement && (
             <span className="inline-flex px-1.5 py-0.5 rounded bg-[#FFE0E5] border border-[#E74C5E]/40
-                             text-[10px] text-[#A52938] font-semibold">
+                             text-[15px] text-[#A52938] font-semibold">
               需重述
             </span>
           )}

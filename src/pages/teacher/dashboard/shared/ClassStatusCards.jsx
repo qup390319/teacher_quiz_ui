@@ -52,9 +52,9 @@ export default function ClassStatusCards({ overviewData, onSelectClass }) {
                 ); })}
               </div>
               <div className={`rounded-xl px-3 py-2 border text-center ${status.bg} ${status.border}`}>
-                <span className={`text-xs font-bold ${status.color}`}>{status.label}</span>
+                <span className={`text-sm font-bold ${status.color}`}>{status.label}</span>
               </div>
-              <p className="text-xs text-[#95A5A6] text-center mt-3">點擊查看詳細報告 →</p>
+              <p className="text-sm text-[#95A5A6] text-center mt-3">點擊查看詳細報告 →</p>
             </div>
           );
         })}

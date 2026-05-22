@@ -10,7 +10,7 @@ export function CellEmpty({ onClick }) {
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
       </svg>
-      <span className="text-xs font-medium">派發</span>
+      <span className="text-sm font-medium">派發</span>
     </button>
   );
 }
@@ -33,7 +33,7 @@ export function CellActive({ assignment, onClick }) {
       }`}
     >
       <div className="flex items-center justify-between w-full">
-        <span className={`text-xs font-semibold ${
+        <span className={`text-sm font-semibold ${
           isComplete ? 'text-[#3D5A3E]' : pct === 0 ? 'text-[#95A5A6]' : 'text-[#B7950B]'
         }`}>
           {isComplete ? '已完成' : pct === 0 ? '待作答' : '進行中'}
@@ -50,7 +50,7 @@ export function CellActive({ assignment, onClick }) {
           }`}>
             {pct}%
           </span>
-          <span className="text-xs text-[#636E72]">{assignment.submittedCount}/{assignment.totalStudents}</span>
+          <span className="text-sm text-[#636E72]">{assignment.submittedCount}/{assignment.totalStudents}</span>
         </div>
         <div className="w-full bg-white/60 rounded-full h-1.5">
           <div
@@ -59,7 +59,7 @@ export function CellActive({ assignment, onClick }) {
           />
         </div>
         {assignment.dueDate && (
-          <p className="text-[10px] text-[#95A5A6] mt-1.5 truncate">截止：{assignment.dueDate}</p>
+          <p className="text-[15px] text-[#95A5A6] mt-1.5 truncate">截止：{assignment.dueDate}</p>
         )}
       </div>
     </button>
@@ -117,18 +117,18 @@ export function AssignPopover({ quiz, cls, onConfirm, onClose }) {
       className="z-50 bg-white border border-[#BDC3C7] rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.12)] p-4 w-64"
     >
       <div className="mb-3">
-        <p className="text-xs font-bold text-[#2D3436] leading-snug">
+        <p className="text-sm font-bold text-[#2D3436] leading-snug">
           派發給 <span style={{ color: cls.textColor }}>{cls.name}</span>
         </p>
-        <p className="text-xs text-[#95A5A6] mt-0.5 truncate">{quiz.title}</p>
+        <p className="text-sm text-[#95A5A6] mt-0.5 truncate">{quiz.title}</p>
       </div>
       <div className="mb-3">
-        <label className="text-xs text-[#636E72] mb-1.5 block">派題模式</label>
+        <label className="text-sm text-[#636E72] mb-1.5 block">派題模式</label>
         <div className="flex gap-1.5">
           <button
             type="button"
             onClick={() => setDispatchMode('diagnosis')}
-            className={`flex-1 px-2 py-1.5 text-[10px] font-semibold rounded-lg border transition-colors ${
+            className={`flex-1 px-2 py-1.5 text-[15px] font-semibold rounded-lg border transition-colors ${
               dispatchMode === 'diagnosis'
                 ? 'bg-[#FFF1D8] border-[#F0B962] text-[#7A4A18]'
                 : 'bg-white border-[#D5D8DC] text-[#95A5A6] hover:bg-[#EEF5E6]'
@@ -139,7 +139,7 @@ export function AssignPopover({ quiz, cls, onConfirm, onClose }) {
           <button
             type="button"
             onClick={() => setDispatchMode('review')}
-            className={`flex-1 px-2 py-1.5 text-[10px] font-semibold rounded-lg border transition-colors ${
+            className={`flex-1 px-2 py-1.5 text-[15px] font-semibold rounded-lg border transition-colors ${
               dispatchMode === 'review'
                 ? 'bg-[#E0F0E8] border-[#3F8B5E] text-[#2E6B47]'
                 : 'bg-white border-[#D5D8DC] text-[#95A5A6] hover:bg-[#EEF5E6]'
@@ -148,14 +148,14 @@ export function AssignPopover({ quiz, cls, onConfirm, onClose }) {
             複習模式
           </button>
         </div>
-        <p className="text-[10px] text-[#95A5A6] mt-1 leading-snug">
+        <p className="text-[15px] text-[#95A5A6] mt-1 leading-snug">
           {dispatchMode === 'diagnosis'
             ? '直接派發目標題目，答錯再溯源先備'
             : '從基礎先備開始，由淺入深建立信心'}
         </p>
       </div>
       <div className="mb-3">
-        <label className="text-xs text-[#636E72] mb-1 block">截止日期（選填）</label>
+        <label className="text-sm text-[#636E72] mb-1 block">截止日期（選填）</label>
         <input
           type="date"
           value={dueDate}
@@ -166,13 +166,13 @@ export function AssignPopover({ quiz, cls, onConfirm, onClose }) {
       <div className="flex gap-2">
         <button
           onClick={onClose}
-          className="flex-1 py-1.5 text-xs font-medium text-[#636E72] border border-[#BDC3C7] rounded-xl hover:bg-[#EEF5E6] transition-colors"
+          className="flex-1 py-1.5 text-sm font-medium text-[#636E72] border border-[#BDC3C7] rounded-xl hover:bg-[#EEF5E6] transition-colors"
         >
           取消
         </button>
         <button
           onClick={() => onConfirm(dueDate, dispatchMode)}
-          className="flex-1 py-1.5 text-xs font-semibold bg-[#8FC87A] text-[#2D3436] border border-[#BDC3C7] rounded-xl hover:bg-[#76B563] transition-colors"
+          className="flex-1 py-1.5 text-sm font-semibold bg-[#8FC87A] text-[#2D3436] border border-[#BDC3C7] rounded-xl hover:bg-[#76B563] transition-colors"
         >
           確認派發
         </button>
@@ -216,24 +216,24 @@ export function ManagePopover({
           <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: cls.color }} />
           <p className="text-sm font-bold text-[#2D3436]">{cls.name}</p>
         </div>
-        <p className="text-xs text-[#95A5A6] truncate">{quiz.title}</p>
+        <p className="text-sm text-[#95A5A6] truncate">{quiz.title}</p>
       </div>
 
       {/* 資訊列 */}
       <div className="space-y-2 mb-4">
-        <div className="flex items-center justify-between text-xs">
+        <div className="flex items-center justify-between text-sm">
           <span className="text-[#636E72]">派發日期</span>
           <span className="text-[#2D3436] font-medium">{assignment.assignedAt}</span>
         </div>
         {isScenario && assignment.targetType === 'students' && (
-          <div className="flex items-center justify-between text-xs">
+          <div className="flex items-center justify-between text-sm">
             <span className="text-[#636E72]">指派對象</span>
             <span className="text-[#2E6B47] font-medium">
               {assignment.studentIds?.length ?? 0} 位學生
             </span>
           </div>
         )}
-        <div className="flex items-center justify-between text-xs">
+        <div className="flex items-center justify-between text-sm">
           <span className="text-[#636E72]">完成進度</span>
           <span className={`font-bold ${pct === 100 ? 'text-[#3D5A3E]' : pct >= 50 ? 'text-[#B7950B]' : pct > 0 ? 'text-[#E74C5E]' : 'text-[#95A5A6]'}`}>
             {assignment.submittedCount}/{assignment.totalStudents} 人（{pct}%）
@@ -243,7 +243,7 @@ export function ManagePopover({
 
       {/* 截止日期編輯 */}
       <div className="mb-4">
-        <label className="text-xs text-[#636E72] mb-1 block">截止日期</label>
+        <label className="text-sm text-[#636E72] mb-1 block">截止日期</label>
         <div className="flex gap-2">
           <input
             type="date"
@@ -254,7 +254,7 @@ export function ManagePopover({
           {dueDateDirty && (
             <button
               onClick={handleSaveDueDate}
-              className="px-3 py-1.5 text-xs font-semibold bg-[#8FC87A] text-[#2D3436] border border-[#BDC3C7] rounded-xl hover:bg-[#76B563] transition-colors flex-shrink-0"
+              className="px-3 py-1.5 text-sm font-semibold bg-[#8FC87A] text-[#2D3436] border border-[#BDC3C7] rounded-xl hover:bg-[#76B563] transition-colors flex-shrink-0"
             >
               儲存
             </button>
@@ -267,7 +267,7 @@ export function ManagePopover({
         {isScenario ? (
           <button
             onClick={() => onEditTargets(assignment)}
-            className="w-full py-2 text-xs font-semibold bg-[#5BA47A] text-white border border-[#3F8B5E] rounded-xl hover:bg-[#3F8B5E] transition-colors"
+            className="w-full py-2 text-sm font-semibold bg-[#5BA47A] text-white border border-[#3F8B5E] rounded-xl hover:bg-[#3F8B5E] transition-colors"
           >
             調整派發對象
           </button>
@@ -275,7 +275,7 @@ export function ManagePopover({
           <button
             onClick={() => onViewReport(assignment.classId, assignment.quizId)}
             disabled={pct === 0}
-            className={`w-full py-2 text-xs font-semibold rounded-xl border transition-colors ${
+            className={`w-full py-2 text-sm font-semibold rounded-xl border transition-colors ${
               pct > 0
                 ? 'bg-[#8FC87A] text-[#2D3436] border-[#BDC3C7] hover:bg-[#76B563]'
                 : 'bg-[#EEF5E6] text-[#95A5A6] border-[#D5D8DC] cursor-not-allowed'
@@ -289,25 +289,25 @@ export function ManagePopover({
         {!confirmingRemove ? (
           <button
             onClick={() => setConfirmingRemove(true)}
-            className="w-full py-2 text-xs font-medium text-[#E74C5E] border border-[#F5B8BA] rounded-xl hover:bg-[#FAC8CC] transition-colors"
+            className="w-full py-2 text-sm font-medium text-[#E74C5E] border border-[#F5B8BA] rounded-xl hover:bg-[#FAC8CC] transition-colors"
           >
             取消派發
           </button>
         ) : (
           <div className="border border-[#F5B8BA] rounded-xl p-3 bg-[#FFF5F5]">
-            <p className="text-xs text-[#E74C5E] mb-2 leading-relaxed">
+            <p className="text-sm text-[#E74C5E] mb-2 leading-relaxed">
               確定要取消派發嗎？已收到的作答資料將被清除。
             </p>
             <div className="flex gap-2">
               <button
                 onClick={() => setConfirmingRemove(false)}
-                className="flex-1 py-1.5 text-xs font-medium text-[#636E72] border border-[#BDC3C7] rounded-xl hover:bg-[#EEF5E6] transition-colors"
+                className="flex-1 py-1.5 text-sm font-medium text-[#636E72] border border-[#BDC3C7] rounded-xl hover:bg-[#EEF5E6] transition-colors"
               >
                 返回
               </button>
               <button
                 onClick={() => onRemove(assignment.id)}
-                className="flex-1 py-1.5 text-xs font-semibold bg-[#E74C5E] text-white border border-[#E74C5E] rounded-xl hover:bg-[#C0392B] transition-colors"
+                className="flex-1 py-1.5 text-sm font-semibold bg-[#E74C5E] text-white border border-[#E74C5E] rounded-xl hover:bg-[#C0392B] transition-colors"
               >
                 確認取消
               </button>

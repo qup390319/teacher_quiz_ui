@@ -7,13 +7,15 @@ import { useQuizzes } from '../../../hooks/useQuizzes';
 import { useAssignments } from '../../../hooks/useAssignments';
 import { useQuizStats } from '../../../hooks/useAnswers';
 import { buildOverviewFromStats, getAllAssignedQuizzes } from './shared/helpers';
+import EmptyStateGuide from '../../../components/EmptyStateGuide';
+import SchoolYearFilter from '../../../components/SchoolYearFilter';
 
 const TABS = [
-  { to: 'overview',       label: '所有班級答題分布' },
-  { to: 'classes',        label: '各班級成績比較' },
-  { to: 'nodes',          label: '所有班級知識節點答對率' },
-  { to: 'misconceptions', label: '所有班級高頻迷思排行' },
-  { to: 'students',       label: '個別學生診斷報告' },
+  { to: 'overview',       label: '所有班級答題分布', icon: 'donut_large' },
+  { to: 'classes',        label: '各班級比較',   icon: 'groups' },
+  { to: 'nodes',          label: '知識節點答對率', icon: 'account_tree' },
+  { to: 'misconceptions', label: '高頻迷思排行', icon: 'psychology_alt' },
+  { to: 'students',       label: '個別學生報告', icon: 'person_search' },
 ];
 
 export default function DashboardLayout() {
@@ -66,20 +68,23 @@ export default function DashboardLayout() {
   return (
     <TeacherLayout>
       <div className="p-4 sm:p-6 md:p-8">
-        <div className="mb-4 sm:mb-6">
+        <div className="mb-4 sm:mb-6 flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">診斷結果</h1>
+          {/* 學年篩選器（spec-02 §2.3.0；與 /teacher/classes 共用 AppContext 狀態） */}
+          <SchoolYearFilter />
         </div>
 
-        {/* B4：題組選擇器整合進 tab 列左側，確保使用者隨時知道「在看哪份題組的哪個維度」 */}
-        <div className="bg-white rounded-2xl border-2 border-[#BDC3C7] p-1 mb-6 inline-flex items-center gap-1 shadow-[0_2px_8px_rgba(0,0,0,0.04)] flex-wrap">
+        {/* B4：題組選擇器與 tab 列上下分列，避免擠在同一列顯得雜亂 */}
+        <div className="mb-6 space-y-2">
           {availableQuizzes.length > 0 && (
-            <div className="flex items-center gap-2 bg-[#EEF5E6] border-2 border-[#8FC87A] rounded-xl pl-3 pr-2 py-1.5 mr-1">
-              <span className="text-xs font-bold text-[#3D5A3E] whitespace-nowrap">題組</span>
+            <div className="inline-flex items-center gap-2 bg-[#EEF5E6] border border-[#C8D6C9] rounded-2xl pl-3 pr-2 py-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+              <span className="material-symbols-rounded text-[#3D5A3E]" style={{ fontSize: 18 }}>quiz</span>
+              <span className="text-sm font-bold text-[#3D5A3E] whitespace-nowrap">題組</span>
               <div className="relative">
                 <select
                   value={effectiveQuizId ?? ''}
                   onChange={e => handleQuizChange(e.target.value)}
-                  className="appearance-none bg-white border border-[#BDC3C7] rounded-lg pl-2 pr-7 py-1 text-sm font-semibold text-[#2D3436] focus:outline-none focus:ring-2 focus:ring-[#8FC87A] cursor-pointer"
+                  className="appearance-none bg-white border border-[#C8D6C9] rounded-lg pl-2.5 pr-7 py-1 text-sm font-semibold text-[#2D3436] focus:outline-none focus:ring-2 focus:ring-[#8FC87A] cursor-pointer"
                 >
                   {availableQuizzes.map(q => (<option key={q.id} value={q.id}>{q.title}</option>))}
                 </select>
@@ -89,27 +94,64 @@ export default function DashboardLayout() {
               </div>
             </div>
           )}
-          {TABS.map(tab => (
-            <NavLink
-              key={tab.to}
-              to={`/teacher/dashboard/${tab.to}${tabSearch}`}
-              className={({ isActive }) =>
-                `px-4 py-2 rounded-xl text-sm font-medium transition-colors border-2 ${
-                  isActive
-                    ? 'bg-[#C8EAAE] text-[#2D3436] border-[#8FC87A]'
-                    : 'text-[#636E72] hover:bg-[#EEF5E6] hover:text-[#2D3436] border-transparent'
-                }`
-              }
-            >
-              {tab.label}
-            </NavLink>
-          ))}
+          <div className="bg-white rounded-2xl border border-[#E1E6E2] p-1.5 inline-flex items-center gap-1 shadow-[0_2px_10px_rgba(0,0,0,0.05)] flex-wrap">
+            {TABS.map(tab => (
+              <NavLink
+                key={tab.to}
+                to={`/teacher/dashboard/${tab.to}${tabSearch}`}
+                className={({ isActive }) =>
+                  `inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all duration-150 ${
+                    isActive
+                      ? 'bg-[#6FB55C] text-white shadow-[0_2px_6px_rgba(111,181,92,0.35)]'
+                      : 'text-[#5A6663] hover:bg-[#F1F6EE] hover:text-[#2D3436]'
+                  }`
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    <span
+                      className="material-symbols-rounded"
+                      style={{ fontSize: 18, fontVariationSettings: isActive ? '"FILL" 1' : '"FILL" 0' }}
+                    >
+                      {tab.icon}
+                    </span>
+                    <span>{tab.label}</span>
+                  </>
+                )}
+              </NavLink>
+            ))}
+          </div>
         </div>
 
         {availableQuizzes.length === 0 || !effectiveQuizId ? (
-          <EmptyState
-            title="目前尚無派題資料"
-            subtitle="請先至「派題管理」將題組派發給班級，這裡才會顯示診斷結果。" />
+          quizzes.length === 0 ? (
+            <EmptyStateGuide
+              icon="edit_note"
+              title="還沒有任何診斷題組"
+              description={'要看診斷結果，請先完成前兩步：\n① 出診斷題  ②派題給班級'}
+              preview={[
+                '全班答題分布（全對 / 對一半 / 全錯）',
+                '各知識節點答對率',
+                '高頻迷思排行與涉及學生',
+                '個別學生診斷報告',
+              ]}
+              primaryAction={{ label: '前往出題', to: '/teacher/quizzes' }}
+            />
+          ) : (
+            <EmptyStateGuide
+              icon="send"
+              title="題組還沒派給班級"
+              description={'已建立題組，但尚未派發。\n派題後學生作答完成，這裡會出現完整診斷結果。'}
+              preview={[
+                '全班答題分布（全對 / 對一半 / 全錯）',
+                '各知識節點答對率',
+                '高頻迷思排行與涉及學生',
+                '個別學生診斷報告',
+              ]}
+              primaryAction={{ label: '前往派題', to: '/teacher/assignments/diagnosis' }}
+              secondaryAction={{ label: '回題組編輯', to: '/teacher/quizzes' }}
+            />
+          )
         ) : (
           <Outlet context={{ quizId: effectiveQuizId, overviewData, classes, assignments, quizzes, gradeStats }} />
         )}
@@ -118,17 +160,3 @@ export default function DashboardLayout() {
   );
 }
 
-function EmptyState({ title, subtitle }) {
-  return (
-    <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-12 shadow-[0_2px_12px_rgba(0,0,0,0.06)] text-center">
-      <div className="w-16 h-16 bg-[#EEF5E6] rounded-full flex items-center justify-center mx-auto mb-4">
-        <svg className="w-8 h-8 text-[#95A5A6]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-            d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-      </div>
-      <p className="text-[#636E72] font-medium mb-1">{title}</p>
-      <p className="text-sm text-[#95A5A6]">{subtitle}</p>
-    </div>
-  );
-}

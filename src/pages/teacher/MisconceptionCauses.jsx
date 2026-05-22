@@ -85,17 +85,17 @@ function CauseCard({ category }) {
 
       <div className="px-5 py-4 flex-1 flex flex-col gap-3">
         <div>
-          <p className="text-xs font-semibold text-[#95A5A6] uppercase tracking-wider mb-1">特徵</p>
+          <p className="text-sm font-semibold text-[#95A5A6] uppercase tracking-wider mb-1">特徵</p>
           <p className="text-sm text-[#2D3436] leading-relaxed">{category.feature}</p>
         </div>
         <div>
-          <p className="text-xs font-semibold text-[#95A5A6] uppercase tracking-wider mb-1">常見樣態</p>
+          <p className="text-sm font-semibold text-[#95A5A6] uppercase tracking-wider mb-1">常見樣態</p>
           <p className="text-sm text-[#636E72] leading-relaxed">{category.sample}</p>
         </div>
 
         {category.conditional && (
           <div className="mt-auto pt-3 border-t border-dashed border-[#D5D8DC]">
-            <p className="text-xs text-[#95A5A6] flex items-start gap-1.5">
+            <p className="text-sm text-[#95A5A6] flex items-start gap-1.5">
               <svg className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                   d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -141,7 +141,7 @@ export default function MisconceptionCauses() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
               d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <p className="text-xs sm:text-sm text-[#636E72] leading-relaxed">
+          <p className="text-sm sm:text-sm text-[#636E72] leading-relaxed">
             類別 1–6 是一般通用成因；類別 7、8 為「情境條件成因」，僅在學生對話中明確提及對應描述時才會被歸類。
           </p>
         </div>

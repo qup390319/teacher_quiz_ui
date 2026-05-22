@@ -40,19 +40,19 @@ export default function MisconceptionDistribution({ quizId, classId, totalStuden
           return (
             <div key={id} className="bg-[#EEF5E6] rounded-2xl border border-[#D5D8DC] overflow-hidden">
               <div className="flex items-center gap-3 px-4 py-3">
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full border flex-shrink-0 ${urgencyColor.badge}`}>{pct}%</span>
+                <span className={`text-sm font-bold px-2 py-0.5 rounded-full border flex-shrink-0 ${urgencyColor.badge}`}>{pct}%</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-[#2D3436] truncate">{miscon?.label}</p>
-                  <p className="text-xs text-[#95A5A6] truncate">{node?.name} · {id}</p>
+                  <p className="text-sm text-[#95A5A6] truncate">{node?.name} · {id}</p>
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0">
                   <div className="w-28 bg-[#D5D8DC] rounded-full h-2">
                     <div className="h-2 rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: urgencyColor.bar }} />
                   </div>
-                  <span className="text-xs text-[#636E72] w-14 text-right">{students.length}/{totalStudents} 人</span>
+                  <span className="text-sm text-[#636E72] w-14 text-right">{students.length}/{totalStudents} 人</span>
                 </div>
                 <button onClick={() => toggle(id)}
-                  className="flex items-center gap-1 text-xs font-semibold text-[#636E72] hover:text-[#2D3436] transition-colors flex-shrink-0 border border-[#BDC3C7] bg-white rounded-xl px-2.5 py-1">
+                  className="flex items-center gap-1 text-sm font-semibold text-[#636E72] hover:text-[#2D3436] transition-colors flex-shrink-0 border border-[#BDC3C7] bg-white rounded-xl px-2.5 py-1">
                   {isExpanded ? '收合' : `展開 ${students.length} 人`}
                   <svg className={`w-3.5 h-3.5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -66,7 +66,7 @@ export default function MisconceptionDistribution({ quizId, classId, totalStuden
                       const key = typeof s === 'string' ? s : s.id ?? s.name;
                       const label = typeof s === 'string' ? s : s.name;
                       return (
-                        <span key={key} className="text-xs bg-[#EEF5E6] border border-[#D5D8DC] text-[#636E72] px-2.5 py-1 rounded-full">{label}</span>
+                        <span key={key} className="text-sm bg-[#EEF5E6] border border-[#D5D8DC] text-[#636E72] px-2.5 py-1 rounded-full">{label}</span>
                       );
                     })}
                   </div>

@@ -40,7 +40,7 @@ export default function EditQuestionModal({ question, selectedNodeIds, onSave, o
             <div className="flex items-center justify-between mb-2">
               <label className="text-sm font-semibold text-[#2D3436]">
                 題幹內容
-                <span className="text-xs font-normal text-[#95A5A6] ml-2">（請先輸入題幹再產生選項建議）</span>
+                <span className="text-sm font-normal text-[#95A5A6] ml-2">（請先輸入題幹再產生選項建議）</span>
               </label>
               <button
                 type="button"
@@ -54,7 +54,7 @@ export default function EditQuestionModal({ question, selectedNodeIds, onSave, o
                   } catch { /* toast handled by react-query */ }
                 }}
                 disabled={!hasStem || polishMut.isPending}
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-sm font-semibold
                            text-[#5B3D8F] bg-[#EDE7F6] border border-[#B39DDB] rounded-lg
                            hover:bg-[#D1C4E9] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 title="AI 會將題幹改寫為國小五年級學生更容易理解的語言"
@@ -108,7 +108,7 @@ export default function EditQuestionModal({ question, selectedNodeIds, onSave, o
                   } catch { /* toast handled by react-query */ }
                 }}
                 disabled={!hasStem || suggestOptsMut.isPending}
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-sm font-semibold
                            text-[#7A5232] bg-[#FBE9C7] border border-[#D9C58E] rounded-lg
                            hover:bg-[#F4DDA8] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 title="AI 根據題幹與迷思概念自動產生一組四選項"
@@ -121,7 +121,7 @@ export default function EditQuestionModal({ question, selectedNodeIds, onSave, o
               {options.map((opt, idx) => (
                 <div key={opt.tag} className="bg-[#EEF5E6] border border-[#D5D8DC] rounded-2xl p-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="w-7 h-7 rounded-full bg-white border border-[#BDC3C7] text-[#636E72] text-xs font-bold flex items-center justify-center flex-shrink-0">
+                    <span className="w-7 h-7 rounded-full bg-white border border-[#BDC3C7] text-[#636E72] text-sm font-bold flex items-center justify-center flex-shrink-0">
                       {opt.tag}
                     </span>
                     <input
@@ -133,7 +133,7 @@ export default function EditQuestionModal({ question, selectedNodeIds, onSave, o
                       type="button"
                       onClick={() => setSuggestForIdx(idx)}
                       disabled={opt.diagnosis === 'CORRECT' || !hasStem}
-                      className="flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold
+                      className="flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 text-sm font-semibold
                                  text-[#7A5232] bg-[#FBE9C7] border border-[#D9C58E] rounded-lg
                                  hover:bg-[#F4DDA8] disabled:opacity-40 disabled:cursor-not-allowed"
                       title={
@@ -149,11 +149,11 @@ export default function EditQuestionModal({ question, selectedNodeIds, onSave, o
                     </button>
                   </div>
                   <div className="ml-9">
-                    <label className="text-xs text-[#95A5A6] mb-1 block">答案判定</label>
+                    <label className="text-sm text-[#95A5A6] mb-1 block">答案判定</label>
                     <select
                       value={opt.diagnosis}
                       onChange={(e) => updateOption(idx, 'diagnosis', e.target.value)}
-                      className={`w-full border border-[#BDC3C7] rounded-xl px-3 py-1.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#8FC87A] ${opt.diagnosis === 'CORRECT'
+                      className={`w-full border border-[#BDC3C7] rounded-xl px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#8FC87A] ${opt.diagnosis === 'CORRECT'
                           ? 'bg-[#C8EAAE] text-[#3D5A3E]'
                           : 'bg-[#FAC8CC] text-[#E74C5E]'
                         }`}

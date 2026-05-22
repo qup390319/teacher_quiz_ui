@@ -17,6 +17,30 @@
 
 ---
 
+### [2026-05-22] 新增「概念釐清結果」頁，治療成效衍生暫放前端
+- **涉及 Spec**: spec-02 §2.6.2、spec-05 §3.5、spec-08 §5.5、spec-11 §3.13
+- **問題**: 教師完成「概念釐清題組」派發 → 學生作答後，原本教師端只能看到完整對話紀錄
+  （`TreatmentLogDetail`）。對話雖完整保留 phase/stage/step/hintLevel，但難以一眼看出
+  「這位學生治療有沒有用」。需要一個彙整成效的頁面。
+  同時，學生端 `flowStage='reflection'` 的反思文字與 `flowStage='result'` 的三星評等
+  在後端 `treatment_sessions` 表上尚無對應欄位，無法持久化。
+- **替代方案**:
+  1. 新增 `/teacher/treatment-outcomes` 頁面（`TreatmentOutcomes.jsx`），呈現
+     per-question outcome pills / 整體星等 / AI 判定是否釐清 / 反思摘要 / 班級層級彙整。
+  2. **衍生規則先放前端 `src/lib/treatmentOutcomes.js`**：從 `treatment_messages` 反推
+     maxHintLevel + reachedComplete → outcome label。介面契約以 spec-08 §5.5 為準。
+  3. **學生反思文字**：UI 預留欄位，因後端尚無 `reflection_text` 欄位，目前顯示「學生未撰寫」。
+  4. **星等**：由前端 outcome weights 衍生（avg weight → 0~3⭐）；學生端 `flowStage='result'`
+     實際計算的星等暫未回寫後端。
+- **後端待辦（標 P5）**:
+  - `treatment_sessions` 加 `reflection_text TEXT NULL` 與 `star_rating SMALLINT NULL`
+  - `/api/treatment/sessions/{id}/complete` 接受 `{ reflectionText, starRating }`
+  - 新建 `app/services/treatment_outcome_service.py`，把 lib 的衍生規則搬到後端
+  - `/api/teachers/treatment-logs` 列表直接回傳 outcome 摘要欄位（避免前端 N+1 fetch messages）
+- **Spec 已更新**: ✅（spec-02 / spec-05 / spec-08 同步更新；spec-11 待 P5 時補欄位）
+
+---
+
 ### [2026-05-14] 治療對話加入 LLM 驅動模式（scenario-002 Q2）
 - **涉及 Spec**: spec-08 §2.3 / §8 / §8B、spec-09 §12、spec-11 §3.14
 - **問題**: 既有 `runTreatmentTurn` 是純 rule-based mock，所有題目共用同一套

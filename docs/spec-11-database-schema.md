@@ -79,17 +79,27 @@ CREATE TABLE teachers (
 
 ```sql
 CREATE TABLE classes (
-    id          VARCHAR(32)   PRIMARY KEY,            -- 'class-A', 'class-B', 'class-C' (server-generated for new classes)
-    name        VARCHAR(64)   NOT NULL,               -- '五年甲班'
-    grade       VARCHAR(16)   NOT NULL,               -- '五年級'
-    subject     VARCHAR(32)   NOT NULL,               -- '自然科學'
-    color       VARCHAR(7)    NOT NULL,               -- '#C8EAAE'
-    text_color  VARCHAR(7)    NOT NULL,               -- '#3D5A3E'
-    teacher_id  VARCHAR(64)   REFERENCES users(id) ON DELETE SET NULL,  -- 0003 migration
-    note        VARCHAR(200),                          -- 0004 migration: 教師備註，如「114 學年度」
-    created_at  TIMESTAMPTZ   NOT NULL DEFAULT NOW()
+    id           VARCHAR(32)   PRIMARY KEY,            -- 'class-A', 'class-B', 'class-C' (server-generated for new classes)
+    name         VARCHAR(64)   NOT NULL,               -- '五年甲班'
+    grade        VARCHAR(16)   NOT NULL,               -- '五年級'
+    subject      VARCHAR(32)   NOT NULL,               -- '自然科學'
+    color        VARCHAR(7)    NOT NULL,               -- '#C8EAAE'
+    text_color   VARCHAR(7)    NOT NULL,               -- '#3D5A3E'
+    teacher_id   VARCHAR(64)   REFERENCES users(id) ON DELETE SET NULL,  -- 0003 migration
+    note         VARCHAR(200),                          -- 0004 migration: 教師備註，如「114 學年度」
+    school_year  INTEGER       NOT NULL DEFAULT 2025,   -- 0011 migration: 學年度（西元年；114 學年度 = 2025）
+    semester     VARCHAR(8)    NOT NULL DEFAULT 'second', -- 0011 migration: 'first' | 'second'
+    status       VARCHAR(16)   NOT NULL DEFAULT 'active', -- 0011 migration: 'active' | 'archived'
+    archived_at  TIMESTAMPTZ,                            -- 0011 migration: status='archived' 時設值
+    created_at   TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+    CONSTRAINT classes_semester_chk CHECK (semester IN ('first', 'second')),
+    CONSTRAINT classes_status_chk   CHECK (status   IN ('active', 'archived')),
+    CONSTRAINT classes_archived_consistency_chk
+        CHECK ((status = 'archived' AND archived_at IS NOT NULL)
+            OR (status = 'active'   AND archived_at IS NULL))
 );
-CREATE INDEX classes_teacher_idx ON classes(teacher_id);
+CREATE INDEX classes_teacher_idx       ON classes(teacher_id);
+CREATE INDEX classes_term_idx          ON classes(teacher_id, school_year, semester, status); -- 0011 migration
 ```
 
 > **教師範圍隔離（0003 migration）**：`teacher_id` 是該班所屬教師。所有讀取
@@ -97,6 +107,13 @@ CREATE INDEX classes_teacher_idx ON classes(teacher_id);
 > current_teacher.id` 過濾，bbb001 等新教師看不到 aaa001 的示範資料；反之亦然。
 > 共用的 `quizzes` / `scenario_quizzes` 不做隔離（系統範例題庫）。
 > 0003 升級時會自動把所有既有班級回填為 `aaa001` 以保留既有 demo dashboard。
+
+> **學年度與封存（0011 migration）**：班級新增「學年/學期/狀態/封存時間」四欄位。
+> 升級時將既有 class-A/B/C 回填 `school_year=2025, semester='second', status='active', archived_at=NULL`，與 seed 預設一致。
+> `GET /api/classes` 預設只回 `school_year=$current, semester=$current, status='active'` 的班級；
+> 帶 `include_archived=true` 可同時回封存班級。`POST /api/classes/{id}/archive` 與 `/unarchive`
+> 為狀態切換端點（不刪資料）；assignments / answers / followups / treatment_sessions 不受班級
+> 封存影響，仍依 FK 保留以供歷史查閱。詳見 spec-05 §1.5。
 
 ### 3.4 `students`
 
@@ -391,6 +408,17 @@ CREATE INDEX custom_misconceptions_teacher_node_idx ON custom_misconceptions(tea
 - 初版（P1）：建上述全部表 + 索引（即使 P3 / P4 才用到的也一次建好，避免後續 migration 過多）。
 - migration 檔命名：`alembic revision --autogenerate -m "description"`
 - 生產環境：`alembic upgrade head` 由 backend container 啟動時執行（見 spec-10 §4.3）
+
+**現有 migration 清單**（按時間順序）：
+
+| Revision | 描述 |
+|---------|------|
+| `0001` | initial schema（spec-11 §3 全表初始版本） |
+| `0002` | 新增 `assignment_students` 表 |
+| `0003` | `classes.teacher_id` + 教師範圍隔離（既有班級回填 `aaa001`） |
+| `0004` | `classes.note`（教師備註） |
+| `0005` ~ `0010` | custom_misconceptions / followup cause_ids / treatment phase CER / FK cascades 等 |
+| **`0011`** | **`classes.school_year` + `semester` + `status` + `archived_at` + `classes_term_idx`**（學年度與封存）<br>升級回填：所有現有班級 `school_year=2025, semester='second', status='active', archived_at=NULL` |
 
 ---
 

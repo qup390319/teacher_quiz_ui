@@ -102,7 +102,7 @@ function Section({ section, dynamicStatus }) {
               d={style.iconPath}
             />
           </svg>
-          <p className={`text-xs font-bold ${style.titleColor} uppercase tracking-wide`}>
+          <p className={`text-sm font-bold ${style.titleColor} uppercase tracking-wide`}>
             {section.title || style.label}
           </p>
         </div>
@@ -110,7 +110,7 @@ function Section({ section, dynamicStatus }) {
           {section.items.map((ref, i) => (
             <li
               key={i}
-              className="text-xs text-[#636E72] leading-relaxed pl-3 border-l-2 border-[#BDC3C7]"
+              className="text-sm text-[#636E72] leading-relaxed pl-3 border-l-2 border-[#BDC3C7]"
             >
               {ref}
             </li>
@@ -136,7 +136,7 @@ function Section({ section, dynamicStatus }) {
             d={style.iconPath}
           />
         </svg>
-        <p className={`text-xs font-bold ${style.titleColor} uppercase tracking-wide`}>
+        <p className={`text-sm font-bold ${style.titleColor} uppercase tracking-wide`}>
           {section.title || style.label}
         </p>
       </div>
@@ -191,7 +191,7 @@ export default function InfoDrawer({ isOpen, onClose, config, dynamicStatus }) {
         <div className="bg-[#3D5A3E] px-6 py-5 flex-shrink-0">
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-[#C8EAAE] font-medium mb-1 uppercase tracking-wide">
+              <p className="text-sm text-[#C8EAAE] font-medium mb-1 uppercase tracking-wide">
                 數據說明
               </p>
               <h2 className="text-base font-bold text-white leading-snug">{config.title}</h2>
@@ -215,7 +215,7 @@ export default function InfoDrawer({ isOpen, onClose, config, dynamicStatus }) {
           {/* 資料可信度徽章 */}
           <div className="mt-3">
             <span
-              className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border ${reliability.bg} ${reliability.text} ${reliability.border}`}
+              className={`inline-flex items-center gap-1.5 text-sm font-semibold px-3 py-1 rounded-full border ${reliability.bg} ${reliability.text} ${reliability.border}`}
             >
               {reliability.showWarning && (
                 <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -244,7 +244,7 @@ export default function InfoDrawer({ isOpen, onClose, config, dynamicStatus }) {
 
         {/* Footer */}
         <div className="border-t border-[#D5D8DC] px-5 py-3 bg-[#F9FBF7] flex-shrink-0">
-          <p className="text-xs text-[#95A5A6] leading-relaxed">
+          <p className="text-sm text-[#95A5A6] leading-relaxed">
             此說明文件為研究型系統設計的一部分，旨在提升數據透明度與可詮釋性。
             如有疑問或修改建議，請與研究團隊討論。
           </p>

@@ -172,8 +172,8 @@
     │
     ├─ 頂部題組選擇器（DashboardLayout 共用，切換時保留所在子分頁）
     │
-    ├─ 子分頁：全年級總覽（/overview）
-    │   ├─ 全年級 AI 診斷摘要（年級健康狀態 + 跨班診斷句 + 優先介入順序 + 行動建議）
+    ├─ 子分頁：所有班級總覽（/overview）
+    │   ├─ 所有班級 AI 診斷摘要（年級健康狀態 + 跨班診斷句 + 優先介入順序 + 行動建議）
     │   ├─ 4 個指標卡：涵蓋班級 / 平均完成率 / 平均掌握率 / 需關注班級
     │   └─ 完成率 × 掌握率班級分布散佈圖
     │
@@ -185,7 +185,7 @@
     │   └─ 同一概念節點各班通過率並排長條（70% 掌握門檻參考線）
     │
     ├─ 子分頁：跨班高頻迷思（/misconceptions）
-    │   ├─ Top 6 高頻迷思橫條圖（依全年級平均持有率排序）
+    │   ├─ Top 6 高頻迷思橫條圖（依所有班級平均持有率排序）
     │   └─ 班級 × 迷思熱力圖（顏色越深表持有率越高）
     │
     └─ 子分頁：各班詳細報告（/class-detail）
@@ -209,15 +209,76 @@
 ```
 教師進入 /teacher/classes
     │
-    ├─ 瀏覽所有班級卡片
-    │   └─ 顯示：班級名稱、年級、科目、學生人數
+    ├─ 頂部全域篩選器（與 DashboardLayout 共用 AppContext 狀態）：
+    │   學年度 ▼ 114 學年度  學期 ▼ 下學期  ☐ 顯示已封存班級
     │
-    └─ 點擊班級 → /teacher/classes/:classId
-        ├─ 檢視學生名冊（姓名 + 座號）
-        ├─ 可新增學生
-        ├─ 可移除學生
-        └─ 呼叫 updateClassStudents() 儲存變更
+    ├─ 顯示模式切換（與儀表板 ClassesPage 一致）：
+    │   [列表] [完整卡片]（預設列表）
+    │
+    ├─ 瀏覽符合篩選條件的班級（Google Classroom 風的極簡呈現）
+    │   ├─ 每列/每卡：色塊 + 班名（大）+ 副標「N 位學生 · 114 下」+ chevron
+    │   ├─ 整列/整卡可點 → 進入 /teacher/classes/:classId
+    │   ├─ 不放任何 inline 操作按鈕（編輯/封存/刪除統一在詳情頁執行）
+    │   └─ 已封存班級：加 50% 灰階濾鏡 + 「已封存」徽章；僅在勾選「顯示已封存」時出現
+    │
+    ├─ 點擊「+ 新增班級」（ClassManagement 頁首唯一寫入動作）
+    │   ├─ ClassFormModal：名稱 / 年級 / 科目 / 學年度（預設當前）/ 學期（預設當前）/ 備註 / 代表色
+    │   └─ 提交 → useCreateClass().mutate()
+    │
+    └─ 點擊班級 → /teacher/classes/:classId（ClassDetail）
+        │
+        ├─ 頁首：返回 | 班名 [+ 已封存徽章] | [編輯班級] [封存/還原] [🗑刪除]
+        │   ├─ 副標：學年度 · 學期 · N 位學生 · 預設密碼說明
+        │   └─ status='archived' → 額外顯示米色橫幅「此為歷史班級…」
+        │
+        ├─ 學生名冊管理（不受班級狀態影響）
+        │   ├─ 檢視學生（座號 / 姓名 / 帳號 / 密碼（hover 揭露）/ 操作）
+        │   ├─ 新增 / 編輯 / 刪除 → useUpdateClassStudents()
+        │   └─ 重設學生密碼 → useResetStudentPassword()
+        │
+        └─ Class-level 動作（皆在頁首按鈕觸發）
+            ├─ 「編輯班級」→ ClassFormModal（isEdit=true）→ useUpdateClass()
+            ├─ 「封存」→ window.confirm 提示資料保留 → useArchiveClass()
+            ├─ 「還原」（封存後顯示）→ useUnarchiveClass()
+            └─ 「刪除」→ DeleteClassModal（兩步驟：警告 → 輸入班名確認）
+                └─ useDeleteClass() → navigate('/teacher/classes')
 ```
+
+> **動作集中原則**：列表/卡片頁面只負責「發現與導航」，所有 class-level 寫入動作（編輯/封存/還原/刪除）都收斂在 ClassDetail 頁首。
+> 唯一例外是「新增班級」——因為新增時尚無 classId、不可能在詳情頁觸發，仍由 ClassManagement 頁首按鈕負責。
+
+#### 1.5.1 學年度與學期判定
+
+`src/utils/schoolYear.js` 提供 `getCurrentSchoolYear()` / `getCurrentSemester()`（與後端 `app/utils/school_year.py` 共用同一規則，定義見 spec-04 §2.3）：
+
+- 8/1 ~ 1/31 → 該年度（西元）上學期
+- 2/1 ~ 7/31 → 前一年度（西元）下學期
+
+範例：2026-05-22（今日）→ 學年度 = 2025（即 114 學年度）、學期 = `second`（下學期）。
+
+#### 1.5.2 班級生命週期狀態機
+
+```
+        [新建班級]
+            ↓
+       ┌─────────┐    archive    ┌──────────┐
+       │ active  │ ─────────────▶ │ archived │
+       │         │ ◀───────────── │          │
+       └─────────┘    unarchive   └──────────┘
+            │                          │
+       (預設顯示)               (僅勾選「顯示已封存」時可見)
+            │                          │
+       完整可寫                  唯讀；歷史 assignment / answer 仍可查
+```
+
+**不會自動發生**：學年度切換（8/1）不會自動封存舊班級——避免老師 9 月初還沒整理完就被改狀態。封存一律由教師手動觸發。
+
+#### 1.5.3 篩選器與診斷結果的關聯
+
+- DashboardLayout（spec-02 §2.3.0）共用同一組 AppContext 篩選器狀態（`currentSchoolYear` / `currentSemester` / `includeArchivedClasses`）
+- 跨班統計（OverviewPage / ClassesPage / MisconceptionsPage / NodesPage）只聚合篩選後的班級
+- 學生個人報告（StudentReportsPage / StudentDiagnosisReport）**保留完整歷史**——學生跨學期表現有教學價值，不受班級封存影響
+- 題組（quizzes）與班級解耦：題組是教師資產可重複派發，assignments 才綁定班級與學年
 
 ### 1.6 知識地圖查看流程
 
@@ -474,6 +535,49 @@
             └─ 每則 AI 訊息標註該回合的 phase / stage / step / hintLevel
             （為教師提供「派發治療是否成功」的判斷依據）
 ```
+
+### 3.5 教師端：查看概念釐清結果（治療成效彙整）
+
+「對話紀錄」聚焦過程，「概念釐清結果」聚焦結果。兩個頁面並列在側邊欄「④ 概念釐清・補救」分組下。
+
+```
+教師進入 /teacher/treatment-outcomes
+    │
+    ├─ 篩選列：班級 ▼ / 概念釐清題組 ▼
+    │
+    ├─ 三色階圖例條（綠＝已釐清／黃＝需引導／紅＝未釐清；首次閱讀即可掌握）
+    │
+    ├─ 班級彙整卡片（3 個指標）
+    │   ├─ 已派發學生（人）
+    │   ├─ 已釐清 X / Y 人（綠色強調）
+    │   └─ 需關注 X 人（>0 時紅色強調，含 warn + bad）
+    │
+    ├─ 學生結果表格（5 欄）
+    │   ├─ 班級 chip
+    │   ├─ 學生姓名（題組標題以副標形式）
+    │   ├─ 整體結果：tier chip（綠／黃／紅）+ 星等 0~3
+    │   ├─ 各題狀態 pills：每題 tier 顏色 + outcome label
+    │   │   * 衍生自 messages 的 maxHintLevel + 是否走到 stage='complete'
+    │   │   * 5 階段 label（自走理解／輕度引導／中度引導／強鷹架／未釐清）
+    │   │     折成 3 色階（ok/warn/bad）；hover 看完整 label
+    │   └─ 「查看對話」→ 跳轉 /teacher/treatment-logs/:sessionId
+    │
+    └─ 資料來源：useTreatmentLogs（列表）+ useTreatmentLog（per-row messages）
+       → 衍生規則集中於 src/lib/treatmentOutcomes.js，未來搬至後端 service
+```
+
+**低認知負荷設計原則**（v2 重構）：
+- 三色階決策軸（ok / warn / bad），而非 5 種色塊 — 老師第一次看就能分配心力
+- 圖例條置頂，免猜配色意義
+- 移除「AI 判定」「平均星等」等與其他指標重複的欄位／卡片
+- 移除目前無資料的「學生反思」欄（後端 P5 補上時再加回）
+
+**設計動機**：對話紀錄頁雖完整保留 phase/stage/step/hintLevel 標註，但教師難以一眼看出
+「這位學生治療有沒有用」。本頁將原始對話彙整為 outcome 標籤，直接回答教師最關心的問題。
+
+**已知限制 / 後端待辦（P5）**：
+- 學生反思文字（`reflection_text`）與三星評等（`star_rating`）尚未持久化到 `treatment_sessions`
+- 目前每列 N+1 fetch messages；後續應在 `/teachers/treatment-logs` 列表回傳 outcome 摘要欄位
 
 ---
 

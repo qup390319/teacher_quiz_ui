@@ -29,7 +29,7 @@ export default function PreviewQuizModal({ questions, onClose }) {
         </div>
         <div className="p-5 bg-[#EEF5E6] min-h-[400px] rounded-b-[32px]">
           <div className="flex items-center gap-2 mb-4">
-            <span className="text-xs text-[#95A5A6]">題目 {previewStep + 1}/{questions.length}</span>
+            <span className="text-sm text-[#95A5A6]">題目 {previewStep + 1}/{questions.length}</span>
             <div className="flex-1 bg-[#D5D8DC] rounded-full h-1.5">
               <div className="bg-[#8FC87A] h-1.5 rounded-full transition-all" style={{ width: `${((previewStep) / questions.length) * 100}%` }}></div>
             </div>

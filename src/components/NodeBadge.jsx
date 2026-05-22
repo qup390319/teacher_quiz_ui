@@ -1,9 +1,11 @@
 /**
- * NodeBadge — 知識節點識別徽章
+ * NodeBadge — 知識節點識別徽章（D5 強化版）
  *
  * spec-07 §節點徽章 規範：
- * - 子主題 A（溶解 INe-II-3-*）= 藍系框線（sky）
- * - 子主題 B（酸鹼 INe-Ⅲ-5-*）= 橘系框線（orange）
+ * - 子主題 A（溶解 INe-II-3-*）= 藍系
+ * - 子主題 B（酸鹼 INe-Ⅲ-5-*）= 橘系
+ * - 左側色帶（color stripe）強化辨識，不只靠文字色
+ * - 字體放大、min-width 加寬，回應教授「字體或圖標弄大」回饋
  * - 預設顯示短編號（去掉 INe- 前綴），完整 ID 在 tooltip
  *
  * Props:
@@ -15,28 +17,29 @@
 
 const SUBJECT_STYLES = {
   A: {
-    // 子主題 A：溶解 — 藍系
     bg: '#E6F2FB',
     border: '#3B8BC2',
     text: '#0E3A5C',
+    stripe: '#3B8BC2',
   },
   B: {
-    // 子主題 B：酸鹼 — 橘系
     bg: '#FBEFE0',
     border: '#D4843C',
     text: '#7A4A18',
+    stripe: '#D4843C',
   },
   unknown: {
     bg: '#F0F1F2',
     border: '#95A5A6',
     text: '#2D3436',
+    stripe: '#95A5A6',
   },
 };
 
 const SIZE_STYLES = {
-  sm: 'text-[10px] px-1.5 py-0.5 rounded-md',
-  md: 'text-xs px-2 py-0.5 rounded-md',
-  lg: 'text-sm px-2.5 py-1 rounded-lg',
+  sm: { text: 'text-[15px]',   padX: 'pl-2 pr-2.5', padY: 'py-0.5', rounded: 'rounded-md', minW: 'min-w-[68px]', stripeW: 'w-[4px]', gap: 'gap-1.5' },
+  md: { text: 'text-[15px]',   padX: 'pl-2.5 pr-3', padY: 'py-1',   rounded: 'rounded-md', minW: 'min-w-[76px]', stripeW: 'w-[4px]', gap: 'gap-1.5' },
+  lg: { text: 'text-base',     padX: 'pl-2.5 pr-3', padY: 'py-1.5', rounded: 'rounded-lg', minW: 'min-w-[88px]', stripeW: 'w-[5px]', gap: 'gap-2' },
 };
 
 function detectSubject(nodeId) {
@@ -48,24 +51,56 @@ function detectSubject(nodeId) {
 
 function shortenId(nodeId) {
   if (!nodeId) return '—';
-  // 'INe-II-3-02' → 'II-3-02'；'INe-Ⅲ-5-4' → 'Ⅲ-5-4'
   return nodeId.replace(/^INe-/, '');
 }
 
 export default function NodeBadge({ nodeId, name, size = 'md', showFullId = false, className = '' }) {
   const subject = detectSubject(nodeId);
   const s = SUBJECT_STYLES[subject];
-  const sizeCls = SIZE_STYLES[size] ?? SIZE_STYLES.md;
+  const sz = SIZE_STYLES[size] ?? SIZE_STYLES.md;
   const label = showFullId ? (nodeId ?? '—') : shortenId(nodeId);
-  const title = name ? `${nodeId} · ${name}` : nodeId;
 
   return (
-    <span
-      className={`inline-flex items-center font-mono font-bold border-2 whitespace-nowrap ${sizeCls} ${className}`}
-      style={{ backgroundColor: s.bg, borderColor: s.border, color: s.text }}
-      title={title}
-    >
-      {label}
+    <span className={`group relative inline-flex align-middle ${className}`}>
+      <span
+        className={`inline-flex items-center overflow-hidden border whitespace-nowrap cursor-help ${sz.rounded} ${sz.minW}`}
+        style={{ backgroundColor: s.bg, borderColor: s.border }}
+      >
+        {/* 左側色帶：強化視覺辨識 */}
+        <span
+          className={`self-stretch ${sz.stripeW} flex-shrink-0`}
+          style={{ backgroundColor: s.stripe }}
+          aria-hidden="true"
+        />
+        <span
+          className={`inline-flex items-center font-mono font-bold ${sz.text} ${sz.padX} ${sz.padY}`}
+          style={{ color: s.text }}
+        >
+          {label}
+        </span>
+      </span>
+      {/* Hover tooltip：完整節點 ID（黃色 mono）+ 完整名稱（白色 15px） */}
+      {nodeId && (
+        <span
+          role="tooltip"
+          className="pointer-events-none absolute left-0 bottom-full mb-2 w-72 max-w-[85vw] opacity-0 group-hover:opacity-100 transition-opacity z-30"
+        >
+          <span className="block bg-[#2D3436] text-white rounded-lg shadow-lg px-3 py-2">
+            <span className="block font-mono text-[15px] font-bold text-[#FBE9C7] mb-0.5">{nodeId}</span>
+            {name && (
+              <span className="block text-[15px] font-medium leading-relaxed text-white">{name}</span>
+            )}
+          </span>
+          <span
+            className="absolute left-6 top-full w-0 h-0"
+            style={{
+              borderLeft: '6px solid transparent',
+              borderRight: '6px solid transparent',
+              borderTop: '6px solid #2D3436',
+            }}
+          />
+        </span>
+      )}
     </span>
   );
 }

@@ -1,7 +1,7 @@
 # SPEC-12: RAGFlow Integration / RAGFlow 整合規格
 
 > 本文件定義 SciLens 後端與 RAGFlow Agent 的整合方式。
-> 對應 workflow.md 的 N1（全年級摘要）、N2（單班摘要）、N6（出題輔助）三個節點。
+> 對應 workflow.md 的 N1（所有班級摘要）、N2（單班摘要）、N6（出題輔助）三個節點。
 > P2 階段先實作 N6；N1 / N2 於 P3 接上。
 
 ---
@@ -155,7 +155,7 @@ class RagflowCitation:
 | 節點 | 策略 | 理由 |
 |------|------|------|
 | **N6 出題輔助** | 教師備課時維持同一 session 連續詢問（前端 cache `ragflowSessionId`） | 教師可能對同一題追問「再給 3 條」「換更口語的版本」，連續 session 可保留上下文 |
-| **N1 全年級摘要**（P3） | 每次摘要建一次性 session | 跨次摘要無共用上下文 |
+| **N1 所有班級摘要**（P3） | 每次摘要建一次性 session | 跨次摘要無共用上下文 |
 | **N2 單班摘要**（P3） | 每次摘要建一次性 session | 同上 |
 
 **前端責任**：N6 popover 開啟時，第一次呼叫不帶 `sessionId`，後端建 session 並回傳；後續呼叫帶上 `sessionId` 繼續對話。Popover 關閉時可丟棄 sessionId（後端 session 自然過期）。
@@ -273,7 +273,7 @@ P4 完成後，後端 `/api/ai/{grade,class}-summary` **直接從 DB 算統計**
 >
 > 為了向下相容，後端**忽略**多餘欄位（前端送來的 perClass 等不會引發錯誤）。
 
-### 8.2 N1 全年級摘要
+### 8.2 N1 所有班級摘要
 
 ```
 POST /api/ai/grade-summary
@@ -370,7 +370,7 @@ P3 暫時**不寫 cache**——每次點「重新整理」都實際呼叫一次 
 
 | 頁面 | 觸發 | 顯示位置 |
 |------|------|---------|
-| `/teacher/dashboard/overview`（OverviewPage） | 進入頁面時 + 「重新整理」按鈕 | 頁面上方「全年級 AI 診斷摘要」面板 |
+| `/teacher/dashboard/overview`（OverviewPage） | 進入頁面時 + 「重新整理」按鈕 | 頁面上方「所有班級 AI 診斷摘要」面板 |
 | `/teacher/dashboard/class-detail`（ClassDetailPage 內的 SingleClassReport） | 切換班級時 + 「重新整理」按鈕 | 「班級 AI 診斷摘要 + 本週行動清單」面板 |
 
 ---

@@ -4,12 +4,14 @@ import { useApp } from '../../../context/AppContext';
 import { useQuizzes, useSaveQuiz } from '../../../hooks/useQuizzes';
 import { useDebouncedEffect } from '../../../hooks/useDebouncedEffect';
 import { knowledgeNodes, getNodeById } from '../../../data/knowledgeGraph';
+import { getNodeColor } from '../../../constants/theme';
 import EditQuestionModal from '../../../components/teacher/quizEditor/EditQuestionModal';
 import DeleteQuestionModal from '../../../components/teacher/quizEditor/DeleteQuestionModal';
 import PreviewQuizModal from '../../../components/teacher/quizEditor/PreviewQuizModal';
 import CoveragePanel from '../../../components/teacher/quizEditor/CoveragePanel';
 import QuestionImportDrawer from '../../../components/teacher/quizEditor/QuestionImportDrawer';
 import { sortQuestionsByNodeOrder } from '../../../utils/topoSortNodes';
+import KnowledgeSkillTree from '../../../components/teacher/KnowledgeSkillTree';
 
 const AUTO_SAVE_DELAY_MS = 30000;
 
@@ -262,6 +264,20 @@ export default function Step2Edit({ onBack }) {
         <p className="text-[#636E72] text-sm">請確認以下題目內容，可點擊「編輯」修改、「新增題目」加題、或從題庫挑現成題</p>
       </div>
 
+      {/* 知識節點路徑圖（唯讀，標示步驟一已勾選的節點）— 可收合 */}
+      <details className="mb-5 group" open>
+        <summary className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-[#BDC3C7] text-sm font-semibold text-[#2D3436] hover:bg-[#F1F6EE] transition-colors list-none [&::-webkit-details-marker]:hidden">
+          <svg className="w-4 h-4 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+          知識節點路徑（已勾選 {selectedNodeIds.length} 節點）
+        </summary>
+        <div className="mt-3">
+          {/* selectable=true + 無 onToggle = 視覺上仍顯示「已勾選/未勾選」差異（已勾發光、未勾黯淡），但點擊無效，純檢視 */}
+          <KnowledgeSkillTree selectable selectedNodeIds={selectedNodeIds} />
+        </div>
+      </details>
+
       <CoveragePanel
         questions={quizQuestions}
         selectedNodeIds={selectedNodeIds}
@@ -320,12 +336,12 @@ export default function Step2Edit({ onBack }) {
         <table className="w-full text-sm border-collapse bg-white" style={{ minWidth: '900px' }}>
           <thead>
             <tr className="bg-[#C8EAAE] border-b border-[#BDC3C7]">
-              <th className="w-8 px-1"></th>
-              <th className="px-4 py-3 text-center text-xs font-bold text-[#636E72] uppercase tracking-wide w-14">題號</th>
-              <th className="px-4 py-3 text-left text-xs font-bold text-[#636E72] uppercase tracking-wide" style={{ minWidth: '220px' }}>題幹內容</th>
-              <th className="px-4 py-3 text-left text-xs font-bold text-[#636E72] uppercase tracking-wide" style={{ minWidth: '160px' }}>對應知識節點</th>
-              <th className="px-4 py-3 text-left text-xs font-bold text-[#636E72] uppercase tracking-wide" style={{ minWidth: '340px' }}>選項內容 / 對應迷思</th>
-              <th className="px-4 py-3 text-center text-xs font-bold text-[#636E72] uppercase tracking-wide w-24">操作</th>
+              <th className="w-10 px-1 py-3 text-center text-sm font-bold text-[#636E72] uppercase tracking-wide">排序</th>
+              <th className="px-4 py-3 text-center text-sm font-bold text-[#636E72] uppercase tracking-wide w-14">題號</th>
+              <th className="px-4 py-3 text-left text-sm font-bold text-[#636E72] uppercase tracking-wide" style={{ minWidth: '160px' }}>對應知識節點</th>
+              <th className="px-4 py-3 text-left text-sm font-bold text-[#636E72] uppercase tracking-wide" style={{ minWidth: '220px' }}>題幹內容</th>
+              <th className="px-4 py-3 text-left text-sm font-bold text-[#636E72] uppercase tracking-wide" style={{ minWidth: '340px' }}>選項內容 / 對應迷思</th>
+              <th className="px-4 py-3 text-center text-sm font-bold text-[#636E72] uppercase tracking-wide w-24">操作</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#D5D8DC]">
@@ -342,12 +358,13 @@ export default function Step2Edit({ onBack }) {
                   onDragEnd={handleDragEnd}
                   className={`${qIdx % 2 === 0 ? 'bg-white' : 'bg-[#EEF5E6]'} ${isDragging ? 'opacity-40' : ''} ${isDropTarget ? 'ring-2 ring-inset ring-[#8FC87A]' : ''} transition-all`}
                 >
-                  <td className="px-1 py-5 text-center cursor-grab active:cursor-grabbing">
-                    <svg className="w-4 h-4 mx-auto text-[#BDC3C7]" viewBox="0 0 24 24" fill="currentColor">
-                      <circle cx="9" cy="6" r="1.5" /><circle cx="15" cy="6" r="1.5" />
-                      <circle cx="9" cy="12" r="1.5" /><circle cx="15" cy="12" r="1.5" />
-                      <circle cx="9" cy="18" r="1.5" /><circle cx="15" cy="18" r="1.5" />
-                    </svg>
+                  <td className="px-1 py-5 text-center cursor-grab active:cursor-grabbing group">
+                    <div
+                      className="inline-flex items-center justify-center w-7 h-9 rounded-lg bg-[#EEF5E6] border border-[#C8D6C9] text-[#5C8A2E] group-hover:bg-[#C8EAAE] group-hover:border-[#8FC87A] group-hover:text-[#3D5A3E] transition-colors"
+                      title="拖拉這裡可調整題目順序"
+                    >
+                      <span className="material-symbols-rounded" style={{ fontSize: 20 }}>drag_indicator</span>
+                    </div>
                   </td>
                   <td className="px-4 py-5 text-center">
                     <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#C8EAAE] border border-[#BDC3C7] text-[#3D5A3E] text-sm font-bold">
@@ -355,15 +372,24 @@ export default function Step2Edit({ onBack }) {
                     </span>
                   </td>
                   <td className="px-4 py-5 align-top">
-                    <p className="text-sm text-[#2D3436] leading-relaxed">{q.stem}</p>
+                    {node && (() => {
+                      const color = getNodeColor(node.id);
+                      return (
+                        <div className="flex items-start gap-2">
+                          <div className={`flex-shrink-0 w-1 self-stretch rounded-full ${color.bar}`}></div>
+                          <div>
+                            <span className={`inline-flex items-center gap-1 text-[15px] font-mono font-semibold px-2 py-0.5 rounded-sm border-l-[3px] mb-1 ${color.badge}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${color.bar}`}></span>
+                              {node.id}
+                            </span>
+                            <p className="text-sm font-semibold text-[#2D3436]">{node.name}</p>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td className="px-4 py-5 align-top">
-                    {node && (
-                      <div>
-                        <p className="text-xs font-mono text-[#95A5A6] mb-0.5">{node.id}</p>
-                        <p className="text-sm font-semibold text-[#2D3436]">{node.name}</p>
-                      </div>
-                    )}
+                    <p className="text-sm text-[#2D3436] leading-relaxed">{q.stem}</p>
                   </td>
                   <td className="px-4 py-5 align-top">
                     <div className="space-y-2">
@@ -372,18 +398,18 @@ export default function Step2Edit({ onBack }) {
                         const misconLabel = getMisconceptionLabel(q.knowledgeNodeId, opt.diagnosis);
                         return (
                           <div key={opt.tag} className="flex items-start gap-2">
-                            <span className={`flex-shrink-0 w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center border ${isCorrect ? 'bg-[#C8EAAE] border-[#BDC3C7] text-[#3D5A3E]' : 'bg-[#EEF5E6] border-[#D5D8DC] text-[#636E72]'}`}>
+                            <span className={`flex-shrink-0 w-6 h-6 rounded-full text-sm font-bold flex items-center justify-center border ${isCorrect ? 'bg-[#C8EAAE] border-[#BDC3C7] text-[#3D5A3E]' : 'bg-[#EEF5E6] border-[#D5D8DC] text-[#636E72]'}`}>
                               {opt.tag}
                             </span>
                             <div className="flex-1">
                               <span className="text-sm text-[#2D3436]">{opt.content}</span>
                               <div className="mt-0.5">
                                 {isCorrect ? (
-                                  <span className="inline-block text-xs font-semibold text-[#3D5A3E] bg-[#C8EAAE] border border-[#BDC3C7] px-2 py-0.5 rounded-full">
+                                  <span className="inline-block text-sm font-semibold text-[#3D5A3E] bg-[#C8EAAE] border border-[#BDC3C7] px-2 py-0.5 rounded-full">
                                     ✓ 正確答案
                                   </span>
                                 ) : (
-                                  <span className="inline-block text-xs font-semibold text-[#E74C5E] bg-[#FAC8CC] border border-[#F5B8BA] px-2 py-0.5 rounded-full">
+                                  <span className="inline-block text-sm font-semibold text-[#E74C5E] bg-[#FAC8CC] border border-[#F5B8BA] px-2 py-0.5 rounded-full">
                                     迷思：{misconLabel}
                                   </span>
                                 )}
@@ -398,7 +424,7 @@ export default function Step2Edit({ onBack }) {
                     <div className="flex flex-col gap-2 items-center">
                       <button
                         onClick={() => setEditingQuestion(q)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#2E86C1] bg-[#BADDF4] border border-[#BDC3C7] rounded-xl hover:bg-[#A8D2EC] transition-colors w-full justify-center"
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-[#2E86C1] bg-[#BADDF4] border border-[#BDC3C7] rounded-xl hover:bg-[#A8D2EC] transition-colors w-full justify-center"
                       >
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -407,7 +433,7 @@ export default function Step2Edit({ onBack }) {
                       </button>
                       <button
                         onClick={() => setDeletingQuestion(q)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#E74C5E] bg-[#FAC8CC] border border-[#BDC3C7] rounded-xl hover:bg-[#F5B8BA] transition-colors w-full justify-center"
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-[#E74C5E] bg-[#FAC8CC] border border-[#BDC3C7] rounded-xl hover:bg-[#F5B8BA] transition-colors w-full justify-center"
                       >
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -430,7 +456,7 @@ export default function Step2Edit({ onBack }) {
         </table>
       </div>
 
-      <div className="mt-3 flex items-center gap-2 text-xs text-[#95A5A6]">
+      <div className="mt-3 flex items-center gap-2 text-sm text-[#95A5A6]">
         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>

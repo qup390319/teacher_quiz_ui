@@ -42,6 +42,7 @@
 | `/teacher/scenarios` | `ScenarioLibrary` | **（規劃，波次 2）** 概念釐清題組庫（治療模組，spec-08） | `TeacherLayout` |
 | `/teacher/scenarios/create` | `ScenarioCreateWizard` | **（規劃，波次 2）** 概念釐清題組出題精靈 | `TeacherLayout` |
 | `/teacher/scenarios/:scenarioQuizId/edit` | `ScenarioCreateWizard` | **（規劃，波次 2）** 編輯既有概念釐清題組 | `TeacherLayout` |
+| `/teacher/treatment-outcomes` | `TreatmentOutcomes` | 概念釐清結果：彙整學生×概念釐清題組的治療成效（per-question outcome / 星等 / AI 判定釐清 / 反思摘要 / 班級層級指標） | `TeacherLayout` |
 | `/teacher/treatment-logs` | `TreatmentLogs` | **（規劃，波次 2）** 治療對話紀錄總覽 | `TeacherLayout` |
 | `/teacher/treatment-logs/:sessionId` | `TreatmentLogDetail` | **（規劃，波次 2）** 單一 session 完整對話紀錄 | `TeacherLayout` |
 | `/student` | `StudentHome` | 學生首頁：瀏覽可作答題組（含診斷與概念釐清兩區塊） | 簡易 Header |
@@ -153,6 +154,43 @@
 
 ---
 
+### 2.2.1 教師端側邊欄 IA（D1 / D2 / D7 — 教學流程導向）
+
+**檔案**: `src/components/TeacherLayout.jsx`
+
+側邊欄依教師「使用個案（Use Case）」順序排列，**所有項目永遠可點**（不真正 disable），但用視覺引導讓老師感受到流程感。
+
+**Section 結構**（從上到下）：
+
+| Section | flow key | 內容 | 用色 |
+|---|---|---|---|
+| `① 出診斷題` | `quiz` | 診斷題組編輯（✨AI：RAGFlow 出題輔助） | 綠 |
+| `② 派題給班級` | `assign` | 派發診斷題組 | 青 |
+| `③ 看診斷結果` | `dashboard` | 診斷儀表板（✨AI：報告摘要）+ 5 個 dashboard 子分頁 + 診斷對話紀錄（✨AI：POE 追問） | 藍 |
+| `④ 概念釐清・補救` | `remediation` | 釐清題組編輯（✨AI）+ 派發釐清題組 + **概念釐清結果**（✨AI：成效衍生）+ 釐清對話紀錄（✨AI：CER 補救對話） | 紫紅 |
+| `班級` | — | 班級名單管理 | 橘 |
+| `其他` | — | 迷思概念成因、(預設) 知識節點總覽、(自定義) 知識節點總覽 | 棕 |
+
+**D2-A 狀態徽章**：每個 flow section 右側顯示真實狀態 chip，資料由 `useTeacherStageStatus()` 派生：
+
+| Flow | Ready 時 | Pending 時 |
+|---|---|---|
+| `quiz` | `{N} 份題組` | `尚未建立` |
+| `assign` | `{N} 班已派` | `尚未派題`（或 `—` 若沒題組） |
+| `dashboard` | `可查看` | `等待派題` |
+| `remediation` | `{N} 班已派`／`{N} 份釐清題組` | `尚未建立`（或 `—`） |
+
+**D2-B 建議下一步高亮**：`nextStep` 為「第一個未完成的階段」，該 section 加 pulsing dot + 「建議下一步」chip + 外框光暈。規則：
+- 沒題組 → `quiz`
+- 有題組沒派 → `assign`
+- 已派但沒釐清題組 → `remediation`
+- 已派且有釐清題組但未派釐清 → `remediation`
+- 全部完成 → `null`（不高亮）
+
+**D7 AI 標記**：所有用到 LLM/RAGFlow 的項目右側顯示 `<AIBadge>`（紫色 ✨ icon + AI pill + hover tooltip 一句話說明）。
+
+---
+
 ### 2.3 診斷結果頁群（`/teacher/dashboard/*`）
 
 > 將原 `DashboardReport` 拆成 5 個子分頁，避免單頁資訊量過大。
@@ -169,12 +207,18 @@
 
 **UI 元素**:
 - 頂部標題列：標題「診斷結果」（移除副標，避免與 tab 列重複表達範圍）
-- **題組選擇器整合進 tab 列左側**（B4 改版）：tab 列最左為「題組 ▼」綠色 chip，使用者永遠看得到自己在看哪份題組的哪個維度
-- 子分頁 tab 列：5 個 NavLink（所有班級答題分布 / 各班級成績比較 / 所有班級知識節點答對率 / 所有班級高頻迷思排行 / 個別學生診斷報告），切換時保留 `searchParams`
-- 派題資料為空時：顯示空狀態（不渲染 `<Outlet />`）
+- **學年篩選器**（最上方一列；與 `/teacher/classes` 共用同一組 AppContext 狀態）：
+  - 學年度下拉：`getCurrentSchoolYear()` 為預設，可往前選 5 個學年度
+  - 學期下拉：上學期 / 下學期
+  - 「顯示已封存班級」checkbox（預設關）
+  - 影響範圍：本層計算的 `classes` / `assignments` 都套用此篩選後再傳給子頁，避免歷史班級污染當期統計（詳見 spec-05 §1.5.3）
+- **題組選擇器與 tab 列上下分列**：題組以綠色 chip 顯示在上排，下排為 5 個 tab（含 Material Symbol icon + 啟用時填滿綠色 pill）；題組選單僅列出有派發給「目前篩選範圍班級」的題組
+- 子分頁 tab 列：5 個 NavLink（所有班級答題分布 / 各班級比較 / 知識節點答對率 / 高頻迷思排行 / 個別學生報告），切換時保留 `searchParams`。命名一律帶「範圍 + 指標」前綴，回應「tab 名稱看不出資料維度」回饋
+- **空狀態使用 `<EmptyStateGuide>`**（D2-C）：未建立任何題組 → 引導去 `① 出診斷題`；已建題組但未派 → 引導去 `② 派題給班級`；當前學年篩選結果為空 → 顯示「此學年/學期沒有班級資料，試試切換學年度或勾選『顯示已封存班級』」
 
 **狀態依賴**:
-- `useApp()`：`classes`, `quizzes`, `assignments`, `currentQuizId`, `setCurrentQuizId`
+- `useApp()`：`quizzes`, `assignments`, `currentQuizId`, `setCurrentQuizId`, `currentSchoolYear`, `setCurrentSchoolYear`, `currentSemester`, `setCurrentSemester`, `includeArchivedClasses`, `setIncludeArchivedClasses`
+- `useClasses({ schoolYear, semester, includeArchived })`：依篩選器即時拉班級清單
 - `useSearchParams()`：`quizId`, `classId`
 
 #### 2.3.1 OverviewPage (`/teacher/dashboard/overview`)
@@ -195,32 +239,46 @@
 
 **子分頁名稱**：「**各班級成績比較**」（原「各班學習狀況」）
 
-**內容（重排版後）**：每個班級一張獨立 Card（縱向排列，`gap-6`）：
-- Card header：班級名 + 班級色 bar
-- 答題分布：全對 / 對一半 / 全錯人數
-- 最弱節點 Top2（NodeBadge）
-- 高頻迷思 Top3（label + NodeBadge）
-- 「進入該班詳情」按鈕 → 跳轉 `class-detail`
+**內容（D3 規模化版本）**：
+
+頂部控制列：
+- 搜尋班級名（即時 filter）
+- 排序選單（預設 / 答對率高低 / 完成率高低 / 名稱）
+- 檢視模式切換：`list`（預設，緊湊行式）／ `cards`（完整大卡片，沿用原版）
+- 右側計數「共 X / Y 班」
+
+**list 模式**（為 30+ 班規模設計）：
+- 一行一班：班級色點 + 班級名 + 答對率 + 完成率 + mini 答題分布堆疊條（全對綠/對一半黃/全錯紅）+ 「展開」
+- 展開後顯示三欄細節：答題分布完整 bar / 最弱節點 Top2（NodeBadge）/ 高頻迷思 Top3（NodeBadge）+ 「進入該班詳情」按鈕
+
+**cards 模式**：原本的大卡片排列，每個班級一張獨立 Card：
+- Card header：班級色 bar + 班級名 + 完成率
+- 答題分布 / 最弱節點 Top2 / 高頻迷思 Top3
+- 「進入該班詳情」按鈕
 
 #### 2.3.3 NodesPage (`/teacher/dashboard/nodes`)
 **檔案**: `src/pages/teacher/dashboard/NodesPage.jsx`
 
 **子分頁名稱**：「**所有班級知識節點答對率**」（原「知識節點跨班比較」）
 
-**內容**: `CrossClassNodeChart`（同一概念節點各班答對率並排長條比較，節點軸以 NodeBadge 顯示短編號）+ `OptionAttractionChart`（所有班級每題的 A/B/C/D 選項選擇分布堆疊條，⭐ 標記正解，用於檢視選項設計品質）
+**內容**（方案 C 重組）：
+- **主視圖**：`CrossClassNodeChart`（同一概念節點各班答對率並排長條比較，節點軸以 NodeBadge 顯示短編號），單頁可一屏看完
+- **進階折疊**：`OptionAttractionChart`（題目選項吸引力檢核 — 各題 A/B/C/D 選擇分布，⭐ 標記正解）預設折疊，回應教授「不滾動可看完」需求
 
 #### 2.3.4 MisconceptionsPage (`/teacher/dashboard/misconceptions`)
 **檔案**: `src/pages/teacher/dashboard/MisconceptionsPage.jsx`
 
 **子分頁名稱**：「**所有班級高頻迷思排行**」（原「跨班高頻迷思」）
 
-**內容（重排版後）**：
-1. **完整迷思排行表（`MisconceptionRankingTable`）**：從 `gradeStats.perClass[].topMisconceptions` 重新聚合所有班級的迷思，依持有總人次降序列出（不只 Top 6）；每列含排名、NodeBadge、迷思 label、持有人次、持有率 bar、「查看涉及學生」按鈕（跳轉 `/teacher/dashboard/students?misconceptionId=...`）
-2. `MisconceptionCauseDonut` — 所有班級迷思成因 8 類分布甜甜圈圖
-3. `FollowupStatusFunnel` — 追問後狀態變化漏斗
-4. `ClassMisconceptionHeatmap` — 班級 × 迷思熱力圖
+**內容**（方案 C 重組）：
+- **主視圖**：`MisconceptionRankingTable` — 完整迷思排行（依持有總人次降序、含 NodeBadge / 人次 / 佔比 bar / 「查看涉及學生」跳轉）
+- **進階折疊面板**（單一 collapsible，內含兩圖並排）：
+  - `MisconceptionCauseDonut` — 所有班級迷思成因 8 類分布甜甜圈
+  - `FollowupStatusFunnel` — 追問後狀態變化漏斗
 
-> 原 `TopMisconceptionsChart` 已由 `MisconceptionRankingTable` 取代（前者只顯示 Top 6 橫條圖，後者列出完整排行並支援涉及學生跳轉）
+> 移除：
+> - `ClassMisconceptionHeatmap`（資訊與 `ClassesPage` 每班高頻迷思 Top3 重複，已刪除實檔）
+> - `TopMisconceptionsChart`（早期被 `MisconceptionRankingTable` 取代，已刪除實檔）
 
 #### 2.3.5 ClassDetailPage (`/teacher/dashboard/class-detail`)
 **檔案**: `src/pages/teacher/dashboard/ClassDetailPage.jsx`
@@ -277,8 +335,11 @@
 - 顯示所有 12 個知識節點（兩條子主題路徑）
 - 核取方塊勾選/取消節點 → `selectedNodeIds`
 - **麵包屑導航**：頂部顯示 `出題管理 › 建立題組 › 步驟一/步驟二`，點擊「出題管理」可返回 QuizLibrary
-- **Sticky 摘要列**：即時顯示已選節點數、迷思概念數、子主題 A/B 各自的選取計數（如 `子主題 A：3/5 · 子主題 B：2/7`）；未選節點時顯示任務引導文字「請從下方勾選至少 1 個知識節點以繼續」。摘要列同時顯示「預計出 N 題」（N = 所有已選節點的 `nodeQuestionCounts` 之和，預設每節點 1 題）
-- **已選節點 chip 列（含彈性題數調整）**：摘要列下方列出已選節點的 chip 標籤，每個 chip 內含 +/- stepper（範圍 1–4），教師可為各節點調整預期出題數；點擊 chip 的 × 可取消選取（滾動表格時仍可回顧已選項目）
+- **Sticky 技能樹 + 摘要列**（合併 sticky 容器，回應「邊看表格邊看路徑」需求）：
+  - 知識路徑技能樹（KnowledgeSkillTree）置於上方，預設展開、可手動收合以騰出表格空間
+  - 摘要列含「展開/收合技能樹」按鈕 + 「N 節點 · N 題 · N 迷思 | A x/5 · B y/7」一行概要 + 「下一步」按鈕
+  - 整個容器 sticky 在頁面頂端，老師滾動下方常見迷思表格時技能樹仍可參照
+- **已移除「已選節點 chip 列」**（含 +/- stepper）：認知負荷過高、且 chip 列複製了已在技能樹中可見的選取資訊。每節點預設出 1 題；如需多題，請在 Step2 出題編輯器直接新增
 - **子主題計數徽章**：學習路徑圖中每條子主題標題旁顯示 `N/M` 徽章，已選時為綠色、未選時為灰色
 
 #### Step 2: Step2Edit
@@ -289,7 +350,7 @@
 - **CoveragePanel 補洞**：每個節點下列出尚未被任一選項覆蓋的迷思 chips；點擊 chip 直接建立預填的新題目（鎖定該節點 + 該迷思為 distractor），並開啟編輯 modal。同時從 `nodeQuestionCounts` 讀取各節點的目標題數，於面板顯示「實際 / 目標 題」
 - **自動排序**按鈕（工具列中介於「從題庫挑題」與「新增題目」之間）：依知識節點拓撲順序（Kahn's algorithm）對題目重新排序並編號，題目少於 2 題時 disabled；使用 `src/utils/topoSortNodes.js` 的 `sortQuestionsByNodeOrder`
 - **從題庫挑題**（`QuestionImportDrawer`）：右側抽屜列出所有題組，展開後勾選題目即可深拷貝匯入；預設只顯示與當前 `selectedNodeIds` 有交集的題組，可切換顯示全部
-- **拖曳重排題目**（HTML5 Drag and Drop）：問題表格的每一列左側新增 6 dot 手柄圖示（SVG），列本身 `draggable="true"`。拖曳時：
+- **拖曳重排題目**（HTML5 Drag and Drop）：問題表格的每一列左側顯示**明顯的 drag handle**：淺綠底色圓角方塊 + Material Symbol `drag_indicator` icon，hover 變深綠並 cursor 切換為 `grab/grabbing`；表頭該欄標示「排序」字樣，回應「拖拉功能太不顯眼」回饋。拖曳時：
   - 來源列透明度降低（視覺反饋）
   - 拖曳至目標列時顯示綠色 ring 高亮
   - 放開時重新排序 questions 陣列，並自動用 `renumber()` 更新題號
@@ -342,9 +403,10 @@
 > **路由說明**：舊路由 `/teacher/assignments` 已改為 redirect 至 `/teacher/assignments/diagnosis`，
 > 以維持與既有書籤、舊連結的相容性。Sidebar「派題」群組展開後，「step 1. 診斷題組」即指向此頁。
 >
-> **Tab 切換**：頁面內的「📝 診斷題組 / 🌱 概念釐清題組」按鈕直接呼叫 `useNavigate()` 切換到對應路由（`/diagnosis` ↔ `/scenarios`），讓 URL、側邊欄 active 狀態、瀏覽器歷史保持同步；元件內不再保留獨立的 tab state，`initialTab` prop 即為當前 tab。
+> **題型由路由決定**：頁面內**已移除**「📝 診斷題組 / 🌱 概念釐清題組」tab pill，老師從 sidebar「派發診斷題組」或「派發釐清題組」分別進入，`initialTab` prop 直接決定模式。畫面內不再有 tab 切換按鈕，回應「icon 太多、流程上重複」回饋。
 
 **UI 元素**:
+- **排序控制**（取代原 tab pill）：下拉選單可選預設順序／建立時間新→舊／舊→新／題組名稱 A→Z／Z→A／已派班級數多→少／少→多；旁邊顯示「共 N 份診斷／釐清題組」
 - 圖例（未派發／待作答／進行中／已完成）置於矩陣**上方**，方便對照後再點選格子
 - 派題矩陣（列為題組、欄為班級）；格子最小高度 120px
 - 新增派題的 `AssignPopover` 與管理派題的 `ManagePopover` 採 `position: fixed` + 觸發按鈕 bounding rect 計算座標，避免被外層 `overflow-hidden / overflow-x-auto` 切掉
@@ -372,18 +434,76 @@
 
 ---
 
+### 2.6.2 TreatmentOutcomes (`/teacher/treatment-outcomes`)
+**檔案**: `src/pages/teacher/TreatmentOutcomes.jsx`
+
+**功能描述**:
+- 教師端「概念釐清結果」頁，與「釐清對話紀錄」並列為治療成效檢視入口
+- 將學生×概念釐清題組的 session 衍生為可比較的成效彙整，協助教師判斷下一步教學決策
+- 與對話紀錄頁的差別：本頁聚焦「結果」（每題釐清程度、星等、AI 判定），對話紀錄頁聚焦「過程」（完整氣泡時序）
+
+**衍生規則**（spec-08 §5.5，純前端 lib `src/lib/treatmentOutcomes.js`，未來搬至後端 `treatment_outcome_service.py`）：
+- per-question outcome：依該題 messages 的 maxHintLevel + 是否走到 `stage='complete'`，分類為
+  自走理解 / 輕度引導 / 中度引導 / 強鷹架 / 未釐清 / 未作答
+- AI 判定釐清（代理 pre/post 比較）：該 session 所有題目皆走到 `stage='complete'` → 已釐清
+- 星等（0~3 顆）：依各題 outcome weight 平均（≥3.5 → 3⭐、≥2.5 → 2⭐、≥1.5 → 1⭐、< 1.5 → 0⭐）
+
+**UI 元素**（低認知負荷重構版）:
+- 頁首：標題「概念釐清結果」+ 一句話副標
+- **三色階圖例條**：綠（已釐清）/ 黃（需引導）/ 紅（未釐清），首次閱讀即可掌握配色意義
+- 篩選列：班級 dropdown + 概念釐清題組 dropdown
+- **班級彙整卡片**（3 個，避免 4 個資訊塊讓人分心）：
+  - 已派發學生（人）
+  - 已釐清（X / Y 人；綠色強調）
+  - 需關注（人；當 > 0 時用紅色強調）
+- **結果表格**（5 欄；舊版 8 欄已收斂）：
+  - 班級 chip
+  - 學生姓名（題組標題以副標形式顯示，不另佔一欄）
+  - 整體結果（綠 / 黃 / 紅 tier chip + 星等 0~3）
+  - 各題狀態：每題 pill = tier 顏色 + outcome label（自走理解 / 輕度引導 / 中度引導 / 強鷹架 / 未釐清 / 未作答）
+  - 「查看對話」→ 跳轉 `/teacher/treatment-logs/:sessionId`
+
+**已刪除的舊欄位 / 卡片（避免重複與認知負荷）**:
+- 「AI 判定」欄 — 與整體結果 chip 重複（皆從 perQuestion 推得）
+- 「概念釐清題組」獨立欄 — 移至學生姓名下副標
+- 「學生反思」欄 — 後端欄位 P5 未實作，欄位永遠空白，暫不顯示
+- 「平均星等」「平均釐清率」指標卡 — 兩者皆描述整體成效，使用者難分辨；收斂為單一「已釐清 / 需關注」決策軸
+
+**狀態依賴**: `useTreatmentLogs`、`useTreatmentLog`、`useScenarios`、`useClasses`
+
+**已知限制 / 後端待辦（P5）**:
+- `treatment_sessions` 需新增 `reflection_text`（學生反思）、`star_rating`（學生端 result 階段三星）兩個欄位（spec-11 §3.13、deviations.md）
+- 後續計算應改為後端 service 一次回傳所有衍生欄位（避免前端 N+1 fetch messages）
+
+---
+
 ### 2.7 ClassManagement (`/teacher/classes`)
 **檔案**: `src/pages/teacher/ClassManagement.jsx`
 
 **功能描述**:
-- 檢視所有班級及其基本資訊
-- 點擊班級卡片進入班級詳情
+- 列出當前篩選範圍內的班級（Google Classroom 風的極簡呈現）
+- 提供「新增班級」入口
+- **不直接處理 class-level 寫入動作**（編輯/封存/還原/刪除全部走詳情頁）
 
 **UI 元素**:
-- 班級卡片（班級名稱、年級、科目、學生人數、顏色標識）
-- 導航至 `/teacher/classes/:classId`
+- 頁首：標題「班級管理」+「+ 新增班級」按鈕
+- 學年篩選器（與 DashboardLayout 共用 AppContext 狀態，spec-05 §1.5）
+- 顯示模式切換 chip：`[列表] [完整卡片]`（預設列表，圖示 `view_list` / `dashboard`）
+- 班級項目（兩種視圖共用同一套設計語言，定義於 `ClassListRow.jsx` / `ClassCardItem.jsx`）：
+  - 列表列（`ClassListRow`）：色塊（左側 1.5px 圓條）+ 班名（粗體）+ 副標「N 位學生 · 114 下」+ 右側 chevron；整列可點、鍵盤 Enter/Space 同效；hover/focus 變淺綠
+  - 完整卡片（`ClassCardItem`）：同樣的內容比例，版面較大；左側細色條 + 粗體班名 + 副標
+  - 已封存：opacity 60% + grayscale + 「已封存」chip；唯有勾選「顯示已封存班級」才會出現在列表
+- 空狀態：「目前學年/學期沒有班級。點右上『新增班級』… 或勾選『顯示已封存班級』查閱歷史。」
+- **新增班級**：開啟 `ClassFormModal` (isEdit=false)；提交 → `useCreateClass()`
 
-**狀態依賴**: `classes`
+**沒有的東西**（與既有實作差異）：
+- ❌ 班級卡片/列上沒有編輯/封存/刪除按鈕
+- ❌ 沒有派題數、最近派題日期等「教學活動」統計（這些屬於儀表板）
+
+**狀態依賴**:
+- `useApp()`：`currentSchoolYear`、`currentSemester`、`includeArchivedClasses`
+- `useClasses()`：依篩選器即時拉取班級清單
+- `useCreateClass()`：新增班級
 
 ---
 
@@ -391,17 +511,40 @@
 **檔案**: `src/pages/teacher/ClassDetail.jsx`
 
 **功能描述**:
-- 顯示特定班級的詳細資訊
-- 學生名冊（姓名、座號）
-- 可編輯學生名單
+- 班級詳情頁。**所有 class-level 寫入動作集中在此**（編輯/封存/還原/刪除）
+- 學生名冊 CRUD
+- 學生密碼管理（揭露明文 / 重設）
 
 **UI 元素**:
-- 班級資訊頭部（名稱、年級、科目）
-- 學生列表（可新增/移除學生）
-- 返回按鈕
+- 頁首：
+  - 返回按鈕「← 返回班級管理」
+  - 班名（大）+ 已封存徽章（若 status='archived'）
+  - 副標：`{114 學年度} · {下學期} · N 位學生 · 預設密碼說明`
+  - 右側操作鈕列：
+    - `[✏ 編輯班級]` → 開啟 `ClassFormModal` (isEdit=true)
+    - `[封存]`（active 時）→ window.confirm → `useArchiveClass()`
+    - `[還原]`（archived 時）→ `useUnarchiveClass()`
+    - `[🗑]` → `DeleteClassModal`（兩步驟）→ `useDeleteClass()` → 跳回 `/teacher/classes`
+- 已封存橫幅（status='archived' 時）：米色背景「此為歷史班級。學生名冊與派題作答紀錄完整保留，點上方『還原』可恢復為任教中。」
+- 學生名冊表格（座號 / 姓名 / 帳號 / 密碼 / 操作）：
+  - 密碼欄為 `PasswordCell`：預設遮罩，點眼睛圖示 → `useStudent(id)` 揭露明文
+  - 重設密碼 → `useResetStudentPassword()`
+  - 編輯 / 刪除學生 → `useUpdateClassStudents()`（PUT 整批替換）
+  - 新增學生表單（座號 + 姓名）
 
-**狀態依賴**: `classes`, `updateClassStudents`
 **路由參數**: `classId`
+
+**狀態依賴**:
+- `useClass(classId)`：可讀任何狀態的班級（含已封存，後端 GET 不過濾 status）
+- `useUpdateClass()` / `useArchiveClass()` / `useUnarchiveClass()` / `useDeleteClass()`
+- `useUpdateClassStudents()` / `useResetStudentPassword()` / `useStudent(id)`
+- `useAssignments()`：僅供 `DeleteClassModal` 顯示「即將連動刪除 N 筆派題」
+- `useApp()`：`currentSchoolYear` / `currentSemester`（編輯班級表單的學年下拉預設值）
+
+**抽出的子元件**:
+- `ClassFormModal.jsx` — 新增/編輯班級的表單 Modal（與 ClassManagement 共用）
+- `DeleteClassModal.jsx` — 班級刪除確認 Modal（兩步驟）
+- `DeleteStudentModal.jsx` — 學生刪除確認 Modal
 
 ---
 
@@ -416,15 +559,13 @@
 - 顯示先備知識關聯（知識學習路徑視覺化）
 
 **UI 元素**:
-- 知識學習路徑視覺化（知識節點按 level 分層展示 + 先備知識連線/箭頭）
-- 各節點群組使用對應色彩（NODE_GROUP_COLORS）
-- **NodeRelationshipMatrix**（節點先備知識矩陣）：
-  - 整合於頁面中學習路徑與迷思表格之間
-  - 12×12 網格矩陣（行 = 節點，列 = 節點）
-  - 單元類型：`'self'`（黑色對角線）、`'direct'`（綠色，直接先備）、`'transitive'`（淺綠色，傳遞性先備）、`'none'`（白色）
-  - **子主題篩選器**：All / A (溶解) / B (酸鹼) 按鈕，可過濾顯示特定子主題的行列
-  - **Hover 互動**：游標懸停於某格時，該列與該欄以 ring 高亮標示；底部彈出詳情面板，顯示節點名稱、直接先備、全部先備（使用 `getAllPrerequisites()` from `src/utils/topoSortNodes.js`）
-  - **圖例**：底部顯示四種單元類型的色彩說明、子主題顏色標籤
+- **`KnowledgeSkillTree`** 知識路徑技能樹（深木紋夜晚地圖風 / Mockup J-1）：
+  - 六角節點 + 階段欄位（1–6）
+  - A 綠系階段漸層（5 階段、線性）／ B 暖橘系階段漸層（6 階段、5-5/5-6 平行）
+  - 銳利輪廓 + 背後柔光暈
+  - hover 節點 → 固定資訊條顯示完整名稱（避免 layout shift）
+  - 「顯示節點名稱」開關 → 展開下方雙欄詳細清單
+  - 詳見 spec-03 §6
 - 迷思概念表格（3 欄）：
   | 欄位 | 說明 |
   |------|------|

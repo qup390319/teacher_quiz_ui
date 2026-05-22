@@ -14,18 +14,19 @@ export default function StepIndicator({ currentStep, steps, onStepClick, canNavi
   const allow = (n) => (typeof canNavigateTo === 'function' ? canNavigateTo(n) : true);
 
   return (
-    <div className="flex flex-wrap items-center gap-y-2">
+    <div className="flex flex-wrap items-center gap-y-3">
       {steps.map((step, idx) => {
         const stepNum = idx + 1;
         const isCompleted = stepNum < currentStep;
         const isCurrent = stepNum === currentStep;
         const isAllowed = interactive && !isCurrent && allow(stepNum);
 
-        const pillBase = 'flex items-center gap-2 sm:gap-2.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-semibold transition-all border';
+        const pillBase = 'relative flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-full text-sm sm:text-[15px] font-semibold transition-all border';
+        // 當前步驟：深綠 + 白字 + 高對比；已完成：淺綠柔和；未到達：白底灰
         const pillColor = isCurrent
-          ? 'bg-[#8FC87A] text-[#2D3436] border-[#8FC87A]'
+          ? 'bg-[#5C8A2E] text-white border-[#3D5A3E] shadow-[0_3px_8px_rgba(92,138,46,0.35)] ring-2 ring-[#8FC87A]/40 scale-[1.03]'
           : isCompleted
-          ? 'bg-[#C8EAAE] text-[#3D5A3E] border-[#BDC3C7]'
+          ? 'bg-[#E2F4D8] text-[#3D5A3E] border-[#A7D696]'
           : 'bg-white text-[#95A5A6] border-[#D5D8DC]';
         const interactivity = interactive
           ? (isCurrent
@@ -37,11 +38,11 @@ export default function StepIndicator({ currentStep, steps, onStepClick, canNavi
         const pillClass = `${pillBase} ${pillColor} ${interactivity}`;
 
         const numCircle = (
-          <span className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 border ${
+          <span className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-sm sm:text-sm font-bold flex-shrink-0 border-2 ${
             isCurrent
-              ? 'bg-white text-[#3D5A3E] border-[#BDC3C7]'
+              ? 'bg-white text-[#3D5A3E] border-white shadow-inner'
               : isCompleted
-              ? 'bg-[#8FC87A] text-white border-[#8FC87A]'
+              ? 'bg-[#5C8A2E] text-white border-[#5C8A2E]'
               : 'bg-[#EEF5E6] text-[#95A5A6] border-[#BDC3C7]'
           }`}>
             {isCompleted
@@ -53,7 +54,25 @@ export default function StepIndicator({ currentStep, steps, onStepClick, canNavi
           </span>
         );
 
-        const inner = <>{numCircle}{step}</>;
+        const inner = (
+          <>
+            {numCircle}
+            {step}
+            {/* 「目前位置」徽章：浮在當前步驟 pill 右上角 */}
+            {isCurrent && (
+              <span
+                className="absolute -top-2 left-1/2 -translate-x-1/2 px-1.5 py-px rounded-full text-[15px] font-bold text-white whitespace-nowrap"
+                style={{
+                  background: '#D08B2E',
+                  boxShadow: '0 1px 4px rgba(208,139,46,0.4)',
+                  letterSpacing: '0.5px',
+                }}
+              >
+                目前位置
+              </span>
+            )}
+          </>
+        );
 
         return (
           <div key={stepNum} className="flex items-center">
@@ -71,7 +90,7 @@ export default function StepIndicator({ currentStep, steps, onStepClick, canNavi
               <div className={pillClass}>{inner}</div>
             )}
             {idx < steps.length - 1 && (
-              <div className={`h-0.5 w-4 sm:w-8 mx-1 ${isCompleted ? 'bg-[#8FC87A]' : 'bg-[#D5D8DC]'}`}></div>
+              <div className={`h-0.5 w-4 sm:w-8 mx-1.5 rounded-full ${isCompleted ? 'bg-[#5C8A2E]' : 'bg-[#D5D8DC]'}`}></div>
             )}
           </div>
         );

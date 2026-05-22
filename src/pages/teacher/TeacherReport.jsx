@@ -1,4 +1,4 @@
-﻿import {
+import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import TeacherLayout from '../../components/TeacherLayout';
@@ -25,20 +25,20 @@ function HeatmapView() {
         <table className="w-full text-sm bg-white" style={{ minWidth: '700px' }}>
           <thead>
             <tr className="bg-[#C8EAAE] border-b border-[#BDC3C7]">
-              <th className="px-4 py-3 text-left text-xs font-bold text-[#636E72] uppercase">題目 / 知識節點</th>
-              <th className="px-4 py-3 text-center text-xs font-bold text-[#636E72] uppercase">選項 A</th>
-              <th className="px-4 py-3 text-center text-xs font-bold text-[#636E72] uppercase">選項 B</th>
-              <th className="px-4 py-3 text-center text-xs font-bold text-[#636E72] uppercase">選項 C</th>
-              <th className="px-4 py-3 text-center text-xs font-bold text-[#636E72] uppercase">選項 D</th>
+              <th className="px-4 py-3 text-left text-sm font-bold text-[#636E72] uppercase">題目 / 知識節點</th>
+              <th className="px-4 py-3 text-center text-sm font-bold text-[#636E72] uppercase">選項 A</th>
+              <th className="px-4 py-3 text-center text-sm font-bold text-[#636E72] uppercase">選項 B</th>
+              <th className="px-4 py-3 text-center text-sm font-bold text-[#636E72] uppercase">選項 C</th>
+              <th className="px-4 py-3 text-center text-sm font-bold text-[#636E72] uppercase">選項 D</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#D5D8DC]">
             {rows.map(({ q, node, stats }) => (
               <tr key={q.id}>
                 <td className="px-4 py-4 align-top" style={{ maxWidth: 220 }}>
-                  <p className="text-xs font-mono text-[#95A5A6] mb-0.5">{node?.id}</p>
+                  <p className="text-sm font-mono text-[#95A5A6] mb-0.5">{node?.id}</p>
                   <p className="text-sm font-semibold text-[#2D3436] mb-1">{node?.name}</p>
-                  <p className="text-xs text-[#636E72] leading-relaxed">{q.stem}</p>
+                  <p className="text-sm text-[#636E72] leading-relaxed">{q.stem}</p>
                 </td>
                 {q.options.map((opt) => {
                   const count = stats[opt.tag] || 0;
@@ -52,11 +52,11 @@ function HeatmapView() {
                   return (
                     <td key={opt.tag} className="px-3 py-4 text-center align-top" style={bgStyle}>
                       <div className="font-bold text-lg text-[#2D3436]">{count}</div>
-                      <div className="text-xs text-[#636E72] mb-1">{pct}% 學生</div>
+                      <div className="text-sm text-[#636E72] mb-1">{pct}% 學生</div>
                       {isCorrect ? (
-                        <span className="text-xs font-semibold text-[#3D5A3E] bg-[#C8EAAE] border border-[#BDC3C7] px-2 py-0.5 rounded-full">正確答案</span>
+                        <span className="text-sm font-semibold text-[#3D5A3E] bg-[#C8EAAE] border border-[#BDC3C7] px-2 py-0.5 rounded-full">正確答案</span>
                       ) : (
-                        <span className="text-xs text-[#E74C5E] bg-[#FAC8CC] border border-[#F5B8BA] px-2 py-0.5 rounded-full leading-tight block mt-1">{misconLabel}</span>
+                        <span className="text-sm text-[#E74C5E] bg-[#FAC8CC] border border-[#F5B8BA] px-2 py-0.5 rounded-full leading-tight block mt-1">{misconLabel}</span>
                       )}
                     </td>
                   );
@@ -78,21 +78,21 @@ function HeatmapView() {
             return (
               <div key={misconId} className="bg-white rounded-2xl border border-[#BDC3C7] p-4 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
                 <div className="flex items-start gap-3 mb-3">
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-full border border-[#BDC3C7] flex-shrink-0 bg-[#EEF5E6] text-[#636E72]">
+                  <span className="text-sm font-bold px-2 py-0.5 rounded-full border border-[#BDC3C7] flex-shrink-0 bg-[#EEF5E6] text-[#636E72]">
                     {misconId}
                   </span>
                   <div className="flex-1">
                     <p className="text-sm font-semibold text-[#2D3436]">{miscon?.label}</p>
-                    <p className="text-xs text-[#636E72]">{node?.name} · {miscon?.detail}</p>
+                    <p className="text-sm text-[#636E72]">{node?.name} · {miscon?.detail}</p>
                   </div>
                   <div className="text-right flex-shrink-0">
                     <span className={`text-lg font-bold ${pct >= 50 ? 'text-[#E74C5E]' : pct >= 30 ? 'text-[#D4AC0D]' : 'text-[#B7950B]'}`}>{pct}%</span>
-                    <p className="text-xs text-[#95A5A6]">{students.length}/{TOTAL_STUDENTS} 人</p>
+                    <p className="text-sm text-[#95A5A6]">{students.length}/{TOTAL_STUDENTS} 人</p>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {students.map((name) => (
-                    <span key={name} className="text-xs bg-[#EEF5E6] border border-[#D5D8DC] text-[#636E72] px-2.5 py-1 rounded-full">
+                    <span key={name} className="text-sm bg-[#EEF5E6] border border-[#D5D8DC] text-[#636E72] px-2.5 py-1 rounded-full">
                       {name}
                     </span>
                   ))}
@@ -113,7 +113,7 @@ function BreakdownTooltip({ active, payload }) {
     return (
       <div className="bg-white border border-[#BDC3C7] rounded-xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] p-3 text-sm">
         <p className="font-bold text-[#2D3436]">{d.name}</p>
-        <p className="text-xs text-[#636E72] mb-1">{d.id}</p>
+        <p className="text-sm text-[#636E72] mb-1">{d.id}</p>
         <p className="font-semibold text-[#3D5A3E]">通過率：{d.passRate}%</p>
       </div>
     );
@@ -139,8 +139,8 @@ function BreakdownChart() {
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#C8EAAE" />
-            <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#636E72' }} angle={-15} textAnchor="end" interval={0} />
-            <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11, fill: '#636E72' }} />
+            <XAxis dataKey="name" tick={{ fontSize: 13, fill: '#636E72' }} angle={-15} textAnchor="end" interval={0} />
+            <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 13, fill: '#636E72' }} />
             <Tooltip content={<BreakdownTooltip />} />
             <Bar dataKey="passRate" radius={[8, 8, 0, 0]} fill={CHART_BAR_COLOR} />
           </BarChart>
@@ -181,12 +181,12 @@ function TeachingActions() {
           return (
             <div key={id} className="bg-white rounded-2xl border border-[#BDC3C7] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
               <div className="flex items-start gap-3 mb-3">
-                <div className={`flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-full border ${urgency.color}`}>
+                <div className={`flex-shrink-0 text-sm font-bold px-2.5 py-1 rounded-full border ${urgency.color}`}>
                   {urgency.label} {pct}%
                 </div>
                 <div>
                   <p className="text-sm font-bold text-[#2D3436]">{miscon.label}</p>
-                  <p className="text-xs text-[#636E72]">{node.name} · {id}</p>
+                  <p className="text-sm text-[#636E72]">{node.name} · {id}</p>
                 </div>
               </div>
               <div className="bg-[#FCF0C2] border border-[#F5D669] rounded-xl p-3.5">
@@ -196,7 +196,7 @@ function TeachingActions() {
                       d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.347.35A3.001 3.001 0 0112 20.4a3.001 3.001 0 01-2.121-.872l-.347-.347z" />
                   </svg>
                   <div>
-                    <p className="text-xs font-semibold text-[#B7950B] mb-1">建議教學策略</p>
+                    <p className="text-sm font-semibold text-[#B7950B] mb-1">建議教學策略</p>
                     <p className="text-sm text-[#9A7D0A] leading-relaxed">{node.teachingStrategy}</p>
                   </div>
                 </div>
@@ -206,7 +206,7 @@ function TeachingActions() {
                   <svg className="w-4 h-4 text-[#D4AC0D] flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <p className="text-xs text-[#B7950B]">
+                  <p className="text-sm text-[#B7950B]">
                     此節點有先備知識（{prereqNames.join('、')}），建議先確認學生對先備概念已有正確理解，再進行補救教學。
                   </p>
                 </div>
@@ -247,7 +247,7 @@ export default function TeacherReport() {
             <div key={s.label} className={`rounded-2xl border border-[#BDC3C7] p-3 sm:p-4 ${s.bg} shadow-[0_2px_12px_rgba(0,0,0,0.06)]`}>
               <p className={`text-xl sm:text-2xl font-bold ${s.color} mb-0.5`}>{s.value}</p>
               <p className="text-sm font-semibold text-[#2D3436]">{s.label}</p>
-              <p className="text-xs text-[#636E72] mt-0.5">{s.sub}</p>
+              <p className="text-sm text-[#636E72] mt-0.5">{s.sub}</p>
             </div>
           ))}
         </div>

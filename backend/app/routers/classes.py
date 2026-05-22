@@ -3,7 +3,10 @@
 Mutation: PUT /api/classes/{class_id}/students replaces the roster wholesale
 (matches the existing frontend `updateClassStudents` pattern).
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from datetime import UTC, datetime
+from typing import Literal
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,27 +21,47 @@ from app.schemas.class_ import (
     UpdateClassRequest,
     UpdateStudentsRequest,
 )
+from app.utils.school_year import get_current_school_year, get_current_semester
 
 router = APIRouter()
+
+
+def _to_brief(cls: Class, student_count: int | None = None) -> ClassBrief:
+    return ClassBrief(
+        id=cls.id, name=cls.name, grade=cls.grade, subject=cls.subject,
+        color=cls.color, text_color=cls.text_color,
+        student_count=student_count if student_count is not None else len(cls.students),
+        note=cls.note,
+        school_year=cls.school_year, semester=cls.semester, status=cls.status,
+        archived_at=cls.archived_at,
+    )
 
 
 @router.get("", response_model=list[ClassBrief], response_model_by_alias=True)
 async def list_classes(
     teacher: User = Depends(require_teacher),
     db: AsyncSession = Depends(get_db),
+    school_year: int | None = Query(default=None, ge=2000, le=2100),
+    semester: Literal["first", "second"] | None = Query(default=None),
+    include_archived: bool = Query(default=False),
 ) -> list[ClassBrief]:
-    res = await db.execute(
-        select(Class).where(Class.teacher_id == teacher.id).order_by(Class.id),
-    )
+    """List classes for the current teacher.
+
+    Default filter: current school year / semester / active only.
+    Omit ``school_year`` / ``semester`` to skip those filters; pass
+    ``include_archived=true`` to include archived classes.
+    """
+    stmt = select(Class).where(Class.teacher_id == teacher.id)
+    if school_year is not None:
+        stmt = stmt.where(Class.school_year == school_year)
+    if semester is not None:
+        stmt = stmt.where(Class.semester == semester)
+    if not include_archived:
+        stmt = stmt.where(Class.status == "active")
+    stmt = stmt.order_by(Class.id)
+    res = await db.execute(stmt)
     classes = list(res.scalars().all())
-    return [
-        ClassBrief(
-            id=c.id, name=c.name, grade=c.grade, subject=c.subject,
-            color=c.color, text_color=c.text_color,
-            student_count=len(c.students), note=c.note,
-        )
-        for c in classes
-    ]
+    return [_to_brief(c) for c in classes]
 
 
 async def _generate_class_id(db: AsyncSession) -> str:
@@ -71,14 +94,15 @@ async def create_class(
         text_color=payload.text_color,
         teacher_id=teacher.id,
         note=payload.note,
+        school_year=payload.school_year if payload.school_year is not None else get_current_school_year(),
+        semester=payload.semester if payload.semester is not None else get_current_semester(),
+        status="active",
+        archived_at=None,
     )
     db.add(cls)
     await db.commit()
     await db.refresh(cls)
-    return ClassBrief(
-        id=cls.id, name=cls.name, grade=cls.grade, subject=cls.subject,
-        color=cls.color, text_color=cls.text_color, student_count=0, note=cls.note,
-    )
+    return _to_brief(cls, student_count=0)
 
 
 @router.patch("/{class_id}", response_model=ClassBrief, response_model_by_alias=True)
@@ -92,16 +116,48 @@ async def update_class(
     if cls is None or cls.teacher_id != teacher.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "CLASS_NOT_FOUND")
     data = payload.model_dump(exclude_unset=True)
-    for key in ("name", "grade", "subject", "color", "text_color", "note"):
+    for key in ("name", "grade", "subject", "color", "text_color", "note", "school_year", "semester"):
         if key in data:
             setattr(cls, key, data[key])
     await db.commit()
     await db.refresh(cls)
-    return ClassBrief(
-        id=cls.id, name=cls.name, grade=cls.grade, subject=cls.subject,
-        color=cls.color, text_color=cls.text_color,
-        student_count=len(cls.students), note=cls.note,
-    )
+    return _to_brief(cls)
+
+
+@router.post("/{class_id}/archive", response_model=ClassBrief, response_model_by_alias=True)
+async def archive_class(
+    class_id: str,
+    teacher: User = Depends(require_teacher),
+    db: AsyncSession = Depends(get_db),
+) -> ClassBrief:
+    """Soft-archive: status='archived', archived_at=now. History data preserved."""
+    cls = await db.get(Class, class_id)
+    if cls is None or cls.teacher_id != teacher.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "CLASS_NOT_FOUND")
+    if cls.status != "archived":
+        cls.status = "archived"
+        cls.archived_at = datetime.now(UTC)
+        await db.commit()
+        await db.refresh(cls)
+    return _to_brief(cls)
+
+
+@router.post("/{class_id}/unarchive", response_model=ClassBrief, response_model_by_alias=True)
+async def unarchive_class(
+    class_id: str,
+    teacher: User = Depends(require_teacher),
+    db: AsyncSession = Depends(get_db),
+) -> ClassBrief:
+    """Restore an archived class to active."""
+    cls = await db.get(Class, class_id)
+    if cls is None or cls.teacher_id != teacher.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "CLASS_NOT_FOUND")
+    if cls.status != "active":
+        cls.status = "active"
+        cls.archived_at = None
+        await db.commit()
+        await db.refresh(cls)
+    return _to_brief(cls)
 
 
 @router.get("/{class_id}", response_model=ClassDetail, response_model_by_alias=True)
@@ -122,6 +178,8 @@ async def get_class(
         id=cls.id, name=cls.name, grade=cls.grade, subject=cls.subject,
         color=cls.color, text_color=cls.text_color,
         student_count=len(students), note=cls.note,
+        school_year=cls.school_year, semester=cls.semester, status=cls.status,
+        archived_at=cls.archived_at,
         students=[
             StudentBrief(
                 id=s.user_id, name=s.name, seat=s.seat,

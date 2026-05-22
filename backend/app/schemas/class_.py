@@ -1,4 +1,7 @@
 """Class / Student response schemas."""
+from datetime import datetime
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -21,6 +24,10 @@ class ClassBrief(BaseModel):
     text_color: str = Field(serialization_alias="textColor")
     student_count: int = Field(serialization_alias="studentCount")
     note: str | None = None
+    school_year: int = Field(serialization_alias="schoolYear")
+    semester: Literal["first", "second"]
+    status: Literal["active", "archived"]
+    archived_at: datetime | None = Field(default=None, serialization_alias="archivedAt")
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -30,7 +37,11 @@ class ClassDetail(ClassBrief):
 
 
 class CreateClassRequest(BaseModel):
-    """POST /api/classes — server auto-generates the class id."""
+    """POST /api/classes — server auto-generates the class id.
+
+    ``school_year`` / ``semester`` default to the current term server-side if omitted
+    (see ``app/utils/school_year.py``).
+    """
     name: str = Field(min_length=1, max_length=64)
     grade: str = Field(min_length=1, max_length=16)
     subject: str = Field(min_length=1, max_length=32)
@@ -41,6 +52,11 @@ class CreateClassRequest(BaseModel):
         serialization_alias="textColor",
     )
     note: str | None = Field(default=None, max_length=200)
+    school_year: int | None = Field(
+        default=None, ge=2000, le=2100,
+        validation_alias="schoolYear", serialization_alias="schoolYear",
+    )
+    semester: Literal["first", "second"] | None = None
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -58,6 +74,11 @@ class UpdateClassRequest(BaseModel):
         serialization_alias="textColor",
     )
     note: str | None = Field(default=None, max_length=200)
+    school_year: int | None = Field(
+        default=None, ge=2000, le=2100,
+        validation_alias="schoolYear", serialization_alias="schoolYear",
+    )
+    semester: Literal["first", "second"] | None = None
 
     model_config = ConfigDict(populate_by_name=True)
 

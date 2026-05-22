@@ -52,15 +52,15 @@ export default function SubjectRadarChart({ overviewData }) {
     <div>
       <div className="flex items-baseline justify-between mb-3">
         <h3 className="text-lg font-bold text-[#2D3436]">子主題答對率比較（雷達）</h3>
-        <span className="text-xs text-[#95A5A6]">各班在兩個子主題（溶解 / 酸鹼）的平均答對率</span>
+        <span className="text-sm text-[#95A5A6]">各班在兩個子主題（溶解 / 酸鹼）的平均答對率</span>
       </div>
       <div className="h-72">
         <ResponsiveContainer width="100%" height="100%">
           <RadarChart data={data} outerRadius="75%">
             <PolarGrid stroke="#E5E7EA" />
-            <PolarAngleAxis dataKey="subject" tick={{ fontSize: 12, fill: '#2D3436' }} />
+            <PolarAngleAxis dataKey="subject" tick={{ fontSize: 13, fill: '#2D3436' }} />
             <PolarRadiusAxis angle={90} domain={[0, 100]} tickFormatter={(v) => `${v}%`}
-              tick={{ fontSize: 10, fill: '#95A5A6' }} />
+              tick={{ fontSize: 13, fill: '#95A5A6' }} />
             {classStats.map((c) => {
               const key = CLASS_KEY_MAP[c.id] ?? `cls_${c.id.replace(/[^a-zA-Z0-9]/g, '_')}`;
               const color = CLASS_CHART_COLORS[c.id] || c.color || '#BDC3C7';
@@ -76,11 +76,11 @@ export default function SubjectRadarChart({ overviewData }) {
               );
             })}
             <Tooltip formatter={(v) => `${v}%`} />
-            <Legend wrapperStyle={{ fontSize: 12 }} />
+            <Legend wrapperStyle={{ fontSize: 13 }} />
           </RadarChart>
         </ResponsiveContainer>
       </div>
-      <p className="text-xs text-[#95A5A6] mt-2">
+      <p className="text-sm text-[#95A5A6] mt-2">
         子主題 A（溶解）涵蓋節點 {data[0].__matchedCount} 個 · 子主題 B（酸鹼）涵蓋節點 {data[1].__matchedCount} 個
       </p>
     </div>

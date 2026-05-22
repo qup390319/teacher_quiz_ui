@@ -104,7 +104,7 @@ export default function SingleClassReport({ cls, assignments, quizzes, quizId })
               <p className="text-sm font-semibold text-[#2D3436]">{s.label}</p>
               <InfoButton onClick={() => setStatInfoKey(s.infoKey)} />
             </div>
-            <p className="text-xs text-[#636E72] mt-0.5 leading-snug">{s.sub}</p>
+            <p className="text-sm text-[#636E72] mt-0.5 leading-snug">{s.sub}</p>
           </div>
         ))}
       </div>

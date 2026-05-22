@@ -140,7 +140,7 @@ export default function ScenarioCreateWizard() {
             <button
               type="button"
               onClick={() => setShowGuide((v) => !v)}
-              className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-[#5BA47A] hover:text-[#3D7A5A]"
+              className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-[#5BA47A] hover:text-[#3D7A5A]"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="9" strokeLinecap="round" strokeLinejoin="round" />
@@ -164,7 +164,7 @@ export default function ScenarioCreateWizard() {
             <div className="flex items-start justify-between gap-3 mb-4">
               <div>
                 <h2 className="text-base font-bold text-[#7A4A18] flex items-center gap-2">
-                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#F0B962] text-white text-xs">💡</span>
+                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#F0B962] text-white text-sm">💡</span>
                   填寫前先了解：什麼是「論證對話」？
                 </h2>
                 <p className="text-sm text-[#7A5232] mt-2 leading-relaxed">
@@ -224,14 +224,14 @@ export default function ScenarioCreateWizard() {
                     </span>
                     <h3 className="text-sm font-bold text-[#5A3E22]">{s.name}</h3>
                   </div>
-                  <p className="text-xs text-[#636E72] leading-relaxed mb-2">{s.what}</p>
-                  <p className="text-xs font-semibold text-[#7A4A18] leading-relaxed">{s.teacher}</p>
-                  <p className="text-xs text-[#95A5A6] leading-relaxed mt-1 italic">{s.example}</p>
+                  <p className="text-sm text-[#636E72] leading-relaxed mb-2">{s.what}</p>
+                  <p className="text-sm font-semibold text-[#7A4A18] leading-relaxed">{s.teacher}</p>
+                  <p className="text-sm text-[#95A5A6] leading-relaxed mt-1 italic">{s.example}</p>
                 </div>
               ))}
             </div>
 
-            <p className="text-xs text-[#7A4A18] mt-4">
+            <p className="text-sm text-[#7A4A18] mt-4">
               💡 對應到下方欄位：<strong>概念釐清敘述／開場提問</strong>＝鷹架 ·
               <strong>本題目標迷思</strong>＝指導切點 ·
               <strong>專家示範</strong>＝示範文本 ·
@@ -282,7 +282,7 @@ export default function ScenarioCreateWizard() {
                         key={m.id}
                         type="button"
                         onClick={() => toggleMisconception(m.id)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border-2 transition
+                        className={`px-3 py-1.5 rounded-full text-sm font-semibold border-2 transition
                                    ${checked
                                      ? 'bg-[#FFF1D8] border-[#F0B962] text-[#7A4A18]'
                                      : 'bg-white border-[#BDC3C7] text-[#636E72] hover:border-[#F0B962]'}`}
@@ -357,7 +357,7 @@ export default function ScenarioCreateWizard() {
 function Field({ label, required, children }) {
   return (
     <div>
-      <label className="block text-xs font-semibold text-[#636E72] mb-1.5">
+      <label className="block text-sm font-semibold text-[#636E72] mb-1.5">
         {label}
         {required && <span className="text-[#E74C5E] ml-0.5">*</span>}
       </label>
@@ -417,14 +417,14 @@ function ImageUploader({ images, onChange }) {
                 type="button"
                 onClick={() => removeAt(idx)}
                 aria-label="移除圖片"
-                className="absolute top-1 right-1 w-6 h-6 rounded-full bg-[#E74C5E] text-white text-xs font-bold
+                className="absolute top-1 right-1 w-6 h-6 rounded-full bg-[#E74C5E] text-white text-sm font-bold
                            flex items-center justify-center
                            shadow-[0_2px_4px_rgba(0,0,0,0.3)]
                            hover:scale-110 transition-transform"
               >
                 ✕
               </button>
-              <span className="absolute bottom-0 left-0 right-0 px-2 py-0.5 text-[10px] font-bold
+              <span className="absolute bottom-0 left-0 right-0 px-2 py-0.5 text-[15px] font-bold
                                bg-black/45 text-white text-center">
                 圖片 {idx + 1}
               </span>
@@ -465,7 +465,7 @@ function ImageUploader({ images, onChange }) {
           <p className="text-sm font-bold text-[#3F8B5E]">
             {atMax ? '已達上限（最多 2 張）' : '點擊或拖放圖片到這裡'}
           </p>
-          <p className="text-xs text-[#95A5A6]">
+          <p className="text-sm text-[#95A5A6]">
             {atMax ? '請先移除一張再上傳' : `支援 PNG / JPG / GIF・目前 ${images.length}/${MAX_IMAGES} 張`}
           </p>
         </div>
@@ -492,7 +492,7 @@ function QuestionEditor({ question, availableMisconceptions, canRemove, onUpdate
           <button
             type="button"
             onClick={onRemove}
-            className="text-xs text-[#E74C5E] hover:underline"
+            className="text-sm text-[#E74C5E] hover:underline"
           >
             移除此題
           </button>
@@ -536,7 +536,7 @@ function QuestionEditor({ question, availableMisconceptions, canRemove, onUpdate
                     type="button"
                     onClick={() => toggleMid(m.id)}
                     title={m.detail}
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition text-left
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-semibold border transition text-left
                                ${checked
                                  ? 'bg-[#FFF1D8] border-[#F0B962] text-[#7A4A18]'
                                  : 'bg-white border-[#BDC3C7] text-[#636E72] hover:bg-[#EEF5E6]'}`}

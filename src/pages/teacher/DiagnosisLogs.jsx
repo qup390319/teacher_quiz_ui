@@ -67,7 +67,7 @@ export default function DiagnosisLogs() {
         <div className="bg-white rounded-2xl border border-[#BDC3C7] p-4 mb-4 flex flex-wrap items-center gap-3
                         shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
           <div className="flex items-center gap-2">
-            <label className="text-xs font-semibold text-[#636E72]">班級</label>
+            <label className="text-sm font-semibold text-[#636E72]">班級</label>
             <select
               value={classFilter}
               onChange={(e) => setClassFilter(e.target.value)}
@@ -81,7 +81,7 @@ export default function DiagnosisLogs() {
             </select>
           </div>
           <div className="flex items-center gap-2">
-            <label className="text-xs font-semibold text-[#636E72]">診斷題組</label>
+            <label className="text-sm font-semibold text-[#636E72]">診斷題組</label>
             <select
               value={quizFilter}
               onChange={(e) => setQuizFilter(e.target.value)}
@@ -94,7 +94,7 @@ export default function DiagnosisLogs() {
               ))}
             </select>
           </div>
-          <span className="ml-auto text-xs text-[#95A5A6]">
+          <span className="ml-auto text-sm text-[#95A5A6]">
             {isLoading ? '載入中…' : `共 ${students.length} 位學生`}
           </span>
         </div>
@@ -114,7 +114,7 @@ export default function DiagnosisLogs() {
           <div className="bg-white rounded-2xl border border-[#BDC3C7] overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
             <div className="overflow-x-auto">
               <table className="w-full text-sm min-w-[640px]">
-                <thead className="bg-[#EEF5E6] text-xs text-[#636E72] uppercase tracking-wider">
+                <thead className="bg-[#EEF5E6] text-sm text-[#636E72] uppercase tracking-wider">
                   <tr>
                     <th className="px-4 py-3 text-left font-semibold">班級</th>
                     <th className="px-4 py-3 text-left font-semibold">座號</th>
@@ -145,13 +145,13 @@ function StudentRow({ student: s }) {
     <tr className="hover:bg-[#F9FBF7] transition group">
       <td className="px-4 py-3">
         <span
-          className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border"
+          className="inline-flex items-center px-2 py-0.5 rounded-full text-sm font-semibold border"
           style={{ backgroundColor: s.classBg, color: s.classFg, borderColor: s.classFg }}
         >
           {s.className ?? '—'}
         </span>
       </td>
-      <td className="px-4 py-3 text-xs font-mono text-[#636E72]">{s.seat ?? '—'}</td>
+      <td className="px-4 py-3 text-sm font-mono text-[#636E72]">{s.seat ?? '—'}</td>
       <td className="px-4 py-3">
         <Link
           to={`/teacher/students/${s.studentId}/report`}
@@ -162,24 +162,24 @@ function StudentRow({ student: s }) {
       </td>
       <td className="px-4 py-3 text-center text-[#636E72]">{s.total}</td>
       <td className="px-4 py-3 text-center">
-        <span className="inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold bg-[#C8EAAE] text-[#2F4A1A]">
+        <span className="inline-flex items-center justify-center w-7 h-7 rounded-full text-sm font-bold bg-[#C8EAAE] text-[#2F4A1A]">
           {s.correct}
         </span>
       </td>
       <td className="px-4 py-3 text-center">
-        <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${
+        <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-sm font-bold ${
           s.misconception > 0 ? 'bg-[#FAC8CC] text-[#E74C5E]' : 'bg-[#EEF5E6] text-[#95A5A6]'
         }`}>
           {s.misconception}
         </span>
       </td>
-      <td className="px-4 py-3 text-xs text-[#95A5A6]">
+      <td className="px-4 py-3 text-sm text-[#95A5A6]">
         {s.latestAt ? s.latestAt.toLocaleString('zh-TW') : '—'}
       </td>
       <td className="px-4 py-3 text-right">
         <Link
           to={`/teacher/students/${s.studentId}/report`}
-          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg
+          className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-semibold rounded-lg
                      text-white bg-[#5BA47A] border border-[#3F8B5E] hover:bg-[#3F8B5E] transition
                      opacity-70 group-hover:opacity-100"
         >

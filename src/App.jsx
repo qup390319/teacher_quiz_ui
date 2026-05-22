@@ -26,6 +26,7 @@ import DiagnosisLogs from './pages/teacher/DiagnosisLogs';
 import StudentDiagnosisReport from './pages/teacher/StudentDiagnosisReport';
 import TreatmentLogs from './pages/teacher/TreatmentLogs';
 import TreatmentLogDetail from './pages/teacher/TreatmentLogDetail';
+import TreatmentOutcomes from './pages/teacher/TreatmentOutcomes';
 import StudentHome from './pages/student/StudentHome';
 import StudentQuiz from './pages/student/StudentQuiz';
 import ScenarioChat from './pages/student/ScenarioChat';
@@ -69,6 +70,7 @@ export default function App() {
             <Route path="/teacher/scenarios/:scenarioQuizId/edit" element={<Teacher><ScenarioCreateWizard /></Teacher>} />
             <Route path="/teacher/diagnosis-logs" element={<Teacher><DiagnosisLogs /></Teacher>} />
             <Route path="/teacher/students/:studentId/report" element={<Teacher><StudentDiagnosisReport /></Teacher>} />
+            <Route path="/teacher/treatment-outcomes" element={<Teacher><TreatmentOutcomes /></Teacher>} />
             <Route path="/teacher/treatment-logs" element={<Teacher><TreatmentLogs /></Teacher>} />
             <Route path="/teacher/treatment-logs/:sessionId" element={<Teacher><TreatmentLogDetail /></Teacher>} />
             {/* 保留舊路由避免失效 */}

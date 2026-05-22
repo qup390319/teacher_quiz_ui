@@ -32,20 +32,20 @@ export default function HeatmapView({ quizId, classId, totalStudents }) {
         <table className="w-full text-sm bg-white" style={{ minWidth: '700px' }}>
           <thead>
             <tr className="bg-[#C8EAAE] border-b border-[#BDC3C7]">
-              <th className="px-4 py-3 text-left text-xs font-bold text-[#636E72] uppercase">題目 / 知識節點</th>
-              <th className="px-4 py-3 text-center text-xs font-bold text-[#636E72] uppercase">選項 A</th>
-              <th className="px-4 py-3 text-center text-xs font-bold text-[#636E72] uppercase">選項 B</th>
-              <th className="px-4 py-3 text-center text-xs font-bold text-[#636E72] uppercase">選項 C</th>
-              <th className="px-4 py-3 text-center text-xs font-bold text-[#636E72] uppercase">選項 D</th>
+              <th className="px-4 py-3 text-left text-sm font-bold text-[#636E72] uppercase">題目 / 知識節點</th>
+              <th className="px-4 py-3 text-center text-sm font-bold text-[#636E72] uppercase">選項 A</th>
+              <th className="px-4 py-3 text-center text-sm font-bold text-[#636E72] uppercase">選項 B</th>
+              <th className="px-4 py-3 text-center text-sm font-bold text-[#636E72] uppercase">選項 C</th>
+              <th className="px-4 py-3 text-center text-sm font-bold text-[#636E72] uppercase">選項 D</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#D5D8DC]">
             {rows.map(({ q, node, stats }) => (
               <tr key={q.id}>
                 <td className="px-4 py-4 align-top" style={{ maxWidth: 220 }}>
-                  <p className="text-xs font-mono text-[#95A5A6] mb-0.5">{node?.id}</p>
+                  <p className="text-sm font-mono text-[#95A5A6] mb-0.5">{node?.id}</p>
                   <p className="text-sm font-semibold text-[#2D3436] mb-1">{node?.name}</p>
-                  <p className="text-xs text-[#636E72] leading-relaxed">{q.stem}</p>
+                  <p className="text-sm text-[#636E72] leading-relaxed">{q.stem}</p>
                 </td>
                 {q.options.map(opt => {
                   const count = stats[opt.tag] || 0;
@@ -58,11 +58,11 @@ export default function HeatmapView({ quizId, classId, totalStudents }) {
                   return (
                     <td key={opt.tag} className="px-3 py-4 text-center align-top" style={bgStyle}>
                       <div className="font-bold text-lg text-[#2D3436]">{count}</div>
-                      <div className="text-xs text-[#636E72] mb-1">{pct}% 學生</div>
+                      <div className="text-sm text-[#636E72] mb-1">{pct}% 學生</div>
                       {isCorrect ? (
-                        <span className="text-xs font-semibold text-[#3D5A3E] bg-[#C8EAAE] border border-[#BDC3C7] px-2 py-0.5 rounded-full">正確答案</span>
+                        <span className="text-sm font-semibold text-[#3D5A3E] bg-[#C8EAAE] border border-[#BDC3C7] px-2 py-0.5 rounded-full">正確答案</span>
                       ) : (
-                        <span className="text-xs text-[#E74C5E] bg-[#FAC8CC] border border-[#F5B8BA] px-2 py-0.5 rounded-full leading-tight block mt-1">{misconLabel}</span>
+                        <span className="text-sm text-[#E74C5E] bg-[#FAC8CC] border border-[#F5B8BA] px-2 py-0.5 rounded-full leading-tight block mt-1">{misconLabel}</span>
                       )}
                     </td>
                   );

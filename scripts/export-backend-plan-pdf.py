@@ -364,7 +364,7 @@ RAGFLOW_API_KEY=ragflow-your-api-key-here"""))
 story.append(H2("Session 策略與快取"))
 ragflow_data = [
     ["節點", "Session 策略", "快取策略"],
-    ["N1 全年級摘要", "每次摘要建一次性 session，不重用",
+    ["N1 所有班級摘要", "每次摘要建一次性 session，不重用",
      "寫進 ai_summary_cache，預設 6 小時失效；學生新作答時 invalidate"],
     ["N2 單班摘要", "每次摘要建一次性 session，不重用",
      "同上（key = quiz_id + class_id）"],

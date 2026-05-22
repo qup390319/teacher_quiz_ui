@@ -89,7 +89,7 @@ export default function DistractorSuggestPopover({
             <h3 className="text-sm font-bold text-[#5A3E22] truncate">
               干擾選項建議 · {misconceptionId}
             </h3>
-            <p className="text-xs text-[#7A5232] truncate">
+            <p className="text-sm text-[#7A5232] truncate">
               依文獻檢索的真實學生說法（{misconceptionLabel}）
             </p>
           </div>
@@ -141,7 +141,7 @@ export default function DistractorSuggestPopover({
 
           {!loading && !error && (
             <>
-              <p className="text-xs text-[#95A5A6] mb-3">
+              <p className="text-sm text-[#95A5A6] mb-3">
                 點任一條「採用」可填入選項；不喜歡可按「再來 3 條」。
               </p>
               <ul className="space-y-2 mb-4">
@@ -150,13 +150,13 @@ export default function DistractorSuggestPopover({
                     key={i}
                     className="flex items-start gap-2 p-3 bg-[#FBE9C7]/30 border border-[#D9C58E] rounded-xl"
                   >
-                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#FBE9C7] border border-[#D9C58E] text-[#7A5232] text-xs font-bold flex items-center justify-center mt-0.5">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#FBE9C7] border border-[#D9C58E] text-[#7A5232] text-sm font-bold flex items-center justify-center mt-0.5">
                       {i + 1}
                     </span>
                     <p className="flex-1 text-sm text-[#2D3436] leading-relaxed">{text}</p>
                     <button
                       onClick={() => onAdopt(text)}
-                      className="flex-shrink-0 px-3 py-1.5 text-xs font-semibold text-[#3D5A3E] bg-[#C8EAAE] border border-[#8FC87A] rounded-lg hover:bg-[#8FC87A]"
+                      className="flex-shrink-0 px-3 py-1.5 text-sm font-semibold text-[#3D5A3E] bg-[#C8EAAE] border border-[#8FC87A] rounded-lg hover:bg-[#8FC87A]"
                     >
                       採用
                     </button>
@@ -166,10 +166,10 @@ export default function DistractorSuggestPopover({
 
               {citations.length > 0 && (
                 <div className="mb-4">
-                  <p className="text-xs font-bold text-[#636E72] mb-1.5">參考文獻</p>
+                  <p className="text-sm font-bold text-[#636E72] mb-1.5">參考文獻</p>
                   <ul className="space-y-1">
                     {citations.slice(0, 5).map((c, i) => (
-                      <li key={i} className="text-xs text-[#7A5232] leading-snug">
+                      <li key={i} className="text-sm text-[#7A5232] leading-snug">
                         <span className="font-semibold">{c.documentName}</span>
                         {c.snippet && (
                           <span className="text-[#95A5A6] ml-2">— {c.snippet}</span>

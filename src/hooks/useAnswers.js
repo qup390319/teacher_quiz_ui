@@ -11,7 +11,7 @@ export function useClassAnswers(quizId, classId) {
   });
 }
 
-/** 教師查題組統計：classId 可選（不給則全年級） */
+/** 教師查題組統計：classId 可選（不給則所有班級） */
 export function useQuizStats(quizId, classId) {
   return useQuery({
     queryKey: ['quiz-stats', quizId, classId ?? '*'],

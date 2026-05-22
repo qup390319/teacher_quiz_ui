@@ -1,50 +1,32 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import TeacherLayout from '../../components/TeacherLayout';
-import { useClass, useUpdateClassStudents } from '../../hooks/useClasses';
+import {
+  useClass, useUpdateClass, useUpdateClassStudents,
+  useDeleteClass, useArchiveClass, useUnarchiveClass,
+} from '../../hooks/useClasses';
 import { useResetStudentPassword, useStudent } from '../../hooks/useStudents';
 import { ApiError } from '../../lib/api';
 import { useQueryClient } from '@tanstack/react-query';
+import { useApp } from '../../context/AppContext';
+import { getSchoolYearOptions, formatSchoolYearLabel, formatSemesterLabel } from '../../utils/schoolYear';
+import ClassFormModal from './ClassFormModal';
+import DeleteClassModal from './DeleteClassModal';
+import { useAssignments } from '../../hooks/useAssignments';
+import DeleteStudentModal from './DeleteStudentModal';
 
-// 刪除確認 Modal
-function DeleteModal({ student, onConfirm, onClose }) {
-  return (
-    <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4">
-      <div className="bg-white border border-[#BDC3C7] rounded-[32px] shadow-[0_8px_40px_rgba(0,0,0,0.08)] w-full max-w-sm p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-11 h-11 bg-[#FAC8CC] border border-[#BDC3C7] rounded-2xl flex items-center justify-center flex-shrink-0">
-            <svg className="w-5 h-5 text-[#E74C5E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-          </div>
-          <div>
-            <h3 className="font-bold text-[#2D3436]">確認刪除學生？</h3>
-            <p className="text-sm text-[#636E72] mt-0.5">此操作無法復原</p>
-          </div>
-        </div>
-        <div className="bg-[#EEF5E6] border border-[#D5D8DC] rounded-xl p-3 mb-5">
-          <p className="text-sm text-[#2D3436]">
-            座號 <span className="font-bold">{student.seat}</span> · <span className="font-bold">{student.name}</span>
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <button
-            onClick={onClose}
-            className="flex-1 py-2.5 text-sm font-medium text-[#636E72] border border-[#BDC3C7] rounded-xl hover:bg-[#EEF5E6] transition-colors"
-          >
-            取消
-          </button>
-          <button
-            onClick={onConfirm}
-            className="flex-1 py-2.5 text-sm font-semibold bg-[#FAC8CC] text-[#E74C5E] border border-[#BDC3C7] rounded-xl hover:bg-[#F5B8BA] transition-colors"
-          >
-            確認刪除
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+const COLOR_PRESETS = [
+  { color: '#C8EAAE', textColor: '#3D5A3E' },
+  { color: '#FFE0A3', textColor: '#7A5A2A' },
+  { color: '#A8D8EA', textColor: '#2C5A6E' },
+  { color: '#F4B6C2', textColor: '#7A3A48' },
+  { color: '#D4C5F9', textColor: '#4A3A7A' },
+  { color: '#F9E79F', textColor: '#7A5E0A' },
+];
+
+function findColorIdx(color) {
+  const idx = COLOR_PRESETS.findIndex((p) => p.color.toLowerCase() === (color || '').toLowerCase());
+  return idx >= 0 ? idx : 0;
 }
 
 /** 內嵌密碼揭露：點擊 eye 才呼叫 GET /students/{id} */
@@ -91,14 +73,14 @@ function PasswordCell({ studentId }) {
         </svg>
       </button>
       {reveal && data && (
-        <span className={`text-[10px] px-1.5 py-0.5 rounded ${data.passwordWasDefault ? 'bg-[#FCF0C2] text-[#B7950B]' : 'bg-[#E8F5E0] text-[#3D5A3E]'}`}>
+        <span className={`text-[15px] px-1.5 py-0.5 rounded ${data.passwordWasDefault ? 'bg-[#FCF0C2] text-[#B7950B]' : 'bg-[#E8F5E0] text-[#3D5A3E]'}`}>
           {data.passwordWasDefault ? '預設' : '已修改'}
         </span>
       )}
       <button
         onClick={handleReset}
         disabled={resetMut.isPending}
-        className="px-2.5 py-1.5 text-xs font-semibold text-[#7A5232] bg-[#FBE9C7] border border-[#D9C58E] rounded-lg hover:bg-[#F4DDA8] disabled:opacity-50"
+        className="px-2.5 py-1.5 text-sm font-semibold text-[#7A5232] bg-[#FBE9C7] border border-[#D9C58E] rounded-lg hover:bg-[#F4DDA8] disabled:opacity-50"
         title="把密碼重設為預設值（= 帳號）"
       >
         {resetMut.isPending ? '處理中…' : '重設密碼'}
@@ -110,14 +92,88 @@ function PasswordCell({ studentId }) {
 export default function ClassDetail() {
   const { classId } = useParams();
   const navigate = useNavigate();
+  const { currentSchoolYear, currentSemester } = useApp();
   const { data: cls, isLoading, error } = useClass(classId);
+  const { data: assignments = [] } = useAssignments();
   const updateStudentsMut = useUpdateClassStudents();
+  const updateClassMut = useUpdateClass();
+  const deleteClassMut = useDeleteClass();
+  const archiveClassMut = useArchiveClass();
+  const unarchiveClassMut = useUnarchiveClass();
 
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({ name: '', seat: '' });
   const [deletingStudent, setDeletingStudent] = useState(null);
   const [newForm, setNewForm] = useState({ name: '', seat: '' });
   const [newFormError, setNewFormError] = useState('');
+
+  // Class-level 動作（編輯 / 刪除 班級）
+  const [classEditOpen, setClassEditOpen] = useState(false);
+  const [classForm, setClassForm] = useState(null);
+  const [classFormError, setClassFormError] = useState('');
+  const [deletingClass, setDeletingClass] = useState(false);
+
+  const openClassEdit = () => {
+    setClassForm({
+      name: cls.name, grade: cls.grade, subject: cls.subject,
+      note: cls.note ?? '', colorIdx: findColorIdx(cls.color),
+      schoolYear: cls.schoolYear, semester: cls.semester,
+    });
+    setClassFormError('');
+    setClassEditOpen(true);
+  };
+
+  const closeClassEdit = () => {
+    setClassEditOpen(false);
+    setClassForm(null);
+    setClassFormError('');
+  };
+
+  const submitClassEdit = async (e) => {
+    e.preventDefault();
+    setClassFormError('');
+    if (!classForm.name.trim()) { setClassFormError('請輸入班級名稱'); return; }
+    const preset = COLOR_PRESETS[classForm.colorIdx];
+    try {
+      await updateClassMut.mutateAsync({
+        classId: cls.id,
+        name: classForm.name.trim(), grade: classForm.grade.trim(),
+        subject: classForm.subject.trim(),
+        color: preset.color, textColor: preset.textColor,
+        note: classForm.note.trim() || null,
+        schoolYear: classForm.schoolYear, semester: classForm.semester,
+      });
+      closeClassEdit();
+    } catch (err) {
+      setClassFormError(err?.message || '儲存失敗');
+    }
+  };
+
+  const handleArchive = async () => {
+    if (!window.confirm(
+      `將「${cls.name}」封存為歷史班級？\n\n` +
+      '封存後：班級會從預設清單隱藏，但學生帳號、派題、作答、診斷報告全部保留。',
+    )) return;
+    try {
+      await archiveClassMut.mutateAsync(cls.id);
+    } catch (err) {
+      alert(err?.message || '封存失敗');
+    }
+  };
+
+  const handleUnarchive = async () => {
+    try { await unarchiveClassMut.mutateAsync(cls.id); }
+    catch (err) { alert(err?.message || '還原失敗'); }
+  };
+
+  const handleDeleteClass = async () => {
+    try {
+      await deleteClassMut.mutateAsync(cls.id);
+      navigate('/teacher/classes');
+    } catch (err) {
+      alert(err?.message || '刪除失敗');
+    }
+  };
 
   if (isLoading) {
     return (
@@ -201,24 +257,81 @@ export default function ClassDetail() {
             返回班級管理
           </button>
           <span className="text-[#D5D8DC] hidden sm:inline">|</span>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">{cls.name}</h1>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436] truncate">{cls.name}</h1>
+              {cls.status === 'archived' && (
+                <span className="text-xs font-semibold text-[#7A5A2A] bg-[#FFE0A3] border border-[#D5A45D] rounded-full px-2 py-0.5">
+                  已封存
+                </span>
+              )}
+            </div>
             <p className="text-[#636E72] text-sm mt-0.5">
-              {cls.studentCount} 位學生
+              {formatSchoolYearLabel(cls.schoolYear)} · {formatSemesterLabel(cls.semester)} · {cls.studentCount} 位學生
               <span className="ml-2 text-[#95A5A6]">· 預設密碼與帳號相同</span>
             </p>
           </div>
+
+          {/* Class-level 操作 */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={openClassEdit}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-[#2D3436] bg-white border border-[#BDC3C7] rounded-xl hover:bg-[#EEF5E6] transition-colors"
+              title="編輯班級資訊"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              編輯班級
+            </button>
+            {cls.status === 'archived' ? (
+              <button
+                onClick={handleUnarchive}
+                disabled={unarchiveClassMut.isPending}
+                className="px-3 py-2 text-sm font-semibold text-[#3D5A3E] bg-[#EEF5E6] border border-[#BDC3C7] rounded-xl hover:bg-[#DCE9D2] transition-colors disabled:opacity-50"
+              >
+                還原
+              </button>
+            ) : (
+              <button
+                onClick={handleArchive}
+                disabled={archiveClassMut.isPending}
+                className="px-3 py-2 text-sm font-semibold text-[#7A5A2A] bg-white border border-[#BDC3C7] rounded-xl hover:bg-[#FFF6E0] transition-colors disabled:opacity-50"
+                title="封存為歷史班級（歷史資料保留）"
+              >
+                封存
+              </button>
+            )}
+            <button
+              onClick={() => setDeletingClass(true)}
+              className="p-2 text-[#95A5A6] hover:text-[#E74C5E] hover:bg-[#FDF2F2] border border-[#BDC3C7] rounded-xl transition-colors"
+              title="刪除班級"
+              aria-label="刪除班級"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
         </div>
+
+        {cls.status === 'archived' && (
+          <div className="mb-4 bg-[#FFF6E0] border border-[#D5A45D] rounded-xl px-4 py-3 text-sm text-[#7A5A2A]">
+            <span className="font-semibold">此為歷史班級。</span>學生名冊與派題作答紀錄完整保留，點上方「還原」可恢復為任教中。
+          </div>
+        )}
 
         <div className="bg-white rounded-[24px] sm:rounded-[32px] border border-[#BDC3C7] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
           <div className="overflow-x-auto">
           {/* 表格標題 */}
           <div className="bg-[#C8EAAE] border-b border-[#BDC3C7] px-4 sm:px-6 py-3 grid grid-cols-[56px_minmax(120px,1fr)_140px_240px_140px] min-w-[760px] items-center gap-3">
-            <span className="text-xs font-bold text-[#636E72] uppercase tracking-wide text-center">座號</span>
-            <span className="text-xs font-bold text-[#636E72] uppercase tracking-wide">姓名</span>
-            <span className="text-xs font-bold text-[#636E72] uppercase tracking-wide">帳號</span>
-            <span className="text-xs font-bold text-[#636E72] uppercase tracking-wide">密碼</span>
-            <span className="text-xs font-bold text-[#636E72] uppercase tracking-wide text-right">操作</span>
+            <span className="text-sm font-bold text-[#636E72] uppercase tracking-wide text-center">座號</span>
+            <span className="text-sm font-bold text-[#636E72] uppercase tracking-wide">姓名</span>
+            <span className="text-sm font-bold text-[#636E72] uppercase tracking-wide">帳號</span>
+            <span className="text-sm font-bold text-[#636E72] uppercase tracking-wide">密碼</span>
+            <span className="text-sm font-bold text-[#636E72] uppercase tracking-wide text-right">操作</span>
           </div>
 
           {/* 學生列表 */}
@@ -247,8 +360,8 @@ export default function ClassDetail() {
                         onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit(); }}
                       />
                       <div className="flex gap-1.5 ml-auto">
-                        <button onClick={saveEdit} className="px-3 py-1.5 text-xs font-semibold bg-[#C8EAAE] text-[#3D5A3E] border border-[#BDC3C7] rounded-xl hover:bg-[#8FC87A]">儲存</button>
-                        <button onClick={cancelEdit} className="px-3 py-1.5 text-xs font-medium text-[#636E72] border border-[#BDC3C7] rounded-xl hover:bg-[#EEF5E6]">取消</button>
+                        <button onClick={saveEdit} className="px-3 py-1.5 text-sm font-semibold bg-[#C8EAAE] text-[#3D5A3E] border border-[#BDC3C7] rounded-xl hover:bg-[#8FC87A]">儲存</button>
+                        <button onClick={cancelEdit} className="px-3 py-1.5 text-sm font-medium text-[#636E72] border border-[#BDC3C7] rounded-xl hover:bg-[#EEF5E6]">取消</button>
                       </div>
                     </div>
                   ) : (
@@ -260,13 +373,13 @@ export default function ClassDetail() {
                       <div className="flex gap-1.5 justify-end">
                         <button
                           onClick={() => startEdit(student)}
-                          className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-[#2E86C1] bg-[#BADDF4] border border-[#BDC3C7] rounded-xl hover:bg-[#A8D2EC] transition-colors"
+                          className="flex items-center gap-1 px-2.5 py-1.5 text-sm font-semibold text-[#2E86C1] bg-[#BADDF4] border border-[#BDC3C7] rounded-xl hover:bg-[#A8D2EC] transition-colors"
                         >
                           編輯
                         </button>
                         <button
                           onClick={() => setDeletingStudent(student)}
-                          className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-[#E74C5E] bg-[#FAC8CC] border border-[#BDC3C7] rounded-xl hover:bg-[#F5B8BA] transition-colors"
+                          className="flex items-center gap-1 px-2.5 py-1.5 text-sm font-semibold text-[#E74C5E] bg-[#FAC8CC] border border-[#BDC3C7] rounded-xl hover:bg-[#F5B8BA] transition-colors"
                         >
                           刪除
                         </button>
@@ -287,7 +400,7 @@ export default function ClassDetail() {
 
           {/* 新增學生 */}
           <div className="border-t-2 border-[#BDC3C7] bg-[#EEF5E6] px-4 sm:px-6 py-4">
-            <p className="text-xs font-semibold text-[#636E72] uppercase tracking-wide mb-3">新增學生</p>
+            <p className="text-sm font-semibold text-[#636E72] uppercase tracking-wide mb-3">新增學生</p>
             <div className="flex flex-wrap items-start gap-2 sm:gap-3">
               <input
                 type="number"
@@ -316,9 +429,9 @@ export default function ClassDetail() {
               </button>
             </div>
             {newFormError && (
-              <p className="text-xs text-[#E74C5E] mt-2">{newFormError}</p>
+              <p className="text-sm text-[#E74C5E] mt-2">{newFormError}</p>
             )}
-            <p className="text-[11px] text-[#95A5A6] mt-2">
+            <p className="text-[15px] text-[#95A5A6] mt-2">
               新增 / 編輯 / 刪除會即時呼叫 PUT /api/classes/{cls.id}/students 整批替換名冊。
             </p>
           </div>
@@ -326,10 +439,36 @@ export default function ClassDetail() {
       </div>
 
       {deletingStudent && (
-        <DeleteModal
+        <DeleteStudentModal
           student={deletingStudent}
           onConfirm={confirmDelete}
           onClose={() => setDeletingStudent(null)}
+        />
+      )}
+
+      {classEditOpen && classForm && (
+        <ClassFormModal
+          form={classForm}
+          setForm={setClassForm}
+          error={classFormError}
+          isEdit={true}
+          isPending={updateClassMut.isPending}
+          yearOptions={getSchoolYearOptions(5)}
+          currentSchoolYear={currentSchoolYear}
+          currentSemester={currentSemester}
+          colorPresets={COLOR_PRESETS}
+          onSubmit={submitClassEdit}
+          onClose={closeClassEdit}
+        />
+      )}
+
+      {deletingClass && (
+        <DeleteClassModal
+          cls={cls}
+          assignmentCount={assignments.filter((a) => a.classId === cls.id).length}
+          onConfirm={handleDeleteClass}
+          onClose={() => setDeletingClass(false)}
+          isPending={deleteClassMut.isPending}
         />
       )}
     </TeacherLayout>

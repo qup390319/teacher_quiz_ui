@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TeacherLayout from '../../../components/TeacherLayout';
 import ConfirmDeleteModal from '../../../components/ConfirmDeleteModal';
-import { useScenarios, useDeleteScenario } from '../../../hooks/useScenarios';
+import { useScenarios, useScenario, useDeleteScenario } from '../../../hooks/useScenarios';
+import { resolveScenarioImage } from '../../../lib/scenarioImage';
 import { useAssignments } from '../../../hooks/useAssignments';
 import { useClasses } from '../../../hooks/useClasses';
 import { knowledgeNodes } from '../../../data/knowledgeGraph';
@@ -20,10 +21,13 @@ export default function ScenarioLibrary() {
   const navigate = useNavigate();
   const { data: scenarioQuizzes = [], isLoading } = useScenarios();
   const { data: assignments = [] } = useAssignments();
-  const { data: classes = [] } = useClasses();
+  // 用空 filter（{}）拿全部班級（含已封存 / 其他學年），讓「已派班級」顯示
+  // 能正確查到歷史派題對象（同 QuizLibrary 處理）。
+  const { data: classes = [] } = useClasses({});
   const deleteScenario = useDeleteScenario();
   const [activeTab, setActiveTab] = useState('published');
   const [deletingScenario, setDeletingScenario] = useState(null);
+  const [previewScenario, setPreviewScenario] = useState(null);
 
   const confirmDelete = async () => {
     if (!deletingScenario) return;
@@ -68,9 +72,11 @@ export default function ScenarioLibrary() {
             </p>
           </div>
           <button
-            onClick={() => navigate('/teacher/scenarios/create')}
-            className="flex items-center gap-2 px-5 py-2.5 bg-[#5BA47A] text-white border border-[#3F8B5E] rounded-2xl
-                       text-sm font-semibold hover:bg-[#3F8B5E] transition-colors shadow-[0_2px_8px_rgba(0,0,0,0.1)]"
+            type="button"
+            disabled
+            title="目前未開放此功能"
+            className="flex items-center gap-2 px-5 py-2.5 bg-[#E5E7E8] text-[#95A5A6] border border-[#D5D8DC] rounded-2xl
+                       text-sm font-semibold cursor-not-allowed"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -95,7 +101,7 @@ export default function ScenarioLibrary() {
                   }`}
                 >
                   {tab.label}
-                  <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${
+                  <span className={`ml-1.5 text-sm px-1.5 py-0.5 rounded-full ${
                     active ? 'bg-[#E0F0E8] text-[#3F8B5E]' : 'bg-[#EEF5E6] text-[#95A5A6]'
                   }`}>
                     {counts[tab.key]}
@@ -143,11 +149,11 @@ export default function ScenarioLibrary() {
                       {/* 標題列 */}
                       <div className="flex items-center gap-2 mb-2">
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#E0F0E8]
-                                         border border-[#3F8B5E] text-[#2E6B47] text-xs font-bold">
+                                         border border-[#3F8B5E] text-[#2E6B47] text-sm font-bold">
                           🌱 概念釐清治療
                         </span>
                         <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-sm font-semibold
                                      ${sq.status === 'published'
                                        ? 'bg-[#C8EAAE] text-[#2F4A1A]'
                                        : 'bg-[#FCF0C2] text-[#7A5232]'}`}
@@ -156,16 +162,16 @@ export default function ScenarioLibrary() {
                         </span>
                       </div>
                       <h3 className="text-lg font-bold text-[#2D3436] mb-1">{sq.title}</h3>
-                      <p className="text-xs text-[#95A5A6] mb-3">
+                      <p className="text-sm text-[#95A5A6] mb-3">
                         建立於 {sq.createdAt} · 共 {sq.questionCount} 題概念釐清
                       </p>
 
                       {/* 目標節點 */}
                       {targetNode && (
                         <div className="mb-3">
-                          <p className="text-xs text-[#636E72] mb-1">目標節點</p>
+                          <p className="text-sm text-[#636E72] mb-1">目標節點</p>
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EEF5E6] border border-[#5BA47A]
-                                           text-[#3F8B5E] text-xs font-bold">
+                                           text-[#3F8B5E] text-sm font-bold">
                             {targetNode.id}・{targetNode.name}
                           </span>
                         </div>
@@ -174,13 +180,13 @@ export default function ScenarioLibrary() {
                       {/* 目標迷思 */}
                       {sq.targetMisconceptions?.length > 0 && (
                         <div className="mb-3">
-                          <p className="text-xs text-[#636E72] mb-1">目標迷思</p>
+                          <p className="text-sm text-[#636E72] mb-1">目標迷思</p>
                           <div className="flex flex-wrap gap-1.5">
                             {sq.targetMisconceptions.map((mid) => (
                               <span
                                 key={mid}
                                 className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#FFF1D8]
-                                           border border-[#F0B962] text-[#7A4A18] text-xs font-mono"
+                                           border border-[#F0B962] text-[#7A4A18] text-sm font-mono"
                               >
                                 {mid}
                               </span>
@@ -192,12 +198,12 @@ export default function ScenarioLibrary() {
                       {/* 已派發班級 */}
                       {assignedClasses.length > 0 && (
                         <div>
-                          <p className="text-xs text-[#636E72] mb-1">已派發給</p>
+                          <p className="text-sm text-[#636E72] mb-1">已派發給</p>
                           <div className="flex flex-wrap gap-1.5">
                             {assignedClasses.map((c) => (
                               <span
                                 key={c.id}
-                                className="px-2 py-0.5 rounded-full text-xs font-semibold border"
+                                className="px-2 py-0.5 rounded-full text-sm font-semibold border"
                                 style={{ backgroundColor: c.color, color: c.textColor, borderColor: c.textColor }}
                               >
                                 {c.name}
@@ -212,15 +218,24 @@ export default function ScenarioLibrary() {
                     <div className="flex flex-col gap-2 shrink-0">
                       <button
                         type="button"
-                        onClick={() => navigate(`/teacher/scenarios/${sq.id}/edit`)}
-                        className="px-4 py-1.5 text-sm font-semibold text-[#3F8B5E] border border-[#5BA47A]
-                                   rounded-xl hover:bg-[#EEF5E6] transition"
+                        onClick={() => setPreviewScenario(sq)}
+                        className="px-4 py-1.5 text-sm font-semibold text-[#1F6FAB] bg-white border border-[#5DADE2]
+                                   rounded-xl hover:bg-[#D6EAF8] transition"
+                      >
+                        預覽
+                      </button>
+                      <button
+                        type="button"
+                        disabled
+                        title="目前未開放此功能"
+                        className="px-4 py-1.5 text-sm font-semibold text-[#95A5A6] bg-[#E5E7E8] border border-[#D5D8DC]
+                                   rounded-xl cursor-not-allowed"
                       >
                         編輯
                       </button>
                       <button
                         type="button"
-                        onClick={() => navigate('/teacher/assignments')}
+                        onClick={() => navigate('/teacher/assignments/scenarios')}
                         className="px-4 py-1.5 text-sm font-semibold text-white bg-[#5BA47A]
                                    border border-[#3F8B5E] rounded-xl hover:bg-[#3F8B5E] transition"
                       >
@@ -228,10 +243,10 @@ export default function ScenarioLibrary() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setDeletingScenario(sq)}
-                        disabled={deleteScenario.isPending}
-                        className="px-4 py-1.5 text-sm font-semibold text-[#E74C5E] bg-[#FAC8CC]
-                                   border border-[#BDC3C7] rounded-xl hover:bg-[#F5B8BA] transition disabled:opacity-50"
+                        disabled
+                        title="目前未開放此功能"
+                        className="px-4 py-1.5 text-sm font-semibold text-[#95A5A6] bg-[#E5E7E8]
+                                   border border-[#D5D8DC] rounded-xl cursor-not-allowed"
                       >
                         刪除
                       </button>
@@ -254,7 +269,138 @@ export default function ScenarioLibrary() {
           onClose={() => setDeletingScenario(null)}
         />
       )}
+
+      {previewScenario && (
+        <ScenarioPreviewModal
+          scenario={previewScenario}
+          onClose={() => setPreviewScenario(null)}
+        />
+      )}
     </TeacherLayout>
+  );
+}
+
+function ScenarioPreviewModal({ scenario, onClose }) {
+  // 列表 API 不含 questions[]，需單獨抓單筆詳情
+  const { data: fullScenario, isLoading } = useScenario(scenario.id);
+  const data = fullScenario ?? scenario;
+  const targetNode = knowledgeNodes.find((n) => n.id === data.targetNodeId);
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="bg-white rounded-2xl border border-[#BDC3C7] shadow-[0_8px_32px_rgba(0,0,0,0.18)] max-w-3xl w-full max-h-[85vh] overflow-hidden flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-3 px-6 py-4 border-b border-[#E1E6E2] bg-[#F1F6EE]">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#E0F0E8] border border-[#3F8B5E] text-[#2E6B47] text-sm font-bold">
+                🌱 概念釐清題組
+              </span>
+              <span className="text-sm text-[#95A5A6]">{data.questions?.length ?? data.questionCount ?? 0} 題</span>
+            </div>
+            <h2 className="text-lg font-bold text-[#2D3436]">{data.title}</h2>
+            {targetNode && (
+              <p className="text-sm text-[#636E72] mt-1">
+                目標節點：<span className="font-mono">{targetNode.id}</span>・{targetNode.name}
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-[#636E72] hover:bg-[#E5E7E8] transition-colors flex-shrink-0"
+            aria-label="關閉預覽"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="overflow-y-auto px-6 py-5 space-y-6">
+          {isLoading && (
+            <p className="text-sm text-[#95A5A6] text-center py-4">載入題目內容中…</p>
+          )}
+          {!isLoading && (data.questions?.length ?? 0) === 0 && (
+            <p className="text-sm text-[#95A5A6] text-center py-4">此題組尚無題目內容</p>
+          )}
+          {(data.questions ?? []).map((q, idx) => (
+            <div key={q.index ?? idx} className="border border-[#E1E6E2] rounded-xl overflow-hidden">
+              <div className="px-4 py-2 bg-[#F1F6EE] border-b border-[#E1E6E2] flex items-center gap-2 flex-wrap">
+                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#5C8A2E] text-white text-sm font-bold">{idx + 1}</span>
+                <p className="text-sm font-bold text-[#2D3436]">{q.title || `論證議題 ${idx + 1}`}</p>
+                {q.targetMisconceptions?.length > 0 && (
+                  <div className="ml-auto flex items-center gap-1 flex-wrap">
+                    <span className="text-[15px] text-[#95A5A6]">目標迷思：</span>
+                    {q.targetMisconceptions.map((mid) => (
+                      <span key={mid} className="inline-flex items-center px-1.5 py-px rounded bg-[#FFF1D8] border border-[#F0B962] text-[#7A4A18] text-[15px] font-mono">{mid}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="p-4 space-y-3">
+                <div>
+                  <p className="text-sm font-semibold text-[#5A6663] mb-1">📖 情境</p>
+                  <p className="text-sm text-[#2D3436] leading-relaxed whitespace-pre-line">{q.scenarioText}</p>
+                </div>
+                {q.scenarioImages?.length > 0 && (
+                  <div>
+                    <p className="text-sm font-semibold text-[#5A6663] mb-1.5">🖼️ 情境圖片</p>
+                    <div className={`grid gap-2 ${q.scenarioImages.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                      {q.scenarioImages.map((src, i) => {
+                        const resolved = resolveScenarioImage(src);
+                        return (
+                          <a
+                            key={i}
+                            href={resolved}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="block rounded-lg border border-[#E1E6E2] overflow-hidden hover:border-[#5BA47A] hover:shadow-md transition-all bg-[#FAFBFC]"
+                            title="點擊以新分頁查看大圖"
+                          >
+                            <img src={resolved} alt={`情境圖 ${i + 1}`} className="w-full h-auto max-h-64 object-contain" />
+                          </a>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                {q.initialMessage && (
+                  <div>
+                    <p className="text-sm font-semibold text-[#5A6663] mb-1">💬 AI 起手提問</p>
+                    <div className="bg-[#EEF5E6] border border-[#C8D6C9] rounded-lg px-3 py-2 text-sm text-[#2D3436]">{q.initialMessage}</div>
+                  </div>
+                )}
+                {q.expertModel && (
+                  <details className="group">
+                    <summary className="cursor-pointer text-sm font-semibold text-[#5A6663] inline-flex items-center gap-1 list-none [&::-webkit-details-marker]:hidden">
+                      <svg className="w-3.5 h-3.5 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                      🎯 專家示範（學生答錯時 AI 會引用）
+                    </summary>
+                    <div className="mt-2 bg-[#FFF1D8] border border-[#F0B962] rounded-lg px-3 py-2 text-sm text-[#7A4A18] leading-relaxed">
+                      {q.expertModel}
+                    </div>
+                  </details>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="px-6 py-3 border-t border-[#E1E6E2] bg-[#F8FAF6] flex justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl bg-white border border-[#C8D6C9] text-sm font-semibold text-[#2D3436] hover:bg-[#F1F6EE] transition-colors"
+          >
+            關閉
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

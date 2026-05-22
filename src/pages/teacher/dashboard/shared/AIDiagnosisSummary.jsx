@@ -84,10 +84,10 @@ export default function AIDiagnosisSummary({ quizId, classId, totalStudents }) {
               <h3 className="text-base font-bold text-[#2D3436]">班級診斷摘要</h3>
               <InfoButton onClick={() => setInfoOpen(true)} />
             </div>
-            <p className="text-xs text-[#636E72]">根據本班診斷結果分析，提供該班學習狀況與具體行動建議</p>
+            <p className="text-sm text-[#636E72]">根據本班診斷結果分析，提供該班學習狀況與具體行動建議</p>
           </div>
         </div>
-        <span className={`text-xs font-bold px-3 py-1.5 rounded-full border flex-shrink-0 ${health.color}`}>
+        <span className={`text-sm font-bold px-3 py-1.5 rounded-full border flex-shrink-0 ${health.color}`}>
           {health.label}
         </span>
       </div>
@@ -101,16 +101,16 @@ export default function AIDiagnosisSummary({ quizId, classId, totalStudents }) {
 
       <div className="grid grid-cols-2 gap-4">
         <div className="bg-[#EEF5E6] rounded-2xl border border-[#D5D8DC] p-4">
-          <p className="text-xs font-bold text-[#636E72] uppercase tracking-wide mb-3">建議教學優先序列</p>
+          <p className="text-sm font-bold text-[#636E72] uppercase tracking-wide mb-3">建議教學優先序列</p>
           {priorityNodes.length > 0 ? (
             <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
               {priorityNodes.map((node, idx) => (
                 <div key={node.id} className="flex items-center gap-2">
                   <div className="flex items-center gap-1.5">
-                    <span className="w-5 h-5 rounded-full bg-[#3D5A3E] text-white text-[10px] flex items-center justify-center font-bold flex-shrink-0">
+                    <span className="w-5 h-5 rounded-full bg-[#3D5A3E] text-white text-[15px] flex items-center justify-center font-bold flex-shrink-0">
                       {idx + 1}
                     </span>
-                    <span className="text-xs font-semibold text-[#2D3436]">{node.name}</span>
+                    <span className="text-sm font-semibold text-[#2D3436]">{node.name}</span>
                   </div>
                   {idx < priorityNodes.length - 1 && (
                     <svg className="w-3.5 h-3.5 text-[#95A5A6] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -121,13 +121,13 @@ export default function AIDiagnosisSummary({ quizId, classId, totalStudents }) {
               ))}
             </div>
           ) : (
-            <p className="text-xs text-[#636E72]">無需優先補救的知識節點</p>
+            <p className="text-sm text-[#636E72]">無需優先補救的知識節點</p>
           )}
         </div>
 
         <div className="bg-[#EEF5E6] rounded-2xl border border-[#D5D8DC] p-4">
-          <p className="text-xs font-bold text-[#636E72] uppercase tracking-wide mb-2">建議下一步行動</p>
-          <p className="text-xs text-[#2D3436] leading-relaxed">{nextStep}</p>
+          <p className="text-sm font-bold text-[#636E72] uppercase tracking-wide mb-2">建議下一步行動</p>
+          <p className="text-sm text-[#2D3436] leading-relaxed">{nextStep}</p>
         </div>
       </div>
       <InfoDrawer

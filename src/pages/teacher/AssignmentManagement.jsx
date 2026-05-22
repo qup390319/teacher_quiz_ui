@@ -35,23 +35,34 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
   const [managePopover, setManagePopover] = useState(null);
   // scenario tab：使用 modal-style 學生選擇器；存放 { quiz, cls, existing? }
   const [picker, setPicker] = useState(null);
+  const [sortBy, setSortBy] = useState('default');
 
-  // tab 來自路由（initialTab prop），切換 tab 時用 navigate 更新 URL，避免畫面與側邊欄 / 瀏覽器歷史脫鉤
-  const tab = initialTab; // 'diagnosis' | 'scenario'（spec-08）
+  // 題型由路由決定（從 sidebar 「派發診斷題組」或「派發釐清題組」分別進入），畫面內不再做 tab 切換
+  const tab = initialTab; // 'diagnosis' | 'scenario'
   const isScenarioTab = tab === 'scenario';
 
-  const switchTab = (next) => {
-    setPopover(null);
-    setManagePopover(null);
-    setPicker(null);
-    if (next === tab) return;
-    navigate(next === 'scenario' ? '/teacher/assignments/scenarios' : '/teacher/assignments/diagnosis');
-  };
-
   /* 兩種題組的 published 列表 */
-  const publishedQuizzes = isScenarioTab
+  const publishedQuizzesRaw = isScenarioTab
     ? scenarioQuizzes.filter((q) => q.status === 'published')
     : quizzes.filter((q) => q.status === 'published');
+
+  /* 排序：依使用者選擇對題組（矩陣 row）排序 */
+  const assignCountByQuiz = (q) => assignments.filter((a) => {
+    if (isScenarioTab) return a.type === 'scenario' && a.scenarioQuizId === q.id;
+    return (a.type ?? 'diagnosis') === 'diagnosis' && a.quizId === q.id;
+  }).length;
+
+  const publishedQuizzes = [...publishedQuizzesRaw].sort((a, b) => {
+    switch (sortBy) {
+      case 'title-asc':      return (a.title ?? '').localeCompare(b.title ?? '', 'zh-Hant');
+      case 'title-desc':     return (b.title ?? '').localeCompare(a.title ?? '', 'zh-Hant');
+      case 'assigned-desc':  return assignCountByQuiz(b) - assignCountByQuiz(a);
+      case 'assigned-asc':   return assignCountByQuiz(a) - assignCountByQuiz(b);
+      case 'newest':         return (b.createdAt ?? '').localeCompare(a.createdAt ?? '');
+      case 'oldest':         return (a.createdAt ?? '').localeCompare(b.createdAt ?? '');
+      default:               return 0; // 預設不變動原順序
+    }
+  });
 
   /* 矩陣：對 scenario tab 用 scenarioQuizId 對應，對 diagnosis tab 用 quizId */
   const matrix = publishedQuizzes.map((quiz) => ({
@@ -154,29 +165,27 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
           </p>
         </div>
 
-        {/* Tab 切換：診斷／概念釐清（spec-08）*/}
-        <div className="mb-4 sm:mb-6 flex flex-wrap items-center gap-1.5 bg-white border border-[#BDC3C7] rounded-2xl p-1.5
-                        shadow-[0_2px_8px_rgba(0,0,0,0.04)] w-fit max-w-full">
-          <button
-            type="button"
-            onClick={() => switchTab('diagnosis')}
-            className={`px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-1.5 transition
-                       ${tab === 'diagnosis'
-                         ? 'bg-[#FFF1D8] border border-[#F0B962] text-[#7A4A18]'
-                         : 'text-[#636E72] hover:bg-[#EEF5E6]'}`}
-          >
-            📝 診斷題組
-          </button>
-          <button
-            type="button"
-            onClick={() => switchTab('scenario')}
-            className={`px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-1.5 transition
-                       ${tab === 'scenario'
-                         ? 'bg-[#E0F0E8] border border-[#3F8B5E] text-[#2E6B47]'
-                         : 'text-[#636E72] hover:bg-[#EEF5E6]'}`}
-          >
-            🌱 概念釐清題組
-          </button>
+        {/* 排序控制（取代原本的診斷/釐清 tab 切換）*/}
+        <div className="mb-4 sm:mb-6 flex flex-wrap items-center gap-3 bg-white border border-[#BDC3C7] rounded-2xl px-3 py-2 shadow-[0_2px_8px_rgba(0,0,0,0.04)] w-fit max-w-full">
+          <div className="inline-flex items-center gap-1.5">
+            <span className="material-symbols-rounded text-[#5A6663]" style={{ fontSize: 18 }}>sort</span>
+            <label htmlFor="assign-sort" className="text-sm font-semibold text-[#5A6663] whitespace-nowrap">排序</label>
+            <select
+              id="assign-sort"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="appearance-none bg-white border border-[#C8D6C9] rounded-lg pl-2 pr-7 py-1 text-sm font-semibold text-[#2D3436] focus:outline-none focus:ring-2 focus:ring-[#8FC87A] cursor-pointer"
+            >
+              <option value="default">預設順序</option>
+              <option value="newest">建立時間：新→舊</option>
+              <option value="oldest">建立時間：舊→新</option>
+              <option value="title-asc">題組名稱 A→Z</option>
+              <option value="title-desc">題組名稱 Z→A</option>
+              <option value="assigned-desc">已派班級數 多→少</option>
+              <option value="assigned-asc">已派班級數 少→多</option>
+            </select>
+          </div>
+          <span className="text-sm text-[#95A5A6] whitespace-nowrap">共 {publishedQuizzes.length} 份{isScenarioTab ? '釐清' : '診斷'}題組</span>
         </div>
 
         {publishedQuizzes.length === 0 ? (
@@ -205,7 +214,7 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
           <>
           {/* 圖例：放在矩陣上方，方便對照 */}
           <div className="mb-4 px-4 py-3 bg-white border border-[#BDC3C7] rounded-2xl flex flex-wrap items-center gap-x-4 gap-y-2 sm:gap-6 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
-            <span className="text-xs text-[#95A5A6] font-medium">圖例：</span>
+            <span className="text-sm text-[#95A5A6] font-medium">圖例：</span>
             {[
               { color: 'border-dashed border-[#D5D8DC] bg-white', label: '未派發', textColor: 'text-[#95A5A6]' },
               { color: 'bg-[#EEF5E6] border-[#D5D8DC]', label: '待作答', textColor: 'text-[#95A5A6]' },
@@ -214,7 +223,7 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
             ].map((item) => (
               <div key={item.label} className="flex items-center gap-1.5">
                 <div className={`w-4 h-4 rounded border ${item.color}`} />
-                <span className={`text-xs ${item.textColor}`}>{item.label}</span>
+                <span className={`text-sm ${item.textColor}`}>{item.label}</span>
               </div>
             ))}
           </div>
@@ -226,7 +235,7 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
                 <div className="px-4 py-3 bg-[#EEF5E6] border-b border-[#D5D8DC]">
                   <div className="flex items-center gap-1.5 mb-1">
                     <span
-                      className={`text-xs font-bold px-2 py-0.5 rounded-full border
+                      className={`text-sm font-bold px-2 py-0.5 rounded-full border
                                  ${isScenarioTab
                                    ? 'bg-[#E0F0E8] text-[#2E6B47] border-[#3F8B5E]'
                                    : 'bg-[#C8EAAE] text-[#3D5A3E] border-[#BDC3C7]'}`}
@@ -235,7 +244,7 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
                     </span>
                   </div>
                   <p className="text-sm font-semibold text-[#2D3436] leading-snug">{quiz.title}</p>
-                  <p className="text-xs text-[#95A5A6] mt-0.5">
+                  <p className="text-sm text-[#95A5A6] mt-0.5">
                     {isScenarioTab
                       ? `${quiz.questions?.length ?? 0} 題概念釐清 · 目標節點 ${quiz.targetNodeId}`
                       : `${quiz.questionCount} 題 · ${quiz.knowledgeNodeIds.length} 個節點`}
@@ -248,7 +257,7 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
                       <div className="flex items-center gap-1.5 mb-2">
                         <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: cls.color }} />
                         <span className="text-sm font-semibold text-[#2D3436]">{cls.name}</span>
-                        <span className="text-xs text-[#95A5A6]">· {cls.studentCount} 人</span>
+                        <span className="text-sm text-[#95A5A6]">· {cls.studentCount} 人</span>
                       </div>
                       {assignment === null ? (
                         <>
@@ -309,7 +318,7 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
               style={{ gridTemplateColumns: `220px repeat(${classes.length}, minmax(140px, 1fr))` }}
             >
               <div className="px-4 sm:px-5 py-3 flex items-center">
-                <span className="text-xs font-bold text-[#636E72] uppercase tracking-wide">題組</span>
+                <span className="text-sm font-bold text-[#636E72] uppercase tracking-wide">題組</span>
               </div>
               {classes.map((cls) => (
                 <div key={cls.id} className="px-3 py-3 text-center border-l border-[#D5D8DC]">
@@ -317,7 +326,7 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
                     <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: cls.color }} />
                     <span className="text-sm font-semibold text-[#2D3436]">{cls.name}</span>
                   </div>
-                  <p className="text-xs text-[#95A5A6] mt-0.5">{cls.studentCount} 人</p>
+                  <p className="text-sm text-[#95A5A6] mt-0.5">{cls.studentCount} 人</p>
                 </div>
               ))}
             </div>
@@ -331,7 +340,7 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
                 <div className="px-5 py-4 flex flex-col justify-center">
                   <div className="flex items-center gap-1.5 mb-1">
                     <span
-                      className={`text-xs font-bold px-2 py-0.5 rounded-full border
+                      className={`text-sm font-bold px-2 py-0.5 rounded-full border
                                  ${isScenarioTab
                                    ? 'bg-[#E0F0E8] text-[#2E6B47] border-[#3F8B5E]'
                                    : 'bg-[#C8EAAE] text-[#3D5A3E] border-[#BDC3C7]'}`}
@@ -340,7 +349,7 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
                     </span>
                   </div>
                   <p className="text-sm font-semibold text-[#2D3436] leading-snug mb-1">{quiz.title}</p>
-                  <p className="text-xs text-[#95A5A6]">
+                  <p className="text-sm text-[#95A5A6]">
                     {isScenarioTab
                       ? `${quiz.questions?.length ?? 0} 題概念釐清 · 目標節點 ${quiz.targetNodeId}`
                       : `${quiz.questionCount} 題 · ${quiz.knowledgeNodeIds.length} 個節點`}

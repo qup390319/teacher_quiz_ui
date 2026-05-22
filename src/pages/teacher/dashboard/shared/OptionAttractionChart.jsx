@@ -65,23 +65,23 @@ export default function OptionAttractionChart({ quizId, gradeStats }) {
     <div>
       <div className="flex items-baseline justify-between mb-3">
         <h3 className="text-lg font-bold text-[#2D3436]">選項吸引力分析</h3>
-        <span className="text-xs text-[#95A5A6]">全年級每題的選項選擇分布，⭐ 標記為正解選項</span>
+        <span className="text-sm text-[#95A5A6]">所有班級每題的選項選擇分布，⭐ 標記為正解選項</span>
       </div>
 
       <div className="space-y-3">
         {rows.map((row) => (
           <div key={row.questionId} className="bg-[#FAFBFC] rounded-xl p-3 border border-[#EEE]">
             <div className="flex items-baseline gap-2 mb-1.5">
-              <span className="text-xs font-mono font-bold text-[#2D3436]">{row.qLabel}</span>
-              <span className="text-[10px] text-[#95A5A6]">{row.nodeName}</span>
-              <span className="text-xs text-[#636E72] truncate flex-1" title={row.stem}>{row.stem}</span>
+              <span className="text-sm font-mono font-bold text-[#2D3436]">{row.qLabel}</span>
+              <span className="text-[15px] text-[#95A5A6]">{row.nodeName}</span>
+              <span className="text-sm text-[#636E72] truncate flex-1" title={row.stem}>{row.stem}</span>
             </div>
             <div className="flex h-6 rounded-md overflow-hidden">
               {row.options.map((o) => (
                 <div
                   key={o.tag}
                   title={`${o.tag}：${o.count} 人（${o.pct}%）${o.isCorrect ? ' ★ 正解' : ''}`}
-                  className="h-full flex items-center justify-center text-[10px] font-bold text-white relative"
+                  className="h-full flex items-center justify-center text-[15px] font-bold text-white relative"
                   style={{ width: `${o.pct}%`, backgroundColor: o.color }}
                 >
                   {o.pct >= 8 && (
@@ -96,7 +96,7 @@ export default function OptionAttractionChart({ quizId, gradeStats }) {
         ))}
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-[#636E72]">
+      <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-[#636E72]">
         {['A', 'B', 'C', 'D'].map((tag, i) => (
           <span key={tag} className="flex items-center gap-1.5">
             <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: TAG_COLORS[i] }} />

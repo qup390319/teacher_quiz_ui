@@ -82,11 +82,81 @@
 | 警示 / 錯誤 | `#E74C5E` |
 | 成功 | `#76B563` |
 
+### 1.3.1 AI 色（D7 — sidebar 與功能入口的 AI 標記）
+
+| 用途 | 色碼 |
+|------|------|
+| AI icon / pill 文字 | `#7D3C98`（紫） |
+| AI pill 背景 | `#F3E5F5`（淡紫） |
+| AI pill 邊框 | `#D2B4DE` |
+
+**設計理由**：紫色是業界 AI 慣例，且避開既有教師（綠）/ 學生（藍）/ CTA（橙）主題色不衝突。`<AIBadge>` 元件統一使用此色。
+
+### 1.3.2 教師端側邊欄 flow section 色（D1 — 教學流程順序）
+
+| Section | label 色 | bg | border | activeBorder |
+|---|---|---|---|---|
+| ① 出診斷題（綠） | `#4A7324` | `#E4F1CE` | `#8FC87A` | `#5C8A2E` |
+| ② 派題給班級（青） | `#1F7A8C` | `#D4ECF1` | `#5BA4B7` | `#1F7A8C` |
+| ③ 看診斷結果（藍） | `#1F6FAB` | `#D6EAF8` | `#5DADE2` | `#2E86C1` |
+| ④ 概念釐清・補救（紫紅） | `#8A3F76` | `#F2DDED` | `#C77DBA` | `#8A3F76` |
+| 班級（橘） | `#A86E1E` | `#FAE8C4` | `#D4A244` | `#A86E1E` |
+| 其他（棕） | `#6B4426` | `#EBDACC` | `#B08968` | `#8B5E3C` |
+
 ### 1.4 背景圖
 
 - **檔案**：`src/assets/backgrounds/bg_chiheisen_green.jpg`（irasutoya 草原藍天）
 - **使用方式**：所有 Layout 容器級頁面（首頁、Dashboard、各功能首頁）皆建議套用此底圖
 - **覆蓋層**：通常不需要，木框元件自身已具足夠對比；若文字直接在 bg 上才考慮加 `bg-white/30 backdrop-blur` 半透明層
+
+### 1.5 技能樹色票（深木紋夜晚地圖風 / Mockup J-1）
+
+> 專供「知識路徑技能樹」(`KnowledgeSkillTree`) 使用。常數來自 `src/constants/theme.js`：`SKILL_TREE_A_GREEN`、`SKILL_TREE_B_AMBER`、`SKILL_TREE_DARK`。
+
+**設計原則：**
+- **不同色系 = 子主題區分**（A 綠系 / B 暖橘系）
+- **同色系內由淺入深 = 學習進度感**（階段 1 最淺、階段 5–6 最深）
+- 在深木紋底色上呈現「夜晚冒險地圖」氛圍
+
+**深木紋容器（卡片風格）：**
+
+| 用途 | 色碼 |
+|------|------|
+| 卡片背景漸層 | `radial-gradient(ellipse at center, #5A3E22 0%, #2E1F10 100%)` |
+| 木框邊（border） | `#8B5E3C` 2px |
+| 內陰影 | `inset 0 0 40px rgba(0,0,0,0.55)` |
+| 外陰影 | `0 4px 16px rgba(0,0,0,0.18)` |
+| 連線（木紋淺褐） | `#C19A6B` 3px + drop-shadow glow |
+| 階段欄位導引線 | `#7A5232` 1px dashed, opacity 0.4 |
+| 主文字 | `#FBE9C7`（米色） |
+| 次文字 / 標頭 | `#C19A6B` |
+
+**A 子主題 · 綠色系階段漸層（5 階段）：**
+
+| 階段 | fill | stroke |
+|------|------|--------|
+| 1 | `#C4E5AA` | `#A7D696` |
+| 2 | `#A7D696` | `#8FC87A` |
+| 3 | `#8FC87A` | `#7DB044` |
+| 4 | `#7DB044` | `#5C8A2E` |
+| 5（終點） | 金色 `#FFF3B0` / stroke `#F4C545` | — |
+
+**B 子主題 · 暖橘系階段漸層（6 階段，5-5 / 5-6 並列為階段 5）：**
+
+| 階段 | fill | stroke |
+|------|------|--------|
+| 1 | `#F8DCAE` | `#F0B962` |
+| 2 | `#F0B962` | `#E8A042` |
+| 3 | `#E8A042` | `#D08B2E` |
+| 4 | `#D08B2E` | `#B9770E` |
+| 5（5-5、5-6 平行） | `#B9770E` | `#9B5E18` |
+| 6（終點） | 金色 `#FFF3B0` / stroke `#F4C545` | — |
+
+**節點渲染雙層原則：**
+1. **光暈層**：同形狀放大 `stroke-width=6` 純色填充 + `blur(5–7px)`，opacity 0.45–0.55
+2. **銳利層**：完整輪廓 `stroke-width=3` + 飽和填色，無 filter
+
+> 此渲染方式可同時保有「發光技能樹」氛圍與「輪廓清楚」的可讀性。修改技能樹相關視覺時必須沿用本規範。
 
 ---
 
@@ -1020,6 +1090,32 @@ html.student-mode { font-size: 17px; }                /* mobile 6.25% 放大 */
 | `ScenarioPanel`（題目開始前的大卡片）| `420px / sm:480px` | `560px / sm:720px / md:820px` |
 
 點擊圖片仍可開 `<ScenarioImageLightbox>` 看全尺寸。
+
+### 13.4 教師端最小字級門檻（≥15px @ medium）
+
+教師端不套用 `.student-mode` 的 root 放大，font-size 由 `src/lib/fontSize.js` 控制（small=16 / **medium=18（預設）** / large=20）。**所有教師端可見文字在 medium 預設下必須 ≥15px**，避免久看疲勞。
+
+實務換算（Tailwind v4 預設 rem-based）：
+
+| 用法 | medium (18px root) | 是否允許 |
+|------|--------------------|----------|
+| `text-xs`（0.75rem） | 13.5px | ❌ 禁止使用於教師端文字 |
+| `text-sm`（0.875rem） | 15.75px | ✅ 教師端最小文字字級 |
+| `text-base`（1rem） | 18px | ✅ |
+| `text-[10-14px]` 等硬編碼 | 10–14px | ❌ 禁止使用；若必須硬編碼最低用 `text-[15px]` |
+
+**例外**：
+- **Material Symbols icon** 的 `style={{ fontSize: ... }}` 控制的是 icon 視覺尺寸（非文字），不適用此規則。
+- **Recharts 圖表** 的 `tick` / `label` / `wrapperStyle` `fontSize` 因空間有限，門檻放寬為 **≥13px**。
+- **學生端**（`/student/*` 路由及 `src/components/student/**`）走 §13.1–§13.3 的 root scale + 重點區域放大策略，不受此門檻約束。
+
+**檢查方式**：
+```bash
+# 應回傳 0 results（教師路徑 + 共用元件）
+grep -rE "\btext-xs\b|text-\[1[0-4]px\]" src/pages/teacher src/components --exclude-dir=student
+```
+
+歷史紀錄：本門檻於 2026-05-22 一次性套用，影響 56 個檔案、共 416 處替換（text-xs → text-sm 351、text-[10-14px] → text-[15px] 43、Recharts fontSize 10–12 → 13 共 22）。
 
 ---
 

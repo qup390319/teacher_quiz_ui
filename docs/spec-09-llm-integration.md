@@ -133,6 +133,20 @@ P2 起前端不再需要為了換 LLM 而改 code。換 LLM 只需動後端：
 - 禁止在 `src/llm/` 之外的程式碼用 `fetch('/api/llm/...')`（一律 import `chat` / `chatStream`）
 - 禁止 backendProvider 偏離 §4 型別契約
 
+## 9.5 使用者可見的 AI 標記（D7）
+
+教師端側邊欄與功能入口統一以 `<AIBadge>` 元件（spec-03 §2.1）標示「此功能由 AI 協助」，回應教授「sidebar 看不到哪裡有 AI」回饋。對應關係：
+
+| 側邊欄項目 | 對應 AI 端點 / 服務 | tooltip 描述 |
+|---|---|---|
+| 診斷題組編輯（`/teacher/quizzes`） | RAGFlow N6（`/api/ai/distractor-suggest` 等） | 出題輔助：RAGFlow 從教材檢索並建議題目 |
+| 診斷儀表板（dashboard 群） | LLM N1/N2 摘要 | AI 報告摘要：LLM 彙整班級表現重點 |
+| 診斷對話紀錄（`/teacher/diagnosis-logs`） | LLM N3（POE 追問） | AI 追問：LLM 根據學生作答產生 POE 追問 |
+| 釐清題組編輯（`/teacher/scenarios`） | RAGFlow N6 | 出題輔助：RAGFlow 協助生成釐清情境 |
+| 釐清對話紀錄（`/teacher/treatment-logs`） | LLM N5（CER 補救對話） | AI 補救對話：LLM 引導 CER 概念釐清 |
+
+> **不採用** sidebar 底部「AI 範圍說明頁」或「AI 圖例 footer」（與使用者協作後確認），保持側邊欄精簡，AI 標記直接附在項目右側即可。
+
 ## 10. 與 RAGFlow 的關係
 
 RAGFlow（spec-12）用於「檢索文獻 + 生成」場景（N1 / N2 / N6），**不走 `src/llm/`**。

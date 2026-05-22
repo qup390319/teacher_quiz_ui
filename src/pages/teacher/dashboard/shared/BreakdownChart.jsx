@@ -18,9 +18,9 @@ function BreakdownTooltip({ active, payload }) {
     return (
       <div className="bg-white border border-[#BDC3C7] rounded-xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] p-3 text-sm">
         <p className="font-bold text-[#2D3436]">{d.name}</p>
-        <p className="text-xs text-[#636E72] mb-1">{d.id}</p>
+        <p className="text-sm text-[#636E72] mb-1">{d.id}</p>
         <p className="font-semibold" style={{ color: getBarColor(d.passRate) }}>答對率：{d.passRate}%</p>
-        <p className="text-xs text-[#95A5A6] mt-0.5">（答對人數 / 全班人數）</p>
+        <p className="text-sm text-[#95A5A6] mt-0.5">（答對人數 / 全班人數）</p>
       </div>
     );
   }
@@ -51,7 +51,7 @@ export default function BreakdownChart({ quizId, classId }) {
         {[{ color: '#8FC87A', label: '≥70% 多數答對' }, { color: '#F4D03F', label: '50–69% 部分有迷思' }, { color: '#F28B95', label: '<50% 多數答錯' }].map(item => (
           <div key={item.label} className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: item.color }} />
-            <span className="text-xs text-[#636E72]">{item.label}</span>
+            <span className="text-sm text-[#636E72]">{item.label}</span>
           </div>
         ))}
       </div>
@@ -59,10 +59,10 @@ export default function BreakdownChart({ quizId, classId }) {
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={chartData} margin={{ top: 10, right: 40, left: 0, bottom: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#C8EAAE" />
-            <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#636E72' }} angle={-15} textAnchor="end" interval={0} />
-            <YAxis domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 11, fill: '#636E72' }} />
+            <XAxis dataKey="name" tick={{ fontSize: 13, fill: '#636E72' }} angle={-15} textAnchor="end" interval={0} />
+            <YAxis domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 13, fill: '#636E72' }} />
             <Tooltip content={<BreakdownTooltip />} />
-            <ReferenceLine y={70} stroke="#95A5A6" strokeDasharray="4 4" label={{ value: '70%', position: 'right', fontSize: 11, fill: '#95A5A6' }} />
+            <ReferenceLine y={70} stroke="#95A5A6" strokeDasharray="4 4" label={{ value: '70%', position: 'right', fontSize: 13, fill: '#95A5A6' }} />
             <Bar dataKey="passRate" radius={[8, 8, 0, 0]}>
               {chartData.map(entry => (<Cell key={entry.id} fill={getBarColor(entry.passRate)} />))}
             </Bar>

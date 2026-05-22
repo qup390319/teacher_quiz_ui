@@ -101,11 +101,14 @@ function normalizeBotResponse(obj, prevState) {
   return { phase, step, stage, assistantMessage, feedback, hintLevel, requiresRestatement };
 }
 
+// 對齊原系統 prompt【新版狀態機】：
+//   diagnosis = step1-2 / apprenticeship = step3-5 / cer = step6 / completed = step7
+//   claim / evidence / reasoning(modeling+coaching+scaffolding) / revise(CER) / complete
 function stageForStep(step) {
   if (step <= 1) return 'claim';
   if (step === 2) return 'evidence';
-  if (step === 3) return 'reasoning';
-  if (step >= 4 && step <= 6) return 'revise';
+  if (step >= 3 && step <= 5) return 'reasoning';
+  if (step === 6) return 'revise';
   return 'complete';
 }
 

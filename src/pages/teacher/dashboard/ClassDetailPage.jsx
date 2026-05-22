@@ -87,7 +87,7 @@ export default function ClassDetailPage() {
                 <div className="h-2 rounded-full transition-all" style={{ width: `${selectedRate}%`, backgroundColor: selectedBarColor }} />
               </div>
               <span className="text-sm font-bold text-[#2D3436]">{selectedRate}%</span>
-              <span className="text-xs text-[#95A5A6]">{selectedOption.submitted}/{selectedOption.total} 人</span>
+              <span className="text-sm text-[#95A5A6]">{selectedOption.submitted}/{selectedOption.total} 人</span>
             </div>
           )}
         </div>

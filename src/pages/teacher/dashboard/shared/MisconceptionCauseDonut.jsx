@@ -74,8 +74,8 @@ export default function MisconceptionCauseDonut({ overviewData, classes, quizId 
     <div>
       <div className="flex items-baseline justify-between mb-3">
         <h3 className="text-lg font-bold text-[#2D3436]">迷思成因分類</h3>
-        <span className="text-xs text-[#95A5A6]">
-          全年級追問結果中各類成因的標註次數（共 {total} 次標註）
+        <span className="text-sm text-[#95A5A6]">
+          所有班級追問結果中各類成因的標註次數（共 {total} 次標註）
         </span>
       </div>
 
@@ -98,13 +98,13 @@ export default function MisconceptionCauseDonut({ overviewData, classes, quizId 
               <Tooltip formatter={(v, n) => [`${v} 次`, n]} />
               <Legend
                 verticalAlign="bottom"
-                wrapperStyle={{ fontSize: 10 }}
+                wrapperStyle={{ fontSize: 13 }}
                 formatter={(value) => value.length > 10 ? value.slice(0, 10) + '…' : value}
               />
             </PieChart>
           </ResponsiveContainer>
         </div>
-        <ul className="space-y-1.5 text-xs">
+        <ul className="space-y-1.5 text-sm">
           {data.sort((a, b) => b.value - a.value).map((d) => {
             const pct = Math.round((d.value / total) * 100);
             return (

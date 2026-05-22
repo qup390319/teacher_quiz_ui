@@ -61,12 +61,12 @@ export default function QuestionErrorRateChart({ quizId, classId, totalStudents 
             <BarChart data={data} layout="vertical" margin={{ top: 8, right: 24, left: 80, bottom: 8 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E8E8E8" horizontal={false} />
               <XAxis type="number" domain={[0, 100]} tickFormatter={v => `${v}%`}
-                tick={{ fontSize: 12, fill: '#636E72' }} />
+                tick={{ fontSize: 13, fill: '#636E72' }} />
               <YAxis type="category" dataKey="name" width={60}
-                tick={{ fontSize: 12, fill: '#2D3436', fontWeight: 600 }} />
+                tick={{ fontSize: 13, fill: '#2D3436', fontWeight: 600 }} />
               <Tooltip content={<CustomTooltip />} />
               <ReferenceLine x={avgErrorRate} stroke="#E74C5E" strokeDasharray="6 3" strokeWidth={1.5}
-                label={{ value: `平均 ${avgErrorRate}%`, position: 'top', fill: '#E74C5E', fontSize: 11 }} />
+                label={{ value: `平均 ${avgErrorRate}%`, position: 'top', fill: '#E74C5E', fontSize: 13 }} />
               <Bar dataKey="errorRate" radius={[0, 6, 6, 0]} maxBarSize={28}>
                 {data.map((d, i) => (
                   <Cell key={i} fill={d.errorRate >= 50 ? '#F28B95' : d.errorRate >= 30 ? '#F4D03F' : '#A7D696'} />
@@ -75,7 +75,7 @@ export default function QuestionErrorRateChart({ quizId, classId, totalStudents 
             </BarChart>
           </ResponsiveContainer>
 
-          <div className="mt-4 flex items-center gap-4 text-xs text-[#636E72]">
+          <div className="mt-4 flex items-center gap-4 text-sm text-[#636E72]">
             <span className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded-sm bg-[#F28B95]" /> 高錯誤率（≥50%）
             </span>
@@ -99,7 +99,7 @@ function CustomTooltip({ active, payload }) {
   if (!active || !payload?.[0]) return null;
   const d = payload[0].payload;
   return (
-    <div className="bg-white border border-[#BDC3C7] rounded-xl px-3 py-2 shadow-lg text-xs max-w-[240px]">
+    <div className="bg-white border border-[#BDC3C7] rounded-xl px-3 py-2 shadow-lg text-sm max-w-[240px]">
       <p className="font-bold text-[#2D3436] mb-1">{d.name}：{d.nodeName}</p>
       <p className="text-[#636E72] mb-1.5 leading-snug">{d.stem}</p>
       <div className="space-y-0.5">

@@ -1,6 +1,30 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useCallback, useContext, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { defaultQuestions } from '../data/quizData';
+import { getCurrentSchoolYear, getCurrentSemester } from '../utils/schoolYear';
+
+// localStorage 鍵名（spec-04 §1.1）
+const LS_SCHOOL_YEAR = 'sciLens.schoolYear';
+const LS_SEMESTER = 'sciLens.semester';
+const LS_INCLUDE_ARCHIVED = 'sciLens.includeArchived';
+
+function readLS(key, fallback, parse = (v) => v) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw == null) return fallback;
+    return parse(raw);
+  } catch {
+    return fallback;
+  }
+}
+
+function writeLS(key, value) {
+  try {
+    localStorage.setItem(key, String(value));
+  } catch {
+    /* quota / private mode → 忽略 */
+  }
+}
 
 /**
  * AppContext — 純 UI 狀態。
@@ -40,6 +64,25 @@ export function AppProvider({ children }) {
   const [currentClassId, setCurrentClassId] = useState(null);
   const [currentQuizId, setCurrentQuizId] = useState(null);
 
+  // 學年/學期/封存篩選（spec-04 §1.1；dashboard 與班級管理共用）
+  const [currentSchoolYear, setCurrentSchoolYear] = useState(
+    () => readLS(LS_SCHOOL_YEAR, getCurrentSchoolYear(), (v) => {
+      const n = parseInt(v, 10);
+      return Number.isFinite(n) ? n : getCurrentSchoolYear();
+    }),
+  );
+  const [currentSemester, setCurrentSemester] = useState(
+    () => readLS(LS_SEMESTER, getCurrentSemester(), (v) => (v === 'first' || v === 'second' ? v : getCurrentSemester())),
+  );
+  const [includeArchivedClasses, setIncludeArchivedClasses] = useState(
+    () => readLS(LS_INCLUDE_ARCHIVED, false, (v) => v === 'true'),
+  );
+
+  // persist 三個篩選器值
+  useEffect(() => { writeLS(LS_SCHOOL_YEAR, currentSchoolYear); }, [currentSchoolYear]);
+  useEffect(() => { writeLS(LS_SEMESTER, currentSemester); }, [currentSemester]);
+  useEffect(() => { writeLS(LS_INCLUDE_ARCHIVED, includeArchivedClasses); }, [includeArchivedClasses]);
+
   // 學生報告暫存（StudentQuiz → StudentReport 用；canonical 在 DB）
   const [studentName] = useState('學生');  // 已被 useAuth().currentUser.name 取代但保留相容
   const [studentHistory, setStudentHistory] = useState([]);
@@ -63,6 +106,10 @@ export function AppProvider({ children }) {
       // 當前選中的 quiz / class（UI 狀態）
       currentClassId, setCurrentClassId,
       currentQuizId, setCurrentQuizId,
+      // 學年/學期/封存篩選（spec-04 §1.1）
+      currentSchoolYear, setCurrentSchoolYear,
+      currentSemester, setCurrentSemester,
+      includeArchivedClasses, setIncludeArchivedClasses,
       // 學生報告暫存
       studentName, studentHistory, addToHistory,
       activeStudentReport, setActiveStudentReport,

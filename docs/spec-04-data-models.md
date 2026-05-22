@@ -54,6 +54,11 @@ const { currentUser, loading, role, login, logout } = useAuth();
 | `editingQuizStatus` | `'draft' \| 'published' \| null` | `null` | 編輯時帶入的原始 status，用於 Step2Edit 判定是否啟用自動暫存（`published` 卷自動暫存停用，避免被降級為 draft） |
 | ~~`classes`~~ | — | — | **P3 移除**：改用 `useClasses()` |
 | `currentClassId` | `string \| null` | `null` | 當前篩選的班級 ID（純 UI 狀態，配合 dashboard URL query 同步） |
+| `currentSchoolYear` | `number` | `getCurrentSchoolYear()` | 目前 dashboard 篩選的學年度（西元年）；變更時 persist 到 `localStorage.sciLens.schoolYear` |
+| `currentSemester` | `'first' \| 'second'` | `getCurrentSemester()` | 目前 dashboard 篩選的學期；persist 到 `localStorage.sciLens.semester` |
+| `includeArchivedClasses` | `boolean` | `false` | 是否在 dashboard / 班級管理列表中包含已封存班級；persist 到 `localStorage.sciLens.includeArchived` |
+
+> 上述 3 個學年/封存篩選欄位由 `/teacher/dashboard/*` 與 `/teacher/classes` **共用同一份 AppContext state**，切換任一頁皆生效（詳見 spec-05 §1.5.3）。
 | ~~`currentClass`~~ | — | — | **P3 移除**：用 `useClass(currentClassId).data` |
 | ~~`quizzes`~~ | — | — | **P3 移除**：改用 `useQuizzes()` |
 | `currentQuizId` | `string \| null` | `null` | 當前選中的題組 ID（純 UI 狀態） |
@@ -81,6 +86,9 @@ const { currentUser, loading, role, login, logout } = useAuth();
 | `setNodeQuestionCounts(counts)` | `Record<string, number>` | 更新各節點的預期出題數；亦可傳入部分更新（單個節點）的物件 |
 | `setCurrentClassId(id)` | `string \| null` | 切換篩選班級 |
 | `setCurrentQuizId(id)` | `string \| null` | 切換當前題組 |
+| `setCurrentSchoolYear(year)` | `number` | 切換 dashboard 學年度篩選；同步寫 localStorage |
+| `setCurrentSemester(sem)` | `'first' \| 'second'` | 切換學期篩選 |
+| `setIncludeArchivedClasses(flag)` | `boolean` | 切換是否顯示已封存班級 |
 | `startTreatmentSession` / `appendTreatmentMessage` / `updateTreatmentQuestionState` / `advanceTreatmentQuestion` / `completeTreatmentSession` / `getTreatmentSession` | — | 治療 session 管理（P4 才搬 DB） |
 | `recordAnswer` / `removeMisconception` / `resetStudentAnswers` / `addToHistory` / `setActiveStudentReport` | — | 學生作答相關（P4 才搬 DB） |
 
@@ -98,20 +106,23 @@ const { currentUser, loading, role, login, logout } = useAuth();
 
 ```jsx
 // src/hooks/useClasses.js
-export function useClasses() {
+export function useClasses(filter) {
+  // filter = { schoolYear?, semester?, includeArchived? }；省略時由 hook 自動帶入當前學年/學期/false
   return useQuery({
-    queryKey: ['classes'],
-    queryFn: () => api.get('/classes'),
+    queryKey: ['classes', filter],
+    queryFn: () => api.get('/classes', { params: filter }),
   });
 }
 ```
 
 | Hook | 對應 API | Cache key | 備註 |
 |------|---------|-----------|------|
-| `useClasses()` | `GET /api/classes` | `['classes']` | **教師專屬**。回傳 `ClassBrief[]`：`{ id, name, grade, subject, color, textColor, studentCount }` — **不包含** `students` 陣列 |
-| `useClass(classId)` | `GET /api/classes/{id}` | `['classes', classId]` | **教師專屬**。`ClassDetail` = `ClassBrief` + `students: StudentBrief[]` |
-| `useCreateClass()` | `POST /api/classes` | invalidate `['classes']` | **教師**。Body：`{ name, grade, subject, color, textColor, note? }`；server 自動產生 id（`class-A..Z` 取下一個） |
-| `useUpdateClass()` | `PATCH /api/classes/{id}` | invalidate `['classes']`、`['classes', id]` | **教師**。Body 為部分更新；可帶 `name/grade/subject/color/textColor/note`，傳 `note: null` 可清空備註 |
+| `useClasses(filter?)` | `GET /api/classes?school_year=&semester=&include_archived=` | `['classes', filter]` | **教師專屬**。回傳 `ClassBrief[]`：`{ id, name, grade, subject, color, textColor, studentCount, schoolYear, semester, status }` — **不包含** `students` 陣列。`filter` 省略時 hook 內部呼叫 `getCurrentSchoolYear()` / `getCurrentSemester()` 並設 `includeArchived=false`；傳空物件 `{}` 則 server 不過濾（顯示全部） |
+| `useClass(classId)` | `GET /api/classes/{id}` | `['classes', classId]` | **教師專屬**。`ClassDetail` = `ClassBrief` + `students: StudentBrief[]`；可讀任何學年度的班級（含已封存） |
+| `useCreateClass()` | `POST /api/classes` | invalidate `['classes']` | **教師**。Body：`{ name, grade, subject, color, textColor, schoolYear?, semester?, note? }`；省略 schoolYear/semester 時 server 自動帶入當前學年；server 自動產生 id（`class-A..Z` 取下一個） |
+| `useUpdateClass()` | `PATCH /api/classes/{id}` | invalidate `['classes']`、`['classes', id]` | **教師**。Body 為部分更新；可帶 `name/grade/subject/color/textColor/schoolYear/semester/note`，傳 `note: null` 可清空備註 |
+| `useArchiveClass()` | `POST /api/classes/{id}/archive` | invalidate `['classes']` | **教師**。設 status='archived'、archivedAt=now；不刪除任何 assignments / answers |
+| `useUnarchiveClass()` | `POST /api/classes/{id}/unarchive` | invalidate `['classes']` | **教師**。還原為 status='active'、archivedAt=null |
 | `useUpdateClassStudents()` | `PUT /api/classes/{id}/students` | invalidate `['classes']` | mutation |
 | `useStudent(studentId)` | `GET /api/students/{id}` | `['students', id]` | **教師**：含明文密碼 |
 | `useResetStudentPassword()` | `POST /api/students/{id}/reset-password` | invalidate `['students', id]` | mutation |
@@ -199,6 +210,12 @@ interface Class {
   subject: string;        // 科目（如 '自然科學'）
   color: string;          // 班級代表色（CSS HEX，如 '#C8EAAE'）
   textColor: string;      // 文字色（CSS HEX，如 '#3D5A3E'）
+  // ── 學年度與生命週期（0011 migration / 新增） ────────────────
+  schoolYear: number;     // 學年度（西元年）；114 學年度 = 2025（範圍 2025-08-01 ~ 2026-07-31）
+  semester: 'first' | 'second'; // 上學期 / 下學期
+  status: 'active' | 'archived'; // 目前任教 / 已封存（封存後從預設清單隱藏，但歷史資料保留）
+  archivedAt: string | null;     // 封存時間 ISO 字串（後端 TIMESTAMPTZ 序列化）；status='active' 時必為 null
+  note?: string;          // 教師備註（既有欄位，0004 migration）
   students: Student[];    // 學生名冊
 }
 
@@ -209,12 +226,27 @@ interface Student {
 }
 ```
 
-**預設資料**:
-| ID | 名稱 | 學生數 | 代表色 |
-|----|------|--------|--------|
-| `class-A` | 五年甲班 | 20 | #C8EAAE (淺綠) |
-| `class-B` | 五年乙班 | 18 | #BADDF4 (淺藍) |
-| `class-C` | 五年丙班 | 22 | #FCF0C2 (淺黃) |
+**學年度判定規則**（前後端共用，定義於 `src/utils/schoolYear.js` 與 `backend/app/utils/school_year.py`）：
+
+```
+給定日期 d：
+  if d.month >= 8: schoolYear = d.year,        semester = 'first'
+  if d.month <= 1: schoolYear = d.year - 1,    semester = 'first'
+  else (2 ≤ month ≤ 7): schoolYear = d.year - 1, semester = 'second'
+```
+
+**預設資料**（demo seed，學年皆設為當前學年下學期、status='active'）:
+| ID | 名稱 | 學生數 | 代表色 | 學年度 | 學期 | 狀態 |
+|----|------|--------|--------|--------|------|------|
+| `class-A` | 五年甲班 | 20 | #C8EAAE (淺綠) | 2025 | second | active |
+| `class-B` | 五年乙班 | 18 | #BADDF4 (淺藍) | 2025 | second | active |
+| `class-C` | 五年丙班 | 22 | #FCF0C2 (淺黃) | 2025 | second | active |
+
+**生命週期規則**（詳見 spec-05 §1.5）：
+- 建立班級時若未指定，預設 `schoolYear = getCurrentSchoolYear()`、`semester = getCurrentSemester()`、`status = 'active'`、`archivedAt = null`
+- 「封存」是軟性操作：設 `status='archived'` 並寫入 `archivedAt`；歷史 assignments / answers / followups / treatment_sessions 不刪除
+- 「還原」：設 `status='active'`、`archivedAt = null`
+- 學期切換（同一班 5 上 → 5 下）：建議新建班級而非改 `semester`，避免破壞舊學期統計；舊班級可由教師決定是否封存
 
 ### 2.4 Assignment（派題記錄）
 **來源**: `src/data/assignmentData.js`

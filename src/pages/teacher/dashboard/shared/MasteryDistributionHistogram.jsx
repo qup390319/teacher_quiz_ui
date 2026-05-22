@@ -95,22 +95,22 @@ export default function MasteryDistributionHistogram({ overviewData, classes, qu
     <div>
       <div className="flex items-baseline justify-between mb-3">
         <h3 className="text-lg font-bold text-[#2D3436]">學生答對率分布</h3>
-        <span className="text-xs text-[#95A5A6]">把每位學生的答對率（答對題數 ÷ 總題數）分成 5 個區間</span>
+        <span className="text-sm text-[#95A5A6]">把每位學生的答對率（答對題數 ÷ 總題數）分成 5 個區間</span>
       </div>
 
       <div className="h-72">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#EEE" />
-            <XAxis dataKey="bin" tick={{ fontSize: 11, fill: '#636E72' }} />
-            <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#636E72' }} />
+            <XAxis dataKey="bin" tick={{ fontSize: 13, fill: '#636E72' }} />
+            <YAxis allowDecimals={false} tick={{ fontSize: 13, fill: '#636E72' }} />
             <Tooltip
               formatter={(value, name, props) => {
                 const cls = props.payload[`${name}__name`] ?? name;
                 return [`${value} 人`, cls];
               }}
             />
-            <Legend wrapperStyle={{ fontSize: 12 }}
+            <Legend wrapperStyle={{ fontSize: 13 }}
               formatter={(value, entry) => {
                 const cls = chartData[0]?.[`${entry.dataKey}__name`] ?? value;
                 return cls;
@@ -132,9 +132,9 @@ export default function MasteryDistributionHistogram({ overviewData, classes, qu
       <div className="grid grid-cols-3 gap-2 mt-3">
         {summary.map((s) => (
           <div key={s.classId} className="bg-[#FAFBFC] rounded-lg p-2 text-center">
-            <p className="text-xs text-[#636E72]">{s.className}</p>
+            <p className="text-sm text-[#636E72]">{s.className}</p>
             <p className="text-base font-bold text-[#2D3436]">平均 {s.avg}%</p>
-            <p className="text-[10px] text-[#E74C5E]">{s.low} 人 &lt;40%（需關注）</p>
+            <p className="text-[15px] text-[#E74C5E]">{s.low} 人 &lt;40%（需關注）</p>
           </div>
         ))}
       </div>

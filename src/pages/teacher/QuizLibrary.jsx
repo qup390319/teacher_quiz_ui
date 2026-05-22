@@ -22,7 +22,10 @@ export default function QuizLibrary() {
     setEditingQuizId, setEditingQuizStatus, setEditingQuizTitle,
   } = useApp();
   const { data: quizzes = [], isLoading } = useQuizzes();
-  const { data: classes = [] } = useClasses();
+  // 用空 filter（{}）拿全部班級（含已封存 / 其他學年），讓「已派班級」chip
+  // 能正確查到歷史派題對象。題組庫是題組資產管理頁、不是儀表板，不適用
+  // 「儀表板不跨學年」原則。
+  const { data: classes = [] } = useClasses({});
   const { data: assignments = [] } = useAssignments();
   const deleteQuiz = useDeleteQuiz();
   const [activeTab, setActiveTab] = useState('published');
@@ -132,7 +135,7 @@ export default function QuizLibrary() {
                   }`}
                 >
                   {tab.label}
-                  <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${
+                  <span className={`ml-1.5 text-sm px-1.5 py-0.5 rounded-full ${
                     active ? 'bg-[#C8EAAE] text-[#3D5A3E]' : 'bg-[#EEF5E6] text-[#95A5A6]'
                   }`}>
                     {counts[tab.key]}
@@ -187,13 +190,13 @@ export default function QuizLibrary() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2 flex-wrap">
-                        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${isDraft ? 'bg-[#FCF0C2] text-[#B7950B] border-[#F5D669]' : 'bg-[#C8EAAE] text-[#3D5A3E] border-[#8FC87A]'}`}>
+                        <span className={`text-[15px] font-semibold px-2 py-0.5 rounded-full border ${isDraft ? 'bg-[#FCF0C2] text-[#B7950B] border-[#F5D669]' : 'bg-[#C8EAAE] text-[#3D5A3E] border-[#8FC87A]'}`}>
                           {isDraft ? '草稿' : '已發布'}
                         </span>
-                        <span className="text-xs text-[#95A5A6]">建立於 {quiz.createdAt}</span>
+                        <span className="text-sm text-[#95A5A6]">建立於 {quiz.createdAt}</span>
                       </div>
                       <h3 className="text-base font-bold text-[#2D3436] mb-2">{quiz.title}</h3>
-                      <div className="flex items-center gap-4 text-xs text-[#636E72] mb-3">
+                      <div className="flex items-center gap-4 text-sm text-[#636E72] mb-3">
                         <span className="flex items-center gap-1">
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -210,7 +213,7 @@ export default function QuizLibrary() {
                       {/* 知識節點 badges */}
                       <div className="flex flex-wrap gap-1.5 mb-3">
                         {coveredNodes.map((node) => (
-                          <span key={node.id} className="text-xs bg-[#EEF5E6] border border-[#D5D8DC] text-[#636E72] px-2 py-0.5 rounded-full">
+                          <span key={node.id} className="text-sm bg-[#EEF5E6] border border-[#D5D8DC] text-[#636E72] px-2 py-0.5 rounded-full">
                             {node.id} {node.name}
                           </span>
                         ))}
@@ -218,9 +221,9 @@ export default function QuizLibrary() {
                       {/* 已派班級（資訊顯示，不作為操作入口） */}
                       {assignedClasses.length > 0 && (
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs text-[#95A5A6]">已派發：</span>
+                          <span className="text-sm text-[#95A5A6]">已派發：</span>
                           {assignedClasses.map((cls) => (
-                            <span key={cls.id} className="text-xs font-medium px-2 py-0.5 rounded-full border border-[#BDC3C7]"
+                            <span key={cls.id} className="text-sm font-medium px-2 py-0.5 rounded-full border border-[#BDC3C7]"
                               style={{ backgroundColor: cls.color, color: cls.textColor }}>
                               {cls.name}
                             </span>
@@ -233,7 +236,7 @@ export default function QuizLibrary() {
                     <div className="flex flex-col gap-2 flex-shrink-0">
                       <button
                         onClick={() => handleEdit(quiz)}
-                        className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-[#636E72] border border-[#BDC3C7] rounded-xl hover:bg-[#EEF5E6] transition-colors"
+                        className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-[#636E72] border border-[#BDC3C7] rounded-xl hover:bg-[#EEF5E6] transition-colors"
                       >
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -242,7 +245,7 @@ export default function QuizLibrary() {
                       </button>
                       <button
                         onClick={() => handleClone(quiz)}
-                        className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-[#2E86C1] bg-[#BADDF4] border border-[#BDC3C7] rounded-xl hover:bg-[#A8D2EC] transition-colors"
+                        className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-[#2E86C1] bg-[#BADDF4] border border-[#BDC3C7] rounded-xl hover:bg-[#A8D2EC] transition-colors"
                         title="以這份為範本，建立新題組"
                       >
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -253,7 +256,7 @@ export default function QuizLibrary() {
                       <button
                         onClick={() => setDeletingQuiz(quiz)}
                         disabled={deleteQuiz.isPending}
-                        className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-[#E74C5E] bg-[#FAC8CC] border border-[#BDC3C7] rounded-xl hover:bg-[#F5B8BA] transition-colors disabled:opacity-50"
+                        className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-[#E74C5E] bg-[#FAC8CC] border border-[#BDC3C7] rounded-xl hover:bg-[#F5B8BA] transition-colors disabled:opacity-50"
                       >
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

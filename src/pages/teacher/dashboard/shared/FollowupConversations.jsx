@@ -54,9 +54,9 @@ export default function FollowupConversations({ quizId, classId }) {
       {groups.map((g) => (
         <div key={g.studentId} className="border border-[#D5D8DC] rounded-2xl overflow-hidden">
           <div className="px-4 py-2.5 bg-[#EEF5E6] flex items-center gap-2">
-            <span className="text-xs font-mono text-[#636E72]">座號 {g.seat}</span>
+            <span className="text-sm font-mono text-[#636E72]">座號 {g.seat}</span>
             <span className="text-sm font-bold text-[#2D3436]">{g.studentName}</span>
-            <span className="text-xs text-[#95A5A6]">· {g.items.length} 題有追問對話</span>
+            <span className="text-sm text-[#95A5A6]">· {g.items.length} 題有追問對話</span>
           </div>
           <div className="divide-y divide-[#D5D8DC]">
             {g.items.map((row) => {
@@ -77,17 +77,17 @@ export default function FollowupConversations({ quizId, classId }) {
                     onClick={() => setOpenKey(open ? null : key)}
                     className="w-full px-4 py-3 text-left flex items-center gap-3 hover:bg-[#FAFBF8] transition-colors"
                   >
-                    <span className="text-xs font-mono text-[#636E72] flex-shrink-0">第 {row.questionId} 題</span>
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${verdictColor}`}>
+                    <span className="text-sm font-mono text-[#636E72] flex-shrink-0">第 {row.questionId} 題</span>
+                    <span className={`text-sm font-bold px-2 py-0.5 rounded-full border ${verdictColor}`}>
                       {row.finalStatus === 'CORRECT' ? '✓ 最終判定理解' :
                         row.finalStatus === 'MISCONCEPTION' ? '✗ 持有迷思' : '? 不確定'}
                     </span>
                     {misc && (
-                      <span className="text-xs text-[#636E72] truncate">
+                      <span className="text-sm text-[#636E72] truncate">
                         <span className="font-mono opacity-60">{misc.id}</span> {misc.label}
                       </span>
                     )}
-                    <span className="ml-auto text-xs text-[#95A5A6]">
+                    <span className="ml-auto text-sm text-[#95A5A6]">
                       {row.conversationLog.length} 句對話
                     </span>
                     <svg className={`w-4 h-4 text-[#95A5A6] transition-transform ${open ? 'rotate-90' : ''}`}
@@ -98,13 +98,13 @@ export default function FollowupConversations({ quizId, classId }) {
                   {open && (
                     <div className="px-4 py-4 bg-[#FAFBF8] border-t border-[#D5D8DC] space-y-3">
                       {row.aiSummary && (
-                        <div className="text-xs text-[#7A5232] bg-[#FFFBF0] border border-[#F5D669] rounded-lg p-2.5">
+                        <div className="text-sm text-[#7A5232] bg-[#FFFBF0] border border-[#F5D669] rounded-lg p-2.5">
                           <span className="font-semibold">AI 摘要：</span>{row.aiSummary}
                         </div>
                       )}
                       <div className="space-y-2">
                         {row.conversationLog.length === 0 ? (
-                          <p className="text-xs text-[#95A5A6] italic">（沒有對話紀錄）</p>
+                          <p className="text-sm text-[#95A5A6] italic">（沒有對話紀錄）</p>
                         ) : (
                           row.conversationLog.map((msg, idx) => (
                             <div
@@ -118,7 +118,7 @@ export default function FollowupConversations({ quizId, classId }) {
                                     : 'bg-white text-[#2D3436] border border-[#D5D8DC]'
                                 }`}
                               >
-                                <p className="text-[10px] font-bold uppercase opacity-60 mb-0.5">
+                                <p className="text-[15px] font-bold uppercase opacity-60 mb-0.5">
                                   {msg.role === 'student' ? '學生' : 'AI 老師'}
                                 </p>
                                 <p className="whitespace-pre-wrap">{msg.content || msg.text}</p>

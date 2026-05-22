@@ -17,7 +17,7 @@
 | `PreviewQuizModal` | `src/components/teacher/quizEditor/PreviewQuizModal.jsx` | 出題精靈步驟二的學生端預覽 modal |
 | `CoveragePanel` | `src/components/teacher/quizEditor/CoveragePanel.jsx` | 出題精靈步驟二的迷思涵蓋率 + 「補洞」chips；點擊未覆蓋的迷思 chip 觸發 `onAddForMisconception(nodeId, misconceptionId)` 建立預填新題 |
 | `QuestionImportDrawer` | `src/components/teacher/quizEditor/QuestionImportDrawer.jsx` | 出題精靈步驟二的「從題庫挑題」右側抽屜；展開既有題組後勾選題目，匯入時 deep clone 並 append 到當前 `quizQuestions` |
-| `NodeRelationshipMatrix` | `src/components/teacher/NodeRelationshipMatrix.jsx` | 知識節點先備知識矩陣（12×12 網格，顯示節點間的先備關係），整合於 KnowledgeMap 頁面 |
+| `KnowledgeSkillTree` | `src/components/teacher/KnowledgeSkillTree.jsx` | 知識路徑技能樹（深木紋夜晚地圖風 / Mockup J-1）— SVG 六角節點 + 階段欄位（1–6）+ A 綠系/B 橘系階段漸層 + 銳利輪廓 + 背後柔光暈；支援 `selectable` 模式（未勾選黯淡灰褐 + 虛線；已勾選明亮發光 + 綠 ✓ 徽章）。整合於 `KnowledgeMap`（純展示）、`CustomKnowledgeMap`（純展示）、`Step1Nodes`（勾選模式） |
 | `AIFollowUpPanel` | `src/pages/student/followUp/AIFollowUpPanel.jsx` | 第二層 AI 追問底部面板（題目回顧 + 輪次 + 文字輸入框） |
 | `BottomPanel` / `OptionsPanel` / `DonePanel` | `src/pages/student/studentQuizPanels.jsx` | StudentQuiz 第一層選項面板與完成 loading |
 
@@ -100,7 +100,7 @@
 **「診斷結果」子選單**（與舊版相同）:
 | 子項名稱 | 路由目標 |
 |----------|----------|
-| 全年級總覽 | `/teacher/dashboard/overview` |
+| 所有班級總覽 | `/teacher/dashboard/overview` |
 | 各班學習狀況 | `/teacher/dashboard/classes` |
 | 知識節點跨班比較 | `/teacher/dashboard/nodes` |
 | 跨班高頻迷思 | `/teacher/dashboard/misconceptions` |
@@ -143,6 +143,73 @@
 - **「出題」「派題」改為對稱可展開群組**：每組各有「step 1. 診斷」「step 2. 概念釐清」兩子項。視覺上反映「老師工作 = 診斷 → 概念釐清治療」兩階段，並把過去拆在「題組」「概念釐清治療」兩 section 的兩個出題功能合併到單一入口，降低首次使用者的尋找成本。
 - **section 從 5 個（題組 / 概念釐清治療 / 班級 / 其他 + 頂部診斷結果）精簡為 4 個（題組 / 看結果 / 班級 / 其他）**：「概念釐清治療」section 拆解後，概念釐清出題進「題組」、治療對話紀錄進「看結果」，整體導覽列依教學工作流（出題 → 派題 → 看結果）排列。
 - **「診斷結果」與「治療對話紀錄」合在「看結果」section**：兩者在心智模型上同類（檢視學生學習表現），用同一 section 包裹避免再做一層 step1/step2 巢狀。
+
+### 重構（2026-05-22 — 階段 D：使用個案 IA + 動態收斂 + AI 標記）
+- **依教學使用個案重排為 4 個 flow section**：① 出診斷題 → ② 派題給班級 → ③ 看診斷結果 → ④ 概念釐清・補救。Section 標題前帶圓圈數字，老師一眼看出時序。
+- **D2 動態收斂（軟引導）**：所有項目仍可點，但每個 flow section 顯示真實狀態 chip（如 `3 份題組` / `尚未派題` / `可查看`），由 `useTeacherStageStatus()` 派生；`nextStep` 階段加 pulsing dot + 「建議下一步」chip + section 光暈。**不真正 disable**——第一次使用者仍能瀏覽全系統、看到完整功能；空狀態頁（`<EmptyStateGuide>`）負責教學引導。
+- **D7 AI 標記**：用到 LLM/RAGFlow 的項目以 `<AIBadge>`（紫色 ✨ + AI pill + hover tooltip 說明 AI 用途）標示。回應教授「sidebar 看不到哪裡有 AI」回饋。
+
+---
+
+## 2.1 AIBadge
+
+### 檔案
+`src/components/AIBadge.jsx`
+
+### 功能
+在側邊欄與功能入口標示「此功能由 AI 協助」。統一紫色（spec-07 §AI 色票），含 `auto_awesome` Material Symbol icon + `AI` pill + hover tooltip。
+
+### Props
+- `description?: string` — hover tooltip 一句話說明（如「出題輔助：RAGFlow 從教材檢索並建議題目」）
+- `size?: 'sm' | 'xs'` — 預設 `'sm'`；`'xs'` 用在密集列表
+- `showPill?: boolean` — 預設 `true`；是否顯示「AI」文字 pill
+
+### 設計理由
+- **紫色 = AI** 是業界慣例，避開既有藍/橘子主題色不衝突
+- **icon + pill + tooltip 三件套**：icon 給快速辨識、pill 給非技術老師、tooltip 給「具體是哪種 AI」的好奇者
+
+---
+
+## 2.2 EmptyStateGuide
+
+### 檔案
+`src/components/EmptyStateGuide.jsx`
+
+### 功能
+為「使用個案還沒走到的功能」提供**有教學意圖的空狀態頁**。回應教授「未派題就讓老師看診斷結果會困惑」需求——點進去不是空白，而是「告訴老師接下來會看到什麼 + 該做哪一步」。
+
+### Props
+- `icon?: string` — Material symbol 名稱（預設 `'info'`）
+- `title: string` — 簡短標題
+- `description: string` — 為何此處目前為空的說明（支援 `\n` 換行）
+- `preview?: string[]` — bullet 列出「資料齊全後這裡會看到什麼」
+- `primaryAction?: { label, to }` — 主要 CTA（綠色），通常是「跳回上一步」
+- `secondaryAction?: { label, to | onClick }` — 次要 CTA（白底灰邊）
+
+### 使用場景
+- DashboardLayout：無題組 → 引導去 ① 出診斷題；有題組無派題 → 引導去 ② 派題
+
+---
+
+## 2.3 NodeBadge（D5 強化版）
+
+### 檔案
+`src/components/NodeBadge.jsx`
+
+### 功能
+知識節點識別徽章。子主題 A（INe-II-3-*）藍系、子主題 B（INe-Ⅲ-5-*）橘系。預設顯示短編號（去掉 `INe-` 前綴），完整 ID + 名稱在 `title` tooltip。
+
+### Props
+- `nodeId: string` — 完整節點 ID
+- `name?: string` — 節點名稱（hover tooltip 用）
+- `size?: 'sm' | 'md' | 'lg'` — 預設 `'md'`
+- `showFullId?: boolean` — 預設 `false`
+- `className?: string`
+
+### D5 視覺強化
+- 左側 **color stripe** 強化辨識（3/4/5px 隨 size 變寬），不只靠文字色
+- 字體放大、`min-width` 加寬，回應「字體或圖標弄大」回饋
+- 整體採 inline-flex 容器 + 內部色帶 + 文字段，避免擠壓
 
 ---
 
@@ -285,51 +352,37 @@
 
 ---
 
-## 6. NodeRelationshipMatrix
+## 6. KnowledgeSkillTree
 
 ### 檔案
-`src/components/teacher/NodeRelationshipMatrix.jsx`
+`src/components/teacher/KnowledgeSkillTree.jsx`
 
 ### 功能
-展示所有 12 個知識節點間的先備知識關係，以 12×12 矩陣網格呈現。整合於 KnowledgeMap 頁面，位於學習路徑圖與迷思概念表格之間。
+知識路徑技能樹（深木紋夜晚地圖風 / Mockup J-1）。整合於 KnowledgeMap 頁面 A 區，取代舊版色塊路徑。
+
+### 視覺特徵
+- **深木紋背景**：`radial-gradient(ellipse at center, #5A3E22 0%, #2E1F10 100%)` + 木框邊 `#8B5E3C` + inset shadow
+- **六角節點**（flat-top hex, r=34）+ 雙層渲染：背後光暈（blur 5–7px、透明度 0.45–0.55）+ 銳利輪廓（3px stroke）
+- **階段欄位**：6 個垂直欄（階段 1–6），虛線導引 + 標頭文字 + 起點/終點標記
+- **A 子主題（5 階段、線性）**：綠色系階段漸層（`SKILL_TREE_A_GREEN.fill[0..4]` = #C4E5AA → #5C8A2E）
+- **B 子主題（6 階段、含 5-5/5-6 平行）**：暖橘系階段漸層（`SKILL_TREE_B_AMBER.fill[0..5]` = #F8DCAE → #9B5E18）
+- **終點節點**：金色填充 + `★ 終點` 標記 + 強化光暈
+- **連線**：木紋淺色 `#C19A6B`、3px stroke、含 drop-shadow glow
 
 ### Props
-| Prop | 型別 | 必填 | 說明 |
-|------|------|------|------|
-| `nodes` | `KnowledgeNode[]` | 是 | 12 個知識節點清單（from knowledgeGraph.js） |
-| `selectedSubtopic` | `'all' \| 'A' \| 'B'` | 否 | 篩選子主題，預設 `'all'` |
+無 props（節點清單與分階段邏輯內建於元件常數，對應 `data/knowledgeGraph.js` 的 12 個節點 ID）。
 
 ### 狀態
 | 欄位 | 型別 | 說明 |
 |------|------|------|
-| `hoveredRow` | `string \| null` | hover 時的列節點 ID |
-| `hoveredCol` | `string \| null` | hover 時的欄節點 ID |
-| `detailPanel` | `{ nodeId, directPrereqs, allPrereqs } \| null` | hover 詳情面板內容 |
+| `hovered` | `Node \| null` | hover 中的節點，顯示於卡片頂部「ID + 完整名稱」徽章 |
 
-### 視覺元素
-- **12×12 網格矩陣**：
-  - 行 = 被學節點（row header）
-  - 列 = 先備知識節點（column header）
-  - 單元顏色：
-    - `'self'`（對角線）：黑色 `#000000`
-    - `'direct'`（直接先備）：綠色 `#7DB044`
-    - `'transitive'`（傳遞先備）：淺綠 `#B8DC83`
-    - `'none'`（無先備）：白色 `#FFFFFF`
-- **子主題篩選器**：三個按鈕 All / A (溶解) / B (酸鹼)，篩選時隱藏不符節點的行列
-- **Hover 互動**：
-  - 懸停於某格時，該格行列分別以 ring 高亮標示（綠色 ring，`ring-2 ring-[#7DB044]`）
-  - 底部彈出詳情面板，顯示：
-    - 節點名稱（列節點 + 行節點）
-    - 直接先備：`prerequisites` 直接列出
-    - 全部先備：使用 `getAllPrerequisites()` 從 `src/utils/topoSortNodes.js` 計算傳遞閉包
-- **圖例**：
-  - 4 種單元類型色彩說明
-  - 子主題 A、B 的標籤顏色
+### 色彩來源
+全部色票取自 `src/constants/theme.js`：
+- `SKILL_TREE_A_GREEN`、`SKILL_TREE_B_AMBER`、`SKILL_TREE_DARK`
 
-### 使用函式
-| 函式 | 來源 | 用途 |
-|------|------|------|
-| `getAllPrerequisites(nodeId, nodes)` | `src/utils/topoSortNodes.js` | 計算節點的全部先備知識（包含傳遞性） |
+### 使用場景
+- `KnowledgeMap`（教師端「(預設) 知識節點與迷思概念總覽」頁面 A 區）
 
 ---
 

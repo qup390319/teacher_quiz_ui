@@ -67,7 +67,7 @@ export default function RagflowSummaryPanel({ scope, payload, title }) {
         <span className="text-2xl">📚</span>
         <div className="flex-1 min-w-0">
           <h3 className="text-base font-bold text-[#5A3E22]">{title}</h3>
-          <p className="text-xs text-[#7A5232]">
+          <p className="text-sm text-[#7A5232]">
             由 RAGFlow 從水溶液迷思概念研究文獻檢索並生成
             {formattedTime && (
               <span className="ml-2 text-[#95A5A6]">· 上次生成：{formattedTime}</span>
@@ -78,7 +78,7 @@ export default function RagflowSummaryPanel({ scope, payload, title }) {
           <button
             onClick={() => handleGenerate(true)}
             disabled={isGenerating}
-            className="px-3 py-1.5 text-xs font-semibold text-[#7A5232] bg-white border border-[#D9C58E] rounded-lg hover:bg-[#FFF8E7] disabled:opacity-50"
+            className="px-3 py-1.5 text-sm font-semibold text-[#7A5232] bg-white border border-[#D9C58E] rounded-lg hover:bg-[#FFF8E7] disabled:opacity-50"
           >
             {isGenerating ? '生成中…' : '重新生成'}
           </button>
@@ -128,11 +128,11 @@ export default function RagflowSummaryPanel({ scope, payload, title }) {
 
           {data.actions?.length > 0 && (
             <div className="bg-white/70 border border-[#D9C58E] rounded-xl p-4">
-              <p className="text-xs font-bold text-[#7A5232] uppercase tracking-wide mb-2">行動建議</p>
+              <p className="text-sm font-bold text-[#7A5232] uppercase tracking-wide mb-2">行動建議</p>
               <ul className="space-y-1.5">
                 {data.actions.map((act, i) => (
                   <li key={i} className="flex items-start gap-2 text-sm text-[#2D3436]">
-                    <span className="flex-shrink-0 w-5 h-5 rounded-full bg-[#5A3E22] text-white text-[10px] flex items-center justify-center font-bold mt-0.5">
+                    <span className="flex-shrink-0 w-5 h-5 rounded-full bg-[#5A3E22] text-white text-[15px] flex items-center justify-center font-bold mt-0.5">
                       {i + 1}
                     </span>
                     <span className="flex-1 leading-relaxed">{act}</span>
@@ -144,10 +144,10 @@ export default function RagflowSummaryPanel({ scope, payload, title }) {
 
           {data.citations?.length > 0 && (
             <div className="bg-white/70 border border-[#D9C58E] rounded-xl p-4">
-              <p className="text-xs font-bold text-[#7A5232] uppercase tracking-wide mb-2">參考文獻</p>
+              <p className="text-sm font-bold text-[#7A5232] uppercase tracking-wide mb-2">參考文獻</p>
               <ul className="space-y-1">
                 {data.citations.slice(0, 5).map((c, i) => (
-                  <li key={i} className="text-xs text-[#7A5232] leading-snug">
+                  <li key={i} className="text-sm text-[#7A5232] leading-snug">
                     <span className="font-semibold">{c.documentName}</span>
                     {c.snippet && <span className="text-[#95A5A6] ml-2">— {c.snippet}</span>}
                   </li>

@@ -68,7 +68,7 @@ export default function TreatmentLogs() {
         <div className="bg-white rounded-2xl border border-[#BDC3C7] p-4 mb-4 flex flex-wrap items-center gap-3
                         shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
           <div className="flex items-center gap-2">
-            <label className="text-xs font-semibold text-[#636E72]">班級</label>
+            <label className="text-sm font-semibold text-[#636E72]">班級</label>
             <select
               value={classFilter}
               onChange={(e) => setClassFilter(e.target.value)}
@@ -82,7 +82,7 @@ export default function TreatmentLogs() {
             </select>
           </div>
           <div className="flex items-center gap-2">
-            <label className="text-xs font-semibold text-[#636E72]">概念釐清題組</label>
+            <label className="text-sm font-semibold text-[#636E72]">概念釐清題組</label>
             <select
               value={scenarioFilter}
               onChange={(e) => setScenarioFilter(e.target.value)}
@@ -95,7 +95,7 @@ export default function TreatmentLogs() {
               ))}
             </select>
           </div>
-          <span className="ml-auto text-xs text-[#95A5A6]">
+          <span className="ml-auto text-sm text-[#95A5A6]">
             {isLoading ? '載入中…' : `共 ${filtered.length} 筆紀錄`}
           </span>
         </div>
@@ -116,7 +116,7 @@ export default function TreatmentLogs() {
           <div className="bg-white rounded-2xl border border-[#BDC3C7] overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
            <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[860px]">
-              <thead className="bg-[#EEF5E6] text-xs text-[#636E72] uppercase tracking-wider">
+              <thead className="bg-[#EEF5E6] text-sm text-[#636E72] uppercase tracking-wider">
                 <tr>
                   <th className="px-4 py-3 text-left font-semibold">班級</th>
                   <th className="px-4 py-3 text-left font-semibold">學生</th>
@@ -133,7 +133,7 @@ export default function TreatmentLogs() {
                   <tr key={r.sessionId} className="hover:bg-[#F9FBF7] transition">
                     <td className="px-4 py-3">
                       <span
-                        className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border"
+                        className="inline-flex items-center px-2 py-0.5 rounded-full text-sm font-semibold border"
                         style={{ backgroundColor: r.classColor, color: r.classTextColor, borderColor: r.classTextColor }}
                       >
                         {r.className}
@@ -141,10 +141,10 @@ export default function TreatmentLogs() {
                     </td>
                     <td className="px-4 py-3 text-[#2D3436] font-medium">{r.studentName}</td>
                     <td className="px-4 py-3 text-[#636E72]">{r.scenarioTitle}</td>
-                    <td className="px-4 py-3 text-[#636E72] font-mono text-xs">
+                    <td className="px-4 py-3 text-[#636E72] font-mono text-sm">
                       {r.answeredQuestions} / {r.totalQuestions} 題
                     </td>
-                    <td className="px-4 py-3 text-xs">
+                    <td className="px-4 py-3 text-sm">
                       {r.lastPhase ? (
                         <span className="text-[#3F8B5E] font-semibold">
                           {PHASE_LABEL[r.lastPhase] ?? r.lastPhase}・{STAGE_LABEL[r.lastStage] ?? r.lastStage}
@@ -155,7 +155,7 @@ export default function TreatmentLogs() {
                     </td>
                     <td className="px-4 py-3">
                       <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-sm font-semibold
                                    ${r.status === 'completed'
                                      ? 'bg-[#C8EAAE] text-[#2F4A1A]'
                                      : 'bg-[#FCF0C2] text-[#7A5232]'}`}
@@ -163,7 +163,7 @@ export default function TreatmentLogs() {
                         {r.status === 'completed' ? '已完成' : '進行中'}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-xs text-[#95A5A6]">
+                    <td className="px-4 py-3 text-sm text-[#95A5A6]">
                       {r.startedAt ? new Date(r.startedAt).toLocaleString('zh-TW') : '—'}
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -172,7 +172,7 @@ export default function TreatmentLogs() {
                         onClick={() =>
                           navigate(`/teacher/treatment-logs/${encodeURIComponent(r.sessionId)}`)
                         }
-                        className="px-3 py-1 text-xs font-semibold text-white bg-[#5BA47A] border border-[#3F8B5E]
+                        className="px-3 py-1 text-sm font-semibold text-white bg-[#5BA47A] border border-[#3F8B5E]
                                    rounded-lg hover:bg-[#3F8B5E] transition"
                       >
                         查看對話

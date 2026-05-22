@@ -81,7 +81,7 @@ export default function MisconceptionRankingTable({ gradeStats }) {
     <div>
       <div className="flex items-baseline justify-between mb-1">
         <h3 className="text-base font-bold text-[#2D3436]">所有班級高頻迷思完整排行</h3>
-        <span className="text-xs text-[#95A5A6]">
+        <span className="text-sm text-[#95A5A6]">
           共 {ranking.items.length} 條迷思 · 母體 {ranking.totalStudents} 位學生
         </span>
       </div>
@@ -93,7 +93,7 @@ export default function MisconceptionRankingTable({ gradeStats }) {
         ].map((item) => (
           <div key={item.label} className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: item.color }} />
-            <span className="text-xs text-[#636E72]">{item.label}</span>
+            <span className="text-sm text-[#636E72]">{item.label}</span>
           </div>
         ))}
       </div>
@@ -111,7 +111,7 @@ export default function MisconceptionRankingTable({ gradeStats }) {
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap mb-0.5">
                   {m.nodeId && <NodeBadge nodeId={m.nodeId} name={m.nodeName} size="sm" />}
-                  <span className="text-xs text-[#95A5A6] truncate">{m.nodeName}</span>
+                  <span className="text-sm text-[#95A5A6] truncate" title={m.nodeName}>{m.nodeName}</span>
                 </div>
                 <p className="text-sm font-semibold text-[#2D3436] truncate" title={m.label}>{m.label}</p>
               </div>
@@ -122,11 +122,11 @@ export default function MisconceptionRankingTable({ gradeStats }) {
                 <div className="flex-1 h-3 bg-white rounded-full border border-[#D5D8DC] overflow-hidden">
                   <div className="h-full rounded-full" style={{ width: `${m.pct}%`, backgroundColor: tint.barColor }} />
                 </div>
-                <span className={`text-xs font-bold ${tint.text} font-mono w-9 text-right`}>{m.pct}%</span>
+                <span className={`text-sm font-bold ${tint.text} font-mono w-9 text-right`}>{m.pct}%</span>
               </div>
               <Link
                 to={studentsHref}
-                className="text-xs font-semibold text-[#3D5A3E] hover:text-[#2D3436] hover:underline whitespace-nowrap"
+                className="text-sm font-semibold text-[#3D5A3E] hover:text-[#2D3436] hover:underline whitespace-nowrap"
               >
                 查看涉及學生 →
               </Link>

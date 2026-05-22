@@ -1,110 +1,82 @@
+import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../../../context/AppContext';
 import { knowledgeNodes } from '../../../data/knowledgeGraph';
+import KnowledgeSkillTree from '../../../components/teacher/KnowledgeSkillTree';
 
-const STAGE_COLORS = {
-  blue:   { bg: 'bg-[#BADDF4]', text: 'text-[#2E86C1]', border: 'border-[#BDC3C7]' },
-  pink:   { bg: 'bg-[#FAC8CC]', text: 'text-[#E74C5E]', border: 'border-[#BDC3C7]' },
-  green:  { bg: 'bg-[#C8EAAE]', text: 'text-[#3D5A3E]', border: 'border-[#BDC3C7]' },
-  yellow: { bg: 'bg-[#FCF0C2]', text: 'text-[#B7950B]', border: 'border-[#BDC3C7]' },
-  mint:   { bg: 'bg-[#A8E6CF]', text: 'text-[#1E8449]', border: 'border-[#BDC3C7]' },
-  purple: { bg: 'bg-[#F3E5F5]', text: 'text-[#7D3C98]', border: 'border-[#BDC3C7]' },
-};
-
-// 子主題 A：水溶液中的變化（溶解）— 5 個節點，5 個階段（線性）
-const SUBTOPIC_A_STAGES = [
-  { ids: ['INe-II-3-01'], color: 'blue',   nextArrow: 'single' },
-  { ids: ['INe-II-3-02'], color: 'pink',   nextArrow: 'single' },
-  { ids: ['INe-II-3-03'], color: 'green',  nextArrow: 'single' },
-  { ids: ['INe-II-3-05'], color: 'yellow', nextArrow: 'single' },
-  { ids: ['INe-II-3-04'], color: 'purple', nextArrow: null },
-];
-
-// 子主題 B：酸鹼反應 — 7 個節點，6 個階段（5-5、5-6 為平行階段）
-const SUBTOPIC_B_STAGES = [
-  { ids: ['INe-Ⅲ-5-1'], color: 'blue',   nextArrow: 'single' },
-  { ids: ['INe-Ⅲ-5-2'], color: 'pink',   nextArrow: 'single' },
-  { ids: ['INe-Ⅲ-5-3'], color: 'green',  nextArrow: 'single' },
-  { ids: ['INe-Ⅲ-5-4'], color: 'yellow', nextArrow: 'multi' },
-  { ids: ['INe-Ⅲ-5-5', 'INe-Ⅲ-5-6'], color: 'mint', nextArrow: 'multi' },
-  { ids: ['INe-Ⅲ-5-7'], color: 'purple', nextArrow: null },
-];
-
-const SUBTOPIC_A_IDS = SUBTOPIC_A_STAGES.flatMap((s) => s.ids);
-const SUBTOPIC_B_IDS = SUBTOPIC_B_STAGES.flatMap((s) => s.ids);
+const SUBTOPIC_A_IDS = ['INe-II-3-01', 'INe-II-3-02', 'INe-II-3-03', 'INe-II-3-05', 'INe-II-3-04'];
+const SUBTOPIC_B_IDS = ['INe-Ⅲ-5-1', 'INe-Ⅲ-5-2', 'INe-Ⅲ-5-3', 'INe-Ⅲ-5-4', 'INe-Ⅲ-5-5', 'INe-Ⅲ-5-6', 'INe-Ⅲ-5-7'];
 const TOTAL_A = SUBTOPIC_A_IDS.length;
 const TOTAL_B = SUBTOPIC_B_IDS.length;
 
-function Arrow({ multi = false }) {
-  if (multi) {
-    return (
-      <div className="flex-shrink-0 flex flex-col items-center justify-center self-stretch px-1">
-        <div className="flex flex-col items-center justify-center h-full">
-          <div className="w-px flex-1 bg-[#BDC3C7]"></div>
-          <svg className="w-4 h-4 text-[#95A5A6] flex-shrink-0 my-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-          <div className="w-px flex-1 bg-[#BDC3C7]"></div>
-        </div>
-      </div>
-    );
-  }
+// 子主題色系（搭配深木紋夜晚地圖 sticky bar）
+const A_COLOR = {
+  fill: '#7DB044', stroke: '#5C8A2E', text: '#FBE9C7',
+  labelColor: '#A7D696',
+  tag: 'A 溶解',
+};
+const B_COLOR = {
+  fill: '#D08B2E', stroke: '#9B5E18', text: '#FBE9C7',
+  labelColor: '#F0B962',
+  tag: 'B 酸鹼',
+};
+
+function shortenId(id) {
+  return (id ?? '').replace(/^INe-/, '');
+}
+
+/**
+ * MiniPath：sticky bar 用的精簡路徑列。
+ * 每個子主題一行小六角形 chip，selected = 填滿子主題色，unselected = 灰色虛框。
+ * Hover 顯示完整名稱，點擊切換選取。
+ */
+function MiniPath({ subjectIds, color, label, selectedNodeIds, onToggle }) {
   return (
-    <div className="flex-shrink-0 flex items-center px-1">
-      <svg className="w-4 h-4 text-[#95A5A6]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-      </svg>
+    <div className="flex items-center gap-2">
+      <span className="text-[15px] font-bold whitespace-nowrap flex-shrink-0" style={{ color: color.labelColor }}>{label}</span>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {subjectIds.map((id) => {
+          const node = knowledgeNodes.find((n) => n.id === id);
+          const selected = selectedNodeIds.includes(id);
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => onToggle(id)}
+              className="inline-flex items-center justify-center text-[15px] font-mono font-bold rounded-md border transition-all hover:scale-110"
+              style={{
+                backgroundColor: selected ? color.fill : 'rgba(0,0,0,0.25)',
+                borderColor: selected ? color.stroke : '#7A5232',
+                color: selected ? color.text : '#C19A6B',
+                padding: '3px 8px',
+                minWidth: 72,
+                boxShadow: selected ? `0 0 6px ${color.fill}66` : undefined,
+              }}
+              title={node ? `${id} · ${node.name}` : id}
+            >
+              {shortenId(id)}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
-function NodePill({ node, colorClass, isSelected, onToggle }) {
-  const bg = isSelected ? colorClass.bg : 'bg-[#EEF5E6]';
-  const border = isSelected ? colorClass.border : 'border-[#D5D8DC]';
-  const text = isSelected ? colorClass.text : 'text-[#95A5A6]';
-  const hoverBg = isSelected ? '' : 'hover:bg-white hover:border-[#BDC3C7]';
-  return (
-    <button
-      type="button"
-      onClick={() => onToggle(node.id)}
-      aria-pressed={isSelected}
-      className={`rounded-xl border px-3 py-1.5 min-w-[128px] text-left transition-colors cursor-pointer ${bg} ${border} ${hoverBg}`}
-    >
-      <p className="text-xs font-mono text-[#95A5A6] leading-tight">{node.id}</p>
-      <p className={`text-sm font-semibold leading-snug ${text}`}>{node.name}</p>
-    </button>
-  );
-}
-
-function PathStage({ stage, nodes, selectedNodeIds, onToggle }) {
-  const colorClass = STAGE_COLORS[stage.color];
-  return (
-    <>
-      <div className="flex-shrink-0 flex flex-col gap-1.5">
-        {nodes(stage.ids).map((node) => (
-          <NodePill
-            key={node.id}
-            node={node}
-            colorClass={colorClass}
-            isSelected={selectedNodeIds.includes(node.id)}
-            onToggle={onToggle}
-          />
-        ))}
-      </div>
-      {stage.nextArrow === 'multi' && <Arrow multi />}
-      {stage.nextArrow === 'single' && <Arrow />}
-    </>
-  );
-}
-
 export default function Step1Nodes({ onNext }) {
-  const { selectedNodeIds, setSelectedNodeIds, nodeQuestionCounts, setNodeQuestionCounts, setIsWizardDirty } = useApp();
+  const { selectedNodeIds, setSelectedNodeIds, setIsWizardDirty } = useApp();
 
-  const getCount = (nodeId) => nodeQuestionCounts[nodeId] ?? 1;
-  const setCount = (nodeId, val) => {
-    const clamped = Math.max(1, Math.min(4, val));
-    setNodeQuestionCounts((prev) => ({ ...prev, [nodeId]: clamped }));
-    setIsWizardDirty(true);
-  };
+  // 偵測完整技能樹是否在畫面內：在畫面內 → 不重複顯示 MiniPath；滾出視窗 → sticky bar 顯示 MiniPath
+  const treeRef = useRef(null);
+  const [treeVisible, setTreeVisible] = useState(true);
+  useEffect(() => {
+    if (!treeRef.current) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setTreeVisible(entry.isIntersecting),
+      { rootMargin: '-60px 0px 0px 0px', threshold: 0 },
+    );
+    observer.observe(treeRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   const toggleNode = (nodeId) => {
     setSelectedNodeIds((prev) =>
@@ -127,13 +99,10 @@ export default function Step1Nodes({ onNext }) {
     });
   });
 
-  const selectedCountA = selectedNodeIds.filter((id) => SUBTOPIC_A_IDS.includes(id)).length;
-  const selectedCountB = selectedNodeIds.filter((id) => SUBTOPIC_B_IDS.includes(id)).length;
   const canProceed = selectedNodeIds.length > 0;
   const totalMisconceptions = knowledgeNodes
     .filter((n) => selectedNodeIds.includes(n.id))
     .reduce((sum, n) => sum + n.misconceptions.length, 0);
-  const totalPlannedQuestions = selectedNodeIds.reduce((sum, id) => sum + getCount(id), 0);
 
   const rows = [];
   let nodeGroupIndex = 0;
@@ -150,145 +119,65 @@ export default function Step1Nodes({ onNext }) {
     nodeGroupIndex++;
   });
 
-  const nodes = (ids) => knowledgeNodes.filter((n) => ids.includes(n.id));
-
   return (
     <div>
       <div className="mb-6">
         <h2 className="text-xl font-bold text-[#2D3436] mb-1">步驟一：決定出題範圍</h2>
-        <p className="text-[#636E72] text-sm">在下方表格中勾選要出題的知識範圍，勾選後可以看到每個節點對應的學生常見迷思</p>
+        <p className="text-[#636E72] text-[15px]">點擊下方技能樹節點以勾選要出題的知識範圍；勾選後節點會發亮，未勾選會黯淡。勾選後可在下方表格看到每個節點對應的學生常見迷思。</p>
       </div>
 
-      {/* 知識學習路徑圖（兩個子主題各一條） */}
-      <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-5 mb-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-        <p className="text-xs font-semibold text-[#95A5A6] uppercase tracking-wide mb-4">知識學習路徑（箭頭表示先備關係，建議從左邊的基礎節點開始選起）</p>
-
-        {/* 子主題 A */}
-        <div className="flex items-center gap-2 mb-2">
-          <p className="text-sm font-semibold text-[#2D3436]">子主題 A：水溶液中的變化（溶解）</p>
-          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${
-            selectedCountA > 0
-              ? 'bg-[#C8EAAE] text-[#3D5A3E] border-[#8FC87A]'
-              : 'bg-[#EEF5E6] text-[#95A5A6] border-[#D5D8DC]'
-          }`}>
-            {selectedCountA}/{TOTAL_A}
-          </span>
-        </div>
-        <div className="flex items-center gap-0 overflow-x-auto pb-3 mb-4">
-          {SUBTOPIC_A_STAGES.map((stage, idx) => (
-            <PathStage key={`A-${idx}`} stage={stage} nodes={nodes} selectedNodeIds={selectedNodeIds} />
-          ))}
-        </div>
-
-        {/* 子主題 B */}
-        <div className="flex items-center gap-2 mb-2 pt-3 border-t border-[#D5D8DC]">
-          <p className="text-sm font-semibold text-[#2D3436]">子主題 B：酸鹼反應</p>
-          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${
-            selectedCountB > 0
-              ? 'bg-[#C8EAAE] text-[#3D5A3E] border-[#8FC87A]'
-              : 'bg-[#EEF5E6] text-[#95A5A6] border-[#D5D8DC]'
-          }`}>
-            {selectedCountB}/{TOTAL_B}
-          </span>
-        </div>
-        <div className="flex items-center gap-0 overflow-x-auto pb-1">
-          {SUBTOPIC_B_STAGES.map((stage, idx) => (
-            <PathStage key={`B-${idx}`} stage={stage} nodes={nodes} selectedNodeIds={selectedNodeIds} />
-          ))}
-        </div>
+      {/* 完整技能樹 — 頁面頂端、不 sticky；用 IntersectionObserver 追蹤是否在畫面內 */}
+      <div className="mb-6" ref={treeRef}>
+        <KnowledgeSkillTree
+          selectable
+          selectedNodeIds={selectedNodeIds}
+          onToggle={toggleNode}
+        />
       </div>
 
-      {/* Sticky 摘要列 */}
-      <div className="sticky top-0 z-10 bg-[#C8EAAE] border border-[#BDC3C7] rounded-2xl px-4 py-3 mb-5 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="text-sm text-[#2D3436]">
-            {selectedNodeIds.length > 0 ? (
-              <>
-                已選 <span className="font-bold">{selectedNodeIds.length}</span> 個節點，
-                預計出 <span className="font-bold">{totalPlannedQuestions}</span> 題，
-                涵蓋 <span className="font-bold">{totalMisconceptions}</span> 個迷思概念
-                <span className="mx-2 text-[#95A5A6]">|</span>
-                <span className="text-[#3D5A3E]">
-                  子主題 A：{selectedCountA}/{TOTAL_A}
-                </span>
-                <span className="mx-1.5 text-[#95A5A6]">·</span>
-                <span className="text-[#3D5A3E]">
-                  子主題 B：{selectedCountB}/{TOTAL_B}
-                </span>
-              </>
-            ) : (
-              <span className="text-[#636E72]">
-                <svg className="w-4 h-4 inline-block mr-1 -mt-0.5 text-[#95A5A6]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z" />
-                </svg>
-                請從下方勾選至少 1 個知識節點以繼續
-              </span>
-            )}
-          </div>
-          <button
-            onClick={onNext}
-            disabled={!canProceed}
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold text-sm transition-all border ${canProceed
-                ? 'bg-[#8FC87A] text-[#2D3436] border-[#BDC3C7] hover:bg-[#76B563]'
-                : 'bg-[#EEF5E6] text-[#95A5A6] border-[#D5D8DC] cursor-not-allowed'
-              }`}
+      {/* Sticky bar — 僅在完整技能樹滾出畫面後才顯示 MiniPath + 摘要 + 下一步。
+          技能樹仍在畫面時，sticky bar 完全隱藏，避免重複資訊與奇怪的浮動條。 */}
+      {!treeVisible && (
+        <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 md:-mx-8 px-4 sm:px-6 md:px-8 pt-2 pb-2 mb-5">
+          <div
+            className="rounded-2xl px-3 py-2 flex flex-wrap items-center gap-x-4 gap-y-1.5"
+            style={{
+              background: 'radial-gradient(ellipse at center, #5A3E22 0%, #2E1F10 100%)',
+              border: '2px solid #8B5E3C',
+              boxShadow: '0 4px 16px rgba(46,31,16,0.45), inset 0 0 30px rgba(0,0,0,0.45)',
+            }}
           >
-            下一步：製作題組
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        </div>
-        {/* 已選節點 chip 列 */}
-        {selectedNodeIds.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mt-2.5 pt-2.5 border-t border-[#8FC87A]/40">
-            <span className="text-xs text-[#3D5A3E] font-medium self-center mr-1">已選：</span>
-            {selectedNodeIds.map((nodeId) => {
-              const node = knowledgeNodes.find((n) => n.id === nodeId);
-              if (!node) return null;
-              const count = getCount(nodeId);
-              return (
-                <div key={nodeId} className="inline-flex items-center gap-0 text-xs bg-white/80 border border-[#BDC3C7] text-[#2D3436] rounded-lg">
-                  <button
-                    onClick={() => toggleNode(nodeId)}
-                    className="inline-flex items-center gap-1 pl-2.5 pr-1 py-1 hover:bg-[#FAC8CC]/30 rounded-l-lg transition-all group"
-                    title={`取消選取 ${node.name}`}
-                  >
-                    <span className="font-mono text-[#95A5A6] mr-0.5">{node.id}</span>
-                    {node.name}
-                    <svg className="w-3.5 h-3.5 text-[#95A5A6] group-hover:text-[#E74C5E] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                  <span className="w-px h-4 bg-[#D5D8DC]" />
-                  <div className="flex items-center gap-0.5 px-1">
-                    <button
-                      onClick={() => setCount(nodeId, count - 1)}
-                      disabled={count <= 1}
-                      className="w-4 h-4 flex items-center justify-center rounded text-[#636E72] hover:bg-[#D5D8DC] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 12H4" />
-                      </svg>
-                    </button>
-                    <span className="w-4 text-center font-bold text-[#2D3436]">{count}</span>
-                    <button
-                      onClick={() => setCount(nodeId, count + 1)}
-                      disabled={count >= 4}
-                      className="w-4 h-4 flex items-center justify-center rounded text-[#636E72] hover:bg-[#D5D8DC] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                      </svg>
-                    </button>
-                    <span className="text-[10px] text-[#95A5A6] ml-0.5">題</span>
-                  </div>
-                </div>
-              );
-            })}
+            <div className="space-y-1">
+              <MiniPath subjectIds={SUBTOPIC_A_IDS} color={A_COLOR} label={A_COLOR.tag} selectedNodeIds={selectedNodeIds} onToggle={toggleNode} />
+              <MiniPath subjectIds={SUBTOPIC_B_IDS} color={B_COLOR} label={B_COLOR.tag} selectedNodeIds={selectedNodeIds} onToggle={toggleNode} />
+            </div>
+            <div className="text-[15px] flex-1 min-w-[140px]" style={{ color: '#FBE9C7' }}>
+              {selectedNodeIds.length > 0 ? (
+                <span>
+                  已勾選{' '}
+                  <span className="font-bold" style={{ color: '#FFF3B0' }}>{selectedNodeIds.length}</span> 節點 ·{' '}
+                  <span className="font-bold" style={{ color: '#FFF3B0' }}>{totalMisconceptions}</span> 迷思
+                </span>
+              ) : (
+                <span style={{ color: '#C19A6B' }}>請從下方勾選至少 1 個知識節點以繼續</span>
+              )}
+            </div>
+            <button
+              onClick={onNext}
+              disabled={!canProceed}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-semibold text-[15px] transition-all border-2"
+              style={canProceed
+                ? { backgroundColor: '#F4C545', color: '#3E2A10', borderColor: '#9B5E18', boxShadow: '0 2px 8px rgba(244,197,69,0.4)' }
+                : { backgroundColor: 'rgba(0,0,0,0.25)', color: '#7A5232', borderColor: '#7A5232', cursor: 'not-allowed' }}
+            >
+              下一步
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Warning Banner */}
       {missingPrereqs.length > 0 && (
@@ -308,7 +197,7 @@ export default function Step1Nodes({ onNext }) {
                 <button
                   key={n.id}
                   onClick={() => toggleNode(n.id)}
-                  className="inline-flex items-center gap-1 text-xs bg-white border border-[#BDC3C7] text-[#B7950B] px-3 py-1.5 rounded-xl hover:bg-[#FCF0C2] transition-all font-semibold cursor-pointer"
+                  className="inline-flex items-center gap-1 text-sm bg-white border border-[#BDC3C7] text-[#B7950B] px-3 py-1.5 rounded-xl hover:bg-[#FCF0C2] transition-all font-semibold cursor-pointer"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
@@ -374,13 +263,13 @@ export default function Step1Nodes({ onNext }) {
                       rowSpan={row.nodeRowSpan}
                       className={`border-r border-[#BDC3C7] px-4 py-3 align-top ${isSelected ? 'bg-[#C8EAAE]' : row.nodeGroupIndex % 2 === 0 ? 'bg-[#EEF5E6]' : 'bg-white'}`}
                     >
-                      <p className="text-xs font-mono text-[#95A5A6] mb-0.5">{row.node.id}</p>
+                      <p className="text-sm font-mono text-[#95A5A6] mb-0.5">{row.node.id}</p>
                       <p className="font-semibold text-[#2D3436] mb-1">{row.node.name}</p>
-                      <p className="text-xs text-[#636E72] leading-relaxed">{row.node.description}</p>
+                      <p className="text-sm text-[#636E72] leading-relaxed">{row.node.description}</p>
                     </td>
                   )}
                   <td className={`border-r border-[#BDC3C7] px-4 py-2.5 align-top font-medium text-[#2D3436] ${isSelected ? 'bg-[#C8EAAE]' : ''}`}>
-                    <p className="text-xs font-mono text-[#95A5A6] mb-0.5">{row.misconception.id}</p>
+                    <p className="text-sm font-mono text-[#95A5A6] mb-0.5">{row.misconception.id}</p>
                     {row.misconception.label}
                   </td>
                   <td className={`px-4 py-2.5 align-top text-[#636E72] leading-relaxed ${isSelected ? 'bg-[#C8EAAE]' : ''}`}>
@@ -392,6 +281,24 @@ export default function Step1Nodes({ onNext }) {
           </tbody>
         </table>
        </div>
+      </div>
+
+      {/* 頁底 CTA：完成節點選取後的「下一步」 — 取代過去的浮動 bar 配置，避免畫面頂端冗餘。
+          滾動到一半想直接跳下一步時，可用滾動後出現的 sticky MiniPath bar 上的同名按鈕。 */}
+      <div className="mt-6 flex justify-end">
+        <button
+          onClick={onNext}
+          disabled={!canProceed}
+          className={`inline-flex items-center gap-2 px-6 py-3 rounded-2xl font-bold text-base transition-all border-2 ${canProceed
+              ? 'bg-[#8FC87A] text-[#2D3436] border-[#5C8A2E] hover:bg-[#76B563] shadow-[0_2px_8px_rgba(143,200,122,0.4)]'
+              : 'bg-[#EEF5E6] text-[#95A5A6] border-[#D5D8DC] cursor-not-allowed'
+            }`}
+        >
+          下一步：製作題組
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
       </div>
     </div>
   );

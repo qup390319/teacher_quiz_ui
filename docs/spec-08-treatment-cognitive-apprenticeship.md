@@ -206,7 +206,81 @@ TreatmentAssignment（新頁）
 教師查看治療紀錄 → TreatmentLogs（新頁）
    ├─ 列表：學生 × 概念釐清題組 × 完成狀態 × 最後 stage
    └─ 點進去 → TreatmentLogDetail（單一 session 完整對話）
+
+教師查看治療結果 → TreatmentOutcomes（新頁，詳見 §5.5）
+   ├─ 班級層級彙整：派發人次 / 平均釐清率 / 平均星等 / 未釐清人數
+   ├─ 學生結果列：per-question outcome pills + 星等 + AI 判定 + 反思摘要
+   └─ 點「查看對話」→ TreatmentLogDetail（兩頁互補：結果 ↔ 過程）
 ```
+
+### 5.5 教師端：概念釐清結果（治療成效彙整頁）
+
+「對話紀錄」（§5.4）保留完整 phase/stage/step/hintLevel 標註的氣泡時序，是**過程**；「概念釐清結果」是將原始對話彙整為可比較的**結果**，協助教師判斷下一步教學決策。
+
+#### 5.5.1 衍生資料規則（`src/lib/treatmentOutcomes.js`）
+
+```text
+per-question outcome（單題）
+├─ 從 treatment_messages 取出該題所有 AI 訊息的 hintLevel 與 stage/phase
+├─ reachedComplete = 任何 ai 訊息有 stage='complete' 或 phase='completed'
+└─ outcome =
+     !reachedComplete                → 'unresolved' （未釐清）
+     reachedComplete && hint <= 0    → 'mastered'   （自走理解）
+     reachedComplete && hint <= 1    → 'light'      （輕度引導）
+     reachedComplete && hint <= 2    → 'moderate'   （中度引導）
+     reachedComplete && hint == 3    → 'heavy'      （強鷹架）
+     此題從未有 message               → 'no-data'    （未作答）
+```
+
+| outcome | label   | weight | UI tier（三色階） |
+|---------|---------|--------|-------------------|
+| mastered   | 自走理解 | 4 | ok（綠）   |
+| light      | 輕度引導 | 3 | ok（綠）   |
+| moderate   | 中度引導 | 2 | warn（黃） |
+| heavy      | 強鷹架   | 1 | warn（黃） |
+| unresolved | 未釐清   | 0 | bad（紅）  |
+| no-data    | 未作答   | — | none（灰） |
+
+> 5 階段 label 保留給研究端 / 細節判讀（pill 內文字 + hover tooltip），但 UI 配色折成
+> **三色階**（ok / warn / bad）— 老師首次閱讀只需學三種顏色，不必區分五種色塊。
+> 三色階對應決策軸：綠 = 免介入、黃 = 補強、紅 = 必須再教。
+
+```text
+整 session 衍生
+├─ resolvedRate    = (outcome != unresolved && != no-data) 的題數 / totalQuestions
+├─ aiCleared       = resolvedRate >= 1（代理 pre/post 比較 — spec-08 §1.2 之「治療當下 AI 判定是否釐清」）
+├─ starRating      = avg(weights) → ≥3.5 → 3⭐ / ≥2.5 → 2⭐ / ≥1.5 → 1⭐ / 其他 → 0⭐
+└─ sessionTier     = deriveSessionTier(perQuestion)
+                     有任一 bad      → 'bad'
+                     沒 bad 但有 warn → 'warn'
+                     全部 ok          → 'ok'
+
+班級層級彙整（aggregateClassOutcomes）
+├─ participants         = 命中篩選的 session 數
+├─ clearedCount         = sessionTier === 'ok' 的人數
+└─ needsAttentionCount  = sessionTier === 'warn' 或 'bad' 的人數
+```
+
+> 認知負荷考量：第一版同時呈現「平均星等」「平均釐清率」「未完全釐清」「派發人次」共 4 個指標，
+> 對首次閱讀者過於繁雜（兩個整體指標彼此重複、4 個塊難以排優先級）。
+> 改版收斂為 3 個指標卡，且「需關注」直接等同教學決策（黃 + 紅），讓老師掃一眼就能分配心力。
+
+#### 5.5.2 教師端入口
+
+- 側邊欄：「④ 概念釐清・補救」 → 「概念釐清結果」（位於「派發釐清題組」與「釐清對話紀錄」之間）
+- 路由：`/teacher/treatment-outcomes`（spec-02 §2.6.2）
+- 與對話紀錄互通：每列 outcome 旁的「查看對話」按鈕跳轉到 `TreatmentLogDetail`
+
+#### 5.5.3 未實作 / 後端待辦（P5）
+
+| 項目 | 現況 | P5 目標 |
+|------|------|---------|
+| `reflection_text` | DB 無欄位，UI 顯示「學生未撰寫」 | 在 `treatment_sessions` 加欄位，學生端 `flowStage='reflection'` 完成時 POST |
+| `star_rating` | UI 端衍生（從 outcome weights） | 學生端 `flowStage='result'` 已計算實際星等，應 POST 到後端持久化；前端衍生作為 fallback |
+| 後端 outcome service | 純前端計算，每列 N+1 fetch messages | `app/services/treatment_outcome_service.py`，列表端點直接回傳 outcome 摘要 |
+
+> 設計理由：把 outcome 衍生先放前端 `lib/treatmentOutcomes.js`，可在不動 DB / API 的前提下完成 UI MVP；
+> 一旦 P5 後端落地，把這個檔案翻譯成 Python service 即可，介面契約已固定（§2.3 BotResponse + outcome enum）。
 
 ---
 

@@ -101,11 +101,11 @@ export default function AssignTargetPicker({ quiz, cls, existing = null, onConfi
               <h3 className="font-bold text-[#2D3436] leading-snug">
                 {existing ? '調整派發對象' : '派發概念釐清治療題組'}
               </h3>
-              <p className="text-xs text-[#95A5A6] mt-0.5 truncate">{quiz.title}</p>
+              <p className="text-sm text-[#95A5A6] mt-0.5 truncate">{quiz.title}</p>
               <div className="flex items-center gap-1.5 mt-1.5">
                 <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: cls.color }} />
                 <span className="text-sm font-semibold" style={{ color: cls.textColor }}>{cls.name}</span>
-                <span className="text-xs text-[#95A5A6]">· 共 {students.length} 位學生</span>
+                <span className="text-sm text-[#95A5A6]">· 共 {students.length} 位學生</span>
               </div>
             </div>
             <button
@@ -122,7 +122,7 @@ export default function AssignTargetPicker({ quiz, cls, existing = null, onConfi
 
         {/* 截止日期 */}
         <div className="px-6 py-4 border-b border-[#D5D8DC] bg-[#FAFBFC]">
-          <label className="text-xs font-medium text-[#636E72] mb-1 block">截止日期</label>
+          <label className="text-sm font-medium text-[#636E72] mb-1 block">截止日期</label>
           <input
             type="date"
             value={dueDate}
@@ -134,12 +134,12 @@ export default function AssignTargetPicker({ quiz, cls, existing = null, onConfi
         {/* 學生勾選區 */}
         <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
           <div className="px-6 py-3 flex items-center justify-between border-b border-[#D5D8DC]">
-            <span className="text-xs font-medium text-[#636E72]">
+            <span className="text-sm font-medium text-[#636E72]">
               選擇對象 · 已勾選 <span className="text-[#2E6B47] font-bold">{selectedIds.size}</span> 位
             </span>
             <button
               onClick={handleSelectAll}
-              className="text-xs text-[#2E6B47] font-semibold hover:underline"
+              className="text-sm text-[#2E6B47] font-semibold hover:underline"
             >
               {allSelected ? '全部取消' : '全部勾選'}
             </button>
@@ -172,7 +172,7 @@ export default function AssignTargetPicker({ quiz, cls, existing = null, onConfi
                           onChange={() => toggle(s.id)}
                           className="w-4 h-4 accent-[#3F8B5E]"
                         />
-                        <span className="text-xs font-mono text-[#95A5A6] w-8 text-center flex-shrink-0">
+                        <span className="text-sm font-mono text-[#95A5A6] w-8 text-center flex-shrink-0">
                           {String(s.seat).padStart(2, '0')}
                         </span>
                         <span className="flex-1 text-sm font-medium text-[#2D3436] truncate">
@@ -182,7 +182,7 @@ export default function AssignTargetPicker({ quiz, cls, existing = null, onConfi
                           <button
                             type="button"
                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowPrereqDetail(showPrereqDetail === s.id ? null : s.id); }}
-                            className={`flex-shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                            className={`flex-shrink-0 text-[15px] font-semibold px-2 py-0.5 rounded-full border ${
                               isReady
                                 ? 'bg-[#C8EAAE] text-[#3D5A3E] border-[#8FC87A]'
                                 : 'bg-[#FCF0C2] text-[#B7950B] border-[#F5D669]'
@@ -192,14 +192,14 @@ export default function AssignTargetPicker({ quiz, cls, existing = null, onConfi
                           </button>
                         )}
                         {!prereq && (
-                          <span className="text-[10px] text-[#95A5A6] font-mono">{s.id}</span>
+                          <span className="text-[15px] text-[#95A5A6] font-mono">{s.id}</span>
                         )}
                       </label>
                       {showPrereqDetail === s.id && prereq?.prerequisites?.length > 0 && (
                         <div className="ml-10 mt-1 mb-1 px-3 py-2 bg-[#FAFBFC] border border-[#D5D8DC] rounded-lg">
-                          <p className="text-[10px] font-semibold text-[#636E72] mb-1">先備節點掌握度</p>
+                          <p className="text-[15px] font-semibold text-[#636E72] mb-1">先備節點掌握度</p>
                           {prereq.prerequisites.map((p) => (
-                            <div key={p.nodeId} className="flex items-center gap-2 text-[10px] py-0.5">
+                            <div key={p.nodeId} className="flex items-center gap-2 text-[15px] py-0.5">
                               <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
                                 p.mastered ? 'bg-[#8FC87A]' : p.missing ? 'bg-[#95A5A6]' : 'bg-[#E74C5E]'
                               }`} />

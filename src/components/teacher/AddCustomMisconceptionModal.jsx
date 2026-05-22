@@ -38,7 +38,7 @@ export default function AddCustomMisconceptionModal({
         <div className="sticky top-0 bg-white border-b border-[#D5D8DC] px-6 py-4 flex items-center justify-between rounded-t-[28px]">
           <div>
             <h3 className="text-base font-bold text-[#2D3436]">新增自訂迷思</h3>
-            <p className="text-xs text-[#95A5A6] mt-0.5">
+            <p className="text-sm text-[#95A5A6] mt-0.5">
               僅儲存在您的帳戶，其他老師看不到
             </p>
           </div>
@@ -113,7 +113,7 @@ export default function AddCustomMisconceptionModal({
 function Field({ label, required, hint, children }) {
   return (
     <div>
-      <label className="block text-xs font-semibold text-[#2D3436] mb-1.5">
+      <label className="block text-sm font-semibold text-[#2D3436] mb-1.5">
         {label}
         {required && <span className="text-[#E74C5E] ml-0.5">*</span>}
         {hint && <span className="ml-2 text-[#95A5A6] font-normal">{hint}</span>}

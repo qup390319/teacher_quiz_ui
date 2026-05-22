@@ -60,7 +60,7 @@ export default function TreatmentEffectivenessPanel({ classId, scenarioQuizId, t
         </div>
         <div className="bg-[#EEF5E6] rounded-2xl p-6 text-center">
           <p className="text-sm text-[#636E72]">尚無概念釐清學習紀錄</p>
-          <p className="text-xs text-[#95A5A6] mt-1">學生開始概念釐清對話後，進度與成效資料會在此顯示</p>
+          <p className="text-sm text-[#95A5A6] mt-1">學生開始概念釐清對話後，進度與成效資料會在此顯示</p>
         </div>
       </div>
     );
@@ -119,8 +119,8 @@ export default function TreatmentEffectivenessPanel({ classId, scenarioQuizId, t
           ].map(s => (
             <div key={s.label} className={`rounded-2xl border border-[#BDC3C7] p-3 ${s.bg}`}>
               <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
-              <p className="text-xs font-semibold text-[#2D3436] mt-0.5">{s.label}</p>
-              <p className="text-[10px] text-[#636E72] mt-0.5">{s.sub}</p>
+              <p className="text-sm font-semibold text-[#2D3436] mt-0.5">{s.label}</p>
+              <p className="text-[15px] text-[#636E72] mt-0.5">{s.sub}</p>
             </div>
           ))}
         </div>
@@ -130,7 +130,7 @@ export default function TreatmentEffectivenessPanel({ classId, scenarioQuizId, t
         <div>
           <button
             onClick={() => setExpanded(p => !p)}
-            className="flex items-center gap-1.5 text-xs font-semibold text-[#636E72] hover:text-[#2D3436] transition-colors mb-2"
+            className="flex items-center gap-1.5 text-sm font-semibold text-[#636E72] hover:text-[#2D3436] transition-colors mb-2"
           >
             <svg className={`w-3.5 h-3.5 transition-transform ${expanded ? 'rotate-90' : ''}`}
               fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -144,10 +144,10 @@ export default function TreatmentEffectivenessPanel({ classId, scenarioQuizId, t
               <table className="w-full text-sm bg-white">
                 <thead>
                   <tr className="bg-[#EEF5E6] border-b border-[#BDC3C7]">
-                    <th className="px-4 py-2.5 text-left text-xs font-bold text-[#636E72]">學生</th>
-                    <th className="px-4 py-2.5 text-center text-xs font-bold text-[#636E72]">狀態</th>
-                    <th className="px-4 py-2.5 text-center text-xs font-bold text-[#636E72]">進度</th>
-                    <th className="px-4 py-2.5 text-center text-xs font-bold text-[#636E72]">完成時間</th>
+                    <th className="px-4 py-2.5 text-left text-sm font-bold text-[#636E72]">學生</th>
+                    <th className="px-4 py-2.5 text-center text-sm font-bold text-[#636E72]">狀態</th>
+                    <th className="px-4 py-2.5 text-center text-sm font-bold text-[#636E72]">進度</th>
+                    <th className="px-4 py-2.5 text-center text-sm font-bold text-[#636E72]">完成時間</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E8E8E8]">
@@ -161,7 +161,7 @@ export default function TreatmentEffectivenessPanel({ classId, scenarioQuizId, t
                       <tr key={s.studentId}>
                         <td className="px-4 py-2.5 text-sm font-medium text-[#2D3436]">{s.studentName}</td>
                         <td className="px-4 py-2.5 text-center">
-                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                          <span className={`text-sm font-semibold px-2 py-0.5 rounded-full ${
                             s.status === 'completed'
                               ? 'bg-[#C8EAAE] text-[#3D5A3E]'
                               : 'bg-[#FCF0C2] text-[#B7950B]'
@@ -178,12 +178,12 @@ export default function TreatmentEffectivenessPanel({ classId, scenarioQuizId, t
                                   backgroundColor: s.status === 'completed' ? '#8FC87A' : '#F4D03F',
                                 }} />
                             </div>
-                            <span className="text-xs text-[#636E72]">
+                            <span className="text-sm text-[#636E72]">
                               {s.status === 'completed' ? s.totalQuestions : s.currentIndex}/{s.totalQuestions}
                             </span>
                           </div>
                         </td>
-                        <td className="px-4 py-2.5 text-center text-xs text-[#95A5A6]">
+                        <td className="px-4 py-2.5 text-center text-sm text-[#95A5A6]">
                           {s.completedAt ? new Date(s.completedAt).toLocaleDateString('zh-TW') : '—'}
                         </td>
                       </tr>

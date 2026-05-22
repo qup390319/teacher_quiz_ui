@@ -58,13 +58,13 @@ export default function ReasoningQualityBars({ quizId, classId }) {
     <div>
       <div className="flex items-baseline justify-between mb-3">
         <h3 className="text-lg font-bold text-[#2D3436]">追問推理品質分布</h3>
-        <span className="text-xs text-[#95A5A6]">每題進入追問的學生其推理深度，分四級</span>
+        <span className="text-sm text-[#95A5A6]">每題進入追問的學生其推理深度，分四級</span>
       </div>
 
       <div className="space-y-2">
         {perQuestion.map((row) => (
           <div key={row.questionId} className="flex items-center gap-2">
-            <span className="w-10 text-xs font-mono text-[#2D3436] flex-shrink-0">{row.qLabel}</span>
+            <span className="w-10 text-sm font-mono text-[#2D3436] flex-shrink-0">{row.qLabel}</span>
             <div className="flex-1 h-6 flex overflow-hidden rounded-md bg-[#F4F6F8]">
               {QUALITY_LEVELS.map((l) => {
                 const v = row[l.key] ?? 0;
@@ -74,7 +74,7 @@ export default function ReasoningQualityBars({ quizId, classId }) {
                   <div
                     key={l.key}
                     title={`${l.label}：${v} 人`}
-                    className="h-full flex items-center justify-center text-[10px] font-bold text-white"
+                    className="h-full flex items-center justify-center text-[15px] font-bold text-white"
                     style={{ width: `${pct}%`, backgroundColor: l.color }}
                   >
                     {pct >= 12 ? v : ''}
@@ -82,19 +82,19 @@ export default function ReasoningQualityBars({ quizId, classId }) {
                 );
               })}
             </div>
-            <span className="w-10 text-xs text-[#636E72] text-right flex-shrink-0">{row.total} 人</span>
+            <span className="w-10 text-sm text-[#636E72] text-right flex-shrink-0">{row.total} 人</span>
           </div>
         ))}
       </div>
 
       <div className="mt-4 pt-3 border-t border-[#EEE]">
-        <p className="text-xs font-semibold text-[#636E72] mb-2">整體推理品質佔比（{grandTotal} 筆）</p>
+        <p className="text-sm font-semibold text-[#636E72] mb-2">整體推理品質佔比（{grandTotal} 筆）</p>
         <div className="flex flex-wrap gap-3">
           {QUALITY_LEVELS.map((l) => {
             const v = totals[l.key] ?? 0;
             const pct = grandTotal ? Math.round((v / grandTotal) * 100) : 0;
             return (
-              <span key={l.key} className="flex items-center gap-1.5 text-xs">
+              <span key={l.key} className="flex items-center gap-1.5 text-sm">
                 <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: l.color }} />
                 <span className="text-[#2D3436]">{l.label}</span>
                 <span className="text-[#636E72]">{v}（{pct}%）</span>

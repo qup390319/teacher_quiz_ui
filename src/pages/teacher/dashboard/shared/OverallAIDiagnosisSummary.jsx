@@ -44,10 +44,10 @@ export default function OverallAIDiagnosisSummary({ overviewData }) {
               <h3 className="text-base font-bold text-[#2D3436]">所有班級診斷總覽</h3>
               <InfoButton onClick={() => setInfoOpen(true)} />
             </div>
-            <p className="text-xs text-[#636E72]">依各班診斷結果彙整學習狀況，提供跨班趨勢與優先介入順序</p>
+            <p className="text-sm text-[#636E72]">依各班診斷結果彙整學習狀況，提供跨班趨勢與優先介入順序</p>
           </div>
         </div>
-        <span className={`text-xs font-bold px-3 py-1.5 rounded-full border flex-shrink-0 ${health.color}`}>{health.label}</span>
+        <span className={`text-sm font-bold px-3 py-1.5 rounded-full border flex-shrink-0 ${health.color}`}>{health.label}</span>
       </div>
       <div className="grid grid-cols-3 gap-3 mb-4">
         {[
@@ -57,7 +57,7 @@ export default function OverallAIDiagnosisSummary({ overviewData }) {
         ].map(item => (
           <div key={item.label} className="bg-[#EEF5E6] rounded-2xl border border-[#D5D8DC] p-3 text-center">
             <p className={`text-2xl font-bold ${item.color}`}>{item.value}</p>
-            <p className="text-xs text-[#636E72] mt-0.5">{item.label}</p>
+            <p className="text-sm text-[#636E72] mt-0.5">{item.label}</p>
           </div>
         ))}
       </div>
@@ -66,14 +66,14 @@ export default function OverallAIDiagnosisSummary({ overviewData }) {
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="bg-[#EEF5E6] rounded-2xl border border-[#D5D8DC] p-4">
-          <p className="text-xs font-bold text-[#636E72] uppercase tracking-wide mb-3">優先介入順序</p>
+          <p className="text-sm font-bold text-[#636E72] uppercase tracking-wide mb-3">優先介入順序</p>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
             {[...classStats].sort((a, b) => (a.completionRate + a.avgPassRate) - (b.completionRate + b.avgPassRate)).map((cls, idx) => (
               <div key={cls.id} className="flex items-center gap-2">
                 <div className="flex items-center gap-1.5">
-                  <span className="w-5 h-5 rounded-full bg-[#3D5A3E] text-white text-[10px] flex items-center justify-center font-bold flex-shrink-0">{idx + 1}</span>
-                  <span className="text-xs font-semibold text-[#2D3436]">{cls.name}</span>
-                  <span className="text-xs text-[#95A5A6]">({cls.completionRate}% / {cls.avgPassRate}%)</span>
+                  <span className="w-5 h-5 rounded-full bg-[#3D5A3E] text-white text-[15px] flex items-center justify-center font-bold flex-shrink-0">{idx + 1}</span>
+                  <span className="text-sm font-semibold text-[#2D3436]">{cls.name}</span>
+                  <span className="text-sm text-[#95A5A6]">({cls.completionRate}% / {cls.avgPassRate}%)</span>
                 </div>
                 {idx < classStats.length - 1 && (
                   <svg className="w-3.5 h-3.5 text-[#95A5A6] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -83,11 +83,11 @@ export default function OverallAIDiagnosisSummary({ overviewData }) {
               </div>
             ))}
           </div>
-          <p className="text-[10px] text-[#95A5A6] mt-2">括號內：完成率 / 平均答對率</p>
+          <p className="text-[15px] text-[#95A5A6] mt-2">括號內：完成率 / 平均答對率</p>
         </div>
         <div className="bg-[#EEF5E6] rounded-2xl border border-[#D5D8DC] p-4">
-          <p className="text-xs font-bold text-[#636E72] uppercase tracking-wide mb-2">年級層級行動建議</p>
-          <p className="text-xs text-[#2D3436] leading-relaxed">{nextStep}</p>
+          <p className="text-sm font-bold text-[#636E72] uppercase tracking-wide mb-2">年級層級行動建議</p>
+          <p className="text-sm text-[#2D3436] leading-relaxed">{nextStep}</p>
         </div>
       </div>
       <InfoDrawer isOpen={infoOpen} onClose={() => setInfoOpen(false)} config={CHART_INFO['overall-ai-summary']} />

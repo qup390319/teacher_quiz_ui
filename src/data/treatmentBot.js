@@ -21,25 +21,37 @@ export const STEPS_PER_QUESTION = 7;
  *  常數：每個 stage 的開場與引導句
  * ──────────────────────────────────────────────────────────── */
 
-const PROMPTS_BY_STAGE = {
+// 對齊原系統 prompt 的 step1~7 結構：
+//   1 claim、2 evidence、3 modeling、4 coaching、5 scaffolding、6 CER 重述、7 收束
+const PROMPTS_BY_STEP = {
+  // step 2 — 引導學生說證據（第一次自然介紹「證據」）
   evidence: [
-    '你說 "{snippet}"，這是你的主張。能不能告訴我，你是怎麼知道的？證據就是支持你想法的線索或觀察喔！',
+    '證據，就是支持你主張的線索，讓你的想法更有說服力。\n\n你的證據是什麼呢？你可以從題目資訊、圖表、紀錄表，或生活經驗中找線索喔。',
     '很好，那讓我們來找找看：在情境裡，有什麼線索可以支持你的主張？',
   ],
-  reasoning: [
-    '你提到 "{snippet}"，這是很重要的線索。那這個線索為什麼能幫我們判斷呢？也就是你的「推理」。',
-    '把證據和主張連起來看，你覺得背後的科學原因是什麼？',
+  // step 3 — Modeling：專家示範切入點（不公開答案，只展示「先看哪裡」）
+  modeling: [
+    '{modelingHint}',
   ],
-  revise_modeling: [
-    // step=4 必出 modeling 範文
-    '好，我來示範專家的思考：\n\n{expertModel}\n\n你覺得這些線索裡，哪一個最能支持你剛才的想法呢？',
+  // step 4 — Coaching：依學生狀況做認知衝突 / 概念驗證（一次只問一個重點）
+  coaching: [
+    '把你剛剛說的「{snippet}」跟圖表上的線索一起想，你會發現什麼？',
+    '從圖表或紀錄表上，還有哪一個線索可以支持或反駁你剛才的想法呢？',
   ],
-  revise_coaching: [
-    '很棒！你的推理越來越完整了。再試一次：用「主張 → 證據 → 推理」的順序，把這題的想法整理一遍給我聽。',
-    '把剛剛說過的內容再整理一次：你的主張是什麼？支持的線索是什麼？背後的原因是什麼？',
+  // step 5 — Scaffolding：AI 統整重點 → 建立判準 → 簡短確認
+  scaffolding: [
+    '我先幫你把前面說過的重點整理一下：你已經注意到「{snippet}」這個線索，這些都能幫我們等一下整理完整的想法。你覺得這樣是不是比較清楚呢？',
   ],
-  complete: [
-    '太棒了！你已經能用主張、證據、推理把整個想法說清楚了。這題我們先到這裡，準備進入下一題！',
+  // step 6 — CER restatement：提供完整模板，請學生重述
+  cer_template: [
+    '你剛剛已經提到「{snippet}」。你可以用這個方式整理成一段話：\n\n我＿＿＿＿（同意 / 不同意）。因為我看到＿＿＿＿。這表示＿＿＿＿。所以我覺得＿＿＿＿。',
+  ],
+  // step 7 — 收束：先鼓勵 → 簡短統整 → 不再問新問題
+  complete_intermediate: [
+    '太棒了！你已經能用主張、證據、推理把整個想法說清楚了。這題我們先到這裡。',
+  ],
+  complete_final: [
+    '太棒了！你已經能用主張、證據、推理把整個想法說清楚了。整份概念釐清題組到這裡就完成了，辛苦你了！',
   ],
 };
 
@@ -107,20 +119,22 @@ export function runTreatmentTurnMock(state, userMessage) {
   // 取目標題目（用於插入專家示範）
   const quiz = getScenarioQuiz(state.scenarioQuizId);
   const question = quiz?.questions?.[state.questionIndex - 1] ?? null;
+  const isLastQuestion = !!quiz && state.questionIndex >= (quiz.questions?.length ?? 0);
 
   // 產生 AI 回覆
   const assistantMessage = composeAssistantMessage({
-    nextStage,
     nextStep,
     question,
     studentSnippet: makeSnippet(trimmed),
+    isLastQuestion,
   });
 
-  // hintLevel：apprenticeship 階段先升後降（鷹架後漸退）
+  // hintLevel：原 prompt 由學生掙扎程度決定；mock 取最低預設，遇到掙扎才升級
   const hintLevel = computeHintLevel(nextStep, isShort || isOffTopic);
 
-  // requiresRestatement：太短或離題、且還沒進入 modeling 之前
-  const requiresRestatement = (isShort || isOffTopic) && nextStep <= 3;
+  // requiresRestatement：step6 CER restatement 必為 true（原 prompt step6 規則）
+  const requiresRestatement = nextStep === 6
+    || ((isShort || isOffTopic) && nextStep <= 2);
 
   // feedback 短評（8~25 字）
   const feedback = computeFeedback({
@@ -165,50 +179,74 @@ export function makeInitialTurn(scenarioQuizId, questionIndex) {
  *  推進規則（內部）
  * ──────────────────────────────────────────────────────────── */
 
-/** 依 step 決定 stage（spec-08 §3.1）*/
+/** 依 step 決定 stage（對齊原 prompt【stage 對應原則】）
+ *   claim=step1 / evidence=step2 / reasoning=step3-5 / revise=step6 / complete=step7
+ */
 function stageForStep(step) {
   if (step <= 1) return 'claim';
   if (step === 2) return 'evidence';
-  if (step === 3) return 'reasoning';
-  if (step >= 4 && step <= 6) return 'revise';
-  return 'complete'; // step=7
+  if (step >= 3 && step <= 5) return 'reasoning';
+  if (step === 6) return 'revise';
+  return 'complete';
 }
 
-/** 依 step 決定 phase（spec-08 §1.2）*/
+/** 依 step 決定 phase（對齊原 prompt【新版狀態機】）
+ *   diagnosis=step1-2 / apprenticeship=step3-5 / cer=step6 / completed=step7
+ */
 function phaseForStep(step) {
-  if (step <= 3) return 'diagnosis';
-  if (step >= 7) return 'completed';
-  return 'apprenticeship';
+  if (step <= 2) return 'diagnosis';
+  if (step <= 5) return 'apprenticeship';
+  if (step === 6) return 'cer';
+  return 'completed';
 }
 
-/** hintLevel：step 4 modeling 升至 2，往後逐步漸退 */
+/** hintLevel：原則上由學生掙扎程度決定。mock 取最低預設，學生卡住才升級。 */
 function computeHintLevel(step, studentStruggling) {
-  if (step <= 2) return 0;
-  if (step === 3) return 1;
-  if (step === 4) return 2; // modeling 全力鷹架
-  if (step === 5) return studentStruggling ? 2 : 1;
-  if (step === 6) return studentStruggling ? 1 : 0;
-  return 0;
+  // 預設等級（學生表現正常時）
+  const baseline = step <= 2 ? 0
+    : step === 3 ? 0   // modeling 是教學，不算 hint
+    : step === 4 ? 0
+    : step === 5 ? 1   // scaffolding 統整本身是 mechanism 提示
+    : step === 6 ? 2   // CER template 是完整模板
+    : 0;
+  if (studentStruggling) {
+    return Math.min(3, baseline + 1);
+  }
+  return baseline;
 }
 
-/** 組裝 AI 對話內容 */
-function composeAssistantMessage({ nextStage, nextStep, question, studentSnippet }) {
-  if (nextStage === 'complete') {
-    return PROMPTS_BY_STAGE.complete[0];
+/** 組裝 AI 對話內容 — 每 step 一個分支，對齊原 prompt step1~7 規則 */
+function composeAssistantMessage({ nextStep, question, studentSnippet, isLastQuestion }) {
+  if (nextStep === 1) {
+    return question?.initialMessage ?? '請說說你的想法吧！';
   }
-  if (nextStage === 'revise' && nextStep === 4) {
-    const expertModel = question?.expertModel ?? '專家會先提出主張，再列出證據，最後說明推理。';
-    return PROMPTS_BY_STAGE.revise_modeling[0].replace('{expertModel}', expertModel);
+  if (nextStep === 2) {
+    return pickPrompt('evidence', nextStep, studentSnippet);
   }
-  if (nextStage === 'revise') {
-    return pickPrompt('revise_coaching', nextStep, studentSnippet);
+  if (nextStep === 3) {
+    // Modeling：用題目登錄的 modelingHint / expertModel 帶入專家切入點
+    const modelingHint = question?.expertModel
+      ?? '如果是我，我會先回到題目給的圖表或紀錄表上找線索。';
+    return PROMPTS_BY_STEP.modeling[0].replace('{modelingHint}', modelingHint);
   }
-  return pickPrompt(nextStage, nextStep, studentSnippet);
+  if (nextStep === 4) {
+    return pickPrompt('coaching', nextStep, studentSnippet);
+  }
+  if (nextStep === 5) {
+    return pickPrompt('scaffolding', nextStep, studentSnippet);
+  }
+  if (nextStep === 6) {
+    return pickPrompt('cer_template', nextStep, studentSnippet);
+  }
+  // step 7
+  return isLastQuestion
+    ? PROMPTS_BY_STEP.complete_final[0]
+    : PROMPTS_BY_STEP.complete_intermediate[0];
 }
 
 /** 從 prompt pool 抽一句並做替換 */
 function pickPrompt(key, step, snippet) {
-  const pool = PROMPTS_BY_STAGE[key] ?? [];
+  const pool = PROMPTS_BY_STEP[key] ?? [];
   if (pool.length === 0) return '請繼續說說你的想法。';
   const template = pool[step % pool.length];
   return template.replace('{snippet}', snippet || '剛才的想法');

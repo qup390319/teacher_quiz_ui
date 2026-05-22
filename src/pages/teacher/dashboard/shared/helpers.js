@@ -94,7 +94,8 @@ export function buildOverviewFromStats(stats, classes, assignments, quizId) {
     (c.topMisconceptions ?? []).forEach((m) => {
       if (!misconMap[m.id]) {
         const nd = knowledgeNodes.find((n) => n.misconceptions?.find((mm) => mm.id === m.id));
-        misconMap[m.id] = { id: m.id, label: m.label, node: nd?.name ?? '' };
+        const localLabel = nd?.misconceptions?.find((mm) => mm.id === m.id)?.label ?? '';
+        misconMap[m.id] = { id: m.id, label: m.label || localLabel, node: nd?.name ?? '' };
       }
       misconMap[m.id][chartKeyFor(c.classId)] = Math.round((m.count / total) * 100);
     });
