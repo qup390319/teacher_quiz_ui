@@ -8,6 +8,9 @@ import { useAssignments } from '../../hooks/useAssignments';
 import { useQuizzes, useDeleteQuiz } from '../../hooks/useQuizzes';
 import { api } from '../../lib/api';
 import { knowledgeNodes } from '../../data/knowledgeGraph';
+import { useTour } from '../../context/TourContext';
+import { useToast } from '../../context/ToastContext';
+import { Icon } from '../../components/ui/woodKit';
 
 const TABS = [
   { key: 'all', label: '全部' },
@@ -21,6 +24,8 @@ export default function QuizLibrary() {
     setQuizQuestions, setSelectedNodeIds,
     setEditingQuizId, setEditingQuizStatus, setEditingQuizTitle,
   } = useApp();
+  const { startTour } = useTour();
+  const { toast } = useToast();
   const { data: quizzes = [], isLoading } = useQuizzes();
   // 用空 filter（{}）拿全部班級（含已封存 / 其他學年），讓「已派班級」chip
   // 能正確查到歷史派題對象。題組庫是題組資產管理頁、不是儀表板，不適用
@@ -51,7 +56,7 @@ export default function QuizLibrary() {
       navigate('/teacher/quiz/create?step=2');
     } catch (err) {
       console.error('[QuizLibrary] failed to load quiz', err);
-      alert('載入題組失敗');
+      toast.error('載入題組失敗');
     }
   };
 
@@ -70,7 +75,7 @@ export default function QuizLibrary() {
       navigate('/teacher/quiz/create?step=2');
     } catch (err) {
       console.error('[QuizLibrary] failed to clone quiz', err);
-      alert('複製題組失敗');
+      toast.error('複製題組失敗');
     }
   };
 
@@ -81,7 +86,7 @@ export default function QuizLibrary() {
       setDeletingQuiz(null);
     } catch (err) {
       console.error('[QuizLibrary] failed to delete', err);
-      alert('刪除題組失敗：' + (err?.message ?? '未知錯誤'));
+      toast.error('刪除題組失敗：' + (err?.message ?? '未知錯誤'));
     }
   };
 
@@ -103,12 +108,24 @@ export default function QuizLibrary() {
     <TeacherLayout>
       <div className="p-4 sm:p-6 md:p-8">
         {/* 頁首 */}
-        <div className="flex flex-wrap items-start justify-between mb-6 sm:mb-8 gap-3">
+        <div data-tour="quiz-page-header" className="flex flex-wrap items-start justify-between mb-6 sm:mb-8 gap-3">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">出題管理</h1>
+            <div className="flex items-center gap-3 mb-1">
+              <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">出題管理</h1>
+              <button
+                type="button"
+                onClick={() => startTour('quiz-library')}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[#C8D6C9] text-[#3D5A3E] text-sm font-semibold hover:bg-[#EEF5E6] transition-colors shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
+                title="瞭解出題管理功能"
+              >
+                <Icon name="tour" className="text-base" />
+                操作導覽
+              </button>
+            </div>
             <p className="text-[#636E72] mt-1 text-sm">這裡是您所有的題組。出題流程：選擇出題範圍 → 編輯題組內容 → 儲存 → 到「派題管理」發給班級</p>
           </div>
           <button
+            data-tour="quiz-new-btn"
             onClick={handleNew}
             className="flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 bg-[#8FC87A] text-[#2D3436] border border-[#BDC3C7] rounded-2xl text-sm font-semibold hover:bg-[#76B563] transition-colors shadow-[0_2px_8px_rgba(0,0,0,0.06)] flex-shrink-0"
           >
@@ -121,7 +138,7 @@ export default function QuizLibrary() {
 
         {/* Tab Bar */}
         {!isLoading && quizzes.length > 0 && (
-          <div className="mb-4 flex gap-1 border-b border-[#BDC3C7]">
+          <div data-tour="quiz-tabs" className="mb-4 flex gap-1 border-b border-[#BDC3C7]">
             {TABS.map((tab) => {
               const active = activeTab === tab.key;
               return (
@@ -178,7 +195,7 @@ export default function QuizLibrary() {
           </div>
         ) : (
           <div className="space-y-4">
-            {visibleQuizzes.map((quiz) => {
+            {visibleQuizzes.map((quiz, idx) => {
               const assignedClasses = getAssignedClasses(quiz.id);
               const coveredNodes = quiz.knowledgeNodeIds
                 .map(id => knowledgeNodes.find(n => n.id === id))
@@ -186,7 +203,7 @@ export default function QuizLibrary() {
               const isDraft = quiz.status === 'draft';
 
               return (
-                <div key={quiz.id} className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)] hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)] transition-shadow">
+                <div key={quiz.id} data-tour={idx === 0 ? 'quiz-card-first' : undefined} className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)] hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)] transition-shadow">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2 flex-wrap">

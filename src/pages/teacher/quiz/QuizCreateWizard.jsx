@@ -3,6 +3,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import TeacherLayout from '../../../components/TeacherLayout';
 import StepIndicator from '../../../components/StepIndicator';
 import { useApp } from '../../../context/AppContext';
+import { useTour } from '../../../context/TourContext';
+import { Icon } from '../../../components/ui/woodKit';
 import { useUnsavedChangesPrompt } from '../../../hooks/useUnsavedChangesPrompt';
 import Step1Nodes from './Step1Nodes';
 import Step2Edit from './Step2Edit';
@@ -16,6 +18,7 @@ export default function QuizCreateWizard() {
     selectedNodeIds,
     isWizardDirty, setIsWizardDirty,
   } = useApp();
+  const { startTour } = useTour();
   const initialStep = searchParams.get('step') === '2' ? 2 : 1;
   const [currentStep, setCurrentStep] = useState(initialStep);
   const [pendingNavigateTo, setPendingNavigateTo] = useState(null);
@@ -70,7 +73,18 @@ export default function QuizCreateWizard() {
             返回
           </button>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436] mb-0.5">建立題組</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436] mb-0.5">建立題組</h1>
+              <button
+                type="button"
+                onClick={() => startTour(currentStep === 1 ? 'quiz-step1' : 'quiz-step2')}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[#C8D6C9] text-[#3D5A3E] text-sm font-semibold hover:bg-[#EEF5E6] transition-colors shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
+                title="瞭解此步驟的功能"
+              >
+                <Icon name="tour" className="text-base" />
+                操作導覽
+              </button>
+            </div>
             <p className="text-[#636E72] text-sm">水溶液單元 · 迷思概念診斷測驗</p>
           </div>
         </div>

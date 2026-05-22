@@ -18,11 +18,16 @@ import {
   useRemoveAssignment,
   useUpdateAssignment,
 } from '../../hooks/useAssignments';
+import { useTour } from '../../context/TourContext';
+import { useToast } from '../../context/ToastContext';
+import { Icon } from '../../components/ui/woodKit';
 
 // ─── 主頁面 ───────────────────────────────────────────────────────────────────
 export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) {
   const navigate = useNavigate();
   const { setCurrentClassId, setCurrentQuizId } = useApp();
+  const { startTour } = useTour();
+  const { toast } = useToast();
   const { data: assignments = [] } = useAssignments();
   const { data: quizzes = [] } = useQuizzes();
   const { data: scenarioQuizzes = [] } = useScenarios();
@@ -82,7 +87,7 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
   // eslint-disable-next-line no-unused-vars -- mode will be used when backend assignment model supports dispatch_mode
   const handleConfirmDiagnosis = async (quizId, classId, dueDate, _mode) => {
     if (!dueDate) {
-      alert('請選擇截止日期');
+      toast.error('請選擇截止日期');
       return;
     }
     try {
@@ -96,9 +101,10 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
         status: 'active',
       });
       setPopover(null);
+      toast.success('題組已成功派發給班級！');
     } catch (err) {
       console.error('[AssignmentManagement] add failed', err);
-      alert('派發失敗：' + (err?.message ?? '未知錯誤'));
+      toast.error('派發失敗：' + (err?.message ?? '未知錯誤'));
     }
   };
 
@@ -126,9 +132,10 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
       }
       setPicker(null);
       setManagePopover(null);
+      toast.success(existing ? '派發已更新！' : '釐清題組已成功派發！');
     } catch (err) {
       console.error('[AssignmentManagement] scenario add/update failed', err);
-      alert('派發失敗：' + (err?.message ?? '未知錯誤'));
+      toast.error('派發失敗：' + (err?.message ?? '未知錯誤'));
     }
   };
 
@@ -142,7 +149,7 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
     try {
       await updateAssignmentMut.mutateAsync({ id: assignmentId, dueDate });
     } catch (err) {
-      alert('更新失敗：' + (err?.message ?? '未知錯誤'));
+      toast.error('更新失敗：' + (err?.message ?? '未知錯誤'));
     }
   };
 
@@ -150,16 +157,28 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
     try {
       await removeAssignmentMut.mutateAsync(assignmentId);
       setManagePopover(null);
+      toast.success('已取消派發');
     } catch (err) {
-      alert('刪除失敗：' + (err?.message ?? '未知錯誤'));
+      toast.error('刪除失敗：' + (err?.message ?? '未知錯誤'));
     }
   };
 
   return (
     <TeacherLayout>
       <div className="p-4 sm:p-6 md:p-8">
-        <div className="mb-4 sm:mb-6">
-          <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">派題管理</h1>
+        <div className="mb-4 sm:mb-6" data-tour="assign-page-header">
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">派題管理</h1>
+            <button
+              type="button"
+              onClick={() => startTour('assignment')}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[#C8D6C9] text-[#3D5A3E] text-sm font-semibold hover:bg-[#EEF5E6] transition-colors shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
+              title="瞭解派題管理功能"
+            >
+              <Icon name="tour" className="text-base" />
+              操作導覽
+            </button>
+          </div>
           <p className="text-[#636E72] mt-1 text-sm">
             點擊空格即可將題組派發給班級，點擊已派格子可管理派發狀態或查看診斷報告
           </p>
@@ -213,7 +232,7 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
         ) : (
           <>
           {/* 圖例：放在矩陣上方，方便對照 */}
-          <div className="mb-4 px-4 py-3 bg-white border border-[#BDC3C7] rounded-2xl flex flex-wrap items-center gap-x-4 gap-y-2 sm:gap-6 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+          <div className="mb-4 px-4 py-3 bg-white border border-[#BDC3C7] rounded-2xl flex flex-wrap items-center gap-x-4 gap-y-2 sm:gap-6 shadow-[0_2px_8px_rgba(0,0,0,0.04)]" data-tour="assign-legend">
             <span className="text-sm text-[#95A5A6] font-medium">圖例：</span>
             {[
               { color: 'border-dashed border-[#D5D8DC] bg-white', label: '未派發', textColor: 'text-[#95A5A6]' },
@@ -310,103 +329,109 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
             ))}
           </div>
 
-          {/* 桌機版（≥ md）：題組 × 班級 矩陣表格 */}
-          <div className="hidden md:block bg-white rounded-[32px] border border-[#BDC3C7] shadow-[0_2px_12px_rgba(0,0,0,0.06)] overflow-hidden">
+          {/* 桌機版（≥ md）：轉置矩陣——班級為列、題組為欄，適合班級數 30+ 的場景 */}
+          <div className="hidden md:block bg-white rounded-[32px] border border-[#BDC3C7] shadow-[0_2px_12px_rgba(0,0,0,0.06)] overflow-hidden" data-tour="assign-matrix">
             <div className="overflow-x-auto">
-            <div
-              className="grid border-b border-[#D5D8DC] bg-[#EEF5E6]"
-              style={{ gridTemplateColumns: `220px repeat(${classes.length}, minmax(140px, 1fr))` }}
-            >
-              <div className="px-4 sm:px-5 py-3 flex items-center">
-                <span className="text-sm font-bold text-[#636E72] uppercase tracking-wide">題組</span>
-              </div>
-              {classes.map((cls) => (
-                <div key={cls.id} className="px-3 py-3 text-center border-l border-[#D5D8DC]">
-                  <div className="flex items-center justify-center gap-1.5">
-                    <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: cls.color }} />
-                    <span className="text-sm font-semibold text-[#2D3436]">{cls.name}</span>
-                  </div>
-                  <p className="text-sm text-[#95A5A6] mt-0.5">{cls.studentCount} 人</p>
-                </div>
-              ))}
-            </div>
-
-            {matrix.map(({ quiz, cells }, rowIdx) => (
-              <div
-                key={quiz.id}
-                className={`grid ${rowIdx < matrix.length - 1 ? 'border-b border-[#D5D8DC]' : ''}`}
-                style={{ gridTemplateColumns: `220px repeat(${classes.length}, minmax(140px, 1fr))` }}
-              >
-                <div className="px-5 py-4 flex flex-col justify-center">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <span
-                      className={`text-sm font-bold px-2 py-0.5 rounded-full border
-                                 ${isScenarioTab
-                                   ? 'bg-[#E0F0E8] text-[#2E6B47] border-[#3F8B5E]'
-                                   : 'bg-[#C8EAAE] text-[#3D5A3E] border-[#BDC3C7]'}`}
-                    >
-                      {isScenarioTab ? '🌱 概念釐清' : '已發佈'}
-                    </span>
-                  </div>
-                  <p className="text-sm font-semibold text-[#2D3436] leading-snug mb-1">{quiz.title}</p>
-                  <p className="text-sm text-[#95A5A6]">
-                    {isScenarioTab
-                      ? `${quiz.questions?.length ?? 0} 題概念釐清 · 目標節點 ${quiz.targetNodeId}`
-                      : `${quiz.questionCount} 題 · ${quiz.knowledgeNodeIds.length} 個節點`}
-                  </p>
-                </div>
-
-                {cells.map(({ cls, assignment }) => (
-                  <div key={cls.id} className="p-3 border-l border-[#D5D8DC] relative">
-                    {assignment === null ? (
-                      <>
-                        <CellEmpty onClick={() => {
-                          setManagePopover(null);
-                          if (isScenarioTab) {
-                            setPicker({ quiz, cls, existing: null });
-                            setPopover(null);
-                          } else {
-                            setPopover({ quizId: quiz.id, classId: cls.id });
-                          }
-                        }} />
-                        {!isScenarioTab && popover?.quizId === quiz.id && popover?.classId === cls.id && (
-                          <AssignPopover
-                            quiz={quiz}
-                            cls={cls}
-                            onConfirm={(dueDate, mode) => handleConfirmDiagnosis(quiz.id, cls.id, dueDate, mode)}
-                            onClose={() => setPopover(null)}
-                          />
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        <CellActive
-                          assignment={assignment}
-                          onClick={() => { setManagePopover({ assignmentId: assignment.id, quizId: quiz.id, classId: cls.id }); setPopover(null); }}
-                        />
-                        {managePopover?.assignmentId === assignment.id && (
-                          <ManagePopover
-                            assignment={assignment}
-                            quiz={quiz}
-                            cls={cls}
-                            isScenario={isScenarioTab}
-                            onViewReport={handleViewReport}
-                            onUpdateDueDate={handleUpdateDueDate}
-                            onRemove={handleRemove}
-                            onEditTargets={(asg) => {
-                              setPicker({ quiz, cls, existing: asg });
+            <table className="w-full border-collapse">
+              <thead className="sticky top-0 z-10">
+                <tr className="bg-[#EEF5E6] border-b border-[#D5D8DC]">
+                  <th className="px-4 sm:px-5 py-3 text-left min-w-[180px] w-[200px]">
+                    <span className="text-sm font-bold text-[#636E72] uppercase tracking-wide">班級</span>
+                  </th>
+                  {publishedQuizzes.map((quiz) => (
+                    <th key={quiz.id} className="px-3 py-3 text-center border-l border-[#D5D8DC] min-w-[160px]">
+                      <div className="flex items-center justify-center gap-1.5 mb-1">
+                        <span
+                          className={`text-xs font-bold px-2 py-0.5 rounded-full border
+                                     ${isScenarioTab
+                                       ? 'bg-[#E0F0E8] text-[#2E6B47] border-[#3F8B5E]'
+                                       : 'bg-[#C8EAAE] text-[#3D5A3E] border-[#BDC3C7]'}`}
+                        >
+                          {isScenarioTab ? '概念釐清' : '已發佈'}
+                        </span>
+                      </div>
+                      <p className="text-sm font-semibold text-[#2D3436] leading-snug">{quiz.title}</p>
+                      <p className="text-xs text-[#95A5A6] mt-0.5">
+                        {isScenarioTab
+                          ? `${quiz.questions?.length ?? 0} 題 · ${quiz.targetNodeId}`
+                          : `${quiz.questionCount} 題 · ${quiz.knowledgeNodeIds.length} 個節點`}
+                      </p>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+              {classes.map((cls, clsIdx) => (
+                <tr key={cls.id} className={clsIdx < classes.length - 1 ? 'border-b border-[#D5D8DC]' : ''}>
+                  <td className="px-4 sm:px-5 py-3 align-middle min-w-[180px] w-[200px]">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: cls.color }} />
+                      <div>
+                        <span className="text-sm font-semibold text-[#2D3436]">{cls.name}</span>
+                        <span className="text-sm text-[#95A5A6] ml-1.5">{cls.studentCount} 人</span>
+                      </div>
+                    </div>
+                  </td>
+                  {publishedQuizzes.map((quiz) => {
+                    const assignment = assignments.find((a) => {
+                      if (isScenarioTab) {
+                        return a.type === 'scenario' && a.scenarioQuizId === quiz.id && a.classId === cls.id;
+                      }
+                      return (a.type ?? 'diagnosis') === 'diagnosis' && a.quizId === quiz.id && a.classId === cls.id;
+                    }) ?? null;
+                    return (
+                      <td key={quiz.id} className="p-3 border-l border-[#D5D8DC] relative align-middle min-w-[160px]">
+                        {assignment === null ? (
+                          <>
+                            <CellEmpty onClick={() => {
                               setManagePopover(null);
-                            }}
-                            onClose={() => setManagePopover(null)}
-                          />
+                              if (isScenarioTab) {
+                                setPicker({ quiz, cls, existing: null });
+                                setPopover(null);
+                              } else {
+                                setPopover({ quizId: quiz.id, classId: cls.id });
+                              }
+                            }} />
+                            {!isScenarioTab && popover?.quizId === quiz.id && popover?.classId === cls.id && (
+                              <AssignPopover
+                                quiz={quiz}
+                                cls={cls}
+                                onConfirm={(dueDate, mode) => handleConfirmDiagnosis(quiz.id, cls.id, dueDate, mode)}
+                                onClose={() => setPopover(null)}
+                              />
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <CellActive
+                              assignment={assignment}
+                              onClick={() => { setManagePopover({ assignmentId: assignment.id, quizId: quiz.id, classId: cls.id }); setPopover(null); }}
+                            />
+                            {managePopover?.assignmentId === assignment.id && (
+                              <ManagePopover
+                                assignment={assignment}
+                                quiz={quiz}
+                                cls={cls}
+                                isScenario={isScenarioTab}
+                                onViewReport={handleViewReport}
+                                onUpdateDueDate={handleUpdateDueDate}
+                                onRemove={handleRemove}
+                                onEditTargets={(asg) => {
+                                  setPicker({ quiz, cls, existing: asg });
+                                  setManagePopover(null);
+                                }}
+                                onClose={() => setManagePopover(null)}
+                              />
+                            )}
+                          </>
                         )}
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ))}
-
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+              </tbody>
+            </table>
             </div>
           </div>
 

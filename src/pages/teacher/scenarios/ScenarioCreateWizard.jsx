@@ -3,6 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import TeacherLayout from '../../../components/TeacherLayout';
 import { useScenario, useSaveScenario } from '../../../hooks/useScenarios';
 import { knowledgeNodes, getNodeById } from '../../../data/knowledgeGraph';
+import { useTour } from '../../../context/TourContext';
+import { useToast } from '../../../context/ToastContext';
+import { Icon } from '../../../components/ui/woodKit';
 
 /* 概念釐清題組出題精靈（spec-08 §5.1）
  * 單頁式表單；一份題組可有多題概念釐清；每題含 概念釐清敘述、開場提問、專家示範、目標迷思。
@@ -24,6 +27,8 @@ export default function ScenarioCreateWizard() {
   const { scenarioQuizId } = useParams();
   const isEditing = Boolean(scenarioQuizId);
   const navigate = useNavigate();
+  const { startTour } = useTour();
+  const { toast } = useToast();
   const { data: existing, isLoading: existingLoading } = useScenario(scenarioQuizId);
   const saveScenarioMut = useSaveScenario();
 
@@ -101,19 +106,20 @@ export default function ScenarioCreateWizard() {
 
   const handleSave = async (status) => {
     if (!draft.title.trim()) {
-      alert('請填寫題組標題');
+      toast.error('請填寫題組標題');
       return;
     }
     if (!draft.targetNodeId) {
-      alert('請選擇目標節點');
+      toast.error('請選擇目標節點');
       return;
     }
     try {
       await saveScenarioMut.mutateAsync({ ...draft, status });
+      toast.success(status === 'published' ? '題組已發布' : '草稿已儲存');
       navigate('/teacher/scenarios');
     } catch (err) {
       console.error('[ScenarioCreateWizard] save failed', err);
-      alert('儲存失敗：' + (err?.message ?? '未知錯誤'));
+      toast.error('儲存失敗：' + (err?.message ?? '未知錯誤'));
     }
   };
 
@@ -129,11 +135,21 @@ export default function ScenarioCreateWizard() {
     <TeacherLayout>
       <div className="p-4 sm:p-6 md:p-8 max-w-4xl">
         {/* 頁首 */}
-        <div className="mb-4 sm:mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div data-tour="scenario-create-header" className="mb-4 sm:mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">
-              {isEditing ? '編輯概念釐清題組' : '新增概念釐清題組'}
-            </h1>
+            <div className="flex items-center gap-3 mb-1">
+              <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">
+                {isEditing ? '編輯概念釐清題組' : '新增概念釐清題組'}
+              </h1>
+              <button
+                type="button"
+                onClick={() => startTour('scenario-create')}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[#C8D6C9] text-[#3D5A3E] text-sm font-semibold hover:bg-[#EEF5E6] transition-colors shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
+                title="瞭解功能"
+              >
+                <Icon name="tour" className="text-base" />操作導覽
+              </button>
+            </div>
             <p className="text-[#636E72] mt-1 text-sm">
               每一題由 AI 以「論證對話」（主張 → 證據 → 推理 → 重述）引導學生對話。
             </p>
@@ -241,7 +257,7 @@ export default function ScenarioCreateWizard() {
         )}
 
         {/* 基本資訊 */}
-        <section className="bg-white rounded-2xl border border-[#BDC3C7] p-6 mb-6 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+        <section data-tour="scenario-target-node" className="bg-white rounded-2xl border border-[#BDC3C7] p-6 mb-6 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
           <h2 className="text-base font-bold text-[#2D3436] mb-4 flex items-center gap-2">
             <span className="w-1.5 h-5 bg-[#5BA47A] rounded-full" />
             基本資訊
@@ -299,7 +315,7 @@ export default function ScenarioCreateWizard() {
         </section>
 
         {/* 題目列表 */}
-        <section className="bg-white rounded-2xl border border-[#BDC3C7] p-6 mb-6 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+        <section data-tour="scenario-questions-area" className="bg-white rounded-2xl border border-[#BDC3C7] p-6 mb-6 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base font-bold text-[#2D3436] flex items-center gap-2">
               <span className="w-1.5 h-5 bg-[#5BA47A] rounded-full" />
@@ -330,7 +346,7 @@ export default function ScenarioCreateWizard() {
         </section>
 
         {/* 儲存按鈕 */}
-        <div className="flex items-center justify-end gap-3">
+        <div data-tour="scenario-save-buttons" className="flex items-center justify-end gap-3">
           <button
             type="button"
             onClick={() => handleSave('draft')}

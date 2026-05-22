@@ -8,6 +8,8 @@ import ClassFormModal from './ClassFormModal';
 import { useClasses, useCreateClass } from '../../hooks/useClasses';
 import { useApp } from '../../context/AppContext';
 import { getSchoolYearOptions } from '../../utils/schoolYear';
+import { useTour } from '../../context/TourContext';
+import { Icon } from '../../components/ui/woodKit';
 
 const COLOR_PRESETS = [
   { color: '#C8EAAE', textColor: '#3D5A3E' },
@@ -26,6 +28,7 @@ const EMPTY_FORM = {
 export default function ClassManagement() {
   const navigate = useNavigate();
   const { currentSchoolYear, currentSemester } = useApp();
+  const { startTour } = useTour();
   const { data: classes = [], isLoading: classesLoading } = useClasses();
   const createClass = useCreateClass();
 
@@ -80,12 +83,24 @@ export default function ClassManagement() {
     <TeacherLayout>
       <div className="p-4 sm:p-6 md:p-8">
         {/* 頁首 */}
-        <div className="flex items-center justify-between mb-4 sm:mb-6 gap-3 flex-wrap">
+        <div data-tour="class-page-header" className="flex items-center justify-between mb-4 sm:mb-6 gap-3 flex-wrap">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">班級管理</h1>
+            <div className="flex items-center gap-3 mb-1">
+              <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">班級管理</h1>
+              <button
+                type="button"
+                onClick={() => startTour('class-management')}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[#C8D6C9] text-[#3D5A3E] text-sm font-semibold hover:bg-[#EEF5E6] transition-colors shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
+                title="瞭解功能"
+              >
+                <Icon name="tour" className="text-base" />
+                操作導覽
+              </button>
+            </div>
             <p className="text-[#636E72] mt-1 text-sm">管理各班級的學生名單與相關資訊</p>
           </div>
           <button
+            data-tour="class-new-btn"
             onClick={openCreate}
             className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-[#3D5A3E] rounded-2xl hover:bg-[#2F4530] transition-colors shadow-[0_2px_8px_rgba(0,0,0,0.08)]"
           >
@@ -130,7 +145,7 @@ export default function ClassManagement() {
 
         {/* 班級列表（list 模式）— Google Classroom 風，整列可點進詳情頁 */}
         {viewMode === 'list' && classes.length > 0 && (
-          <div className="bg-white rounded-2xl border border-[#E1E6E2] shadow-[0_2px_8px_rgba(0,0,0,0.04)] divide-y divide-[#EEF1ED] overflow-hidden">
+          <div data-tour="class-list" className="bg-white rounded-2xl border border-[#E1E6E2] shadow-[0_2px_8px_rgba(0,0,0,0.04)] divide-y divide-[#EEF1ED] overflow-hidden">
             {classes.map((cls) => (
               <ClassListRow
                 key={cls.id}
@@ -144,7 +159,7 @@ export default function ClassManagement() {
 
         {/* 班級卡片（cards 模式）— 同樣只顯示色塊+名稱+副標，整張可點 */}
         {viewMode === 'cards' && classes.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          <div data-tour="class-list" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {classes.map((cls) => (
               <ClassCardItem
                 key={cls.id}

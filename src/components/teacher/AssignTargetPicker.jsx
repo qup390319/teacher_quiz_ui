@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useClass } from '../../hooks/useClasses';
 import { usePrerequisiteStatus } from '../../hooks/useAdaptive';
+import { useToast } from '../../context/ToastContext';
 
 /**
  * 概念釐清派題對象選擇器（spec-05 §3.4）
@@ -13,6 +14,7 @@ import { usePrerequisiteStatus } from '../../hooks/useAdaptive';
  * - props.onClose()
  */
 export default function AssignTargetPicker({ quiz, cls, existing = null, onConfirm, onClose }) {
+  const { toast } = useToast();
   const { data: classDetail, isLoading } = useClass(cls.id);
   const nodeIds = quiz.knowledgeNodeIds ?? (quiz.targetNodeId ? [quiz.targetNodeId] : []);
   const { data: prereqData } = usePrerequisiteStatus(cls.id, nodeIds, {
@@ -65,11 +67,11 @@ export default function AssignTargetPicker({ quiz, cls, existing = null, onConfi
 
   const handleConfirm = async () => {
     if (!dueDate) {
-      alert('請選擇截止日期');
+      toast.error('請選擇截止日期');
       return;
     }
     if (selectedIds.size === 0) {
-      alert('請至少勾選一位學生');
+      toast.error('請至少勾選一位學生');
       return;
     }
     setSubmitting(true);

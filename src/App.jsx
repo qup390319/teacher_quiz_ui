@@ -1,6 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider } from './context/AppContext';
 import { AuthProvider } from './context/AuthContext';
+import { TourProvider } from './context/TourContext';
+import { ToastProvider } from './context/ToastContext';
+import { ToastContainer } from './components/Toast';
 import RequireAuth from './components/RequireAuth';
 import LoginPage from './pages/LoginPage';
 import TeacherDashboard from './pages/teacher/TeacherDashboard';
@@ -37,9 +40,12 @@ const Student = ({ children }) => <RequireAuth role="student">{children}</Requir
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppProvider>
-        <BrowserRouter>
+    <ToastProvider>
+      <ToastContainer />
+      <AuthProvider>
+        <AppProvider>
+          <TourProvider>
+          <BrowserRouter>
           <Routes>
             <Route path="/" element={<LoginPage />} />
 
@@ -84,8 +90,10 @@ export default function App() {
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </BrowserRouter>
-      </AppProvider>
-    </AuthProvider>
+          </BrowserRouter>
+          </TourProvider>
+        </AppProvider>
+      </AuthProvider>
+    </ToastProvider>
   );
 }

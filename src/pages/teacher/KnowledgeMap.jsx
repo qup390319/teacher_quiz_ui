@@ -2,9 +2,12 @@ import { useNavigate } from 'react-router-dom';
 import TeacherLayout from '../../components/TeacherLayout';
 import { knowledgeNodes } from '../../data/knowledgeGraph';
 import KnowledgeSkillTree from '../../components/teacher/KnowledgeSkillTree';
+import { useTour } from '../../context/TourContext';
+import { Icon } from '../../components/ui/woodKit';
 
 export default function KnowledgeMap() {
   const navigate = useNavigate();
+  const { startTour } = useTour();
   const totalDefault = knowledgeNodes.reduce((s, n) => s + n.misconceptions.length, 0);
 
   const rows = [];
@@ -26,7 +29,7 @@ export default function KnowledgeMap() {
     <TeacherLayout>
       <div className="p-4 sm:p-6 md:p-8">
         {/* 頁面標題 */}
-        <div className="mb-4 sm:mb-6">
+        <div className="mb-4 sm:mb-6" data-tour="knowledge-map-hero">
           <div className="flex items-center gap-3 mb-1">
             <button
               onClick={() => navigate('/teacher')}
@@ -37,6 +40,15 @@ export default function KnowledgeMap() {
               </svg>
             </button>
             <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">(預設) 知識節點與迷思概念總覽</h1>
+            <button
+              type="button"
+              onClick={() => startTour('knowledge-map')}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[#C8D6C9] text-[#3D5A3E] text-sm font-semibold hover:bg-[#EEF5E6] transition-colors shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
+              title="瞭解知識節點總覽"
+            >
+              <Icon name="tour" className="text-base" />
+              操作導覽
+            </button>
           </div>
           <p className="text-sm text-[#636E72] ml-8">
             水溶液單元 · 因材網對應節點 INe-II-3-01 至 INe-Ⅲ-5-7 ·
@@ -47,12 +59,12 @@ export default function KnowledgeMap() {
         </div>
 
         {/* A 區：知識路徑技能樹（深木紋發光 / Mockup J-1） */}
-        <div className="mb-6">
+        <div className="mb-6" data-tour="knowledge-skill-tree">
           <KnowledgeSkillTree />
         </div>
 
         {/* B 區：迷思概念表格 */}
-        <div className="bg-white rounded-[32px] border border-[#BDC3C7] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+        <div className="bg-white rounded-[32px] border border-[#BDC3C7] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.06)]" data-tour="misconceptions-table">
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="bg-[#C8EAAE] border-b-2 border-[#BDC3C7]">

@@ -2,6 +2,8 @@ import { useEffect, useMemo } from 'react';
 import { NavLink, Outlet, useSearchParams } from 'react-router-dom';
 import TeacherLayout from '../../../components/TeacherLayout';
 import { useApp } from '../../../context/AppContext';
+import { useTour } from '../../../context/TourContext';
+import { Icon } from '../../../components/ui/woodKit';
 import { useClasses } from '../../../hooks/useClasses';
 import { useQuizzes } from '../../../hooks/useQuizzes';
 import { useAssignments } from '../../../hooks/useAssignments';
@@ -11,15 +13,16 @@ import EmptyStateGuide from '../../../components/EmptyStateGuide';
 import SchoolYearFilter from '../../../components/SchoolYearFilter';
 
 const TABS = [
-  { to: 'overview',       label: '所有班級答題分布', icon: 'donut_large' },
-  { to: 'classes',        label: '各班級比較',   icon: 'groups' },
-  { to: 'nodes',          label: '知識節點答對率', icon: 'account_tree' },
-  { to: 'misconceptions', label: '高頻迷思排行', icon: 'psychology_alt' },
-  { to: 'students',       label: '個別學生報告', icon: 'person_search' },
+  { to: 'overview',       label: '所有班級答題分布', icon: 'donut_large',    tour: 'dash-tab-overview' },
+  { to: 'classes',        label: '各班級比較',   icon: 'groups',          tour: 'dash-tab-classes' },
+  { to: 'nodes',          label: '知識節點答對率', icon: 'account_tree',   tour: 'dash-tab-nodes' },
+  { to: 'misconceptions', label: '高頻迷思排行', icon: 'psychology_alt',  tour: 'dash-tab-misconceptions' },
+  { to: 'students',       label: '個別學生報告', icon: 'person_search',   tour: 'dash-tab-students' },
 ];
 
 export default function DashboardLayout() {
   const { currentQuizId, setCurrentQuizId } = useApp();
+  const { startTour } = useTour();
   const { data: classes = [] } = useClasses();
   const { data: assignments = [] } = useAssignments();
   const { data: quizzes = [] } = useQuizzes();
@@ -68,8 +71,19 @@ export default function DashboardLayout() {
   return (
     <TeacherLayout>
       <div className="p-4 sm:p-6 md:p-8">
-        <div className="mb-4 sm:mb-6 flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">診斷結果</h1>
+        <div className="mb-4 sm:mb-6 flex flex-wrap items-center justify-between gap-3" data-tour="dash-header">
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">診斷結果</h1>
+            <button
+              type="button"
+              onClick={() => startTour('dashboard')}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[#C8D6C9] text-[#3D5A3E] text-sm font-semibold hover:bg-[#EEF5E6] transition-colors shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
+              title="瞭解診斷結果功能"
+            >
+              <Icon name="tour" className="text-base" />
+              操作導覽
+            </button>
+          </div>
           {/* 學年篩選器（spec-02 §2.3.0；與 /teacher/classes 共用 AppContext 狀態） */}
           <SchoolYearFilter />
         </div>
@@ -77,7 +91,7 @@ export default function DashboardLayout() {
         {/* B4：題組選擇器與 tab 列上下分列，避免擠在同一列顯得雜亂 */}
         <div className="mb-6 space-y-2">
           {availableQuizzes.length > 0 && (
-            <div className="inline-flex items-center gap-2 bg-[#EEF5E6] border border-[#C8D6C9] rounded-2xl pl-3 pr-2 py-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+            <div className="inline-flex items-center gap-2 bg-[#EEF5E6] border border-[#C8D6C9] rounded-2xl pl-3 pr-2 py-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.04)]" data-tour="dash-quiz-selector">
               <span className="material-symbols-rounded text-[#3D5A3E]" style={{ fontSize: 18 }}>quiz</span>
               <span className="text-sm font-bold text-[#3D5A3E] whitespace-nowrap">題組</span>
               <div className="relative">
@@ -94,11 +108,12 @@ export default function DashboardLayout() {
               </div>
             </div>
           )}
-          <div className="bg-white rounded-2xl border border-[#E1E6E2] p-1.5 inline-flex items-center gap-1 shadow-[0_2px_10px_rgba(0,0,0,0.05)] flex-wrap">
+          <div className="bg-white rounded-2xl border border-[#E1E6E2] p-1.5 inline-flex items-center gap-1 shadow-[0_2px_10px_rgba(0,0,0,0.05)] flex-wrap" data-tour="dash-tabs">
             {TABS.map(tab => (
               <NavLink
                 key={tab.to}
                 to={`/teacher/dashboard/${tab.to}${tabSearch}`}
+                data-tour={tab.tour}
                 className={({ isActive }) =>
                   `inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all duration-150 ${
                     isActive

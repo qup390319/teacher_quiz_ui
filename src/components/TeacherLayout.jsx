@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTeacherStageStatus } from '../hooks/useTeacherStageStatus';
 import AIBadge from './AIBadge';
 import GuidedTour from './GuidedTour';
+import { useTour } from '../context/TourContext';
 import teacherAvatar from '../assets/illustrations/irasutoya_teacher_boy.png';
 
 const ICONS = {
@@ -121,8 +122,8 @@ const navItems = [
 
   { section: '其他' },
   { to: '/teacher/misconception-causes', label: '迷思概念成因', icon: ICONS.bulb },
-  { to: '/teacher/knowledge-map', label: '(預設) 知識節點總覽', icon: ICONS.grid },
-  { to: '/teacher/custom-knowledge-map', label: '(自定義) 知識節點總覽', icon: ICONS.grid },
+  { to: '/teacher/knowledge-map', label: '(預設) 知識節點總覽', icon: ICONS.grid, tour: 'flow-knowledge-default' },
+  { to: '/teacher/custom-knowledge-map', label: '(自定義) 知識節點總覽', icon: ICONS.grid, tour: 'flow-knowledge-custom' },
 ];
 
 // 教學流程 section 用各自主色；班級/其他為輔助功能，採低調中性灰
@@ -152,13 +153,13 @@ function NextStepDot({ ss }) {
 }
 
 export default function TeacherLayout({ children }) {
-  const { logout } = useAuth();
+  const { logout, currentUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const stageStatus = useTeacherStageStatus();
   const [openOverrides, setOpenOverrides] = useState({});
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [tourKey, setTourKey] = useState(0);
+  const { startTour } = useTour();
   const closeDrawer = () => setDrawerOpen(false);
 
   useEffect(() => {
@@ -278,6 +279,7 @@ export default function TeacherLayout({ children }) {
         to={item.to}
         end={item.to === '/teacher'}
         onClick={closeDrawer}
+        data-tour={item.tour}
         className={({ isActive }) =>
           `flex items-center gap-2 px-3 py-2.5 rounded-xl text-[15px] font-semibold transition-colors [&_svg]:w-5 [&_svg]:h-5 ${
             isActive ? 'text-[#2D3436]' : 'text-[#636E72]'
@@ -352,8 +354,10 @@ export default function TeacherLayout({ children }) {
             <img src={teacherAvatar} alt="教師" className="w-full h-full object-cover" />
           </div>
           <div>
-            <p className="text-sm font-bold leading-tight text-[#2D3436] tracking-tight">SciLens</p>
-            <p className="text-sm text-[#5A8A5C] leading-tight font-medium">迷思概念診斷 · 教師端</p>
+            <p className="text-sm font-bold leading-tight text-[#2D3436] tracking-tight">
+              {currentUser?.name || currentUser?.account || 'SciLens'}
+            </p>
+            <p className="text-[11px] text-[#5A8A5C] leading-tight font-medium">迷思概念診斷 · 教師端</p>
           </div>
         </div>
         <button
@@ -374,7 +378,7 @@ export default function TeacherLayout({ children }) {
 
       <div className="px-3 py-3 border-t border-[#D5D8DC] space-y-1">
         <button
-          onClick={() => setTourKey(k => k + 1)}
+          onClick={() => startTour('sidebar')}
           className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[#636E72] hover:text-[#2D3436] hover:bg-[#EEF5E6] rounded-xl transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -399,7 +403,7 @@ export default function TeacherLayout({ children }) {
 
   return (
     <div className="flex h-screen bg-[#EEF5E6]">
-      <GuidedTour tourKey={tourKey || null} onFinish={() => setTourKey(0)} />
+      <GuidedTour />
       <aside data-tour="sidebar" className="hidden md:flex w-60 bg-white border-r border-[#D5D8DC] flex-col flex-shrink-0 shadow-[2px_0_8px_rgba(0,0,0,0.02)]">
         {sidebar}
       </aside>

@@ -12,6 +12,8 @@ import {
   TIER_CLASS,
   TIER_LABEL,
 } from '../../lib/treatmentOutcomes';
+import { useTour } from '../../context/TourContext';
+import { Icon } from '../../components/ui/woodKit';
 
 const CLASS_PALETTE = {
   'class-A': { bg: '#C8EAAE', fg: '#3D5A3E' },
@@ -30,6 +32,7 @@ const CLASS_PALETTE = {
  */
 export default function TreatmentOutcomes() {
   const navigate = useNavigate();
+  const { startTour } = useTour();
   const { data: scenarioQuizzes = [] } = useScenarios();
   const { data: classes = [] } = useClasses();
   const [classFilter, setClassFilter] = useState('all');
@@ -70,8 +73,18 @@ export default function TreatmentOutcomes() {
     <TeacherLayout>
       <div className="p-4 sm:p-6 md:p-8">
         {/* 頁首 */}
-        <div className="mb-3">
-          <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">概念釐清結果</h1>
+        <div className="mb-3" data-tour="treatment-outcomes-header">
+          <div className="flex items-center gap-3 mb-1">
+            <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">概念釐清結果</h1>
+            <button
+              type="button"
+              onClick={() => startTour('treatment-outcomes')}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[#C8D6C9] text-[#3D5A3E] text-sm font-semibold hover:bg-[#EEF5E6] transition-colors shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
+              title="瞭解功能"
+            >
+              <Icon name="tour" className="text-base" />操作導覽
+            </button>
+          </div>
           <p className="text-[#636E72] mt-1 text-sm">
             一頁掌握每位學生在概念釐清治療對話中的釐清狀況，協助你決定下一步教學。
           </p>
@@ -82,7 +95,7 @@ export default function TreatmentOutcomes() {
 
         {/* 篩選列 */}
         <div className="bg-white rounded-2xl border border-[#BDC3C7] p-4 my-4 flex flex-wrap items-center gap-3
-                        shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+                        shadow-[0_2px_8px_rgba(0,0,0,0.04)]" data-tour="treatment-outcomes-filter">
           <div className="flex items-center gap-2">
             <label className="text-sm font-semibold text-[#636E72]">班級</label>
             <select
@@ -117,13 +130,15 @@ export default function TreatmentOutcomes() {
         </div>
 
         {/* 三張指標卡：學生數 / 已釐清 / 需關注 */}
-        <SummaryCards aggregate={aggregate} allLoaded={allLoaded} total={rows.length} />
+        <div data-tour="treatment-outcomes-summary">
+          <SummaryCards aggregate={aggregate} allLoaded={allLoaded} total={rows.length} />
+        </div>
 
         {/* 結果表格 */}
         {!isLoading && rows.length === 0 ? (
           <EmptyState />
         ) : (
-          <div className="bg-white rounded-2xl border border-[#BDC3C7] overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+          <div className="bg-white rounded-2xl border border-[#BDC3C7] overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.04)]" data-tour="treatment-outcomes-table">
             <div className="overflow-x-auto">
               <table className="w-full text-sm min-w-[720px]">
                 <thead className="bg-[#EEF5E6] text-sm text-[#636E72] uppercase tracking-wider">

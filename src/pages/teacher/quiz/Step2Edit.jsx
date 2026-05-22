@@ -12,6 +12,7 @@ import CoveragePanel from '../../../components/teacher/quizEditor/CoveragePanel'
 import QuestionImportDrawer from '../../../components/teacher/quizEditor/QuestionImportDrawer';
 import { sortQuestionsByNodeOrder } from '../../../utils/topoSortNodes';
 import KnowledgeSkillTree from '../../../components/teacher/KnowledgeSkillTree';
+import { useToast } from '../../../context/ToastContext';
 
 const AUTO_SAVE_DELAY_MS = 30000;
 
@@ -78,6 +79,7 @@ export default function Step2Edit({ onBack }) {
   } = useApp();
   const { data: quizzes = [] } = useQuizzes();
   const saveQuizMut = useSaveQuiz();
+  const { toast } = useToast();
   const navigate = useNavigate();
 
   // 編輯既有：用原 title；複製：用「原title (複製)」；新建：用日期預設名。
@@ -232,20 +234,22 @@ export default function Step2Edit({ onBack }) {
   const handleSaveDraft = async () => {
     try {
       await performSave('draft');
+      toast.success('草稿已儲存');
     } catch (err) {
-      alert('儲存草稿失敗：' + (err?.message ?? '未知錯誤'));
+      toast.error('儲存草稿失敗：' + (err?.message ?? '未知錯誤'));
     }
   };
 
   const handlePublish = async () => {
     try {
       await performSave('published');
+      toast.success('題組已發佈');
       setEditingQuizId(null);
       setEditingQuizStatus(null);
       setEditingQuizTitle('');
       navigate('/teacher/quizzes');
     } catch (err) {
-      alert('儲存題組失敗：' + (err?.message ?? '未知錯誤'));
+      toast.error('儲存題組失敗：' + (err?.message ?? '未知錯誤'));
     }
   };
 
@@ -278,15 +282,17 @@ export default function Step2Edit({ onBack }) {
         </div>
       </details>
 
-      <CoveragePanel
-        questions={quizQuestions}
-        selectedNodeIds={selectedNodeIds}
-        nodeQuestionCounts={nodeQuestionCounts}
-        onAddForMisconception={addQuestionForMisconception}
-      />
+      <div data-tour="coverage-panel">
+        <CoveragePanel
+          questions={quizQuestions}
+          selectedNodeIds={selectedNodeIds}
+          nodeQuestionCounts={nodeQuestionCounts}
+          onAddForMisconception={addQuestionForMisconception}
+        />
+      </div>
 
       <div className="flex flex-wrap items-center justify-between mb-3 gap-3 sm:gap-4">
-        <div className="flex items-center gap-2 flex-1 min-w-[220px]">
+        <div className="flex items-center gap-2 flex-1 min-w-[220px]" data-tour="quiz-title-input">
           <label className="text-sm font-semibold text-[#2D3436] whitespace-nowrap">題組名稱</label>
           <input
             value={quizTitle}
@@ -321,6 +327,7 @@ export default function Step2Edit({ onBack }) {
             自動排序
           </button>
           <button
+            data-tour="add-question-area"
             onClick={addNewQuestion}
             className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-[#3D5A3E] border border-[#BDC3C7] bg-[#C8EAAE] rounded-xl hover:bg-[#8FC87A] transition-colors"
           >
@@ -332,7 +339,7 @@ export default function Step2Edit({ onBack }) {
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-[#BDC3C7] shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+      <div data-tour="question-list" className="overflow-x-auto rounded-2xl border border-[#BDC3C7] shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
         <table className="w-full text-sm border-collapse bg-white" style={{ minWidth: '900px' }}>
           <thead>
             <tr className="bg-[#C8EAAE] border-b border-[#BDC3C7]">
@@ -473,7 +480,7 @@ export default function Step2Edit({ onBack }) {
           </svg>
           返回上一步
         </button>
-        <div className="flex gap-3">
+        <div className="flex gap-3" data-tour="save-buttons">
           <button
             onClick={handleSaveDraft}
             disabled={saveQuizMut.isPending}

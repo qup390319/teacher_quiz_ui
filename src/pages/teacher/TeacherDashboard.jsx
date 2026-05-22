@@ -5,6 +5,7 @@ import AIBadge from '../../components/AIBadge';
 import { useTeacherStageStatus } from '../../hooks/useTeacherStageStatus';
 import { knowledgeNodes } from '../../data/knowledgeGraph';
 import { Icon } from '../../components/ui/woodKit';
+import { useTour } from '../../context/TourContext';
 
 function HelpTip({ text }) {
   const [open, setOpen] = useState(false);
@@ -52,12 +53,13 @@ const STEP_COLORS = {
 };
 
 // 單一流程步驟卡
-function FlowStep({ stepIdx, label, color, to, statusLabel, statusReady, isNext, ai, onNavigate }) {
+function FlowStep({ stepIdx, label, color, to, statusLabel, statusReady, isNext, ai, onNavigate, tourId }) {
   const c = STEP_COLORS[color];
   return (
     <button
       type="button"
       onClick={() => onNavigate(to)}
+      data-tour={tourId}
       className="flex-1 flex flex-col items-center text-center p-4 rounded-2xl hover:bg-[#FAFBF9] transition-all group relative"
       style={isNext ? {
         backgroundColor: c.tint,
@@ -104,6 +106,7 @@ const WELCOME_DISMISSED_KEY = 'scilens-teacher-welcome-dismissed';
 export default function TeacherDashboard() {
   const navigate = useNavigate();
   const stage = useTeacherStageStatus();
+  const { startTour } = useTour();
 
   // 首次使用引導 banner（localStorage 記住 dismiss）
   const [showWelcome, setShowWelcome] = useState(() => {
@@ -135,18 +138,30 @@ export default function TeacherDashboard() {
         <div className="mb-4 flex items-center gap-2 flex-wrap">
           <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">首頁</h1>
           <HelpTip text="完成一次迷思診斷與治療的完整流程：出題 → 派題 → 看結果 → 釐清補救" />
-          {/* 若引導已關閉，提供重新開啟入口（不顯眼但找得到） */}
-          {!showWelcome && (
+
+          {/* 右側操作區：操作導覽（永遠可用）+ 重新開啟歡迎卡（只在已關閉時顯示） */}
+          <div className="ml-auto flex items-center gap-2">
             <button
               type="button"
-              onClick={reopenWelcome}
-              className="ml-auto inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-[#D4A244] text-[#7A4A18] text-sm font-semibold hover:bg-[#FBE9C7] transition-colors"
-              title="重新顯示歡迎引導"
+              onClick={() => startTour('home')}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[#C8D6C9] text-[#3D5A3E] text-sm font-semibold hover:bg-[#EEF5E6] transition-colors shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
+              title="逐步介紹首頁與側邊欄對應的功能"
             >
-              <Icon name="help_outline" className="text-sm" />
-              重新開啟引導
+              <Icon name="tour" className="text-base" />
+              操作導覽
             </button>
-          )}
+            {!showWelcome && (
+              <button
+                type="button"
+                onClick={reopenWelcome}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[#D4A244] text-[#7A4A18] text-sm font-semibold hover:bg-[#FBE9C7] transition-colors"
+                title="重新顯示歡迎引導"
+              >
+                <Icon name="help_outline" className="text-sm" />
+                重新開啟歡迎卡
+              </button>
+            )}
+          </div>
         </div>
 
         {/* 首次使用引導 banner — 強調「依序操作」，不提供跳過流程的快速鍵 */}
@@ -229,6 +244,7 @@ export default function TeacherDashboard() {
               isNext={stage.nextStep === 'quiz'}
               ai="出題輔助：RAGFlow 從教材檢索並建議題目"
               onNavigate={navigate}
+              tourId="home-flow-quiz"
             />
             <FlowArrow />
             <FlowStep
@@ -240,6 +256,7 @@ export default function TeacherDashboard() {
               statusReady={stage.assign.ready}
               isNext={stage.nextStep === 'assign'}
               onNavigate={navigate}
+              tourId="home-flow-assign"
             />
             <FlowArrow />
             <FlowStep
@@ -252,6 +269,7 @@ export default function TeacherDashboard() {
               isNext={stage.nextStep === 'dashboard'}
               ai="AI 報告摘要：LLM 彙整班級表現重點"
               onNavigate={navigate}
+              tourId="home-flow-dashboard"
             />
           </div>
         </div>
@@ -276,6 +294,7 @@ export default function TeacherDashboard() {
               statusReady={stage.remediation.count > 0}
               isNext={stage.nextStep === 'remediation'}
               onNavigate={navigate}
+              tourId="home-flow-remediation-edit"
             />
             <FlowArrow />
             <FlowStep
@@ -286,6 +305,7 @@ export default function TeacherDashboard() {
               statusLabel={remediationStep2Status}
               statusReady={stage.remediation.assignCount > 0}
               onNavigate={navigate}
+              tourId="home-flow-remediation-assign"
             />
             <FlowArrow />
             <FlowStep
@@ -297,6 +317,7 @@ export default function TeacherDashboard() {
               statusReady={stage.remediation.assignCount > 0}
               ai="AI 補救對話：LLM 引導 CER 概念釐清"
               onNavigate={navigate}
+              tourId="home-flow-remediation-result"
             />
           </div>
         </div>
@@ -304,6 +325,7 @@ export default function TeacherDashboard() {
         {/* Knowledge Nodes Entry */}
         <button
           onClick={() => navigate('/teacher/knowledge-map')}
+          data-tour="home-knowledge-map"
           className="w-full bg-white border border-[#BDC3C7] rounded-[32px] p-5 text-left hover:bg-[#EEF5E6] transition-all group shadow-[0_2px_12px_rgba(0,0,0,0.06)]"
         >
           <div className="flex items-center justify-between">

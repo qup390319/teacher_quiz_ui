@@ -7,6 +7,9 @@ import { resolveScenarioImage } from '../../../lib/scenarioImage';
 import { useAssignments } from '../../../hooks/useAssignments';
 import { useClasses } from '../../../hooks/useClasses';
 import { knowledgeNodes } from '../../../data/knowledgeGraph';
+import { useTour } from '../../../context/TourContext';
+import { useToast } from '../../../context/ToastContext';
+import { Icon } from '../../../components/ui/woodKit';
 
 const TABS = [
   { key: 'all', label: '全部' },
@@ -19,6 +22,8 @@ const TABS = [
  */
 export default function ScenarioLibrary() {
   const navigate = useNavigate();
+  const { startTour } = useTour();
+  const { toast } = useToast();
   const { data: scenarioQuizzes = [], isLoading } = useScenarios();
   const { data: assignments = [] } = useAssignments();
   // 用空 filter（{}）拿全部班級（含已封存 / 其他學年），讓「已派班級」顯示
@@ -33,10 +38,11 @@ export default function ScenarioLibrary() {
     if (!deletingScenario) return;
     try {
       await deleteScenario.mutateAsync(deletingScenario.id);
+      toast.success('概念釐清題組已刪除');
       setDeletingScenario(null);
     } catch (err) {
       console.error('[ScenarioLibrary] failed to delete', err);
-      alert('刪除概念釐清題組失敗：' + (err?.message ?? '未知錯誤'));
+      toast.error('刪除概念釐清題組失敗：' + (err?.message ?? '未知錯誤'));
     }
   };
 
@@ -64,14 +70,25 @@ export default function ScenarioLibrary() {
     <TeacherLayout>
       <div className="p-4 sm:p-6 md:p-8">
         {/* 頁首 */}
-        <div className="flex flex-wrap items-start justify-between mb-3 gap-3">
+        <div data-tour="scenario-library-header" className="flex flex-wrap items-start justify-between mb-3 gap-3">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">概念釐清出題</h1>
+            <div className="flex items-center gap-3 mb-1">
+              <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">概念釐清出題</h1>
+              <button
+                type="button"
+                onClick={() => startTour('scenario-library')}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[#C8D6C9] text-[#3D5A3E] text-sm font-semibold hover:bg-[#EEF5E6] transition-colors shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
+                title="瞭解功能"
+              >
+                <Icon name="tour" className="text-base" />操作導覽
+              </button>
+            </div>
             <p className="text-[#636E72] mt-1 text-sm">
               概念釐清題組以「論證情境 + AI 對話治療」進行。流程：建立概念釐清題組 → 派發給班級 → 學生與 AI 對話 → 教師查紀錄。
             </p>
           </div>
           <button
+            data-tour="scenario-create-btn"
             type="button"
             disabled
             title="目前未開放此功能"
@@ -134,13 +151,14 @@ export default function ScenarioLibrary() {
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {visibleScenarios.map((sq) => {
+          <div data-tour="scenario-cards-list" className="space-y-4">
+            {visibleScenarios.map((sq, sqIdx) => {
               const targetNode = knowledgeNodes.find((n) => n.id === sq.targetNodeId);
               const assignedClasses = getAssignedClasses(sq.id);
               return (
                 <div
                   key={sq.id}
+                  data-tour={sqIdx === 0 ? 'scenario-card-first' : undefined}
                   className="bg-white rounded-[24px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]
                              hover:border-[#5BA47A] hover:shadow-[0_4px_16px_rgba(63,139,94,0.18)] transition"
                 >

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import TeacherLayout from '../../components/TeacherLayout';
+import { useToast } from '../../context/ToastContext';
 import {
   useClass, useUpdateClass, useUpdateClassStudents,
   useDeleteClass, useArchiveClass, useUnarchiveClass,
@@ -35,6 +36,7 @@ function PasswordCell({ studentId }) {
   const { data, isFetching, error } = useStudent(studentId, { enabled: reveal });
   const resetMut = useResetStudentPassword();
   const qc = useQueryClient();
+  const { toast } = useToast();
 
   const handleReset = async () => {
     if (!confirm(`確定將 ${studentId} 的密碼重設為預設值（= 帳號）？`)) return;
@@ -42,9 +44,10 @@ function PasswordCell({ studentId }) {
       await resetMut.mutateAsync(studentId);
       // 重設後強制再 fetch 一次以更新明文（若已揭露）
       if (reveal) await qc.invalidateQueries({ queryKey: ['students', studentId] });
+      toast.success('密碼已重設為預設值');
     } catch (err) {
       const msg = err instanceof ApiError && err.status === 404 ? '學生不存在' : '重設失敗';
-      alert(msg);
+      toast.error(msg);
     }
   };
 
@@ -93,6 +96,7 @@ export default function ClassDetail() {
   const { classId } = useParams();
   const navigate = useNavigate();
   const { currentSchoolYear, currentSemester } = useApp();
+  const { toast } = useToast();
   const { data: cls, isLoading, error } = useClass(classId);
   const { data: assignments = [] } = useAssignments();
   const updateStudentsMut = useUpdateClassStudents();
@@ -144,6 +148,7 @@ export default function ClassDetail() {
         schoolYear: classForm.schoolYear, semester: classForm.semester,
       });
       closeClassEdit();
+      toast.success('班級資訊已儲存');
     } catch (err) {
       setClassFormError(err?.message || '儲存失敗');
     }
@@ -156,14 +161,19 @@ export default function ClassDetail() {
     )) return;
     try {
       await archiveClassMut.mutateAsync(cls.id);
+      toast.success('班級已封存');
     } catch (err) {
-      alert(err?.message || '封存失敗');
+      toast.error(err?.message || '封存失敗');
     }
   };
 
   const handleUnarchive = async () => {
-    try { await unarchiveClassMut.mutateAsync(cls.id); }
-    catch (err) { alert(err?.message || '還原失敗'); }
+    try {
+      await unarchiveClassMut.mutateAsync(cls.id);
+      toast.success('班級已還原為任教中');
+    } catch (err) {
+      toast.error(err?.message || '還原失敗');
+    }
   };
 
   const handleDeleteClass = async () => {
@@ -171,7 +181,7 @@ export default function ClassDetail() {
       await deleteClassMut.mutateAsync(cls.id);
       navigate('/teacher/classes');
     } catch (err) {
-      alert(err?.message || '刪除失敗');
+      toast.error(err?.message || '刪除失敗');
     }
   };
 
@@ -204,7 +214,7 @@ export default function ClassDetail() {
       });
     } catch (err) {
       console.error('[ClassDetail] save failed', err);
-      alert('儲存失敗，請稍後再試');
+      toast.error('儲存失敗，請稍後再試');
     }
   };
 

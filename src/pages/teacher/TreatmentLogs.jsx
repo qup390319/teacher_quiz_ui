@@ -6,6 +6,8 @@ import { useScenarios } from '../../hooks/useScenarios';
 import { useClasses } from '../../hooks/useClasses';
 import { useTreatmentLogs } from '../../hooks/useTreatment';
 import { PHASE_LABEL, STAGE_LABEL } from '../../data/treatmentBot';
+import { useTour } from '../../context/TourContext';
+import { Icon } from '../../components/ui/woodKit';
 
 const CLASS_COLORS = {
   'class-A': { bg: '#C8EAAE', fg: '#3D5A3E' },
@@ -18,6 +20,7 @@ const CLASS_COLORS = {
  */
 export default function TreatmentLogs() {
   const navigate = useNavigate();
+  const { startTour } = useTour();
   const { data: scenarioQuizzes = [] } = useScenarios();
   const { data: classes = [] } = useClasses();
   const [classFilter, setClassFilter] = useState('all');
@@ -58,8 +61,18 @@ export default function TreatmentLogs() {
     <TeacherLayout>
       <div className="p-4 sm:p-6 md:p-8">
         {/* 頁首 */}
-        <div className="mb-4 sm:mb-6">
-          <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">概念釐清對話紀錄</h1>
+        <div className="mb-4 sm:mb-6" data-tour="treatment-logs-header">
+          <div className="flex items-center gap-3 mb-1">
+            <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">概念釐清對話紀錄</h1>
+            <button
+              type="button"
+              onClick={() => startTour('treatment-logs')}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[#C8D6C9] text-[#3D5A3E] text-sm font-semibold hover:bg-[#EEF5E6] transition-colors shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
+              title="瞭解功能"
+            >
+              <Icon name="tour" className="text-base" />操作導覽
+            </button>
+          </div>
           <p className="text-[#636E72] mt-1 text-sm">
             檢視學生與 AI 的概念釐清治療對話內容，作為派發治療成效的判斷依據
           </p>
@@ -72,7 +85,7 @@ export default function TreatmentLogs() {
 
         {/* 頁面內篩選（班級 / 概念釐清題組） */}
         <div className="bg-white rounded-2xl border border-[#BDC3C7] p-4 mb-4 flex flex-wrap items-center gap-3
-                        shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+                        shadow-[0_2px_8px_rgba(0,0,0,0.04)]" data-tour="treatment-logs-filter">
           <div className="flex items-center gap-2">
             <label className="text-sm font-semibold text-[#636E72]">班級</label>
             <select
@@ -119,7 +132,7 @@ export default function TreatmentLogs() {
             <p className="text-sm text-[#95A5A6] mt-1">當學生開始概念釐清治療對話後，紀錄會自動出現在這裡</p>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl border border-[#BDC3C7] overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+          <div className="bg-white rounded-2xl border border-[#BDC3C7] overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.04)]" data-tour="treatment-logs-table">
            <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[860px]">
               <thead className="bg-[#EEF5E6] text-sm text-[#636E72] uppercase tracking-wider">

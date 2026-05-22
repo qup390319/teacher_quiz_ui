@@ -121,13 +121,13 @@ export default function Step1Nodes({ onNext }) {
 
   return (
     <div>
-      <div className="mb-6">
+      <div className="mb-6" data-tour="step1-hero">
         <h2 className="text-xl font-bold text-[#2D3436] mb-1">步驟一：決定出題範圍</h2>
         <p className="text-[#636E72] text-[15px]">點擊下方技能樹節點以勾選要出題的知識範圍；勾選後節點會發亮，未勾選會黯淡。勾選後可在下方表格看到每個節點對應的學生常見迷思。</p>
       </div>
 
       {/* 完整技能樹 — 頁面頂端、不 sticky；用 IntersectionObserver 追蹤是否在畫面內 */}
-      <div className="mb-6" ref={treeRef}>
+      <div className="mb-6" ref={treeRef} data-tour="knowledge-skill-tree">
         <KnowledgeSkillTree
           selectable
           selectedNodeIds={selectedNodeIds}
@@ -211,7 +211,7 @@ export default function Step1Nodes({ onNext }) {
       )}
 
       {/* 知識節點 × 迷思概念表格 */}
-      <div className="bg-white rounded-[24px] sm:rounded-[32px] border border-[#BDC3C7] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+      <div data-tour="step1-minipath" className="bg-white rounded-[24px] sm:rounded-[32px] border border-[#BDC3C7] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
        <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm min-w-[640px]">
           <thead>

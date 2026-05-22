@@ -42,7 +42,7 @@ DATA_DIR = Path(__file__).parent / "data"
 
 # --- Static seed data -------------------------------------------------------
 TEACHER_ACCOUNT = "aaa001"
-TEACHER_NAME = "示範老師"
+TEACHER_NAME = "黃老師(demo)"
 # Production launch teacher: starts with no classes/students/assignments. Sees
 # only the system-shared quizzes + scenarios so they can run the system for
 # real. See spec-13 §6.1.

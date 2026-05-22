@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TeacherLayout from '../../components/TeacherLayout';
+import { useToast } from '../../context/ToastContext';
 import { knowledgeNodes, mergeCustomsIntoNode } from '../../data/knowledgeGraph';
 import {
   useCustomMisconceptions,
@@ -9,13 +10,17 @@ import {
 } from '../../hooks/useCustomMisconceptions';
 import AddCustomMisconceptionModal from '../../components/teacher/AddCustomMisconceptionModal';
 import KnowledgeSkillTree from '../../components/teacher/KnowledgeSkillTree';
+import { useTour } from '../../context/TourContext';
+import { Icon } from '../../components/ui/woodKit';
 
 export default function CustomKnowledgeMap() {
   const navigate = useNavigate();
+  const { startTour } = useTour();
   const { data: customs = [] } = useCustomMisconceptions();
   const createMut = useCreateCustomMisconception();
   const deleteMut = useDeleteCustomMisconception();
   const [addModalNodeId, setAddModalNodeId] = useState(null);
+  const { toast } = useToast();
 
   const mergedNodes = knowledgeNodes.map((n) => mergeCustomsIntoNode(n, customs));
   const totalDefault = knowledgeNodes.reduce((s, n) => s + n.misconceptions.length, 0);
@@ -41,8 +46,9 @@ export default function CustomKnowledgeMap() {
     try {
       await createMut.mutateAsync(payload);
       setAddModalNodeId(null);
+      toast.success('自訂迷思已新增');
     } catch (err) {
-      alert('新增失敗：' + (err?.message ?? '未知錯誤'));
+      toast.error('新增失敗：' + (err?.message ?? '未知錯誤'));
     }
   };
 
@@ -50,8 +56,9 @@ export default function CustomKnowledgeMap() {
     if (!window.confirm(`確定要刪除自訂迷思「${label}」嗎？此操作無法還原。`)) return;
     try {
       await deleteMut.mutateAsync(customId);
+      toast.success(`已刪除自訂迷思「${label}」`);
     } catch (err) {
-      alert('刪除失敗：' + (err?.message ?? '未知錯誤'));
+      toast.error('刪除失敗：' + (err?.message ?? '未知錯誤'));
     }
   };
 
@@ -59,7 +66,7 @@ export default function CustomKnowledgeMap() {
     <TeacherLayout>
       <div className="p-4 sm:p-6 md:p-8">
         {/* 頁面標題 */}
-        <div className="mb-4 sm:mb-6">
+        <div className="mb-4 sm:mb-6" data-tour="custom-km-header">
           <div className="flex items-center gap-3 mb-1">
             <button
               onClick={() => navigate('/teacher')}
@@ -70,6 +77,14 @@ export default function CustomKnowledgeMap() {
               </svg>
             </button>
             <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">(自定義) 知識節點與迷思概念總覽</h1>
+            <button
+              type="button"
+              onClick={() => startTour('custom-knowledge-map')}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[#C8D6C9] text-[#3D5A3E] text-sm font-semibold hover:bg-[#EEF5E6] transition-colors shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
+              title="瞭解功能"
+            >
+              <Icon name="tour" className="text-base" />操作導覽
+            </button>
           </div>
           <p className="text-sm text-[#636E72] ml-8">
             水溶液單元 · {knowledgeNodes.length} 個知識節點 ·
@@ -77,7 +92,7 @@ export default function CustomKnowledgeMap() {
             <span className="mx-1 text-[#BDC3C7]">·</span>
             <span className="font-medium text-[#D08B2E]">{totalCustom} 個您的自訂迷思</span>
           </p>
-          <div className="ml-8 mt-3">
+          <div className="ml-8 mt-3" data-tour="custom-km-add-btn">
             <button
               type="button"
               onClick={() => setAddModalNodeId('')}
@@ -97,12 +112,12 @@ export default function CustomKnowledgeMap() {
         </div>
 
         {/* A 區：知識路徑技能樹（與預設總覽共用同一元件） */}
-        <div className="mb-6">
+        <div className="mb-6" data-tour="custom-km-tree">
           <KnowledgeSkillTree />
         </div>
 
         {/* B 區：表格（預設 + 自訂混合顯示） */}
-        <div className="bg-white rounded-[32px] border border-[#BDC3C7] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+        <div className="bg-white rounded-[32px] border border-[#BDC3C7] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.06)]" data-tour="custom-km-table">
           {/* 圖例 */}
           <div className="px-4 py-3 border-b border-[#D5D8DC] bg-[#FAFAFA] flex items-center gap-4 text-sm">
             <span className="text-[#636E72] font-medium">圖例：</span>
