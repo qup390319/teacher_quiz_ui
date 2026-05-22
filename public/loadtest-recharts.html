@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8" />
+  <title>Recharts Stress Harness</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 16px; }
+    .chart { border: 1px solid #ddd; padding: 8px; margin-bottom: 16px; }
+    #meta { background: #f0f8ff; padding: 8px; border-radius: 4px; margin-bottom: 16px; }
+    pre { background: #f6f6f6; padding: 12px; font-size: 12px; max-height: 280px; overflow: auto; }
+  </style>
+</head>
+<body>
+  <h1>Recharts Stress Harness</h1>
+  <div id="meta">Loading…</div>
+  <h3>Results (also in window.__perf)</h3>
+  <pre id="results">pending…</pre>
+  <div id="root"></div>
+
+  <script type="module">
+    const log = (m) => {
+      const el = document.getElementById("results");
+      el.textContent = (el.textContent === "pending…" ? "" : el.textContent) + m + "\n";
+    };
+
+    try {
+      const tStart = performance.now();
+      const [ReactMod, ReactDOMMod, ReactDOMSync, RechartsMod, mock] = await Promise.all([
+        import("/@id/react"),
+        import("/@id/react-dom/client"),
+        import("/@id/react-dom"),
+        import("/@id/recharts"),
+        import("/src/data/__loadtest__/answers.large.js"),
+      ]);
+      const tImports = performance.now();
+      // Vite dev pre-bundles CJS as default exports — unwrap when needed.
+      const React = ReactMod.default ?? ReactMod;
+      const ReactDOMClient = ReactDOMMod.default ?? ReactDOMMod;
+      const Recharts = RechartsMod.default ?? RechartsMod;
+      const { flushSync } = ReactDOMSync.default ?? ReactDOMSync;
+      const { loadtestAnswers } = mock;
+      document.getElementById("meta").textContent =
+        `Imported modules in ${(tImports - tStart) | 0} ms. Loaded ${loadtestAnswers.length} answer rows.`;
+
+      const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ScatterChart, Scatter } = Recharts;
+      const h = React.createElement;
+
+      // Aggregate data (the cost the real app pays)
+      const tAggStart = performance.now();
+      const nodeMap = new Map();
+      const miscMap = new Map();
+      const studentMap = new Map();
+      for (const a of loadtestAnswers) {
+        let n = nodeMap.get(a.nodeId); if (!n) { n = { node: a.nodeId, total: 0, correct: 0 }; nodeMap.set(a.nodeId, n); }
+        n.total++; if (a.correct) n.correct++;
+        if (!a.correct) miscMap.set(a.misconceptionId, (miscMap.get(a.misconceptionId) || 0) + 1);
+        let s = studentMap.get(a.studentId); if (!s) { s = { sid: a.studentId, total: 0, correct: 0 }; studentMap.set(a.studentId, s); }
+        s.total++; if (a.correct) s.correct++;
+      }
+      const tAggEnd = performance.now();
+
+      const nodeData = [...nodeMap.values()].map(n => ({ ...n, rate: +(n.correct / n.total * 100).toFixed(1) }));
+      const miscData = [...miscMap.entries()].map(([id, count]) => ({ id, count })).sort((a, b) => b.count - a.count);
+      const studentData = [...studentMap.values()].map(s => ({ sid: s.sid, score: Math.round(s.correct / s.total * 100), total: s.total }));
+
+      log(`module import : ${(tImports - tStart) | 0} ms`);
+      log(`aggregation   : ${(tAggEnd - tAggStart) | 0} ms (for ${loadtestAnswers.length} rows)`);
+      log(`  → ${nodeData.length} node bars, ${miscData.length} misconception bars, ${studentData.length} student points`);
+
+      const root = ReactDOMClient.createRoot(document.getElementById("root"));
+
+      // Helper: synchronously render + measure (flushSync forces a sync commit)
+      const renderSync = (el) => {
+        const t0 = performance.now();
+        flushSync(() => root.render(el));
+        // After flushSync the DOM is committed; layout/paint may still be pending,
+        // but we want commit time (React-side cost). Add small wait for paint.
+        return t0;
+      };
+
+      // ── Render pass 1: small charts ──
+      const tRender1Start = renderSync(
+        h("div", null,
+          h("div", { className: "chart" },
+            h("h3", null, `BarChart — ${nodeData.length} node bars`),
+            h(BarChart, { width: 800, height: 240, data: nodeData },
+              h(CartesianGrid, { strokeDasharray: "3 3" }),
+              h(XAxis, { dataKey: "node" }),
+              h(YAxis, { domain: [0, 100] }),
+              h(Tooltip),
+              h(Bar, { dataKey: "rate", fill: "#4f46e5", isAnimationActive: false }),
+            ),
+          ),
+          h("div", { className: "chart" },
+            h("h3", null, `BarChart — ${miscData.length} misconception bars`),
+            h(BarChart, { width: 800, height: 240, data: miscData },
+              h(CartesianGrid, { strokeDasharray: "3 3" }),
+              h(XAxis, { dataKey: "id" }),
+              h(YAxis),
+              h(Tooltip),
+              h(Bar, { dataKey: "count", fill: "#ef4444", isAnimationActive: false }),
+            ),
+          ),
+          h("div", { className: "chart" },
+            h("h3", null, `ScatterChart — ${studentData.length} student points`),
+            h(ScatterChart, { width: 800, height: 320 },
+              h(CartesianGrid),
+              h(XAxis, { dataKey: "total", name: "questions" }),
+              h(YAxis, { dataKey: "score", name: "score" }),
+              h(Tooltip),
+              h(Scatter, { data: studentData, fill: "#10b981", isAnimationActive: false }),
+            ),
+          ),
+        )
+      );
+      const tFirstPaint = performance.now();
+      log(`first render  : ${(tFirstPaint - tRender1Start) | 0} ms (commit only)`);
+      await new Promise(r => setTimeout(r, 50)); // settle
+
+      // ── Render pass 2: re-render same charts (measures update cost) ──
+      const updateTimings = [];
+      for (let i = 0; i < 5; i++) {
+        const tUStart = renderSync(
+          h("div", null,
+            h("div", { className: "chart" },
+              h("h3", null, `BarChart re-render #${i + 1}`),
+              h(BarChart, { width: 800, height: 240, data: nodeData.map(n => ({ ...n, rate: n.rate + (i % 2 ? 1 : -1) })) },
+                h(CartesianGrid, { strokeDasharray: "3 3" }),
+                h(XAxis, { dataKey: "node" }),
+                h(YAxis, { domain: [0, 100] }),
+                h(Bar, { dataKey: "rate", fill: "#4f46e5", isAnimationActive: false }),
+              ),
+            ),
+          )
+        );
+        updateTimings.push((performance.now() - tUStart) | 0);
+        await new Promise(r => setTimeout(r, 30));
+      }
+      log(`re-render x5  : [${updateTimings.join(", ")}] ms  (avg ${(updateTimings.reduce((a, b) => a + b) / 5) | 0})`);
+
+      // ── Render pass 3: STRESS — 4000 bars in one chart ──
+      const tStressStart = renderSync(
+        h("div", null,
+          h("div", { className: "chart" },
+            h("h3", null, `STRESS — ${loadtestAnswers.length} bars in one chart`),
+            h(BarChart, {
+              width: 1200, height: 300,
+              data: loadtestAnswers.map((a, i) => ({ i, v: a.correct ? 1 : 0 })),
+            },
+              h(XAxis, { dataKey: "i", hide: true }),
+              h(YAxis, { hide: true }),
+              h(Bar, { dataKey: "v", fill: "#0ea5e9", isAnimationActive: false }),
+            ),
+          ),
+        )
+      );
+      const tStressEnd = performance.now();
+      log(`STRESS render : ${(tStressEnd - tStressStart) | 0} ms  (${loadtestAnswers.length} bars in one chart)`);
+      await new Promise(r => setTimeout(r, 100));
+      log("");
+      log(`Total DOM     : ${document.querySelectorAll("*").length} nodes`);
+      log(`Total SVG     : ${document.querySelectorAll("svg").length} containers, ${document.querySelectorAll("svg rect").length} rects, ${document.querySelectorAll("svg path").length} paths`);
+      log(`Memory used   : ${performance.memory ? (performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(1) + " MB" : "n/a"}`);
+
+      window.__perf = {
+        moduleImportMs: (tImports - tStart) | 0,
+        aggregationMs: (tAggEnd - tAggStart) | 0,
+        firstPaintMs: (tFirstPaint - tRender1Start) | 0,
+        rerenderMs: updateTimings,
+        stressRenderMs: (tStressEnd - tStressStart) | 0,
+        domNodes: document.querySelectorAll("*").length,
+        svgRects: document.querySelectorAll("svg rect").length,
+        memUsedMB: performance.memory ? +(performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(1) : null,
+      };
+      console.log("[loadtest-recharts] DONE:", window.__perf);
+    } catch (err) {
+      log("ERROR: " + err.message);
+      console.error("[loadtest-recharts] FAILED:", err);
+      window.__perf = { error: err.message, stack: err.stack };
+    }
+  </script>
+</body>
+</html>

@@ -43,3 +43,7 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 *.egg-info/
+
+# Load-test artefacts
+src/data/__loadtest__/
+load-tests/reports/

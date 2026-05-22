@@ -233,9 +233,11 @@ export default function InfoDrawer({ isOpen, onClose, config, dynamicStatus }) {
 
         {/* 可捲動內容區 */}
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
-          {config.sections.map((section) => (
+          {config.sections.map((section, idx) => (
+            // key uses both type + idx because some configs (e.g. cross-class-node-chart)
+            // intentionally contain multiple sections with the same type.
             <Section
-              key={section.type}
+              key={`${section.type}-${idx}`}
               section={section}
               dynamicStatus={dynamicStatus}
             />
