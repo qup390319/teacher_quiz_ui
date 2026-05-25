@@ -34,13 +34,6 @@ export const SIDEBAR_STEPS = [
     skipBeacon: true,
   },
   {
-    target: '[data-tour="flow-remediation"]',
-    content:
-      '④ 概念釐清・補救\n\n針對學生的迷思概念，進行概念釐清補救教學。\nAI 會引導學生進行對話式學習。',
-    placement: 'right',
-    skipBeacon: true,
-  },
-  {
     target: '[data-tour="flow-classes"]',
     content:
       '班級管理\n\n管理您的班級與學生帳號，包含：\n• 新增班級\n• 匯入學生名單\n• 管理學生帳密',
@@ -94,30 +87,6 @@ export const HOME_STEPS = [
     content:
       '步驟 ③ 看診斷結果\n\n學生作答後，這裡可看到：\n• 答題分布\n• 高頻迷思\n• 個人報告\n（首頁卡片 ↔ 側邊欄「③ 看診斷結果」）',
     placement: 'bottom',
-    skipBeacon: true,
-  },
-  {
-    target: '[data-tour="home-flow-remediation-edit"]',
-    linked: '[data-tour="flow-remediation"]',
-    content:
-      '步驟 ④ 釐清題組編輯\n\n針對診斷出的迷思，建立概念釐清題組。\n（首頁卡片 ↔ 側邊欄「④ 概念釐清・補救」）',
-    placement: 'top',
-    skipBeacon: true,
-  },
-  {
-    target: '[data-tour="home-flow-remediation-assign"]',
-    linked: '[data-tour="flow-remediation"]',
-    content:
-      '步驟 ⑤ 派發釐清題組\n\n把釐清題組派給有對應迷思的學生。\n（仍對應側邊欄「④」群組）',
-    placement: 'top',
-    skipBeacon: true,
-  },
-  {
-    target: '[data-tour="home-flow-remediation-result"]',
-    linked: '[data-tour="flow-remediation"]',
-    content:
-      '步驟 ⑥ 概念釐清結果\n\n學生與 AI 完成對話後，這裡查看補救成效。\n（仍對應側邊欄「④」群組）',
-    placement: 'top',
     skipBeacon: true,
   },
   {
@@ -315,7 +284,7 @@ export const DASHBOARD_STEPS = [
   {
     target: '[data-tour="dash-tab-misconceptions"]',
     content:
-      '高頻迷思排行\n\n列出最多學生持有的迷思概念，從高到低排序。\n\n這是安排概念釐清補救教學的重要依據。',
+      '高頻迷思排行\n\n列出最多學生持有的迷思概念，從高到低排序。\n\n這是規劃後續補救教學重點的重要依據。',
     placement: 'bottom',
     skipBeacon: true,
   },
@@ -378,63 +347,6 @@ export const DIAGNOSIS_LOGS_STEPS = [
   },
 ];
 
-// ─── treatment-logs ─────────────────────────────────────────────────────────
-export const TREATMENT_LOGS_STEPS = [
-  {
-    target: '[data-tour="treatment-logs-header"]',
-    content:
-      '概念釐清對話紀錄\n\n記錄每位學生與 AI 的完整概念釐清對話歷程。\n方便您了解學生在對話中的表現。',
-    placement: 'bottom',
-    skipBeacon: true,
-  },
-  {
-    target: '[data-tour="treatment-logs-filter"]',
-    content:
-      '篩選器\n\n使用班級與概念釐清題組篩選器，快速找到特定班級或題組的對話紀錄。',
-    placement: 'bottom',
-    skipBeacon: true,
-  },
-  {
-    target: '[data-tour="treatment-logs-table"]',
-    content:
-      '對話紀錄表\n\n列出每位學生的：\n• 對話狀態（進行中 / 已完成）\n• 作答進度\n• 所在階段\n\n點擊「查看對話」→ 進入完整的對話紀錄，作為評估是否需要再教的依據。',
-    placement: 'top',
-    skipBeacon: true,
-  },
-];
-
-// ─── treatment-outcomes ─────────────────────────────────────────────────────
-export const TREATMENT_OUTCOMES_STEPS = [
-  {
-    target: '[data-tour="treatment-outcomes-header"]',
-    content:
-      '概念釐清結果\n\n彙整每位學生在概念釐清對話後的釐清成效。\n協助您快速決定下一步教學行動。',
-    placement: 'bottom',
-    skipBeacon: true,
-  },
-  {
-    target: '[data-tour="treatment-outcomes-filter"]',
-    content:
-      '篩選器\n\n透過班級與題組篩選器，可聚焦在特定學生群體或特定概念釐清題組的成效分析。',
-    placement: 'bottom',
-    skipBeacon: true,
-  },
-  {
-    target: '[data-tour="treatment-outcomes-summary"]',
-    content:
-      '整體快覽\n\n三張指標卡顯示：\n• 已派發學生總數\n• 已成功釐清的人數\n• 需要特別關注的人數（需引導或未釐清）',
-    placement: 'bottom',
-    skipBeacon: true,
-  },
-  {
-    target: '[data-tour="treatment-outcomes-table"]',
-    content:
-      '結果表格\n\n以三色階呈現每位學生的結果：\n• 綠 = 已釐清\n• 黃 = 需引導\n• 紅 = 未釐清\n\n讓您一眼掌握哪些學生仍需再教。',
-    placement: 'top',
-    skipBeacon: true,
-  },
-];
-
 // ─── custom-knowledge-map ───────────────────────────────────────────────────
 export const CUSTOM_KNOWLEDGE_MAP_STEPS = [
   {
@@ -467,63 +379,6 @@ export const CUSTOM_KNOWLEDGE_MAP_STEPS = [
   },
 ];
 
-// ─── scenario-library ───────────────────────────────────────────────────────
-export const SCENARIO_LIBRARY_STEPS = [
-  {
-    target: '[data-tour="scenario-library-header"]',
-    content:
-      '概念釐清出題\n\n管理所有「概念釐清題組」。\n\n概念釐清題組是診斷後補救教學的核心工具——學生在 AI 引導的論證對話中，逐步修正自己的迷思概念。',
-    placement: 'bottom',
-    skipBeacon: true,
-  },
-  {
-    target: '[data-tour="scenario-create-btn"]',
-    content:
-      '建立新題組\n\n建立流程：\n① 選定目標知識節點與迷思\n② 填寫概念釐清情境\n③ 設定 AI 開場提問與專家示範\n④ 儲存或發布',
-    placement: 'bottom',
-    skipBeacon: true,
-  },
-  {
-    target: '[data-tour="scenario-cards-list"]',
-    content:
-      '題組卡片\n\n每張卡片顯示目標節點、目標迷思、已派發班級。\n\n• 點「預覽」→ 查看題目內容\n• 點「派發」→ 跳到派題頁面',
-    placement: 'top',
-    skipBeacon: true,
-  },
-];
-
-// ─── scenario-create ────────────────────────────────────────────────────────
-export const SCENARIO_CREATE_STEPS = [
-  {
-    target: '[data-tour="scenario-create-header"]',
-    content:
-      '概念釐清題組建立精靈\n\n設計「論證對話式」補救題組。\nAI 會以四個步驟引導學生修正迷思：\n主張 → 證據 → 推理 → 重述',
-    placement: 'bottom',
-    skipBeacon: true,
-  },
-  {
-    target: '[data-tour="scenario-target-node"]',
-    content:
-      '基本資訊\n\n① 為題組命名\n② 選擇「目標知識節點」\n③ 從該節點的 4 條迷思中勾選目標迷思\n\n這些設定決定 AI 對話的精準切入點。',
-    placement: 'bottom',
-    skipBeacon: true,
-  },
-  {
-    target: '[data-tour="scenario-questions-area"]',
-    content:
-      '概念釐清題目\n\n每題包含：\n• 情境敘述（讓學生進入情境）\n• AI 開場提問（引導學生提出主張）\n• 專家示範（學生卡關時 AI 的參考範本）\n\n一份題組可包含多題。',
-    placement: 'top',
-    skipBeacon: true,
-  },
-  {
-    target: '[data-tour="scenario-save-buttons"]',
-    content:
-      '儲存題組\n\n• 儲存為草稿 → 之後繼續修改\n• 儲存並發佈 → 加入題庫，可派發給學生',
-    placement: 'top',
-    skipBeacon: true,
-  },
-];
-
 // ─── STEP_MAP ───────────────────────────────────────────────────────────────
 export const STEP_MAP = {
   sidebar: SIDEBAR_STEPS,
@@ -536,9 +391,5 @@ export const STEP_MAP = {
   dashboard: DASHBOARD_STEPS,
   'class-management': CLASS_MANAGEMENT_STEPS,
   'diagnosis-logs': DIAGNOSIS_LOGS_STEPS,
-  'treatment-logs': TREATMENT_LOGS_STEPS,
-  'treatment-outcomes': TREATMENT_OUTCOMES_STEPS,
   'custom-knowledge-map': CUSTOM_KNOWLEDGE_MAP_STEPS,
-  'scenario-library': SCENARIO_LIBRARY_STEPS,
-  'scenario-create': SCENARIO_CREATE_STEPS,
 };

@@ -26,17 +26,20 @@
 |------|------|------|
 | 教師帳號 | 字母 + 數字組合 | `aaa001` |
 | 學生帳號 | 純數字（建議按學年 + 班級 + 座號） | `115001`（115學年甲班1號）、`115101`（115學年乙班1號）、`115201`（115學年丙班1號） |
-| 預設密碼 | 完全等於帳號 | 教師 `aaa001` / `aaa001`；學生 `115001` / `115001` |
+| 管理員帳號 | `admin` + 編號（migration 0012 起） | `admin001` |
+| 預設密碼 | 完全等於帳號 | 教師 `aaa001` / `aaa001`；學生 `115001` / `115001`；管理員 `admin001` / `admin001` |
 
-### 2.1 預設教師帳號
+### 2.1 預設帳號
 
-| 帳號 | 名稱 | 用途 | 看到的資料 |
-|------|------|------|-----------|
-| `aaa001` | 示範老師 | 給指導教授 / 簡報展示 | 全部 seed 示範資料（3 個班級 / ~60 學生 / 派題 / 作答 / 治療紀錄） |
-| `bbb001` | 黃老師 | **正式上線使用** | 班級 / 學生 / 派題 / 作答 / 診斷結果皆為空白；只看得到系統共用的「診斷出題」「概念釐清出題」題庫 |
+| 帳號 | 角色 | 名稱 | 用途 | 看到的資料 |
+|------|------|------|------|-----------|
+| `admin001` | admin | 系統管理員 | 後台維運 | 全系統（跨教師）資料管理；不關聯到教師/學生子表 |
+| `aaa001` | teacher | 示範老師 | 給指導教授 / 簡報展示 | 全部 seed 示範資料（3 個班級 / ~60 學生 / 派題 / 作答 / 治療紀錄） |
+| `bbb001` | teacher | 黃老師 | **正式上線使用** | 班級 / 學生 / 派題 / 作答 / 診斷結果皆為空白；只看得到系統共用的「診斷出題」「概念釐清出題」題庫 |
 
 兩個教師之間透過 `classes.teacher_id` 做資料隔離（spec-11 §3.3）。
 共用題庫（`quizzes` / `scenario_quizzes`）不做隔離。
+管理員 (`admin001`) 不受 `teacher_id` 過濾影響；後台 API (`/api/admin/*`) 走獨立 router + `require_admin` dependency。
 
 ---
 
@@ -139,7 +142,7 @@ async def change_password(db, user_id: str, old: str, new: str):
 |------|------|------|
 | `account` | ✅ | 帳號 |
 | `password` | ✅ | 明文密碼 |
-| `role` | ⛔ optional | 登入頁所選角色卡（`teacher` \| `student`）。若提供且與帳號實際 role 不符，回 401 `ROLE_MISMATCH`。 |
+| `role` | ⛔ optional | 登入頁所選角色卡（`teacher` \| `student` \| `admin`）。若提供且與帳號實際 role 不符，回 401 `ROLE_MISMATCH`。 |
 
 **Response 200**：
 ```json
@@ -254,7 +257,14 @@ async def require_student(user: User = Depends(get_current_user)) -> User:
     if user.role != "student":
         raise HTTPException(403, "STUDENT_ONLY")
     return user
+
+async def require_admin(user: User = Depends(get_current_user)) -> User:
+    if user.role != "admin":
+        raise HTTPException(403, "ADMIN_ONLY")
+    return user
 ```
+
+> **停用帳號（W1）**：`get_current_user` 在還原 user 後檢查 `user.is_active`，若為 `False` 回 401 `ACCOUNT_DISABLED`。`/api/auth/login` 在密碼驗證後也檢查同樣條件，避免被停用的帳號取得新 cookie。
 
 ### 7.3 用法
 
@@ -270,11 +280,28 @@ async def get_student(
 
 ### 7.4 角色 ↔ 端點 對照表（節錄學生需要存取的端點）
 
-| 端點 | Teacher | Student | 學生限制 |
-|------|---------|---------|---------|
-| `POST /api/auth/login` | ✅ | ✅ | — |
-| `GET /api/auth/me` | ✅ | ✅ | — |
-| `PATCH /api/auth/password` | ✅ | ✅ | 只能改自己 |
+| 端點 | Teacher | Student | Admin | 學生限制 |
+|------|---------|---------|-------|---------|
+| `POST /api/auth/login` | ✅ | ✅ | ✅ | — |
+| `GET /api/auth/me` | ✅ | ✅ | ✅ | — |
+| `PATCH /api/auth/password` | ✅ | ✅ | ✅ | 只能改自己 |
+| `GET /api/admin/users` (W2) | ❌ | ❌ | ✅ | ADMIN_ONLY |
+| `GET /api/admin/users/{id}` (W2) | ❌ | ❌ | ✅ | ADMIN_ONLY；含明文密碼 |
+| `POST /api/admin/users` (W2) | ❌ | ❌ | ✅ | ADMIN_ONLY；新增教師 |
+| `PATCH /api/admin/users/{id}/disable\|enable` (W2) | ❌ | ❌ | ✅ | ADMIN_ONLY；不可停用 admin |
+| `POST /api/admin/users/{id}/reset-password` (W2) | ❌ | ❌ | ✅ | ADMIN_ONLY |
+| `GET /api/admin/classes` (W3) | ❌ | ❌ | ✅ | ADMIN_ONLY；跨教師班級總覽 |
+| `GET /api/admin/classes/{id}` (W3) | ❌ | ❌ | ✅ | ADMIN_ONLY；不受 teacher_id 隔離 |
+| `POST /api/classes/{id}/students/import-excel[/preview]` (W3) | ✅（限自己班級） | ❌ | ✅（任何班級） | 班級必須為空，否則 409 CLASS_NOT_EMPTY |
+| `GET /api/admin/units` (W4) | ❌ | ❌ | ✅ | ADMIN_ONLY；含已封存 |
+| `POST/PATCH/DELETE /api/admin/units[/{id}]` (W4) | ❌ | ❌ | ✅ | ADMIN_ONLY；系統內建單元不可封存或刪除 |
+| `GET /api/units` (W4) | ✅ | ✅ | ✅ | 公開讀（任何登入者）；給選擇器用 |
+| `GET/POST/PATCH/DELETE /api/admin/knowledge-nodes[/{id}]` (W5a) | ❌ | ❌ | ✅ | ADMIN_ONLY；系統 seed 節點不可刪 |
+| `POST /api/admin/knowledge-nodes/bulk-positions\|bulk-assign-unit\|import-excel[/preview]` (W5a) | ❌ | ❌ | ✅ | ADMIN_ONLY |
+| `POST/PATCH/DELETE /api/admin/(knowledge-nodes/{nodeId}/)?misconceptions[/{id}]` (W5a) | ❌ | ❌ | ✅ | ADMIN_ONLY |
+| `GET /api/knowledge-nodes` (W5a→W5b) | ✅（不需登入） | ✅（不需登入） | ✅ | **W5b 改為完全公開**：前端 main.jsx 在 boot 階段 fetch；無 cookie 也能讀 |
+| `GET /api/admin/quizzes` (W6) | ❌ | ❌ | ✅ | ADMIN_ONLY；跨教師列出含 owner |
+| `PATCH /api/admin/quizzes/{id}/sample` (W6) | ❌ | ❌ | ✅ | ADMIN_ONLY；切換 is_sample |
 | `GET /api/assignments` | ✅ 全部 | ✅ 限定 | 隱式過濾為自己班級 |
 | `GET /api/quizzes` | ✅ 全部 | ✅ 限定 | 只回自己班級已被派發的 |
 | `GET /api/quizzes/{id}` | ✅ | ✅ 限定 | 必須有對應 Assignment 派至自己班級，否則 403 `QUIZ_NOT_ASSIGNED` |
@@ -370,3 +397,24 @@ fetch('/api/auth/me', { credentials: 'include' })
 | spec-04 資料模型 | 新增 AuthContext；AppContext 的 `role / setRole` 改由 AuthContext 提供 |
 | spec-05 工作流 | §2.2 認證流程從「假登入」改為「帳密登入」 |
 | spec-06 部署 | 新增 `JWT_SECRET` / `COOKIE_SECURE` 等環境變數 |
+
+---
+
+## 11. 帳號停用機制（W2）
+
+`users` 表新增 `is_active` / `disabled_at` / `disabled_by` 三欄位（spec-11 §3.1、migration 0012）。
+
+### 行為
+- `is_active = false` 的帳號在 `POST /api/auth/login` 與 `get_current_user` 兩處都被擋下，回 401 `ACCOUNT_DISABLED`
+- 既有 cookie session 在下次 API 呼叫時即失效（`get_current_user` 會 raise）
+- 所有歷史資料（班級、題組、派題、作答、追問）完整保留；學生端能繼續看到被停用教師建立的題組（透過 quiz 的 created_by 不做 active filter）
+- 管理員可隨時 enable 復原（`disabled_at` / `disabled_by` 清空）
+
+### 規則
+- **不可停用 admin 帳號**：避免後台被反鎖（`POST .../disable` 對 `role='admin'` 回 400 `CANNOT_DISABLE_ADMIN`）
+- 教師自己無法被別人停用；只有 admin 透過 `/api/admin/users/*` 可執行
+- `disabled_by` 是執行該操作的 admin user id（**不設 FK**，允許歷史 admin 帳號被刪除後仍保留 audit trail）
+
+### 不在此範圍
+- 帳號**刪除**（spec-13 W2 之後不支援；只支援停用，避免 cascade 風險）
+- 學生帳號的新增（由教師端 ClassDetail 或 W3 Excel 匯入處理）

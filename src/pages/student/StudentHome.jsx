@@ -5,9 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useStudentMode } from '../../hooks/useStudentMode';
 import { useAssignments } from '../../hooks/useAssignments';
 import { useQuizzes } from '../../hooks/useQuizzes';
-import { useScenarios } from '../../hooks/useScenarios';
 import { getQuizQuestions } from '../../data/quizData';
-import { knowledgeNodes } from '../../data/knowledgeGraph';
 import {
   Icon,
   WOOD_OUTER,
@@ -24,7 +22,6 @@ import settingsIcon from '../../assets/icons/settings_wood.png';
 
 /* P3 起：學生 classId / seat / 姓名 由 AuthContext 提供（spec-13）。
  * 若 user 不是 student（不應該到這頁）則 fallback 為 5甲1 號避免崩潰。 */
-const TOTAL_NODES = knowledgeNodes.length; // 12
 
 /* 把正確率映射為 1~3 顆星 */
 const calcStars = (correctCount, totalCount) => {
@@ -48,58 +45,26 @@ export default function StudentHome() {
     setActiveStudentReport,
   } = useApp();
 
-  // P4 起概念釐清 session 改由 React Query 取得；此頁先以 assignment.status 推斷完成度，
-  // 真正完成判定由 ScenarioChat 在概念釐清結束後 invalidate 並由 StudentReport 顯示。
   const STUDENT_CLASS_ID = currentUser?.classId ?? 'class-A';
   const studentName = currentUser?.name ?? '探險者';
 
   // 後端會自動把學生過濾到自己的 classId
   const { data: assignments = [] } = useAssignments();
   const { data: quizzes = [] } = useQuizzes();
-  const { data: scenarioQuizzes = [] } = useScenarios();
 
   const [diagnosisHistoryOpen, setDiagnosisHistoryOpen] = useState(false);
-  const [scenarioHistoryOpen, setScenarioHistoryOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   /* 將派題 enriched 為任務卡資料 */
-  const { diagnosisTasks, scenarioTasks } = useMemo(() => {
+  const diagnosisTasks = useMemo(() => {
     const today = todayString();
     const myAssignments = assignments.filter((a) => a.classId === STUDENT_CLASS_ID);
 
     const diag = [];
-    const sce = [];
 
     myAssignments.forEach((assignment) => {
       const taskType = assignment.type ?? 'diagnosis';
-
-      if (taskType === 'scenario') {
-        const sq = scenarioQuizzes.find((q) => q.id === assignment.scenarioQuizId);
-        const totalQuestions = sq?.questionCount ?? 0;
-        const sessionCompleted = assignment.myScenarioCompleted === true;
-
-        let status;
-        if (sessionCompleted) status = 'completed';
-        else if (assignment.dueDate < today) status = 'expired';
-        else status = 'next';
-
-        sce.push({
-          assignmentId: assignment.id,
-          taskType: 'scenario',
-          scenarioQuizId: assignment.scenarioQuizId,
-          quizId: assignment.scenarioQuizId,
-          title: sq?.title ?? assignment.scenarioQuizId,
-          questionCount: totalQuestions,
-          dueDate: assignment.dueDate,
-          assignedAt: assignment.assignedAt,
-          status,
-          stars: sessionCompleted ? 3 : 0,
-          completedAt: null,
-          bestRecord: null,
-          session: null,
-        });
-        return;
-      }
+      if (taskType !== 'diagnosis') return;
 
       const quiz = quizzes.find((q) => q.id === assignment.quizId);
       const totalQuestions = quiz?.questionCount ?? getQuizQuestions(assignment.quizId).length;
@@ -132,41 +97,30 @@ export default function StudentHome() {
       });
     });
 
-    const splitGroup = (list) => {
-      const pending = list
-        .filter((t) => t.status === 'next')
-        .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
-      const expired = list
-        .filter((t) => t.status === 'expired')
-        .sort((a, b) => b.dueDate.localeCompare(a.dueDate));
-      const completed = list
-        .filter((t) => t.status === 'completed')
-        .sort((a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? ''));
-      return { pending: [...pending, ...expired], completed };
-    };
-
-    return {
-      diagnosisTasks: splitGroup(diag),
-      scenarioTasks: splitGroup(sce),
-    };
-  }, [assignments, quizzes, scenarioQuizzes, studentHistory, STUDENT_CLASS_ID]);
+    const pending = diag
+      .filter((t) => t.status === 'next')
+      .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+    const expired = diag
+      .filter((t) => t.status === 'expired')
+      .sort((a, b) => b.dueDate.localeCompare(a.dueDate));
+    const completed = diag
+      .filter((t) => t.status === 'completed')
+      .sort((a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? ''));
+    return { pending: [...pending, ...expired], completed };
+  }, [assignments, quizzes, studentHistory, STUDENT_CLASS_ID]);
 
   const stats = useMemo(() => {
-    const allPending = diagnosisTasks.pending.length + scenarioTasks.pending.length;
-    const allCompleted = diagnosisTasks.completed.length + scenarioTasks.completed.length;
+    const allPending = diagnosisTasks.pending.length;
+    const allCompleted = diagnosisTasks.completed.length;
     const totalAssignments = allPending + allCompleted;
     return {
       completedAssignments: allCompleted,
       totalAssignments,
       pending: allPending,
     };
-  }, [diagnosisTasks, scenarioTasks]);
+  }, [diagnosisTasks]);
 
   const handleStartQuiz = (task) => {
-    if (task.taskType === 'scenario') {
-      navigate(`/student/scenario/${task.scenarioQuizId}`);
-      return;
-    }
     setCurrentQuizId(task.quizId);
     setActiveStudentReport(null);
     // P4: pass assignmentId in query so StudentQuiz knows where to POST answers
@@ -180,11 +134,6 @@ export default function StudentHome() {
   };
 
   const handleViewTaskReport = (task) => {
-    if (task.taskType === 'scenario') {
-      // 概念釐清紀錄 view（暫時導去 ScenarioChat — 後續可加專屬報告頁）
-      navigate(`/student/scenario/${task.scenarioQuizId}`);
-      return;
-    }
     // 在記憶體中有剛剛完成的快照 → 直接用，最完整（含 conversationLog 等）。
     // 否則（先前 session 完成、或才剛重新登入）→ 改由 StudentReport 透過
     // /api/students/{id}/history 撈摘要顯示。
@@ -198,11 +147,8 @@ export default function StudentHome() {
   };
 
   const hasDiagnosis = diagnosisTasks.pending.length + diagnosisTasks.completed.length > 0;
-  const hasScenario = scenarioTasks.pending.length + scenarioTasks.completed.length > 0;
-  const hasTasks = hasDiagnosis || hasScenario;
-  const pendingCount =
-    diagnosisTasks.pending.filter((t) => t.status !== 'expired').length +
-    scenarioTasks.pending.filter((t) => t.status !== 'expired').length;
+  const hasTasks = hasDiagnosis;
+  const pendingCount = diagnosisTasks.pending.filter((t) => t.status !== 'expired').length;
 
   return (
     <div
@@ -278,11 +224,9 @@ export default function StudentHome() {
 
       {/* ═══ 下半米紙 panel（圓角頂、淡斜紋） ═══════════════════ */}
       <main className="relative z-10 flex-1 flex flex-col mt-2 animate-fade-up-delay-2">
-        {/* 米紙 panel 容器 */}
         <div className="relative flex-1 bg-gradient-to-b from-[#FFF8E7] to-[#FBE9C7]
                         rounded-t-[32px] border-t-[3px] border-[#C19A6B]
                         shadow-[0_-4px_12px_-2px_rgba(91,66,38,0.15)]">
-          {/* 淡斜紋 overlay */}
           <div
             className="absolute inset-0 pointer-events-none rounded-t-[32px] opacity-30"
             style={{
@@ -291,101 +235,48 @@ export default function StudentHome() {
             }}
           />
 
-          {/* 內容 — 兩種派題分區（spec-08 §6 / spec-07 §12.1） */}
           <div className="relative max-w-2xl mx-auto px-4 sm:px-6 pt-6 pb-10">
             {hasTasks ? (
               <>
-                {/* ── 診斷測驗區 ──────────────────── */}
-                {hasDiagnosis && (
-                  <>
-                    {diagnosisTasks.pending.length > 0 && (
-                      <Section
-                        title="迷思診斷"
-                        subtitle="先測驗找出你對科學概念的迷思"
-                        accentColor="#D08B2E"
-                        icon="quiz"
-                      >
-                        <div className="space-y-3 sm:space-y-4">
-                          {diagnosisTasks.pending.map((task) => (
-                            <TaskCard
-                              key={task.assignmentId}
-                              {...task}
-                              onStart={() => handleStartQuiz(task)}
-                            />
-                          ))}
-                        </div>
-                      </Section>
-                    )}
-
-                    {diagnosisTasks.completed.length > 0 && (
-                      <Section
-                        title="已完成的診斷"
-                        count={diagnosisTasks.completed.length}
-                        collapsible
-                        open={diagnosisHistoryOpen}
-                        onToggle={() => setDiagnosisHistoryOpen((v) => !v)}
-                        className="mt-4"
-                      >
-                        <div className="space-y-3 sm:space-y-4">
-                          {diagnosisTasks.completed.map((task) => (
-                            <TaskCard
-                              key={task.assignmentId}
-                              {...task}
-                              onStart={() => handleStartQuiz(task)}
-                              onViewReport={() => handleViewTaskReport(task)}
-                            />
-                          ))}
-                        </div>
-                      </Section>
-                    )}
-                  </>
+                {diagnosisTasks.pending.length > 0 && (
+                  <Section
+                    title="迷思診斷"
+                    subtitle="先測驗找出你對科學概念的迷思"
+                    accentColor="#D08B2E"
+                    icon="quiz"
+                  >
+                    <div className="space-y-3 sm:space-y-4">
+                      {diagnosisTasks.pending.map((task) => (
+                        <TaskCard
+                          key={task.assignmentId}
+                          {...task}
+                          onStart={() => handleStartQuiz(task)}
+                        />
+                      ))}
+                    </div>
+                  </Section>
                 )}
 
-                {/* ── 概念釐清區（spec-08）──────── */}
-                {hasScenario && (
-                  <>
-                    {scenarioTasks.pending.length > 0 && (
-                      <Section
-                        title="概念釐清"
-                        subtitle="與 AI 對話練習科學論證，釐清你的迷思概念"
-                        accentColor="#3F8B5E"
-                        icon="forum"
-                        className={hasDiagnosis ? 'mt-6' : ''}
-                      >
-                        <div className="space-y-3 sm:space-y-4">
-                          {scenarioTasks.pending.map((task) => (
-                            <TaskCard
-                              key={task.assignmentId}
-                              {...task}
-                              onStart={() => handleStartQuiz(task)}
-                            />
-                          ))}
-                        </div>
-                      </Section>
-                    )}
-
-                    {scenarioTasks.completed.length > 0 && (
-                      <Section
-                        title="已完成的概念釐清"
-                        count={scenarioTasks.completed.length}
-                        collapsible
-                        open={scenarioHistoryOpen}
-                        onToggle={() => setScenarioHistoryOpen((v) => !v)}
-                        className="mt-4"
-                      >
-                        <div className="space-y-3 sm:space-y-4">
-                          {scenarioTasks.completed.map((task) => (
-                            <TaskCard
-                              key={task.assignmentId}
-                              {...task}
-                              onStart={() => handleStartQuiz(task)}
-                              onViewReport={() => handleViewTaskReport(task)}
-                            />
-                          ))}
-                        </div>
-                      </Section>
-                    )}
-                  </>
+                {diagnosisTasks.completed.length > 0 && (
+                  <Section
+                    title="已完成的診斷"
+                    count={diagnosisTasks.completed.length}
+                    collapsible
+                    open={diagnosisHistoryOpen}
+                    onToggle={() => setDiagnosisHistoryOpen((v) => !v)}
+                    className="mt-4"
+                  >
+                    <div className="space-y-3 sm:space-y-4">
+                      {diagnosisTasks.completed.map((task) => (
+                        <TaskCard
+                          key={task.assignmentId}
+                          {...task}
+                          onStart={() => handleStartQuiz(task)}
+                          onViewReport={() => handleViewTaskReport(task)}
+                        />
+                      ))}
+                    </div>
+                  </Section>
                 )}
               </>
             ) : (
@@ -399,10 +290,6 @@ export default function StudentHome() {
     </div>
   );
 }
-
-/* ═════════════════════════════════════════════════════════════════
- * 子元件
- * ═════════════════════════════════════════════════════════════════ */
 
 /* avatar pill：學生 avatar + 姓名 */
 function AvatarPill({ studentName }) {

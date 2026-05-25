@@ -30,7 +30,9 @@ export default function QuestionImportDrawer({
         if (showAll) return true;
         if (!selectedNodeIds || selectedNodeIds.length === 0) return true;
         return q.knowledgeNodeIds.some((id) => selectedNodeIds.includes(id));
-      });
+      })
+      // W6：系統範例排在最上面，方便老師優先參考
+      .sort((a, b) => (b.isSample ? 1 : 0) - (a.isSample ? 1 : 0));
   }, [quizzes, excludeQuizId, showAll, selectedNodeIds]);
 
   const toggleExpand = async (quizId) => {
@@ -140,10 +142,16 @@ export default function QuestionImportDrawer({
                     className="w-full px-3 py-2.5 flex items-center justify-between gap-2 hover:bg-[#EEF5E6] transition-colors rounded-xl"
                   >
                     <div className="flex-1 min-w-0 text-left">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className={`text-[15px] font-semibold px-1.5 py-0.5 rounded ${quiz.status === 'draft' ? 'bg-[#FCF0C2] text-[#B7950B]' : 'bg-[#C8EAAE] text-[#3D5A3E]'}`}>
                           {quiz.status === 'draft' ? '草稿' : '已發布'}
                         </span>
+                        {quiz.isSample && (
+                          <span className="inline-flex items-center gap-0.5 text-[13px] font-semibold px-1.5 py-0.5 rounded bg-[#DBEAFE] text-[#1E40AF]" title="系統管理員標記為範例題組">
+                            <span className="material-symbols-rounded text-base">verified</span>
+                            系統範例
+                          </span>
+                        )}
                         <p className="text-sm font-semibold text-[#2D3436] truncate">{quiz.title}</p>
                       </div>
                       <p className="text-sm text-[#95A5A6] mt-0.5">{quiz.questionCount} 題 · {quiz.knowledgeNodeIds.length} 節點</p>

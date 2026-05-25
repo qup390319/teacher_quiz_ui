@@ -112,52 +112,29 @@
 
 ### 1.3 派題流程 (Assignment)
 
-頁面分兩個分頁：「📝 診斷題組」（整班派發）與「🌱 概念釐清題組」（個別學生派發）。
-
 ```
 教師進入 /teacher/assignments
     │
     ├─ 以矩陣/網格 UI 呈現（題組為列 × 班級為欄）
     │   ├─ 每格顯示：完成率%、submittedCount/totalStudents、截止日期
-    │   │   * scenario 分頁的 totalStudents 為「該派題指派的學生數」，非班級總人數
     │   ├─ 已派發格子依完成率顯示不同顏色：
     │   │   ├─ 100% → 綠色 (#C8EAAE)，狀態文字「已完成」
     │   │   ├─ 1~99% → 黃色 (#FCF0C2)，狀態文字「進行中」
     │   │   └─ 0% → 淺綠 (#EEF5E6)，狀態文字「待作答」
     │   └─ 未派發格子顯示虛線框 + 「派發」按鈕
     │
-    ├─ 診斷分頁（整班派發）
-    │   ├─ 點擊未派發格子 → AssignPopover（小型 popover）
-    │   │   ├─ 設定截止日期
-    │   │   ├─ 選擇派發模式（toggle 按鈕）：
-    │   │   │   ├─ 「診斷模式」— 首次診斷學生是否持有迷思概念（預設）
-    │   │   │   └─ 「複習模式」— 已完成診斷後的再次練習
-    │   │   ├─ 確認派發 → addAssignment({ targetType:'class', studentIds:[], dispatchMode, ... })
-    │   │   └─ 自動生成 ID: assign-{timestamp}
-    │   └─ 點擊已派發格子 → ManagePopover
-    │       ├─ 可修改截止日期 → updateAssignment()
-    │       ├─ 可查看診斷報告（若有作答資料）
-    │       └─ 可取消派題 → removeAssignment()
+    ├─ 點擊未派發格子 → AssignPopover（小型 popover）
+    │   ├─ 設定截止日期
+    │   ├─ 選擇派發模式（toggle 按鈕）：
+    │   │   ├─ 「診斷模式」— 首次診斷學生是否持有迷思概念（預設）
+    │   │   └─ 「複習模式」— 已完成診斷後的再次練習
+    │   ├─ 確認派發 → addAssignment({ targetType:'class', studentIds:[], dispatchMode, ... })
+    │   └─ 自動生成 ID: assign-{timestamp}
     │
-    └─ 概念釐清分頁（個別學生派發；spec-08）
-        ├─ 點擊未派發格子 → AssignTargetPicker（modal-style 學生選擇器）
-        │   ├─ 顯示該班所有學生（座號排序，預設皆未勾選）
-        │   ├─ 每位學生行尾顯示先備知識狀態徽章（透過 usePrerequisiteStatus hook）：
-        │   │   ├─ 「已具備先備」（綠色）— 該生所有先備節點皆達標
-        │   │   └─ 「N 個先備不足」（黃色）— 點擊展開各先備節點掌握百分比
-        │   ├─ 教師勾選對象（提供「全部勾選 / 全部取消」快捷）
-        │   ├─ 設定截止日期
-        │   └─ 確認 → addAssignment({
-        │             type:'scenario', scenarioQuizId, classId,
-        │             targetType:'students', studentIds:[...], dueDate, ...
-        │           })
-        │   * 跨班派發：分別點擊各班的格子，各自派發一次（單筆派題對應單一班級）
-        │
-        └─ 點擊已派發格子 → ManagePopover（概念釐清分頁顯示「指派對象 N 位」）
-            ├─ 可修改截止日期
-            ├─ 「調整派發對象」→ 再次開啟 AssignTargetPicker（existing 帶入既有 studentIds）
-            │       └─ 確認 → updateAssignment({ studentIds })
-            └─ 可取消派題
+    └─ 點擊已派發格子 → ManagePopover
+        ├─ 可修改截止日期 → updateAssignment()
+        ├─ 可查看診斷報告（若有作答資料）
+        └─ 可取消派題 → removeAssignment()
 ```
 
 ### 1.4 診斷結果查看流程
@@ -282,15 +259,14 @@
 | `/teacher/classes` (ClassManagement) | ✅ 頁首 | 班級瀏覽 |
 | `/teacher/dashboard/*` (DashboardLayout) | ✅ 頁首 | 跨班診斷統計 |
 | `/teacher/diagnosis-logs` (DiagnosisLogs) | ✅ 頁首 | 歷史診斷對話 |
-| `/teacher/treatment-logs` (TreatmentLogs) | ✅ 頁首 | 歷史治療對話 |
-| 其他用 `useClasses()` 的頁面 | ❌ 沉默繼承 | 例如 AssignmentManagement / TreatmentOutcomes 預設只看當前學年班級，不顯示 chip 但仍受全域 state 影響 |
+| 其他用 `useClasses()` 的頁面 | ❌ 沉默繼承 | 例如 AssignmentManagement 預設只看當前學年班級，不顯示 chip 但仍受全域 state 影響 |
 
 **規則**：
 - 跨班統計（OverviewPage / ClassesPage / MisconceptionsPage / NodesPage）只聚合篩選後的班級
-- 歷史紀錄頁（DiagnosisLogs / TreatmentLogs）允許教師切換到舊學年，查閱已封存班級的對話歷史
+- 歷史紀錄頁（DiagnosisLogs）允許教師切換到舊學年，查閱已封存班級的對話歷史
 - 學生個人報告（StudentReportsPage / StudentDiagnosisReport）**保留完整歷史**——學生跨學期表現有教學價值，不受班級封存影響
 - 題組（quizzes）與班級解耦：題組是教師資產可重複派發，assignments 才綁定班級與學年
-- `QuizLibrary` / `ScenarioLibrary` 的「已派班級」chip 使用 `useClasses({})`（不過濾），因為題組是長期資產、需顯示所有歷史派發對象
+- `QuizLibrary` 的「已派班級」chip 使用 `useClasses({})`（不過濾），因為題組是長期資產、需顯示所有歷史派發對象
 
 ### 1.6 知識地圖查看流程
 
@@ -456,144 +432,7 @@
 
 ---
 
-## 3. 治療模組工作流（spec-08，波次 2/3 實作）
-
-> 完整規格見 `docs/spec-08-treatment-cognitive-apprenticeship.md`。本節僅勾勒流程接點。
-
-### 3.1 教師端：建立 / 編輯概念釐清題組
-
-```
-教師進入 /teacher/scenarios（概念釐清題組庫）
-    │
-    ├─ 瀏覽既有 1 份 demo（scenario-002 · 飽和糖水甜度）+ 自製
-    ├─ 點擊「新增」 → /teacher/scenarios/create
-    │   ├─ 步驟一：選目標節點 + 標目標迷思
-    │   ├─ 步驟二：撰寫概念釐清敘述（textarea）+ 上傳圖片
-    │   ├─ 步驟三：撰寫每題 initialMessage + expertModel
-    │   └─ 儲存 → saveScenarioQuiz()
-    │
-    └─ 點擊既有卡 → /teacher/scenarios/:scenarioQuizId/edit
-        └─ 同上，預填現有資料
-```
-
-### 3.2 教師端：派發治療任務（個別學生派發）
-
-概念釐清治療派題以**個別學生**為單位（spec-04 §2.4 `targetType='students'`）。教師看一個班級、勾選需要治療的學生，再看下一個班級。
-
-```
-教師進入 /teacher/assignments → 切到「🌱 概念釐清題組」分頁
-    │
-    ├─ 點擊（概念釐清題組 × 班級）的未派發格子
-    │   └─ 開啟 AssignTargetPicker（modal）
-    │       ├─ 顯示該班全體學生（座號 + 姓名 + 帳號）
-    │       ├─ 教師手動勾選需要派發的學生（不預選）
-    │       ├─ 設定截止日期
-    │       └─ 確認 → addAssignment({
-    │                 type:'scenario', scenarioQuizId, classId,
-    │                 targetType:'students', studentIds:[...], dueDate, ...
-    │               })
-    │
-    ├─ 點擊（概念釐清題組 × 班級）的已派發格子
-    │   └─ ManagePopover 顯示「指派對象 N 位」+ 完成進度
-    │       ├─ 「調整派發對象」→ 再次開啟 AssignTargetPicker（含既有勾選）
-    │       │   → updateAssignment({ studentIds })
-    │       ├─ 修改截止日期 → updateAssignment({ dueDate })
-    │       └─ 取消派題 → removeAssignment()
-    │
-    └─ 完成派發後，被勾選的學生在 StudentHome「概念釐清治療」區塊看到此任務
-       （後端 useAssignments 對學生角色過濾：班級命中且 student.id ∈ studentIds）
-```
-
-> 未來可擴充入口：在 DashboardReport 的迷思列表旁加「📤 派發概念釐清治療」按鈕，
-> 帶入 `{ classId, scenarioQuizId 候選 }` 跳到此分頁並自動展開對應格子的 picker（教師仍手動勾學生）。
-> 目前主要入口是 `/teacher/assignments` 的 scenario 分頁。
-
-### 3.3 學生端：概念釐清對話流程（spec-08 §6）
-
-```
-學生在 StudentHome 點擊「概念釐清治療」任務卡
-    │
-    ├─ 進入 /student/scenario/:scenarioQuizId (ScenarioChat)
-    │
-    ├─ entryStage = 'intro'（吉祥物開場）
-    │   └─ 點擊「開始挑戰」 → entryStage='scenario'
-    │
-    ├─ entryStage = 'scenario'（概念釐清敘述頁，含可放大圖）
-    │   └─ 點擊「我已閱讀完成，開始挑戰」 → entryStage='chat'
-    │       同時 startTreatmentSession(scenarioQuizId, studentId)
-    │
-    ├─ entryStage = 'chat'（AI 對話），flowStage 多階段切換：
-    │   ├─ 'chat'：runTreatmentTurn() 推進，每輪 appendTreatmentMessage()
-    │   ├─ 'between-questions'：該題完成 → 顯示「下一題」按鈕
-    │   ├─ 'next-scenario'：下一題概念釐清敘述頁 → advanceTreatmentQuestion()
-    │   ├─ 'settling'：結算動畫（dots 約 3 秒）
-    │   ├─ 'result'：過關木牌（含 StarRating） → completeTreatmentSession()
-    │   └─ 'reflection'：雙欄反思頁（左=回顧 Tabs / 右=反思對話）
-    │
-    └─ 退出 → 回 StudentHome（任務卡顯示已完成）
-```
-
-### 3.4 教師端：查看治療對話紀錄
-
-```
-教師進入 /teacher/treatment-logs
-    │
-    ├─ 列表：學生 × 概念釐清題組 × 完成狀態 × 最後 phase/stage × 開始時間
-    ├─ 篩選：依班級 / 概念釐清題組 / 完成狀態
-    │
-    └─ 點選任一列 → /teacher/treatment-logs/:sessionId (TreatmentLogDetail)
-        ├─ 左欄：概念釐清題組的題目列表（概念釐清敘述 + 圖）
-        └─ 右欄：完整對話氣泡時序展開
-            └─ 每則 AI 訊息標註該回合的 phase / stage / step / hintLevel
-            （為教師提供「派發治療是否成功」的判斷依據）
-```
-
-### 3.5 教師端：查看概念釐清結果（治療成效彙整）
-
-「對話紀錄」聚焦過程，「概念釐清結果」聚焦結果。兩個頁面並列在側邊欄「④ 概念釐清・補救」分組下。
-
-```
-教師進入 /teacher/treatment-outcomes
-    │
-    ├─ 篩選列：班級 ▼ / 概念釐清題組 ▼
-    │
-    ├─ 三色階圖例條（綠＝已釐清／黃＝需引導／紅＝未釐清；首次閱讀即可掌握）
-    │
-    ├─ 班級彙整卡片（3 個指標）
-    │   ├─ 已派發學生（人）
-    │   ├─ 已釐清 X / Y 人（綠色強調）
-    │   └─ 需關注 X 人（>0 時紅色強調，含 warn + bad）
-    │
-    ├─ 學生結果表格（5 欄）
-    │   ├─ 班級 chip
-    │   ├─ 學生姓名（題組標題以副標形式）
-    │   ├─ 整體結果：tier chip（綠／黃／紅）+ 星等 0~3
-    │   ├─ 各題狀態 pills：每題 tier 顏色 + outcome label
-    │   │   * 衍生自 messages 的 maxHintLevel + 是否走到 stage='complete'
-    │   │   * 5 階段 label（自走理解／輕度引導／中度引導／強鷹架／未釐清）
-    │   │     折成 3 色階（ok/warn/bad）；hover 看完整 label
-    │   └─ 「查看對話」→ 跳轉 /teacher/treatment-logs/:sessionId
-    │
-    └─ 資料來源：useTreatmentLogs（列表）+ useTreatmentLog（per-row messages）
-       → 衍生規則集中於 src/lib/treatmentOutcomes.js，未來搬至後端 service
-```
-
-**低認知負荷設計原則**（v2 重構）：
-- 三色階決策軸（ok / warn / bad），而非 5 種色塊 — 老師第一次看就能分配心力
-- 圖例條置頂，免猜配色意義
-- 移除「AI 判定」「平均星等」等與其他指標重複的欄位／卡片
-- 移除目前無資料的「學生反思」欄（後端 P5 補上時再加回）
-
-**設計動機**：對話紀錄頁雖完整保留 phase/stage/step/hintLevel 標註，但教師難以一眼看出
-「這位學生治療有沒有用」。本頁將原始對話彙整為 outcome 標籤，直接回答教師最關心的問題。
-
-**已知限制 / 後端待辦（P5）**：
-- 學生反思文字（`reflection_text`）與三星評等（`star_rating`）尚未持久化到 `treatment_sessions`
-- 目前每列 N+1 fetch messages；後續應在 `/teachers/treatment-logs` 列表回傳 outcome 摘要欄位
-
----
-
-## 4. 跨角色交互
+## 3. 跨角色交互
 
 ```
 教師 → 建立題組 (saveQuiz)
@@ -603,17 +442,6 @@
 學生 → 作答題組 (recordAnswer)
          ↓
 教師 → 檢視診斷結果 (getClassAnswers, getNodePassRates, etc.)
-         ↓ 若診斷出迷思
-教師 → 建立概念釐清題組 / 沿用 demo (saveScenarioQuiz)
-         ↓
-教師 → 派發概念釐清題組 (addAssignment with type='scenario')
-         ↓
-學生 → 與 AI 對話治療 (runTreatmentTurn / appendTreatmentMessage)
-         ↓
-教師 → 查看治療對話紀錄 (getTreatmentSession)
 ```
 
-**注意**: 目前為純前端原型，教師與學生的資料不互通。
-- 教師端的診斷結果來自 Mock 資料（`ANSWER_DISTRIBUTIONS_MAP`）
-- 學生端的作答結果存於前端 state，不會反映到教師端儀表板
-- 未來接上後端後，學生作答資料將即時反映至教師端
+**注意**：scenario / treatment（概念釐清・補救）模組已從實驗系統移除，詳見 `docs/deviations.md`。

@@ -36,10 +36,11 @@ function writeLS(key, value) {
  *       這只是在跳轉到 /student/report 之前把資料帶過去用的本地暫存；
  *       canonical 來源在 DB（透過 useStudentHistory hook 拉取）。
  *
- * 已從 P3 移除：classes / quizzes / scenarioQuizzes / assignments → React Query hooks
- * 已從 P4 移除：treatmentSessions（→ useTreatmentSession*）+ studentAnswers
- *               / recordAnswer / removeMisconception / studentMisconceptions / correctCount
+ * 已從 P3 移除：classes / quizzes / assignments → React Query hooks
+ * 已從 P4 移除：studentAnswers / recordAnswer / removeMisconception
+ *               / studentMisconceptions / correctCount
  *               （學生作答 P4 起即時 POST 到 /api/answers）
+ * 概念釐清模組已下線（前端 UI 移除），相關 hooks/data 一併刪除。
  */
 
 const AppContext = createContext(null);

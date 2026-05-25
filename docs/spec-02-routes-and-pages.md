@@ -7,14 +7,14 @@
 
 ### 1.0 受保護路由（P1 起）
 
-`src/components/RequireAuth.jsx` 提供 `<RequireAuth role="teacher|student">` wrapper：
+`src/components/RequireAuth.jsx` 提供 `<RequireAuth role="teacher|student|admin">` wrapper：
 - bootstrap 中（`useAuth().loading=true`）顯示「載入中…」
-- 未登入 → `<Navigate to="/" replace />`
-- role 不符 → `<Navigate to="/" replace />`
+- 未登入：admin 路由 → `<Navigate to="/admin/login" replace />`；其餘 → `<Navigate to="/" replace />`
+- role 不符：同上規則
 
-所有 `/teacher/*` 路由由 `<RequireAuth role="teacher">` 包起，所有 `/student/*` 路由由 `<RequireAuth role="student">` 包起。`/` 與 `*`（404）不受保護。
+所有 `/teacher/*` 路由由 `<RequireAuth role="teacher">` 包起，所有 `/student/*` 路由由 `<RequireAuth role="student">` 包起，所有 `/admin`（除 `/admin/login`）由 `<RequireAuth role="admin">` 包起。`/`、`/admin/login` 與 `*`（404）不受保護。
 
-詳見 spec-13 §8。
+詳見 spec-13 §8、spec-14（管理員 UI 設計）。
 
 ### 1.1 路由對照表
 
@@ -30,29 +30,25 @@
 | `/teacher/dashboard/class-detail` | `ClassDetailPage` | 子分頁：各班詳細診斷報告（含派題完成率清單 + 該班 SingleClassReport） | `DashboardLayout` |
 | `/teacher/quiz/create` | `QuizCreateWizard` | 出題精靈（多步驟） | `TeacherLayout` |
 | `/teacher/quizzes` | `QuizLibrary` | 題組庫：瀏覽與管理題組 | `TeacherLayout` |
-| `/teacher/assignments` | — | 舊路由，redirect 至 `/teacher/assignments/diagnosis` | — |
-| `/teacher/assignments/diagnosis` | `AssignmentManagement` | 派題管理：指派**診斷題組**給班級 | `TeacherLayout` |
-| `/teacher/assignments/scenarios` | `AssignmentManagement` (initialTab="scenario") | 派題管理：指派**概念釐清治療題組**給班級（與診斷派題共用同一頁面、預設概念釐清 tab） | `TeacherLayout` |
+| `/teacher/assignments` | `AssignmentManagement` | 派題管理：指派診斷題組給班級 | `TeacherLayout` |
 | `/teacher/classes` | `ClassManagement` | 班級管理：檢視班級名冊 | `TeacherLayout` |
 | `/teacher/classes/:classId` | `ClassDetail` | 班級詳情：個別班級學生資訊 | `TeacherLayout` |
 | `/teacher/knowledge-map` | `KnowledgeMap` | (預設) 知識節點與迷思概念總覽：唯讀檢視系統預設迷思概念 | `TeacherLayout` |
 | `/teacher/custom-knowledge-map` | `CustomKnowledgeMap` | (自定義) 知識節點總覽：檢視預設＋自訂迷思概念，支援新增/刪除自訂迷思 | `TeacherLayout` |
 | `/teacher/misconception-causes` | `MisconceptionCauses` | 迷思概念成因：列出診斷對話中分類迷思成因的 8 種類別（特徵 + 常見樣態） | `TeacherLayout` |
 | `/teacher/report` | `TeacherReport` | 舊版診斷報告（保留向後相容） | `TeacherLayout` |
-| `/teacher/scenarios` | `ScenarioLibrary` | **（規劃，波次 2）** 概念釐清題組庫（治療模組，spec-08） | `TeacherLayout` |
-| `/teacher/scenarios/create` | `ScenarioCreateWizard` | **（規劃，波次 2）** 概念釐清題組出題精靈 | `TeacherLayout` |
-| `/teacher/scenarios/:scenarioQuizId/edit` | `ScenarioCreateWizard` | **（規劃，波次 2）** 編輯既有概念釐清題組 | `TeacherLayout` |
-| `/teacher/treatment-outcomes` | `TreatmentOutcomes` | 概念釐清結果：彙整學生×概念釐清題組的治療成效（per-question outcome / 星等 / AI 判定釐清 / 反思摘要 / 班級層級指標） | `TeacherLayout` |
-| `/teacher/treatment-logs` | `TreatmentLogs` | **（規劃，波次 2）** 治療對話紀錄總覽 | `TeacherLayout` |
-| `/teacher/treatment-logs/:sessionId` | `TreatmentLogDetail` | **（規劃，波次 2）** 單一 session 完整對話紀錄 | `TeacherLayout` |
-| `/student` | `StudentHome` | 學生首頁：瀏覽可作答題組（含診斷與概念釐清兩區塊） | 簡易 Header |
+| `/student` | `StudentHome` | 學生首頁：瀏覽可作答題組 | 簡易 Header |
 | `/student/quiz/:quizId` | `StudentQuiz` | 對話式診斷測驗介面 | 簡易 Header |
-| `/student/scenario/:scenarioQuizId` | `ScenarioChat` | **（規劃，波次 3）** 概念釐清治療對話頁（spec-08） | 全螢幕 |
 | `/student/report` | `StudentReport` | 個人學習健康報告 | 簡易 Header |
+| `/admin/login` | `AdminLogin` | 管理員獨立登入頁（不在首頁角色卡露出） | 無（全螢幕） |
+| `/admin` | `AdminDashboard` | 後台首頁：統計 donut + 6 個功能入口卡 | `AdminLayout` |
+| `/admin/users` | `UsersManagement` | 帳號管理：教師/學生列表 + 新增/停用/重設密碼 | `AdminLayout` |
+| `/admin/classes` | `ClassesOverview` | 跨教師班級總覽：篩選 + 列表 | `AdminLayout` |
+| `/admin/classes/:classId` | `ClassDetailAdmin` | 班級詳情：基本資訊 + 學生名冊（唯讀）+ 空班 Excel 匯入 | `AdminLayout` |
+| `/admin/units` | `UnitsManagement` | 單元管理：依年段分區、CRUD、封存／啟用 | `AdminLayout` |
+| `/admin/knowledge-nodes` | `KnowledgeNodesAdmin` | 知識節點畫布編輯 + 迷思 CRUD + Excel 匯入 + 未分配池 | `AdminLayout` |
+| `/admin/sample-quizzes` | `SampleQuizzes` | 範例題庫：跨教師列出題組 + 切換系統範例標記 | `AdminLayout` |
 | `*` | `Navigate to /` | 404 重導向首頁 | — |
-
-> **註**：標註「（規劃，波次 N）」的路由為 spec-08 治療模組規劃中路由，
-> 目前僅資料模型與 mock bot 已實作（波次 1），實際頁面元件將在波次 2、3 完成。
 
 ### 1.2 路由參數
 
@@ -60,8 +56,6 @@
 |------|------|----------|------|
 | `:classId` | string | `ClassDetail` | 班級 ID（如 `class-A`） |
 | `:quizId` | string | `StudentQuiz` | 題組 ID（如 `quiz-001`） |
-| `:scenarioQuizId` | string | `ScenarioChat` / `ScenarioCreateWizard`（編輯模式） | 概念釐清題組 ID（如 `scenario-002`） |
-| `:sessionId` | string | `TreatmentLogDetail` | 治療 session ID |
 
 ### 1.3 URL Query 參數（診斷結果子分頁共用）
 
@@ -137,16 +131,15 @@
 **檔案**: `src/pages/teacher/TeacherDashboard.jsx`
 
 **功能描述**:
-- 教師端主頁，呈現兩條並列的工作流程：
-  - **流程一：迷思概念診斷** — 出題管理 → 派題管理 → 診斷結果
-  - **流程二：迷思概念治療** — 概念釐清出題 → 概念釐清派題 → 對話紀錄
+- 教師端主頁，呈現迷思概念診斷工作流程：
+  - **流程：迷思概念診斷** — 出題管理 → 派題管理 → 診斷結果
 - 每個步驟卡片可點擊直接跳轉對應頁面
 - 提供快速操作按鈕（推薦題組、快速出題）
 
 **UI 元素**:
 - 頁面標題「首頁」旁帶 `?` 問號圖示（`HelpTip`），點擊顯示流程摘要 tooltip
-- 兩個流程區塊（各帶 chip 標籤 + Material Symbols 圖示識別流程一／流程二）
-- 每流程三步驟卡片（編號圓圈＋步驟名稱，無額外描述文字）
+- 流程區塊（帶 chip 標籤 + Material Symbols 圖示識別）
+- 三步驟卡片（編號圓圈＋步驟名稱，無額外描述文字）
 - 快速操作 CTA 卡片（橫向佈局：圖示 + 標題 + 數字 badge + `HelpTip`），點擊 `?` 可查看詳細說明
 - 知識節點總覽入口（以數字統計呈現：N 節點 / N 迷思 / N 層級）
 
@@ -167,7 +160,6 @@
 | `① 出診斷題` | `quiz` | 診斷題組編輯（✨AI：RAGFlow 出題輔助） | 綠 |
 | `② 派題給班級` | `assign` | 派發診斷題組 | 青 |
 | `③ 看診斷結果` | `dashboard` | 診斷儀表板（✨AI：報告摘要）+ 5 個 dashboard 子分頁 + 診斷對話紀錄（✨AI：POE 追問） | 藍 |
-| `④ 概念釐清・補救` | `remediation` | 釐清題組編輯（✨AI）+ 派發釐清題組 + **概念釐清結果**（✨AI：成效衍生）+ 釐清對話紀錄（✨AI：CER 補救對話） | 紫紅 |
 | `班級` | — | 班級名單管理 | 橘 |
 | `其他` | — | 迷思概念成因、(預設) 知識節點總覽、(自定義) 知識節點總覽 | 棕 |
 
@@ -178,13 +170,10 @@
 | `quiz` | `{N} 份題組` | `尚未建立` |
 | `assign` | `{N} 班已派` | `尚未派題`（或 `—` 若沒題組） |
 | `dashboard` | `可查看` | `等待派題` |
-| `remediation` | `{N} 班已派`／`{N} 份釐清題組` | `尚未建立`（或 `—`） |
 
 **D2-B 建議下一步高亮**：`nextStep` 為「第一個未完成的階段」，該 section 加 pulsing dot + 「建議下一步」chip + 外框光暈。規則：
 - 沒題組 → `quiz`
 - 有題組沒派 → `assign`
-- 已派但沒釐清題組 → `remediation`
-- 已派且有釐清題組但未派釐清 → `remediation`
 - 全部完成 → `null`（不高亮）
 
 **D7 AI 標記**：所有用到 LLM/RAGFlow 的項目右側顯示 `<AIBadge>`（紫色 ✨ icon + AI pill + hover tooltip 一句話說明）。
@@ -285,18 +274,9 @@
 
 **內容**:
 - **班級選擇器**：下拉式選單，顯示各班派題完成率；選項標籤格式「班級名 · 完成率（已完成人數/總人數 人）」
-- **兩相位報告 Tab 系統**：
-  - **診斷相位**（`reportPhase === 'diagnosis'`）—「迷思概念診斷報告」tab
-    - 視覺風格：金色主題（`bg-[#FFF1D8] border-[#F0B962] text-[#7A4A18]`）
-    - 內容：`SingleClassReport`（4 個指標卡 + AI 診斷摘要 + 本週行動清單 + 各概念掌握程度 + 迷思概念分佈 + **各題錯誤率圖表** + 題目明細矩陣 + **學生第二層追問對話完整紀錄**）
-  - **治療相位**（`reportPhase === 'treatment'`）—「概念釐清成效報告」tab
-    - 視覺風格：綠色主題（`bg-[#E0F0E8] border-[#3F8B5E] text-[#2E6B47]`）
-    - 內容：`TreatmentEffectivenessPanel`（進度分布圓餅圖 + 3 個統計卡片 + 學生詳細表）
+- **迷思概念診斷報告**：
+  - 內容：`SingleClassReport`（4 個指標卡 + AI 診斷摘要 + 本週行動清單 + 各概念掌握程度 + 迷思概念分佈 + **各題錯誤率圖表** + 題目明細矩陣 + **學生第二層追問對話完整紀錄**）
 - 無 `classId` 時顯示「請從上方清單選擇班級」空狀態
-
-**狀態**:
-- `reportPhase` state：`'diagnosis' | 'treatment'`（控制兩個 tab 的切換）
-- `setReportPhase()` 狀態更新函式
 
 **狀態依賴**:
 - 透過 `useOutletContext()` 取得 `quizId`, `overviewData`, `classes`, `assignments`, `quizzes`
@@ -308,7 +288,6 @@
 - `SingleClassReport.jsx`（含 4 指標卡 + 子組件 `AIDiagnosisSummary.jsx`、`WeeklyActionChecklist.jsx`、`BreakdownChart.jsx`、`MisconceptionDistribution.jsx`、`QuestionErrorRateChart.jsx`、`ReasoningQualityBars.jsx`、`HeatmapView.jsx`、`FollowupConversations.jsx`）
 - **新增（2026-05）**：`SubjectRadarChart.jsx`（子主題雷達）、`MasteryDistributionHistogram.jsx`（學生掌握度分布）、`FollowupStatusFunnel.jsx`（追問後狀態漏斗）、`MisconceptionCauseDonut.jsx`（迷思成因 8 類甜甜圈）、`ReasoningQualityBars.jsx`（單班追問推理品質分布）、`OptionAttractionChart.jsx`（選項吸引力分析）
 - `QuestionErrorRateChart.jsx` — 水平長條圖，呈現全班各題的錯誤率；以紅色虛線標示班級平均錯誤率；顯示題幹、知識節點名稱、錯誤率、top misconception；根據錯誤率色碼：紅色（≥50%）、黃色（30-49%）、綠色（<30%）
-- `TreatmentEffectivenessPanel.jsx` — 概念釐清成效報告的主面板；包含：進度分布圓餅圖（已完成/進行中/未開始）、3 個統計卡片（完成率、進行中人數、未開始人數）、可展開的學生詳細表（依完成狀態排序）；透過 `useTreatmentLogs` hook 撈取該班治療紀錄；支援選填 `scenarioQuizId` 進行題組篩選
 - `FollowupConversations.jsx` — 透過 `useClassFollowups` 撈取該班所有學生在 N3 第二層追問的對話紀錄；以「學生 → 題目」兩層摺疊呈現，展開後以聊天泡泡顯示完整對話、AI 摘要與最終判定徽章。資料來源為後端 `GET /api/quizzes/{quizId}/followups?classId=`，撈 `FollowupResult.conversation_log` JSONB
 
 **資料來源**:
@@ -391,22 +370,17 @@
 
 ---
 
-### 2.6 AssignmentManagement (`/teacher/assignments/diagnosis`)
+### 2.6 AssignmentManagement (`/teacher/assignments`)
 **檔案**: `src/pages/teacher/AssignmentManagement.jsx`
 
 **功能描述**:
-- 管理**診斷題組**派發記錄（概念釐清題組派題請見 §2.6.1，沿用同一元件）
+- 管理診斷題組派發記錄
 - 新增派題：選擇題組 → 選擇班級 → 設定截止日期
 - 檢視已派題記錄及完成狀態
 - 可刪除或更新派題
 
-> **路由說明**：舊路由 `/teacher/assignments` 已改為 redirect 至 `/teacher/assignments/diagnosis`，
-> 以維持與既有書籤、舊連結的相容性。Sidebar「派題」群組展開後，「step 1. 診斷題組」即指向此頁。
->
-> **題型由路由決定**：頁面內**已移除**「📝 診斷題組 / 🌱 概念釐清題組」tab pill，老師從 sidebar「派發診斷題組」或「派發釐清題組」分別進入，`initialTab` prop 直接決定模式。畫面內不再有 tab 切換按鈕，回應「icon 太多、流程上重複」回饋。
-
 **UI 元素**:
-- **排序控制**（取代原 tab pill）：下拉選單可選預設順序／建立時間新→舊／舊→新／題組名稱 A→Z／Z→A／已派班級數多→少／少→多；旁邊顯示「共 N 份診斷／釐清題組」
+- **排序控制**：下拉選單可選預設順序／建立時間新→舊／舊→新／題組名稱 A→Z／Z→A／已派班級數多→少／少→多；旁邊顯示「共 N 份診斷題組」
 - 圖例（未派發／待作答／進行中／已完成）置於矩陣**上方**，方便對照後再點選格子
 - 派題矩陣（列為題組、欄為班級）；格子最小高度 120px
 - 新增派題的 `AssignPopover` 與管理派題的 `ManagePopover` 採 `position: fixed` + 觸發按鈕 bounding rect 計算座標，避免被外層 `overflow-hidden / overflow-x-auto` 切掉
@@ -417,377 +391,234 @@
 
 ---
 
-### 2.6.1 概念釐清派題 (`/teacher/assignments/scenarios`)
-**檔案**: `src/pages/teacher/AssignmentManagement.jsx`（同 §2.6，以 `initialTab="scenario"` prop 帶入）
-
-**功能描述**:
-- 將已 published 的概念釐清治療題組指派給班級
-- 與診斷派題共用 `AssignmentManagement` 元件；路由差異僅在於預設選中的 tab
-- 矩陣資料來源為 `assignments.filter(a => a.type === 'scenario')`，矩陣中以 `scenarioQuizId` 對應已 published 的概念釐清題組
-- 派題目標支援 `class`（整班）與 `students`（指定學生），後者透過 `AssignTargetPicker` modal 選取
-
-**UI 元素**:
-- 頁首：與診斷派題共用「派題管理」標題與 tab 列（📝 診斷題組 / 🌱 概念釐清題組）
-- 矩陣：列為概念釐清題組、欄為班級；空格點擊開啟 `AssignTargetPicker`，已派格子點擊開啟 `ManagePopover`
-
-**狀態依賴**: `assignments`, `scenarios` (via `useScenarios`), `classes`, `addAssignment`, `updateAssignment`, `removeAssignment`
+> **§2.7 ~ §2.13 已搬移到 `spec-02b-pages-extra.md`**（含教師端班級管理、班級詳情、知識地圖系列、舊版報告，以及學生端首頁、作答、報告三頁）。
+>
+> 此處保留章節編號占位，避免外部交叉引用失效。
 
 ---
 
-### 2.6.2 TreatmentOutcomes (`/teacher/treatment-outcomes`)
-**檔案**: `src/pages/teacher/TreatmentOutcomes.jsx`
+## 3. 管理員後台頁面（spec-14 風格）
+
+### 3.1 AdminLogin (`/admin/login`)
+**檔案**: `src/pages/admin/AdminLogin.jsx`
 
 **功能描述**:
-- 教師端「概念釐清結果」頁，與「釐清對話紀錄」並列為治療成效檢視入口
-- 將學生×概念釐清題組的 session 衍生為可比較的成效彙整，協助教師判斷下一步教學決策
-- 與對話紀錄頁的差別：本頁聚焦「結果」（每題釐清程度、星等、AI 判定），對話紀錄頁聚焦「過程」（完整氣泡時序）
+- 管理員獨立登入頁，不在首頁角色卡露出
+- 已登入教師 / 學生會自動導向其對應端
 
-**衍生規則**（spec-08 §5.5，純前端 lib `src/lib/treatmentOutcomes.js`，未來搬至後端 `treatment_outcome_service.py`）：
-- per-question outcome：依該題 messages 的 maxHintLevel + 是否走到 `stage='complete'`，分類為
-  自走理解 / 輕度引導 / 中度引導 / 強鷹架 / 未釐清 / 未作答
-- AI 判定釐清（代理 pre/post 比較）：該 session 所有題目皆走到 `stage='complete'` → 已釐清
-- 星等（0~3 顆）：依各題 outcome weight 平均（≥3.5 → 3⭐、≥2.5 → 2⭐、≥1.5 → 1⭐、< 1.5 → 0⭐）
+**UI 元素**（spec-14 §3）:
+- 中央卡片（白底 + `rounded-3xl` + 細邊框）
+- 上方品牌列：薄荷綠 `admin_panel_settings` icon + 「SciLens Admin」
+- 表單：帳號 / 密碼（含 visibility toggle） / 登入按鈕（薄荷綠 primary）
+- 錯誤訊息：`ROLE_MISMATCH` → 「此帳號不是管理員」；`ACCOUNT_DISABLED` → 「此帳號已被停用」；其他 401 → 「帳號或密碼錯誤」
+- 底部「← 回到師生入口」連結，導向 `/`
 
-**UI 元素**（低認知負荷重構版）:
-- 頁首：標題「概念釐清結果」+ 一句話副標
-- **三色階圖例條**：綠（已釐清）/ 黃（需引導）/ 紅（未釐清），首次閱讀即可掌握配色意義
-- 篩選列：班級 dropdown + 概念釐清題組 dropdown
-- **班級彙整卡片**（3 個，避免 4 個資訊塊讓人分心）：
-  - 已派發學生（人）
-  - 已釐清（X / Y 人；綠色強調）
-  - 需關注（人；當 > 0 時用紅色強調）
-- **結果表格**（5 欄；舊版 8 欄已收斂）：
-  - 班級 chip
-  - 學生姓名（題組標題以副標形式顯示，不另佔一欄）
-  - 整體結果（綠 / 黃 / 紅 tier chip + 星等 0~3）
-  - 各題狀態：每題 pill = tier 顏色 + outcome label（自走理解 / 輕度引導 / 中度引導 / 強鷹架 / 未釐清 / 未作答）
-  - 「查看對話」→ 跳轉 `/teacher/treatment-logs/:sessionId`
-
-**已刪除的舊欄位 / 卡片（避免重複與認知負荷）**:
-- 「AI 判定」欄 — 與整體結果 chip 重複（皆從 perQuestion 推得）
-- 「概念釐清題組」獨立欄 — 移至學生姓名下副標
-- 「學生反思」欄 — 後端欄位 P5 未實作，欄位永遠空白，暫不顯示
-- 「平均星等」「平均釐清率」指標卡 — 兩者皆描述整體成效，使用者難分辨；收斂為單一「已釐清 / 需關注」決策軸
-
-**狀態依賴**: `useTreatmentLogs`、`useTreatmentLog`、`useScenarios`、`useClasses`
-
-**已知限制 / 後端待辦（P5）**:
-- `treatment_sessions` 需新增 `reflection_text`（學生反思）、`star_rating`（學生端 result 階段三星）兩個欄位（spec-11 §3.13、deviations.md）
-- 後續計算應改為後端 service 一次回傳所有衍生欄位（避免前端 N+1 fetch messages）
+**狀態依賴**: `useAuth()` 的 `login`、`logout`、`currentUser`、`loading`
 
 ---
 
-### 2.7 ClassManagement (`/teacher/classes`)
-**檔案**: `src/pages/teacher/ClassManagement.jsx`
+### 3.2 AdminDashboard (`/admin`)
+**檔案**: `src/pages/admin/AdminDashboard.jsx`
 
 **功能描述**:
-- 列出當前篩選範圍內的班級（Google Classroom 風的極簡呈現）
-- 提供「新增班級」入口
-- **不直接處理 class-level 寫入動作**（編輯/封存/還原/刪除全部走詳情頁）
+- 後台首頁，呈現系統狀態統計 + 功能入口
+- W1 階段資料為 placeholder（後續波次串接真實 API）
 
 **UI 元素**:
-- 頁首：標題「班級管理」+「+ 新增班級」按鈕
-- 學年篩選器（與 DashboardLayout 共用 AppContext 狀態，spec-05 §1.5）
-- 顯示模式切換 chip：`[列表] [完整卡片]`（預設列表，圖示 `view_list` / `dashboard`）
-- 班級項目（兩種視圖共用同一套設計語言，定義於 `ClassListRow.jsx` / `ClassCardItem.jsx`）：
-  - 列表列（`ClassListRow`）：色塊（左側 1.5px 圓條）+ 班名（粗體）+ 副標「N 位學生 · 114 下」+ 右側 chevron；整列可點、鍵盤 Enter/Space 同效；hover/focus 變淺綠
-  - 完整卡片（`ClassCardItem`）：同樣的內容比例，版面較大；左側細色條 + 粗體班名 + 副標
-  - 已封存：opacity 60% + grayscale + 「已封存」chip；唯有勾選「顯示已封存班級」才會出現在列表
-- 空狀態：「目前學年/學期沒有班級。點右上『新增班級』… 或勾選『顯示已封存班級』查閱歷史。」
-- **新增班級**：開啟 `ClassFormModal` (isEdit=false)；提交 → `useCreateClass()`
+- **統計區（4 個 Donut Stat Card）**：教師帳號 / 學生帳號 / 班級總數 / 共用題組，呈現「已啟用 / 總數」與百分比
+- **功能入口（5 張卡片）**：帳號管理 / 班級總覽 / 單元管理 / 知識節點 / 範例題庫，未實作的卡片右上角顯示「W2~W6 規劃中」黃色 pill
+- 共用 `AdminLayout`
 
-**沒有的東西**（與既有實作差異）：
-- ❌ 班級卡片/列上沒有編輯/封存/刪除按鈕
-- ❌ 沒有派題數、最近派題日期等「教學活動」統計（這些屬於儀表板）
+---
+
+### 3.3 UsersManagement (`/admin/users`)
+**檔案**: `src/pages/admin/UsersManagement.jsx`
+
+**功能描述**:
+- 管理員管理教師 / 學生帳號的中心頁
+- 支援列表瀏覽、關鍵字搜尋、狀態篩選、新增教師、停用 / 啟用、重設密碼、顯示明文密碼
+- **不支援刪除帳號**（永遠走 stop-the-world 的「停用」流程；spec-13 §11）
+- **不支援在此頁新增學生**（學生由教師端 `ClassDetail` 或 W3 Excel 匯入建立）
+
+**UI 元素**（spec-14）:
+- **工具列**：
+  - Role tab pill（教師 / 學生），白底淺薄荷膠囊
+  - 搜尋框：左側 `search` icon，placeholder「搜尋帳號或姓名」
+  - 狀態下拉：全部狀態 / 啟用中 / 已停用
+  - 右側「+ 新增教師」按鈕（薄荷綠 primary，僅在教師 tab 顯示）
+- **教師表格欄位**：帳號 / 姓名 / 班級數 / 學生數 / 密碼 / 狀態 / 操作
+- **學生表格欄位**：帳號 / 姓名 / 班級 / 座號 / 密碼 / 狀態 / 操作
+- **密碼欄**：使用 `PasswordRevealButton` 子元件，預設遮罩 `••••••`，點眼睛按鈕才呼叫 `GET /api/admin/users/{id}` 取得明文；若是預設密碼會額外顯示黃色「預設」pill
+- **狀態 pill**：啟用中（薄荷綠）/ 已停用（紅色）；已停用列整列 opacity 60%
+- **操作欄**：
+  - 「停用」按鈕（黃色 hover）→ 開啟 `AdminConfirmModal`（danger）；admin 角色 disabled
+  - 「啟用」按鈕（綠色 hover）→ 開啟 `AdminConfirmModal`（primary）
+  - 「重設密碼」按鈕（藍色 hover）→ 開啟 `AdminConfirmModal`（primary）；成功後 toast 顯示新密碼
+- **新增教師流程**：`NewTeacherModal` → 帳號 + 姓名 → 後端建立 → 預設密碼 = 帳號 → toast 提示
+
+**子元件**（位於 `src/pages/admin/components/`）:
+- `AdminConfirmModal.jsx` — 共用確認 modal（primary / danger 兩 variant）
+- `NewTeacherModal.jsx` — 新增教師表單 modal
+- `PasswordRevealButton.jsx` — 密碼揭露按鈕，含 admin-only fetch
 
 **狀態依賴**:
-- `useApp()`：`currentSchoolYear`、`currentSemester`、`includeArchivedClasses`
-- `useClasses()`：依篩選器即時拉取班級清單
-- `useCreateClass()`：新增班級
+- `useAdminUsers({ role, q, active })`：列表
+- `useAdminUser(id)`：揭露明文密碼（lazy fetch）
+- `useCreateTeacher()` / `useDisableUser()` / `useEnableUser()` / `useAdminResetPassword()`
 
 ---
 
-### 2.8 ClassDetail (`/teacher/classes/:classId`)
-**檔案**: `src/pages/teacher/ClassDetail.jsx`
+### 3.4 ClassesOverview (`/admin/classes`)
+**檔案**: `src/pages/admin/ClassesOverview.jsx`
 
 **功能描述**:
-- 班級詳情頁。**所有 class-level 寫入動作集中在此**（編輯/封存/還原/刪除）
-- 學生名冊 CRUD
-- 學生密碼管理（揭露明文 / 重設）
+- 管理員跨教師檢視所有班級
+- 篩選：教師（下拉）/ 班級狀態（使用中 / 已封存 / 全部）/ 關鍵字（班名 / id）
+- 點任一列「詳情」進入 `/admin/classes/:classId`
 
-**UI 元素**:
-- 頁首：
-  - 返回按鈕「← 返回班級管理」
-  - 班名（大）+ 已封存徽章（若 status='archived'）
-  - 副標：`{114 學年度} · {下學期} · N 位學生 · 預設密碼說明`
-  - 右側操作鈕列：
-    - `[✏ 編輯班級]` → 開啟 `ClassFormModal` (isEdit=true)
-    - `[封存]`（active 時）→ window.confirm → `useArchiveClass()`
-    - `[還原]`（archived 時）→ `useUnarchiveClass()`
-    - `[🗑]` → `DeleteClassModal`（兩步驟）→ `useDeleteClass()` → 跳回 `/teacher/classes`
-- 已封存橫幅（status='archived' 時）：米色背景「此為歷史班級。學生名冊與派題作答紀錄完整保留，點上方『還原』可恢復為任教中。」
-- 學生名冊表格（座號 / 姓名 / 帳號 / 密碼 / 操作）：
-  - 密碼欄為 `PasswordCell`：預設遮罩，點眼睛圖示 → `useStudent(id)` 揭露明文
-  - 重設密碼 → `useResetStudentPassword()`
-  - 編輯 / 刪除學生 → `useUpdateClassStudents()`（PUT 整批替換）
-  - 新增學生表單（座號 + 姓名）
-
-**路由參數**: `classId`
+**UI 元素**（spec-14）:
+- 工具列：搜尋框 + 教師下拉 + 狀態下拉 + 右側計數
+- 表格欄位：班級（色塊 + 名稱 + id）/ 所屬教師 / 學年-學期 / 學生數 / 狀態 pill / 詳情按鈕
+- 已封存班級狀態 pill 用灰底
 
 **狀態依賴**:
-- `useClass(classId)`：可讀任何狀態的班級（含已封存，後端 GET 不過濾 status）
-- `useUpdateClass()` / `useArchiveClass()` / `useUnarchiveClass()` / `useDeleteClass()`
-- `useUpdateClassStudents()` / `useResetStudentPassword()` / `useStudent(id)`
-- `useAssignments()`：僅供 `DeleteClassModal` 顯示「即將連動刪除 N 筆派題」
-- `useApp()`：`currentSchoolYear` / `currentSemester`（編輯班級表單的學年下拉預設值）
-
-**抽出的子元件**:
-- `ClassFormModal.jsx` — 新增/編輯班級的表單 Modal（與 ClassManagement 共用）
-- `DeleteClassModal.jsx` — 班級刪除確認 Modal（兩步驟）
-- `DeleteStudentModal.jsx` — 學生刪除確認 Modal
+- `useAdminClasses({ teacherId, status })`
+- `useAdminUsers({ role: 'teacher' })`（教師下拉資料源）
 
 ---
 
-### 2.9 KnowledgeMap (`/teacher/knowledge-map`)
-**檔案**: `src/pages/teacher/KnowledgeMap.jsx`
+### 3.5 ClassDetailAdmin (`/admin/classes/:classId`)
+**檔案**: `src/pages/admin/ClassDetailAdmin.jsx`
 
 **功能描述**:
-- **唯讀頁面**，僅展示系統預設迷思概念，不提供新增/編輯/刪除功能
-- 頁面標題為「(預設) 知識節點與迷思概念總覽」
-- 以層級結構展示所有知識節點
-- 顯示各節點的迷思概念列表
-- 顯示先備知識關聯（知識學習路徑視覺化）
+- 管理員視角的班級詳情
+- 唯讀檢視學生名冊；不在此頁直接編輯個別帳號（請走 `/admin/users`）
+- **空班時**顯示 `StudentExcelImport` 元件可批次匯入名冊
+- **已有學生時**顯示提示說明 Excel 匯入僅在空班時可用
 
 **UI 元素**:
-- **`KnowledgeSkillTree`** 知識路徑技能樹（深木紋夜晚地圖風 / Mockup J-1）：
-  - 六角節點 + 階段欄位（1–6）
-  - A 綠系階段漸層（5 階段、線性）／ B 暖橘系階段漸層（6 階段、5-5/5-6 平行）
-  - 銳利輪廓 + 背後柔光暈
-  - hover 節點 → 固定資訊條顯示完整名稱（避免 layout shift）
-  - 「顯示節點名稱」開關 → 展開下方雙欄詳細清單
-  - 詳見 spec-03 §6
-- 迷思概念表格（3 欄）：
-  | 欄位 | 說明 |
-  |------|------|
-  | 知識節點 | 節點名稱 |
-  | 迷思概念 | 迷思概念 label |
-  | 學生常見想法 | 迷思概念 studentDetail |
-- **無「操作」欄位**（唯讀，不可編輯或刪除）
+- 頁首基本資訊卡：班級色塊 + 名稱 + id + 已封存徽章；4 個欄位（所屬教師 / 學年-學期 / 年級-科目 / 學生數）
+- Excel 匯入區（空班）或提示文字（非空班）
+- 學生名冊表格：座號 / 姓名 / 帳號 / 密碼狀態 pill（預設 / 已修改）
 
-**資料來源**: `knowledgeNodes` (from knowledgeGraph.js)
+**子元件依賴**:
+- `<StudentExcelImport variant="admin">`（共用元件，spec-03 待加註）
+
+**狀態依賴**:
+- `useAdminClass(classId)`
+- `useAdminClassTeacher(classId)`
 
 ---
 
-### 2.9.1 CustomKnowledgeMap (`/teacher/custom-knowledge-map`)
-**檔案**: `src/pages/teacher/CustomKnowledgeMap.jsx`
+### 3.6 StudentExcelImport（共用元件）
+**檔案**: `src/components/StudentExcelImport.jsx`
 
 **功能描述**:
-- 同時顯示**系統預設迷思概念**與**教師自訂迷思概念**
-- 預設迷思以淡灰風格呈現，帶「預設」徽章；自訂迷思以正常風格呈現，帶「自訂」徽章
-- 教師可新增自訂迷思概念（全域按鈕 + 各節點按鈕）
-- 教師可刪除自訂迷思概念（僅自訂可刪，預設不可刪）
-- 知識學習路徑視覺化（與預設頁相同）
+- 教師端 `ClassDetail` 與管理員端 `ClassDetailAdmin` 共用的 Excel 匯入元件
+- 兩步驟：選擇檔案 → 後端預覽（dry-run）→ 確認 → 正式匯入
+- 後端會驗證：班級必須空（CLASS_NOT_EMPTY 409）、檔案大小（FILE_TOO_LARGE 413）、格式（INVALID_FILE_TYPE / INVALID_XLSX 400）、欄位內容（ROW_N_MISSING_*、DUPLICATE_SEAT 400）
 
-**UI 元素**:
-- 知識學習路徑視覺化（同 §2.9）
-- 圖例列（legend bar）：說明「預設」與「自訂」兩種徽章的意義
-- 「新增自訂迷思」按鈕（頁面頂部全域 + 各節點區塊內）
-- 迷思概念表格（4 欄）：
-  | 欄位 | 說明 |
-  |------|------|
-  | 知識節點 | 節點名稱 |
-  | 迷思概念 | 迷思概念 label + 徽章（「預設」灰 / 「自訂」彩） |
-  | 學生常見想法 | 迷思概念 studentDetail |
-  | 操作 | 自訂迷思顯示刪除按鈕；預設迷思無操作 |
-- 預設迷思列以 muted gray 樣式呈現，自訂迷思列以正常樣式呈現
+**Excel 格式要求**:
+- 第一欄座號（正整數）、第二欄姓名（最多 64 字）
+- 第一列可為標題（自動偵測並跳過）
+- 不可有重複座號
+- 1 MiB 大小上限
 
-**資料來源**: `knowledgeNodes` (from knowledgeGraph.js), 教師自訂迷思概念（後端 API 或前端狀態）
+**Props**:
+- `classId`：目標班級 id
+- `variant`：`'teacher'` | `'admin'`，影響色彩主題（教師端米色木紋風、管理員端薄荷綠）以及 invalidate 的 query key
+- `onSuccess(classDetail)`：匯入成功 callback
+
+**錯誤訊息**：元件內部 `explainError(code)` 把後端 error code 轉為使用者友善的中文訊息
 
 ---
 
-### 2.9.2 MisconceptionCauses (`/teacher/misconception-causes`)
-**檔案**: `src/pages/teacher/MisconceptionCauses.jsx`
+### 3.7 UnitsManagement (`/admin/units`)
+**檔案**: `src/pages/admin/UnitsManagement.jsx`
 
 **功能描述**:
-- 純說明頁，列出診斷模型用來歸類學生迷思成因的 **8 種類別**
-- 類別 1–6 為一般通用成因；類別 7、8 為「情境條件成因」（僅在學生對話明確提及對應描述時才適用），UI 上以灰色徽章 + 虛線分隔 + 提示文字明確區分
-- 教師可作為診斷報告閱讀時的參考圖鑑
+- 管理員管理「課程單元」（單元 = 一組獨立的知識節點 + 迷思概念集合）
+- W4 階段預設 seed 12 個高年級單元（依使用者參考截圖：太陽與光的折射 / 植物世界 / 空氣與燃燒 / 聲音與樂器 / 觀測星空 / **水溶液** / 動物大觀園 / 力與運動 / 多變的天氣 / 地表的變化 / 電磁作用 / 熱對物質的影響）
+- 「水溶液」標 `is_system_current=true`：系統目前 12 個知識節點都掛在此單元下，**不可封存或刪除**（後端 409 `UNIT_IS_SYSTEM_CURRENT` + 前端按鈕 disabled + tooltip 說明）
 
-**UI 元素**:
-- 頁面標題 + 返回首頁按鈕
-- 黃色提示橫幅：說明類別 1–6 與 7、8 的差異
-- 兩欄響應式網格（手機單欄、md+ 雙欄），每張卡片含：
-  - 圓形編號徽章 + 類別名稱（彩色 header）
-  - 「特徵」段落
-  - 「常見樣態」段落
-  - （僅 7、8）虛線分隔下方的「情境條件成因」提示
+**UI 元素**（spec-14）:
+- 工具列：統計列（共 N 個 · 使用中 N · 已封存 N）+ 「顯示已封存」checkbox + 「+ 新增單元」按鈕
+- 依年段三大分區呈現（**高年級** 藍木條 / **中年級** 薄荷條 / **低年級** 橙木條），各區帶區段標題 + 計數
+- 單元列卡片：色彩條 + 名稱 + 系統徽章（若 isSystemCurrent）+ 狀態 pill + code（mono）+ 簡介
+- 操作按鈕：編輯 / 封存（或啟用）/ 刪除；系統內建單元的封存與刪除按鈕 disabled
+- 新增 / 編輯 → `UnitFormModal`：名稱 + 年段下拉（低/中/高）+ 簡介
+- 確認 modal：封存 / 啟用（primary）/ 刪除（danger）共用 `AdminConfirmModal`
 
-**8 個成因類別**:
-1. 學科知識不足或缺乏
-2. 概念不清楚或混淆
-3. 不正確的推論或運算過程
-4. 單憑個人直覺或關鍵字反應
-5. 來自日常的經驗和生活中的觀察
-6. 日常生活用語與科學用語的混淆
-7. 教師的教學過程不當（情境條件）
-8. 實驗操作不當（情境條件）
+**子元件**（位於 `src/pages/admin/components/`）:
+- `UnitFormModal.jsx` — 新增 / 編輯單元表單 modal
+- 共用 `AdminConfirmModal.jsx`（W2 既有）
 
-**資料來源**: 頁面內 hard-coded 常數 `CAUSE_CATEGORIES`（無外部依賴）
+**狀態依賴**:
+- `useAdminUnits({ gradeBand?, status? })`：列表（admin 可看全部含已封存）
+- `useCreateUnit()` / `useUpdateUnit()` / `useArchiveUnit()` / `useUnarchiveUnit()` / `useDeleteUnit()`
+- `useUnits({ gradeBand?, includeArchived? })`：未來題組選擇器用（公開讀，任何登入者）
 
 ---
 
-### 2.10 TeacherReport (`/teacher/report`)
-**檔案**: `src/pages/teacher/TeacherReport.jsx`
+### 3.8 KnowledgeNodesAdmin (`/admin/knowledge-nodes`)
+**檔案**: `src/pages/admin/KnowledgeNodesAdmin.jsx`
 
 **功能描述**:
-- 舊版診斷報告頁面
-- 保留以避免路由失效（向後相容）
+- 管理員以**畫布**方式管理各單元的知識節點（小節點）與先備關係，並編輯每個節點下的多條迷思概念
+- 既有 12 個水溶液節點 + 48 條迷思已 seed 進 DB（`is_system_seed=true`，可編輯但不可刪）
+- W5a 階段教師端 / 學生端仍從 hard-code（`src/data/knowledgeGraph.js`）讀取；W5b 後切換為 API
+
+**三個視圖**:
+1. **單元畫布**（預設）：選一個單元，看到該單元所有小節點 + 先備關係箭頭。可在畫布拖曳節點、連線、點選節點開啟右側編輯面板
+2. **未分配**：列出所有 `unit_id IS NULL` 的節點，依大節點 (`parent_code`) 分組；每組可選擇下拉一鍵指派到對應年段的單元
+3. **Excel 匯入** modal（W5a-4）：上傳「整合-知識節點大全」xlsx → 預覽（依年段 + 大節點分組統計）→ 確認後全部以 `unit_id=NULL` 寫入未分配池
+
+**UI 元素**（spec-14）:
+- 工具列：視圖 tab pill + 單元下拉（僅 canvas tab 顯示）+ 自動排版 + Excel 匯入 + 新增節點按鈕
+- **畫布**：React Flow（`@xyflow/react`）+ Background grid + Controls + MiniMap；節點以 `parent_code` 著色；箭頭從先備指向後續節點
+- **編輯側邊欄**（`KnowledgeNodeEditPanel`）：選中節點時開啟，包含基本資訊（名稱 / 單元 / 大節點 / 學習順序 / 影片）+ 迷思清單（每條可獨立編輯 / 刪除 / 新增）；ID 永遠唯讀
+- **新增節點** modal：自訂 ID + 名稱 + 單元 + 年段 + 大節點（選填）
+- **Excel 匯入** modal：兩步驟 preview→confirm
+
+**子元件**（位於 `src/pages/admin/components/`）:
+- `KnowledgeNodeCanvas.jsx` — React Flow 畫布（拖曳 / 連線 / 自動排版）
+- `KnowledgeNodeEditPanel.jsx` — 右側編輯面板 + 迷思 CRUD
+- `NewKnowledgeNodeModal.jsx` — 新增節點 modal
+- `NodeExcelImportModal.jsx` — Excel 匯入 modal
+- `AutoLayoutButton.jsx` — 自動排版按鈕
+
+**狀態依賴**:
+- `useAdminKnowledgeNodes({ unitId?, unassigned? })`：列表（含迷思）
+- `useCreateKnowledgeNode()` / `useUpdateKnowledgeNode()` / `useDeleteKnowledgeNode()`
+- `useBulkUpdatePositions()`：拖曳結束 debounced 500ms 寫座標
+- `useBulkAssignUnit()`：未分配池批次指派
+- `useCreateMisconception()` / `useUpdateMisconception()` / `useDeleteMisconception()`
+- `useAdminUnits()`：單元下拉資料源
+
+**Excel 匯入規格**：
+- 必須 sheet name = `整合`
+- 欄位：A 序號 / B 星空圖名稱 / C 學習階段（2=middle、3=upper）/ D 大節點編碼 / E 大節點名稱 / F 小節點編碼 / G 小節點名稱 / H 影片名稱 / I 影片網址
+- 既存節點 ID（如 12 個 seed 節點）匯入時跳過
+- 所有節點以 `unit_id=NULL` 進入未分配池，admin 後續再指派
 
 ---
 
-### 2.11 StudentHome (`/student`)
-**檔案**: `src/pages/student/StudentHome.jsx`
+### 3.9 SampleQuizzes (`/admin/sample-quizzes`)
+**檔案**: `src/pages/admin/SampleQuizzes.jsx`
 
 **功能描述**:
-- 學生端首頁，呈現「我的任務看板」
-- 動態列出**老師指派給該生班級**的派題；不顯示全部題組庫
-- 派題視為平行任務（沒有先後順序），分為「待挑戰」與「已完成」兩個分區
-- 點擊任務卡的「開始挑戰」 → 進入作答；點擊「查看報告」 → 進入學習報告
-- **（波次 3 規劃）** 兩種派題類型獨立分區：
-  - 「📝 診斷測驗」區塊（既有，`Assignment.type='diagnosis'`）
-  - 「🌱 概念釐清治療」區塊（新增，`Assignment.type='scenario'`，spec-08）
-  - 兩區塊使用相同 `TaskCard` 結構，靠**色相 + 標籤 chip** 區隔（治療任務改用青木 `#5BA47A` 系卡底 band）
+- 管理員跨教師檢視所有題組，並可一鍵把任一題組標記 / 取消為「**系統範例**」
+- 題組本身仍由教師端 `QuizCreateWizard` 建立；admin 在此**不能從零建立題組**，僅負責標記
+- 教師端 `QuestionImportDrawer`（出題精靈的「從題庫挑題」抽屜）：
+  - 系統範例題組自動排到最上面
+  - 標題列顯示藍色 `verified` icon + 「系統範例」徽章
 
-**視覺風格**: 沿用 spec-07 木框收集冊風 + **手遊養成系任務畫面**佈局（參考 Pokemon Trainer Rank 升級畫面：HUD + 米紙 panel + 白底厚棕邊任務卡）。
+**UI 元素**（spec-14）:
+- 工具列：篩選 tab（全部 / 系統範例 / 一般）+ 搜尋框 + 統計列
+- 黃色提示卡：說明系統範例機制
+- 表格欄位：題組（標題 + ID + 範例徽章）/ 建立教師 / 節點（最多顯示 3 個）/ 題數 / 狀態 pill / 建立日期 / 操作按鈕
+- 操作按鈕：「設為範例」/「取消範例」依當前狀態切換顏色（藍 ↔ 紅）
 
-> **設計演進（2026-04-29）**：
-> - v2.1：闖關地圖（曲折路徑 + 圓形關卡節點） — ❌ 棄用，派題沒有先後順序、線性路徑誤導
-> - v2.2：任務看板初版（雙層木框任務卡 + 多行 meta） — ❌ 木框層層套娃、視覺重點稀釋
-> - v2.3：簡潔單列版（單層彩色背景 + 一行 meta） — ❌ 任務卡視覺權重不夠，標題不夠突出
-> - **v2.4（HUD + 米紙 panel + 厚棕邊任務卡）✅ 採用**：頂部 sky HUD（透明 overlay 在草地天空底圖上）+ 圓角米紙 panel（佔頁面下半，淡斜紋紙感）+ 白底厚棕邊任務卡（大圖示 + 大標題 + 進度條 + 厚黃 chunky 按鈕 + 卡底綠 band）— 視覺權重對齊參考圖，任務列表清楚可見
-
-**資料模型對應**:
-- 學生班級綁定：原型期暫定常數 `STUDENT_CLASS_ID = 'class-A'`，未來搬至 AppContext
-- 任務來源：`assignments.filter(a => a.classId === STUDENT_CLASS_ID)`
-- 過往成績：對每個派題的 `quizId`，從 `studentHistory` 找最佳紀錄（`correctCount` 最高者），並以正確率 映射為 1~3 顆星：≥80% 三星、≥50% 二星、>0 一星
-
-**任務狀態決定邏輯**:
-| 狀態 | 條件 | 視覺 |
-|------|------|------|
-| `completed` | 該 quizId 在 studentHistory 中已有紀錄 | 綠色 `check_circle` 徽章 + 三星評等 + 完成日 + 「查看報告」「再次挑戰」按鈕 |
-| `expired` | 無紀錄且 `dueDate < today` | 暗紅 `schedule` 徽章 + 「已過期」標籤 + 灰調 + 「仍可挑戰」按鈕（不鎖死） |
-| `next` | 無紀錄且 `dueDate >= today` | 亮橘 `flag` 徽章 + 「開始挑戰」GO 按鈕；若 `dueDate - today ≤ 3` 加紅色「⏰ 剩 N 天」緊急標籤 |
-
-> **設計決策**：不再區分「next（推薦下一個）」與「upcoming」狀態。所有未完成且未過期的派題都顯示為亮橘色一致樣式，因為任務之間沒有先後之分；緊急程度由「剩 N 天」標籤呈現。
-
-**任務排序邏輯**:
-- **待挑戰區**：先列「未過期」任務（依 `dueDate` 升冪，截止近的優先），再列「已過期」任務（依 `dueDate` 降冪）
-- **已完成區**：依 `completedAt` 降冪（最近完成的在最上）
-
-**UI 元素**:
-
-**1. 頁面結構（兩段式：sky HUD + cream panel）**：
-- 上半 HUD（透明 overlay 在 sky+grass 底圖上）：HUD 一條 + 吉祥物對話列
-- 下半米紙 panel：`flex-1` 填滿剩餘空間 + `rounded-t-[32px]` + `border-t-[3px] border-[#C19A6B]` + 漸層米紙 (`from-[#FFF8E7] to-[#FBE9C7]`) + 淡斜紋 overlay
-- 進入 panel 的視覺過渡靠米紙圓角頂 + 上邊木紋色邊（取代複雜 SVG 波浪）
-
-**2. HUD 一條**：
-- 左：登出 `WoodIconButton size="sm"`（`arrow_back` 圖示，`aria-label="登出"`，點擊呼叫 `useAuth().logout()` 後 `navigate('/', { replace: true })`，避免 LoginPage auto-redirect 反彈回 `/student`） + `AvatarPill`
-  - AvatarPill = 木框內 [avatar img] + 「🎓 班級名」+ **學習進度條**（探索的概念 % + 數字）
-  - mobile (`<sm`)：只顯示 avatar 圖示，隱藏文字 + 進度條
-- 右：合併三項統計 pill（`CombinedStats`，木框內 3 cell 用直線分隔，每 cell = icon + 數字無 label）+ 設定齒輪（點擊開啟 `StudentSettingsDrawer`）
-  - 統計項：✅ 已完成 `M/N` ｜ 🌳 已探索概念 `X/12` ｜ ⏳ 待完成 `K`
-  - 設定齒輪：`settings_wood.png` icon，點擊 `setSettingsOpen(true)` 開啟右側設定抽屜
-
-**3. 吉祥物對話列**（透明 overlay，無對話框）：
-- 左：`scilens_mascot.png` (w-14 sm:w-16) + `animate-breath`
-- 右：浮空文字
-  - 有任務待挑戰：「你有 **N** 個任務要挑戰！」+ 副句「完成後可在『已完成』區查看你的學習報告」
-  - 全部完成：「目前沒有待挑戰任務 · 你做得很棒！」
-  - 無派題：「老師還沒派任務給你～」
-- 文字加 `drop-shadow-[0_2px_0_rgba(255,255,255,0.6)]` 在天空底圖上保持可讀
-
-**4. Section 標題（橘色豎條 tab marker）**：
-- 左側 1.5px 寬橘色 (`#D08B2E`) 圓角豎條
-- 右側標題 + 副標（細灰）+（折疊區才有）數量徽章 + `expand_more` 箭頭
-- **「目前你被指派的任務」**（永遠展開，附副標「老師指派的任務都會出現在這裡，點任務卡開始挑戰」）
-- **「已完成的任務」**（預設折疊，標題列即 toggle）
-
-**5. 任務卡（`TaskCard` v2.4 - 寶可夢手遊風）**：白底 + 厚棕邊 + 綠 band
-- **卡片殼**：`bg-white border-[3px] border-[#8B5E3C] rounded-[20px]` + `shadow-[0_4px_0_-1px_#5A3E22,0_8px_14px_-4px_rgba(91,66,38,0.35)]` + `overflow-hidden`
-- **內部佈局**（單列，桌機 / 手機一致）：
-  - **左：大圖示方框** (w-16 sm:w-20，圓角 + 厚色邊 + 內陰影)，內含 Material Symbols icon (text-4xl sm:text-5xl)
-  - **中：標題 + 進度條 + 副資訊**
-    - 標題：`font-black text-base sm:text-lg`（粗黑大字，畫面焦點）
-    - 進度條列：「題數 + 進度 bar + 星等」（已完成才顯示星等與填充比例）
-    - 副資訊：截止日 / 完成日（短日格式「5 月 4 日」）
-  - **右：厚黃 chunky 按鈕**（`ChunkyButton` 元件）
-    - `primary`：黃色漸層 (`from-[#F4D58A] to-[#F0B962]`) + 厚棕邊 + 立體 4px 硬陰影
-    - `muted`：灰色漸層（過期狀態用）
-    - `ghost`：白底棕邊（已完成的「再做」次按鈕用）
-- **卡底彩色 band**（`h-2 sm:h-2.5`，與徽章狀態同色系）：
-  - `next` → 綠 band；`completed` → 深綠；`expired` → 灰
-- **左上角貼紙**（`Sticker`，浮於卡片邊界外，`-rotate-6 + animate-pulse-soft`）：
-  - `urgent`（剩 ≤ 3 天）：紅底白邊「⏰ 剩 N 天 / 今天截止」
-  - `completed`：綠底白邊「完成」
-  - `expired`：灰底白邊「已過期」
-
-**6. 空狀態**：米紙 panel 內顯示 `inventory_2` 大 icon + 「看板還是空的 / 老師還沒派任務給你 · 等老師派題後就會出現在這裡」
-
-**已刪除元素**（v2.3 → v2.4）：
-- ❌ 任務卡上的「派發日」、緊急 inline pill（改用左上貼紙）
-- ❌ 全幅草地背景 (`bg_ground.png`)，回用 `bg_chiheisen_green.jpg`（為了天空 / 草地分層 HUD 結構）
-- ❌ 細條 section header（取代為橘色豎條 tab marker）
-
-**輔助元件**:
-- 共用：`Icon`, `WOOD_OUTER`, `WOOD_INNER_CREAM`, `WoodIconButton`, `StarRating`（from `src/components/ui/woodKit.jsx`）
-- 學生專用：`TaskCard`（from `src/components/student/TaskCard.jsx`），內含 `Sticker`、`ChunkyButton` 子元件
-- 學生專用：`StudentSettingsDrawer`（from `src/components/student/StudentSettingsDrawer.jsx`），右側滑入設定抽屜，包含字體大小調整、個人資訊（唯讀）、關於系統/使用說明、登出按鈕
-- 內部 sub-component：`AvatarPill`（含學習進度條）、`CombinedStats`、`Section`（含折疊行為）、`EmptyBoard`
-
-**素材依賴**:
-- 背景：`bg_chiheisen_green.jpg`（sky+grass，固定 + cover；2026-04-29 v2.4 重新採用）
-- 學生 avatar：`irasutoya_student_clean.png`
-- 吉祥物：`scilens_mascot.png`
-- 設定 icon：`settings_wood.png`
-
-**狀態依賴**: `quizzes`, `classes`, `assignments`, `studentHistory`, `setCurrentQuizId`, `setActiveStudentReport`
-
----
-
-### 2.12 StudentQuiz (`/student/quiz/:quizId`)
-**檔案**: `src/pages/student/StudentQuiz.jsx`
-
-**功能描述**:
-- 對話式（Chat-like）的診斷測驗介面
-- 逐題呈現，以對話泡泡方式顯示
-- 學生選擇答案後進行即時診斷
-- 若診斷出迷思概念，出現確認問題讓學生反思
-- 作答完成後顯示摘要並記錄歷史
-
-**UI 子元件**:
-- `SystemBubble` — 機器人/系統訊息泡泡
-- `StudentBubble` — 學生回應泡泡
-- `ThinkingBubble` — 載入/思考中動畫
-
-**狀態依賴**: `recordAnswer`, `removeMisconception`, `resetStudentAnswers`, `addToHistory`, `studentAnswers`, `correctCount`, `studentMisconceptions`
-**路由參數**: `quizId`
-
----
-
-### 2.13 StudentReport (`/student/report`)
-**檔案**: `src/pages/student/StudentReport.jsx`
-
-**功能描述**:
-- 個人學習健康報告
-- 顯示被診斷出的迷思概念
-- 提供學生端的提示與建議
-- 顯示正確率統計
-
-**UI 元素**:
-- 正確率圓餅圖/統計
-- 迷思概念列表（含 studentDetail 說明）
-- 學習建議（studentHint）
-- 返回首頁按鈕
-
-**狀態依賴**: `activeStudentReport`, `studentMisconceptions`
+**狀態依賴**:
+- `useAdminQuizzes()`：跨教師列表（含 owner 姓名）
+- `useToggleSampleQuiz()`：mutation 切換 isSample；成功後同時 invalidate `quizzes` query 讓教師端立即看到

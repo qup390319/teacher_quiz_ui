@@ -6,12 +6,14 @@ import { useAuth } from '../context/AuthContext';
  *  <RequireAuth role="teacher"><TeacherPage /></RequireAuth>
  *
  * - 載入中：顯示簡易 loading
- * - 未登入：導回 /
- * - role mismatch：導回 / （清楚錯誤即可，不打擾）
+ * - 未登入：admin 路由導 /admin/login；其餘導 /
+ * - role mismatch：同上規則
  */
 export default function RequireAuth({ role, children }) {
   const { currentUser, loading } = useAuth();
   const location = useLocation();
+
+  const fallbackPath = role === 'admin' ? '/admin/login' : '/';
 
   if (loading) {
     return (
@@ -21,10 +23,10 @@ export default function RequireAuth({ role, children }) {
     );
   }
   if (!currentUser) {
-    return <Navigate to="/" replace state={{ from: location }} />;
+    return <Navigate to={fallbackPath} replace state={{ from: location }} />;
   }
   if (role && currentUser.role !== role) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={fallbackPath} replace />;
   }
   return children;
 }

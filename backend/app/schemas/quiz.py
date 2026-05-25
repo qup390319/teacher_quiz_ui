@@ -25,6 +25,8 @@ class QuizBrief(BaseModel):
     status: Literal["draft", "published"]
     knowledge_node_ids: list[str] = Field(serialization_alias="knowledgeNodeIds")
     question_count: int = Field(serialization_alias="questionCount")
+    is_sample: bool = Field(default=False, serialization_alias="isSample")
+    created_by: str | None = Field(default=None, serialization_alias="createdBy")
     created_at: str = Field(serialization_alias="createdAt")  # ISO date
 
     model_config = ConfigDict(populate_by_name=True)

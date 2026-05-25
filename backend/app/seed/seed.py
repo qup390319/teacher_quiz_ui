@@ -48,6 +48,8 @@ TEACHER_NAME = "黃老師(demo)"
 # real. See spec-13 §6.1.
 PROD_TEACHER_ACCOUNT = "bbb001"
 PROD_TEACHER_NAME = "黃老師"
+# System administrator (see spec-13 §2.1 and migration 0012).
+ADMIN_ACCOUNT = "admin001"
 
 CLASSES = [
     {
@@ -106,6 +108,20 @@ async def _seed_one_teacher(db: AsyncSession, account: str, name: str) -> None:
 async def seed_teacher(db: AsyncSession) -> None:
     await _seed_one_teacher(db, TEACHER_ACCOUNT, TEACHER_NAME)
     await _seed_one_teacher(db, PROD_TEACHER_ACCOUNT, PROD_TEACHER_NAME)
+
+
+async def seed_admin(db: AsyncSession) -> None:
+    """Seed the default system administrator (admin001 / admin001).
+
+    Idempotent. The migration 0012 also inserts this row, but seeding makes
+    the dependency explicit and survives --reset.
+    """
+    if await db.get(User, ADMIN_ACCOUNT):
+        return
+    db.add(User(
+        id=ADMIN_ACCOUNT, account=ADMIN_ACCOUNT, password=ADMIN_ACCOUNT,
+        role="admin", password_was_default=True,
+    ))
 
 
 async def seed_classes_and_students(db: AsyncSession) -> None:
@@ -667,6 +683,7 @@ async def run_seed(*, if_empty: bool, reset: bool) -> None:
         if if_empty and not await db_is_empty(db):
             print("[seed] --if-empty: DB already has users, skipping")
             return
+        await seed_admin(db)
         await seed_teacher(db)
         await seed_classes_and_students(db)
         n_quiz = await seed_quizzes(db)
@@ -680,7 +697,8 @@ async def run_seed(*, if_empty: bool, reset: bool) -> None:
         n_tx = await seed_treatment_sessions(db)
         await db.commit()
         print(
-            f"[seed] done — teachers {TEACHER_ACCOUNT} (demo) + {PROD_TEACHER_ACCOUNT} ({PROD_TEACHER_NAME}, empty), "
+            f"[seed] done — admin {ADMIN_ACCOUNT}, "
+            f"teachers {TEACHER_ACCOUNT} (demo) + {PROD_TEACHER_ACCOUNT} ({PROD_TEACHER_NAME}, empty), "
             f"{sum(len(c['students']) for c in CLASSES)} students across {len(CLASSES)} classes, "
             f"{n_quiz} quizzes, {n_scen} scenarios, {n_asg} assignments, "
             f"{n_ans} student answers, {n_fup} follow-up conversations, "

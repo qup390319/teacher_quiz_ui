@@ -7,6 +7,8 @@ export const CAUSE_CATEGORIES = [
   { id: 6, name: '日常生活用語與科學用語的混淆', color: 'purple' },
   { id: 7, name: '教師的教學過程不當', color: 'gray', conditional: true },
   { id: 8, name: '實驗操作不當', color: 'gray', conditional: true },
+  { id: 9, name: '過度類推', color: 'orange' },
+  { id: 10, name: '因果倒置', color: 'red' },
 ];
 
 export const CAUSE_COLOR_THEMES = {
@@ -16,6 +18,8 @@ export const CAUSE_COLOR_THEMES = {
   yellow: { badge: 'bg-[#FCF0C2] text-[#B7950B]' },
   mint:   { badge: 'bg-[#A8E6CF] text-[#1E8449]' },
   purple: { badge: 'bg-[#F3E5F5] text-[#7D3C98]' },
+  orange: { badge: 'bg-[#FAD7A0] text-[#CA6F1E]' },
+  red:    { badge: 'bg-[#FADBD8] text-[#C0392B]' },
   gray:   { badge: 'bg-[#E5E7EA] text-[#636E72]' },
 };
 

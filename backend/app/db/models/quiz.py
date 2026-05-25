@@ -34,6 +34,8 @@ class Quiz(Base):
     created_by: Mapped[str | None] = mapped_column(
         String(64), ForeignKey("users.id", ondelete="SET NULL"), nullable=True,
     )
+    # W6: admin 可標記為系統範例題組；教師端「從題庫挑題」會顯示徽章
+    is_sample: Mapped[bool] = mapped_column(default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), server_onupdate=func.now(), nullable=False,

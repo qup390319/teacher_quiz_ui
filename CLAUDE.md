@@ -96,8 +96,10 @@
 **後端整合狀態：所有 4 階段已完成 ✅**
 - **P1**：認證 + 學生帳密管理（教師可看明文密碼）
 - **P2**：後端 LLM proxy（前端 `src/llm/` 改走 `/api/llm/*`）+ RAGFlow N6 出題輔助
-- **P3**：classes / quizzes / scenarios / assignments 全部 API 化 + N1/N2 摘要 + React Query
-- **P4**：學生作答 / 追問結果 / 治療對話 全部 DB 化、N1/N2 統計改為後端從 DB 計算
+- **P3**：classes / quizzes / assignments 全部 API 化 + N1/N2 摘要 + React Query
+- **P4**：學生作答 / 追問結果 全部 DB 化、N1/N2 統計改為後端從 DB 計算
+
+> **概念釐清・補救（scenario / treatment）模組已從實驗系統移除**：前端徹底拔除、後端 router 註解於 `main.py`；DB schema 保留不動。教師端流程現為 **①出題 → ②派題 → ③看結果** 三步驟。詳見 `docs/deviations.md`。
 
 詳見 `docs/spec-10-backend-architecture.md`、`docs/spec-11-database-schema.md`、`docs/spec-12-ragflow-integration.md`、`docs/spec-13-auth.md`。
 
@@ -114,11 +116,13 @@
 | `docs/spec-05-user-workflows.md` | 使用者流程 | **修改互動邏輯時必讀** |
 | `docs/spec-06-deployment-and-config.md` | 部署與設定 | 修改配置時（注意：主題色彩請以 spec-07 為準） |
 | `docs/spec-07-ui-design-system.md` | **UI 設計風格指南** | **任何頁面 / 元件視覺修改前必讀**（日系手遊冒險風 / 木框收集冊） |
+| `docs/spec-08-treatment-cognitive-apprenticeship.md` | **[DEPRECATED]** 概念釐清・補救（已從實驗系統移除） | 不再使用；保留歷史參考；詳見 `docs/deviations.md` |
 | `docs/spec-09-llm-integration.md` | LLM 整合接口 | **修改 `src/llm/` 時必讀**（P2 起一律走後端 proxy） |
 | `docs/spec-10-backend-architecture.md` | **後端架構** | **修改 backend/ 或新增 router/service 時必讀** |
 | `docs/spec-11-database-schema.md` | **DB schema** | **修改 ORM model 或新增 migration 時必讀** |
 | `docs/spec-12-ragflow-integration.md` | **RAGFlow 整合** | **修改 `/api/ai/*` router 或 RAGFlow service 時必讀** |
 | `docs/spec-13-auth.md` | **認證機制** | **修改登入流程、JWT、密碼處理時必讀** |
+| `docs/spec-14-admin-ui-design.md` | **管理員後台 UI 設計指南** | **修改 `/admin/*` 頁面或元件前必讀**（薄荷綠 SaaS 風，與 spec-07 互不重疊） |
 | `docs/workflow.md` | 業務工作流（純邏輯，不含技術） | 設計階段 / 對齊使用者預期 |
 | `docs/deviations.md` | 規格偏離記錄 | 遇到 spec 與實作矛盾時 |
 
@@ -237,8 +241,9 @@ Claude Code 主會話（Opus）── Plan / Supervise / Review
 - 禁止修改程式碼後不更新 spec
 - 禁止 Class Components
 - 禁止 `import *`
-- 禁止在元件中硬編碼色彩值（必須使用 `theme.js` 常數、Tailwind class，或 `spec-07` 規範色票）
-- 禁止繞過 `spec-07-ui-design-system.md` 自創新風格元件（卡片、按鈕、徽章等）；如需新增元件，先更新 spec-07 再實作
+- 禁止在元件中硬編碼色彩值（教師/學生端必須使用 `theme.js` 常數、Tailwind class，或 `spec-07` 規範色票；管理員後台 `/admin/*` 使用 `spec-14` 規範色票）
+- 禁止繞過 `spec-07-ui-design-system.md`（教師/學生端）或 `spec-14-admin-ui-design.md`（管理員後台）自創新風格元件；如需新增元件，先更新對應 spec 再實作
+- **禁止在管理員後台 `/admin/*` 使用 spec-07 木框風格元件**（如 `WOOD_OUTER` / `WOOD_INNER_CREAM` / Fredoka 字體）；同理，**禁止在教師/學生端使用 spec-14 薄荷綠 SaaS 元件**
 - 禁止繞過 ESLint 規則（`eslint-disable` 需有充分理由並註明）
 - 禁止在 Mock Data 函式中引入外部 API 呼叫（保持純前端可運行；P3 後 mock 將逐步退場）
 - 禁止修改知識節點 ID 格式（特別注意 `INe-II-3-*` 與 `INe-Ⅲ-5-*` 兩種前綴並存，且 `Ⅲ` 為羅馬數字三、不是英文 III）

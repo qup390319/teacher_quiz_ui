@@ -1,7 +1,14 @@
 """User / Teacher / Student tables. See spec-11 §3.1~3.4."""
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, ForeignKey, Index, String, UniqueConstraint
+from sqlalchemy import (
+    TIMESTAMP,
+    CheckConstraint,
+    ForeignKey,
+    Index,
+    String,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -11,7 +18,7 @@ from app.db.base import Base
 class User(Base):
     __tablename__ = "users"
     __table_args__ = (
-        CheckConstraint("role IN ('teacher','student')", name="users_role_chk"),
+        CheckConstraint("role IN ('teacher','student','admin')", name="users_role_chk"),
         Index("users_role_idx", "role"),
     )
 
@@ -20,6 +27,13 @@ class User(Base):
     password: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[str] = mapped_column(String(16), nullable=False)
     password_was_default: Mapped[bool] = mapped_column(default=True, nullable=False)
+    # 帳號是否啟用。停用後仍保留所有歷史資料（班級/題組/派題/作答），但無法登入。
+    # 詳見 spec-13 §11（管理員停用帳號）。
+    is_active: Mapped[bool] = mapped_column(default=True, nullable=False)
+    disabled_at: Mapped[datetime | None] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=True,
+    )
+    disabled_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), server_onupdate=func.now(), nullable=False,

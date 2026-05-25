@@ -17,6 +17,54 @@
 
 ---
 
+### [2026-05-22] 開始落地《迷思成因診斷強化 v1》— Phase 1：成因類型擴充 + 新增問題類型軸
+- **涉及 Spec**: `docs/功能修改文件_迷思成因診斷強化_v1.md` §2.3 / §2.4、spec-04（後續 phase 才同步擴充）
+- **問題**: v1 修改文件 §2.3 提出全新 6 類成因（daily-experience / language-confusion /
+  over-generalization / intuitive-reasoning / teaching-residue / causal-inversion），
+  但與現行 `src/data/misconceptionCauses.js` 已實作的 8 類成因衝突——部分名稱重疊
+  （如「日常經驗干擾」≈ 現行 #5、「語言概念混淆」≈ 現行 #6、「直覺思維」≈ 現行 #4、
+  「教學簡化遺留」≈ 現行 #7），但現行 #1「學科知識不足」、#2「概念不清楚」、
+  #3「推論錯誤」、#8「實驗操作不當」在 v1 文件裡完全沒有對應，整套換掉會丟失既有
+  教師端 `/teacher/misconception-causes`、`MisconceptionCauseDonut`、`StudentDiagnosisReport`
+  的呈現與診斷分類資訊。
+- **替代方案**:
+  1. **保留現行 8 類不動**，僅補進 v1 特有的 2 類，總共 10 類：
+     - id=9「過度類推」（color: `orange`，#FAD7A0 / #CA6F1E）
+     - id=10「因果倒置」（color: `red`，#FADBD8 / #C0392B）
+  2. 新增的 2 類在 `src/data/misconceptionCauses.js`（central registry）與
+     `src/pages/teacher/MisconceptionCauses.jsx`（feature / sample 卡片詳情）兩處同步補上。
+  3. **問題類型獨立成新檔** `src/data/problemTypes.js`，採 3 類設計（observation /
+     definition / explanation）。問題類型與成因類型互不替代而是「雙軸」：
+     成因類型回答「為什麼學生會這樣想」，問題類型回答「學生卡在哪個認知層次」。
+  4. v1 文件 §2.3 表格旁加註標頭，指向本筆偏離；6 類提案表保留作為設計史。
+- **影響範圍**: 既有資料與 UI 不受破壞；待 Phase 2 才會在 `quizData.js` /
+  `knowledgeGraph.js` 為每個選項 / 迷思補上 `causeAnalysis` 與 `problemType` 欄位。
+- **未動到的項目**:
+  - `quizData.js`、`knowledgeGraph.js`、`followUpData.js` 的選項 / 迷思 / 對話結構（Phase 2-4 才動）
+  - 教師端 dashboard 的圖表元件（Phase 3 才新增 `ProblemTypeChart`、`CauseTypeChart`）
+- **Spec 已更新**: ✅（v1 文件 §2.3 補加註；本筆 deviations.md）；後續 Phase 動到資料結構時再同步 spec-04
+
+---
+
+### [2026-05-25] 移除「概念釐清・補救」整個模組
+
+- **涉及 Spec**: spec-02 §2.6.*、spec-03（學生端 Scenario* / 教師端 Treatment*）、spec-04（scenarioQuiz / treatmentSession）、spec-05 §3.5 概念釐清流程、**spec-08 整份**、spec-09（治療 LLM）、spec-10 `/api/scenarios/*` + `/api/treatment/*`、spec-11 `scenarios` + `treatment_sessions` + `treatment_messages`、spec-12 治療相關 RAGFlow、`docs/workflow.md`、`docs/usecase-teacher.puml` + `usecase-student.puml`
+- **問題**: 指導教授決策——實驗系統不再需要「概念釐清・補救」這條教學流程，要求整段拔除。原本 sidebar ④ 區塊（釐清題組編輯、派發釐清題組、概念釐清結果、釐清對話紀錄）以及學生端「概念釐清」任務區塊全數退場。
+- **替代方案**:
+  1. **前端徹底移除**：
+     - 路由：`/teacher/scenarios`、`/teacher/scenarios/create`、`/teacher/scenarios/:id/edit`、`/teacher/assignments/scenarios`、`/teacher/treatment-outcomes`、`/teacher/treatment-logs`、`/teacher/treatment-logs/:sessionId`、`/student/scenario/:scenarioQuizId` 全部刪除。
+     - 頁面：`TreatmentOutcomes`、`TreatmentLogs`、`TreatmentLogDetail`、`scenarios/ScenarioLibrary`、`scenarios/ScenarioCreateWizard`、`student/ScenarioChat` 整檔刪除。
+     - 共用：`hooks/useScenarios`、`hooks/useTreatment`、`data/scenarioQuizData`、`data/treatmentBot*`、`lib/scenarioImage`、`lib/treatmentOutcomes`、`components/student/Scenario*`、`components/student/MascotHintBubble`、`components/student/ReflectionPanel`、`components/teacher/AssignTargetPicker`、`dashboard/shared/TreatmentEffectivenessPanel` 全部刪除。
+     - 修改：`App.jsx` 拔路由、`TeacherLayout.jsx` 拔 ④ 區塊、`TeacherDashboard.jsx` 拔流程二卡片、`useTeacherStageStatus` 拔 `remediation`、`AssignmentManagement.jsx` 簡化成 diagnosis-only、`AssignmentMatrixParts.jsx` 拔 `isScenario` 分支、`StudentHome.jsx` 拔概念釐清區塊、`ClassDetailPage.jsx` 拔 treatment 報告 tab、`TaskCard.jsx` 簡化成 diagnosis-only、`ChatStream.jsx` 拔預設 export（保留 `Bubble` / `ThinkingBubble` 給診斷追問用）、`tourSteps.js` 拔 SCENARIO_* / TREATMENT_* / ④ 步驟、`assignmentData.js` 拔 scenario 範例派題、`StudentSettingsDrawer.jsx` / `LoginPage.jsx` / `DistractorSuggestPopover.jsx` / `AppContext.jsx` / `useAssignments.js` 註解文字清理。
+  2. **後端保守處理**：`backend/app/main.py` 將 `scenarios_router` 與 `treatment_router` 的 import 與 `include_router` 全部註解掉，router 實作檔、ORM model（`scenario.py` / `treatment.py`）、Alembic migration、seed data 全保留，未來若要重新啟用只需把註解打開即可。
+  3. **spec-08 整份保留但於最上方加 DEPRECATED 標記**，避免設計脈絡遺失。其他 spec（02/03/04/05/09/10/11/12）對應段落直接移除或改為「已下線」標記。
+- **影響範圍**: 前端教師端只剩 ①出診斷題 → ②派題 → ③看診斷結果 三步驟流程；學生端只剩「迷思診斷」任務區塊。診斷追問（POE）流程不受影響、繼續存在。
+- **未動到的項目**: 後端 router 實作、DB schema（為了不破壞既有 seed/migration），可隨時恢復。
+- **驗證**: `npm run lint` ✅、`npm run build` ✅、preview 載入教師首頁 + sidebar + 學生首頁皆無概念釐清字眼。
+- **Spec 已更新**: ✅（本筆 deviations + spec-08 標 DEPRECATED + spec-02/03/04/05/09/10/11/12 移除對應段落 + CLAUDE.md 索引更新）
+
+---
+
 ### [2026-05-22] 新增「概念釐清結果」頁，治療成效衍生暫放前端
 - **涉及 Spec**: spec-02 §2.6.2、spec-05 §3.5、spec-08 §5.5、spec-11 §3.13
 - **問題**: 教師完成「概念釐清題組」派發 → 學生作答後，原本教師端只能看到完整對話紀錄

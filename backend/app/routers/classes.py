@@ -6,11 +6,11 @@ Mutation: PUT /api/classes/{class_id}/students replaces the roster wholesale
 from datetime import UTC, datetime
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.deps import require_teacher
+from app.auth.deps import get_current_user, require_teacher
 from app.db.models import Class, Student, User
 from app.db.session import get_db
 from app.schemas.class_ import (
@@ -21,6 +21,7 @@ from app.schemas.class_ import (
     UpdateClassRequest,
     UpdateStudentsRequest,
 )
+from app.services.excel_import import ExcelParseError, parse_roster_xlsx
 from app.utils.school_year import get_current_school_year, get_current_semester
 
 router = APIRouter()
@@ -34,6 +35,7 @@ def _to_brief(cls: Class, student_count: int | None = None) -> ClassBrief:
         note=cls.note,
         school_year=cls.school_year, semester=cls.semester, status=cls.status,
         archived_at=cls.archived_at,
+        teacher_id=cls.teacher_id,
     )
 
 
@@ -179,7 +181,7 @@ async def get_class(
         color=cls.color, text_color=cls.text_color,
         student_count=len(students), note=cls.note,
         school_year=cls.school_year, semester=cls.semester, status=cls.status,
-        archived_at=cls.archived_at,
+        archived_at=cls.archived_at, teacher_id=cls.teacher_id,
         students=[
             StudentBrief(
                 id=s.user_id, name=s.name, seat=s.seat,
@@ -299,3 +301,128 @@ async def update_class_students(
     await db.refresh(cls)
     # re-fetch for response
     return await get_class(class_id=class_id, teacher=teacher, db=db)
+
+
+MAX_EXCEL_SIZE = 1 * 1024 * 1024  # 1 MiB — class roster is tiny by nature
+
+
+async def _read_xlsx_for_class(
+    file: UploadFile, class_id: str, current: User, db: AsyncSession,
+) -> tuple[Class, list[dict]]:
+    """Shared helper：驗證權限 / 空班 / 檔案大小，並回傳解析後的 rows。"""
+    if current.role not in {"teacher", "admin"}:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "FORBIDDEN")
+
+    cls = await db.get(Class, class_id)
+    if cls is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "CLASS_NOT_FOUND")
+    if current.role == "teacher" and cls.teacher_id != current.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "CLASS_NOT_FOUND")
+    if (cls.students or []):
+        raise HTTPException(status.HTTP_409_CONFLICT, "CLASS_NOT_EMPTY")
+
+    if file.content_type not in {
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/octet-stream",
+        None, "",
+    }:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "INVALID_FILE_TYPE")
+
+    data = await file.read(MAX_EXCEL_SIZE + 1)
+    if len(data) > MAX_EXCEL_SIZE:
+        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "FILE_TOO_LARGE")
+
+    import io
+    try:
+        rows = parse_roster_xlsx(io.BytesIO(data))
+    except ExcelParseError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+    return cls, rows
+
+
+@router.post("/{class_id}/students/import-excel/preview")
+async def preview_students_excel(
+    class_id: str,
+    file: UploadFile = File(...),
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Dry-run：解析 Excel 並回傳預覽資料，不寫入 DB。
+    回傳 { rows: [{seat, name, account}], total }。
+    """
+    _, rows = await _read_xlsx_for_class(file, class_id, current, db)
+    preview = [
+        {**row, "account": _account_for(class_id, row["seat"])}
+        for row in rows
+    ]
+    return {"rows": preview, "total": len(preview)}
+
+
+@router.post("/{class_id}/students/import-excel", response_model=ClassDetail, response_model_by_alias=True)
+async def import_students_from_excel(
+    class_id: str,
+    file: UploadFile = File(...),
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ClassDetail:
+    """Import a class roster from a .xlsx upload.
+
+    W3 rule: the target class **must be empty** (no students). Returns 409
+    CLASS_NOT_EMPTY otherwise. Excel must have exactly two columns: 座號 / 姓名.
+    Auth: teacher owning the class, OR admin (any class).
+    """
+    cls, rows = await _read_xlsx_for_class(file, class_id, current, db)
+
+    # Persist via the same logic used by PUT /students.
+    for row in rows:
+        account = _account_for(class_id, row["seat"])
+        # Make sure account isn't squatted by an unrelated user.
+        existing = await db.get(User, account)
+        if existing is not None:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                f"ACCOUNT_ALREADY_EXISTS:{account}",
+            )
+        db.add(User(
+            id=account, account=account, password=account,
+            role="student", password_was_default=True, is_active=True,
+        ))
+        db.add(Student(
+            user_id=account, name=row["name"], seat=row["seat"], class_id=class_id,
+        ))
+
+    await db.commit()
+    await db.refresh(cls)
+    # Reuse get_class to build the response; pass a teacher-ish user since admin also satisfies it.
+    return await _get_class_for_admin_or_teacher(class_id, current, db)
+
+
+async def _get_class_for_admin_or_teacher(
+    class_id: str, current: User, db: AsyncSession,
+) -> ClassDetail:
+    """Like get_class, but admin bypasses the teacher_id ownership check."""
+    cls = await db.get(Class, class_id)
+    if cls is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "CLASS_NOT_FOUND")
+    if current.role == "teacher" and cls.teacher_id != current.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "CLASS_NOT_FOUND")
+    students = sorted(cls.students, key=lambda s: s.seat)
+    user_map = {}
+    if students:
+        res = await db.execute(select(User).where(User.id.in_([s.user_id for s in students])))
+        user_map = {u.id: u for u in res.scalars().all()}
+    return ClassDetail(
+        id=cls.id, name=cls.name, grade=cls.grade, subject=cls.subject,
+        color=cls.color, text_color=cls.text_color,
+        student_count=len(students), note=cls.note,
+        school_year=cls.school_year, semester=cls.semester, status=cls.status,
+        archived_at=cls.archived_at, teacher_id=cls.teacher_id,
+        students=[
+            StudentBrief(
+                id=s.user_id, name=s.name, seat=s.seat,
+                password_was_default=user_map.get(s.user_id).password_was_default
+                if user_map.get(s.user_id) else True,
+            )
+            for s in students
+        ],
+    )

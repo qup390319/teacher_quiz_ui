@@ -2,7 +2,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 
-/** filters: { type?, classId?, quizId?, scenarioQuizId? } */
+/** filters: { type?, classId?, quizId? } */
 export function useAssignments(filters = {}) {
   const params = new URLSearchParams();
   for (const [k, v] of Object.entries(filters)) {

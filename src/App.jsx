@@ -23,20 +23,24 @@ import ClassDetail from './pages/teacher/ClassDetail';
 import KnowledgeMap from './pages/teacher/KnowledgeMap';
 import CustomKnowledgeMap from './pages/teacher/CustomKnowledgeMap';
 import MisconceptionCauses from './pages/teacher/MisconceptionCauses';
-import ScenarioLibrary from './pages/teacher/scenarios/ScenarioLibrary';
-import ScenarioCreateWizard from './pages/teacher/scenarios/ScenarioCreateWizard';
 import DiagnosisLogs from './pages/teacher/DiagnosisLogs';
 import StudentDiagnosisReport from './pages/teacher/StudentDiagnosisReport';
-import TreatmentLogs from './pages/teacher/TreatmentLogs';
-import TreatmentLogDetail from './pages/teacher/TreatmentLogDetail';
-import TreatmentOutcomes from './pages/teacher/TreatmentOutcomes';
 import StudentHome from './pages/student/StudentHome';
 import StudentQuiz from './pages/student/StudentQuiz';
-import ScenarioChat from './pages/student/ScenarioChat';
 import StudentReport from './pages/student/StudentReport';
+import AdminLogin from './pages/admin/AdminLogin';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import UsersManagement from './pages/admin/UsersManagement';
+import ClassesOverview from './pages/admin/ClassesOverview';
+import ClassDetailAdmin from './pages/admin/ClassDetailAdmin';
+import ComingSoonPage from './pages/admin/ComingSoonPage';
+import UnitsManagement from './pages/admin/UnitsManagement';
+import KnowledgeNodesAdmin from './pages/admin/KnowledgeNodesAdmin';
+import SampleQuizzes from './pages/admin/SampleQuizzes';
 
 const Teacher = ({ children }) => <RequireAuth role="teacher">{children}</RequireAuth>;
 const Student = ({ children }) => <RequireAuth role="student">{children}</RequireAuth>;
+const Admin = ({ children }) => <RequireAuth role="admin">{children}</RequireAuth>;
 
 export default function App() {
   return (
@@ -63,29 +67,30 @@ export default function App() {
             <Route path="/teacher/quiz/create" element={<Teacher><QuizCreateWizard /></Teacher>} />
             <Route path="/teacher/quizzes" element={<Teacher><QuizLibrary /></Teacher>} />
             <Route path="/teacher/assignments" element={<Navigate to="/teacher/assignments/diagnosis" replace />} />
-            <Route path="/teacher/assignments/diagnosis" element={<Teacher><AssignmentManagement initialTab="diagnosis" /></Teacher>} />
-            <Route path="/teacher/assignments/scenarios" element={<Teacher><AssignmentManagement initialTab="scenario" /></Teacher>} />
+            <Route path="/teacher/assignments/diagnosis" element={<Teacher><AssignmentManagement /></Teacher>} />
             <Route path="/teacher/classes" element={<Teacher><ClassManagement /></Teacher>} />
             <Route path="/teacher/classes/:classId" element={<Teacher><ClassDetail /></Teacher>} />
             <Route path="/teacher/knowledge-map" element={<Teacher><KnowledgeMap /></Teacher>} />
             <Route path="/teacher/custom-knowledge-map" element={<Teacher><CustomKnowledgeMap /></Teacher>} />
             <Route path="/teacher/misconception-causes" element={<Teacher><MisconceptionCauses /></Teacher>} />
-            {/* 概念釐清模組（spec-08） */}
-            <Route path="/teacher/scenarios" element={<Teacher><ScenarioLibrary /></Teacher>} />
-            <Route path="/teacher/scenarios/create" element={<Teacher><ScenarioCreateWizard /></Teacher>} />
-            <Route path="/teacher/scenarios/:scenarioQuizId/edit" element={<Teacher><ScenarioCreateWizard /></Teacher>} />
             <Route path="/teacher/diagnosis-logs" element={<Teacher><DiagnosisLogs /></Teacher>} />
             <Route path="/teacher/students/:studentId/report" element={<Teacher><StudentDiagnosisReport /></Teacher>} />
-            <Route path="/teacher/treatment-outcomes" element={<Teacher><TreatmentOutcomes /></Teacher>} />
-            <Route path="/teacher/treatment-logs" element={<Teacher><TreatmentLogs /></Teacher>} />
-            <Route path="/teacher/treatment-logs/:sessionId" element={<Teacher><TreatmentLogDetail /></Teacher>} />
             {/* 保留舊路由避免失效 */}
             <Route path="/teacher/report" element={<Teacher><TeacherReport /></Teacher>} />
+
+            {/* 管理員後台（spec-14） */}
+            <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/admin" element={<Admin><AdminDashboard /></Admin>} />
+            <Route path="/admin/users" element={<Admin><UsersManagement /></Admin>} />
+            <Route path="/admin/classes" element={<Admin><ClassesOverview /></Admin>} />
+            <Route path="/admin/classes/:classId" element={<Admin><ClassDetailAdmin /></Admin>} />
+            <Route path="/admin/units" element={<Admin><UnitsManagement /></Admin>} />
+            <Route path="/admin/knowledge-nodes" element={<Admin><KnowledgeNodesAdmin /></Admin>} />
+            <Route path="/admin/sample-quizzes" element={<Admin><SampleQuizzes /></Admin>} />
 
             {/* 學生端 */}
             <Route path="/student" element={<Student><StudentHome /></Student>} />
             <Route path="/student/quiz/:quizId" element={<Student><StudentQuiz /></Student>} />
-            <Route path="/student/scenario/:scenarioQuizId" element={<Student><ScenarioChat /></Student>} />
             <Route path="/student/report" element={<Student><StudentReport /></Student>} />
 
             <Route path="*" element={<Navigate to="/" replace />} />

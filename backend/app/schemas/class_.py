@@ -28,6 +28,8 @@ class ClassBrief(BaseModel):
     semester: Literal["first", "second"]
     status: Literal["active", "archived"]
     archived_at: datetime | None = Field(default=None, serialization_alias="archivedAt")
+    # 班級所屬教師 user_id（admin overview 用；teacher 端固定是自己，但仍會帶出來）
+    teacher_id: str | None = Field(default=None, serialization_alias="teacherId")
 
     model_config = ConfigDict(populate_by_name=True)
 

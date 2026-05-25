@@ -181,10 +181,10 @@ export function AssignPopover({ quiz, cls, onConfirm, onClose }) {
   );
 }
 
-// ─── Popover：管理已派發題組（兩個分頁共用，依 isScenario 切換主按鈕） ───────
+// ─── Popover：管理已派發題組 ────────────────────────────────────────────────
 export function ManagePopover({
-  assignment, quiz, cls, isScenario,
-  onViewReport, onUpdateDueDate, onRemove, onEditTargets, onClose,
+  assignment, quiz, cls,
+  onViewReport, onUpdateDueDate, onRemove, onClose,
 }) {
   const [dueDate, setDueDate] = useState(assignment.dueDate || '');
   const [confirmingRemove, setConfirmingRemove] = useState(false);
@@ -225,14 +225,6 @@ export function ManagePopover({
           <span className="text-[#636E72]">派發日期</span>
           <span className="text-[#2D3436] font-medium">{assignment.assignedAt}</span>
         </div>
-        {isScenario && assignment.targetType === 'students' && (
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-[#636E72]">指派對象</span>
-            <span className="text-[#2E6B47] font-medium">
-              {assignment.studentIds?.length ?? 0} 位學生
-            </span>
-          </div>
-        )}
         <div className="flex items-center justify-between text-sm">
           <span className="text-[#636E72]">完成進度</span>
           <span className={`font-bold ${pct === 100 ? 'text-[#3D5A3E]' : pct >= 50 ? 'text-[#B7950B]' : pct > 0 ? 'text-[#E74C5E]' : 'text-[#95A5A6]'}`}>
@@ -264,26 +256,17 @@ export function ManagePopover({
 
       {/* 操作按鈕 */}
       <div className="space-y-2">
-        {isScenario ? (
-          <button
-            onClick={() => onEditTargets(assignment)}
-            className="w-full py-2 text-sm font-semibold bg-[#5BA47A] text-white border border-[#3F8B5E] rounded-xl hover:bg-[#3F8B5E] transition-colors"
-          >
-            調整派發對象
-          </button>
-        ) : (
-          <button
-            onClick={() => onViewReport(assignment.classId, assignment.quizId)}
-            disabled={pct === 0}
-            className={`w-full py-2 text-sm font-semibold rounded-xl border transition-colors ${
-              pct > 0
-                ? 'bg-[#8FC87A] text-[#2D3436] border-[#BDC3C7] hover:bg-[#76B563]'
-                : 'bg-[#EEF5E6] text-[#95A5A6] border-[#D5D8DC] cursor-not-allowed'
-            }`}
-          >
-            {pct > 0 ? '查看診斷報告' : '尚無作答資料'}
-          </button>
-        )}
+        <button
+          onClick={() => onViewReport(assignment.classId, assignment.quizId)}
+          disabled={pct === 0}
+          className={`w-full py-2 text-sm font-semibold rounded-xl border transition-colors ${
+            pct > 0
+              ? 'bg-[#8FC87A] text-[#2D3436] border-[#BDC3C7] hover:bg-[#76B563]'
+              : 'bg-[#EEF5E6] text-[#95A5A6] border-[#D5D8DC] cursor-not-allowed'
+          }`}
+        >
+          {pct > 0 ? '查看診斷報告' : '尚無作答資料'}
+        </button>
 
         {/* 取消派發 */}
         {!confirmingRemove ? (

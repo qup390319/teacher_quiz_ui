@@ -60,6 +60,20 @@ const CAUSE_CATEGORIES = [
     color: 'gray',
     conditional: true,
   },
+  {
+    id: 9,
+    name: '過度類推',
+    feature: '把某情境學到的規則不加限制地推廣到不適用的情境，忽略前提條件或反例。',
+    sample: '「糖能溶於水，所以油、沙子也應該都能溶於水」、「酸是危險的，所以果汁裡有酸也不能喝」、「飽和糖水加熱還能再溶 → 所以任何水溶液加熱都能無限溶解」。',
+    color: 'orange',
+  },
+  {
+    id: 10,
+    name: '因果倒置',
+    feature: '把結果當原因，或把相關性誤判為因果關係。常見於「先後順序」與「真正成因」的混淆。',
+    sample: '「水溶液變甜是因為糖溶解了 → 所以只要嚐起來甜就代表完全溶解」、「酸性溶液常使石蕊變紅 → 所以紅色的液體都是酸性」、「鹽水煮沸後變濃 → 所以是煮沸把鹽『製造』出來」。',
+    color: 'red',
+  },
 ];
 
 const COLOR_THEMES = {
@@ -69,6 +83,8 @@ const COLOR_THEMES = {
   yellow: { badge: 'bg-[#FCF0C2] text-[#B7950B]', accent: 'bg-[#FCF0C2]' },
   mint:   { badge: 'bg-[#A8E6CF] text-[#1E8449]', accent: 'bg-[#A8E6CF]' },
   purple: { badge: 'bg-[#F3E5F5] text-[#7D3C98]', accent: 'bg-[#F3E5F5]' },
+  orange: { badge: 'bg-[#FAD7A0] text-[#CA6F1E]', accent: 'bg-[#FAD7A0]' },
+  red:    { badge: 'bg-[#FADBD8] text-[#C0392B]', accent: 'bg-[#FADBD8]' },
   gray:   { badge: 'bg-[#E5E7EA] text-[#636E72]', accent: 'bg-[#E5E7EA]' },
 };
 
@@ -130,7 +146,7 @@ export default function MisconceptionCauses() {
             <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">迷思概念成因</h1>
           </div>
           <p className="text-sm text-[#636E72] ml-8">
-            學生在診斷對話中表現出的迷思概念，其背後成因可歸納為以下 8 類；診斷模型會依據學生回答內容歸類。
+            學生在診斷對話中表現出的迷思概念，其背後成因可歸納為以下 10 類；診斷模型會依據學生回答內容歸類。
             <span className="ml-2 font-medium text-[#2D3436]">共 {CAUSE_CATEGORIES.length} 種成因</span>
           </p>
         </div>

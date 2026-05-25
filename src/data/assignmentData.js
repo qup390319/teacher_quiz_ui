@@ -51,19 +51,4 @@ export const ASSIGNMENTS_DATA = [
     submittedCount: 17,
     totalStudents: 20,
   },
-  // ── 概念釐清派題（spec-08）：以學生為單位派發 ────────────────────────────
-  {
-    id: 'assign-006',
-    type: 'scenario',
-    scenarioQuizId: 'scenario-002',
-    classId: 'class-A',
-    targetType: 'students',
-    studentIds: ['115002', '115007'],
-    assignedAt: '2026-04-27',
-    dueDate: '2026-05-11',
-    status: 'active',
-    completionRate: 0,
-    submittedCount: 0,
-    totalStudents: 2,
-  },
 ];

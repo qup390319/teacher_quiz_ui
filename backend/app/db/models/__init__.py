@@ -5,9 +5,11 @@ from app.db.models.assignment_student import AssignmentStudent
 from app.db.models.cache import AiSummaryCache
 from app.db.models.class_ import Class
 from app.db.models.custom_misconception import CustomMisconception
+from app.db.models.knowledge_node import KnowledgeNode, Misconception
 from app.db.models.quiz import Quiz, QuizOption, QuizQuestion
 from app.db.models.scenario import ScenarioQuestion, ScenarioQuiz
 from app.db.models.treatment import TreatmentMessage, TreatmentSession
+from app.db.models.unit import Unit
 from app.db.models.user import Student, Teacher, User
 
 __all__ = [
@@ -17,6 +19,8 @@ __all__ = [
     "Class",
     "CustomMisconception",
     "FollowupResult",
+    "KnowledgeNode",
+    "Misconception",
     "Quiz",
     "QuizOption",
     "QuizQuestion",
@@ -27,5 +31,6 @@ __all__ = [
     "Teacher",
     "TreatmentMessage",
     "TreatmentSession",
+    "Unit",
     "User",
 ]

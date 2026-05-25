@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TeacherLayout from '../../components/TeacherLayout';
-import AssignTargetPicker from '../../components/teacher/AssignTargetPicker';
 import {
   AssignPopover,
   CellActive,
@@ -11,7 +10,6 @@ import {
 import { useApp } from '../../context/AppContext';
 import { useClasses } from '../../hooks/useClasses';
 import { useQuizzes } from '../../hooks/useQuizzes';
-import { useScenarios } from '../../hooks/useScenarios';
 import {
   useAddAssignment,
   useAssignments,
@@ -23,14 +21,13 @@ import { useToast } from '../../context/ToastContext';
 import { Icon } from '../../components/ui/woodKit';
 
 // ─── 主頁面 ───────────────────────────────────────────────────────────────────
-export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) {
+export default function AssignmentManagement() {
   const navigate = useNavigate();
   const { setCurrentClassId, setCurrentQuizId } = useApp();
   const { startTour } = useTour();
   const { toast } = useToast();
   const { data: assignments = [] } = useAssignments();
   const { data: quizzes = [] } = useQuizzes();
-  const { data: scenarioQuizzes = [] } = useScenarios();
   const { data: classes = [] } = useClasses();
   const addAssignmentMut = useAddAssignment();
   const updateAssignmentMut = useUpdateAssignment();
@@ -38,24 +35,15 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
 
   const [popover, setPopover] = useState(null);
   const [managePopover, setManagePopover] = useState(null);
-  // scenario tab：使用 modal-style 學生選擇器；存放 { quiz, cls, existing? }
-  const [picker, setPicker] = useState(null);
   const [sortBy, setSortBy] = useState('default');
 
-  // 題型由路由決定（從 sidebar 「派發診斷題組」或「派發釐清題組」分別進入），畫面內不再做 tab 切換
-  const tab = initialTab; // 'diagnosis' | 'scenario'
-  const isScenarioTab = tab === 'scenario';
-
-  /* 兩種題組的 published 列表 */
-  const publishedQuizzesRaw = isScenarioTab
-    ? scenarioQuizzes.filter((q) => q.status === 'published')
-    : quizzes.filter((q) => q.status === 'published');
+  /* published 診斷題組列表 */
+  const publishedQuizzesRaw = quizzes.filter((q) => q.status === 'published');
 
   /* 排序：依使用者選擇對題組（矩陣 row）排序 */
-  const assignCountByQuiz = (q) => assignments.filter((a) => {
-    if (isScenarioTab) return a.type === 'scenario' && a.scenarioQuizId === q.id;
-    return (a.type ?? 'diagnosis') === 'diagnosis' && a.quizId === q.id;
-  }).length;
+  const assignCountByQuiz = (q) => assignments.filter(
+    (a) => (a.type ?? 'diagnosis') === 'diagnosis' && a.quizId === q.id,
+  ).length;
 
   const publishedQuizzes = [...publishedQuizzesRaw].sort((a, b) => {
     switch (sortBy) {
@@ -69,21 +57,18 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
     }
   });
 
-  /* 矩陣：對 scenario tab 用 scenarioQuizId 對應，對 diagnosis tab 用 quizId */
+  /* 矩陣 */
   const matrix = publishedQuizzes.map((quiz) => ({
     quiz,
     cells: classes.map((cls) => ({
       cls,
-      assignment: assignments.find((a) => {
-        if (isScenarioTab) {
-          return a.type === 'scenario' && a.scenarioQuizId === quiz.id && a.classId === cls.id;
-        }
-        return (a.type ?? 'diagnosis') === 'diagnosis' && a.quizId === quiz.id && a.classId === cls.id;
-      }) ?? null,
+      assignment: assignments.find(
+        (a) => (a.type ?? 'diagnosis') === 'diagnosis' && a.quizId === quiz.id && a.classId === cls.id,
+      ) ?? null,
     })),
   }));
 
-  // 診斷分頁：整班派發（保留原行為）
+  // 整班派發
   // eslint-disable-next-line no-unused-vars -- mode will be used when backend assignment model supports dispatch_mode
   const handleConfirmDiagnosis = async (quizId, classId, dueDate, _mode) => {
     if (!dueDate) {
@@ -104,37 +89,6 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
       toast.success('題組已成功派發給班級！');
     } catch (err) {
       console.error('[AssignmentManagement] add failed', err);
-      toast.error('派發失敗：' + (err?.message ?? '未知錯誤'));
-    }
-  };
-
-  // 概念釐清分頁：以個別學生為單位派發
-  const handleConfirmScenarioPicker = async ({ studentIds, dueDate }) => {
-    if (!picker) return;
-    const { quiz, cls, existing } = picker;
-    try {
-      if (existing) {
-        await updateAssignmentMut.mutateAsync({
-          id: existing.id,
-          dueDate,
-          studentIds,
-        });
-      } else {
-        await addAssignmentMut.mutateAsync({
-          type: 'scenario',
-          scenarioQuizId: quiz.id,
-          classId: cls.id,
-          targetType: 'students',
-          studentIds,
-          dueDate,
-          status: 'active',
-        });
-      }
-      setPicker(null);
-      setManagePopover(null);
-      toast.success(existing ? '派發已更新！' : '釐清題組已成功派發！');
-    } catch (err) {
-      console.error('[AssignmentManagement] scenario add/update failed', err);
       toast.error('派發失敗：' + (err?.message ?? '未知錯誤'));
     }
   };
@@ -184,7 +138,7 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
           </p>
         </div>
 
-        {/* 排序控制（取代原本的診斷/釐清 tab 切換）*/}
+        {/* 排序控制 */}
         <div className="mb-4 sm:mb-6 flex flex-wrap items-center gap-3 bg-white border border-[#BDC3C7] rounded-2xl px-3 py-2 shadow-[0_2px_8px_rgba(0,0,0,0.04)] w-fit max-w-full">
           <div className="inline-flex items-center gap-1.5">
             <span className="material-symbols-rounded text-[#5A6663]" style={{ fontSize: 18 }}>sort</span>
@@ -204,7 +158,7 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
               <option value="assigned-asc">已派班級數 少→多</option>
             </select>
           </div>
-          <span className="text-sm text-[#95A5A6] whitespace-nowrap">共 {publishedQuizzes.length} 份{isScenarioTab ? '釐清' : '診斷'}題組</span>
+          <span className="text-sm text-[#95A5A6] whitespace-nowrap">共 {publishedQuizzes.length} 份診斷題組</span>
         </div>
 
         {publishedQuizzes.length === 0 ? (
@@ -215,15 +169,13 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
                   d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </div>
-            <p className="text-[#636E72] font-medium mb-1">
-              目前沒有已發佈的{isScenarioTab ? '概念釐清題組' : '題組'}
-            </p>
+            <p className="text-[#636E72] font-medium mb-1">目前沒有已發佈的題組</p>
             <p className="text-sm text-[#95A5A6] mb-5">請先建立題組，再回來進行派發</p>
             <button
-              onClick={() => navigate(isScenarioTab ? '/teacher/scenarios' : '/teacher/quizzes')}
+              onClick={() => navigate('/teacher/quizzes')}
               className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#8FC87A] text-[#2D3436] border border-[#BDC3C7] rounded-2xl text-sm font-semibold hover:bg-[#76B563] transition-colors"
             >
-              前往{isScenarioTab ? '概念釐清出題' : '出題管理'}
+              前往出題管理
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
@@ -231,7 +183,7 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
           </div>
         ) : (
           <>
-          {/* 圖例：放在矩陣上方，方便對照 */}
+          {/* 圖例 */}
           <div className="mb-4 px-4 py-3 bg-white border border-[#BDC3C7] rounded-2xl flex flex-wrap items-center gap-x-4 gap-y-2 sm:gap-6 shadow-[0_2px_8px_rgba(0,0,0,0.04)]" data-tour="assign-legend">
             <span className="text-sm text-[#95A5A6] font-medium">圖例：</span>
             {[
@@ -246,30 +198,21 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
               </div>
             ))}
           </div>
-          {/* 手機版：每張題組一張卡片，班級狀態垂直堆疊（不需橫向卷軸） */}
+          {/* 手機版：每張題組一張卡片 */}
           <div className="md:hidden space-y-4">
             {matrix.map(({ quiz, cells }) => (
               <div key={quiz.id} className="bg-white rounded-2xl border border-[#BDC3C7] shadow-[0_2px_12px_rgba(0,0,0,0.06)] overflow-hidden">
-                {/* 題組標頭 */}
                 <div className="px-4 py-3 bg-[#EEF5E6] border-b border-[#D5D8DC]">
                   <div className="flex items-center gap-1.5 mb-1">
-                    <span
-                      className={`text-sm font-bold px-2 py-0.5 rounded-full border
-                                 ${isScenarioTab
-                                   ? 'bg-[#E0F0E8] text-[#2E6B47] border-[#3F8B5E]'
-                                   : 'bg-[#C8EAAE] text-[#3D5A3E] border-[#BDC3C7]'}`}
-                    >
-                      {isScenarioTab ? '🌱 概念釐清' : '已發佈'}
+                    <span className="text-sm font-bold px-2 py-0.5 rounded-full border bg-[#C8EAAE] text-[#3D5A3E] border-[#BDC3C7]">
+                      已發佈
                     </span>
                   </div>
                   <p className="text-sm font-semibold text-[#2D3436] leading-snug">{quiz.title}</p>
                   <p className="text-sm text-[#95A5A6] mt-0.5">
-                    {isScenarioTab
-                      ? `${quiz.questions?.length ?? 0} 題概念釐清 · 目標節點 ${quiz.targetNodeId}`
-                      : `${quiz.questionCount} 題 · ${quiz.knowledgeNodeIds.length} 個節點`}
+                    {quiz.questionCount} 題 · {quiz.knowledgeNodeIds.length} 個節點
                   </p>
                 </div>
-                {/* 各班狀態：一班一列 */}
                 <div className="divide-y divide-[#D5D8DC]">
                   {cells.map(({ cls, assignment }) => (
                     <div key={cls.id} className="p-3 relative">
@@ -282,14 +225,9 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
                         <>
                           <CellEmpty onClick={() => {
                             setManagePopover(null);
-                            if (isScenarioTab) {
-                              setPicker({ quiz, cls, existing: null });
-                              setPopover(null);
-                            } else {
-                              setPopover({ quizId: quiz.id, classId: cls.id });
-                            }
+                            setPopover({ quizId: quiz.id, classId: cls.id });
                           }} />
-                          {!isScenarioTab && popover?.quizId === quiz.id && popover?.classId === cls.id && (
+                          {popover?.quizId === quiz.id && popover?.classId === cls.id && (
                             <AssignPopover
                               quiz={quiz}
                               cls={cls}
@@ -309,14 +247,9 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
                               assignment={assignment}
                               quiz={quiz}
                               cls={cls}
-                              isScenario={isScenarioTab}
                               onViewReport={handleViewReport}
                               onUpdateDueDate={handleUpdateDueDate}
                               onRemove={handleRemove}
-                              onEditTargets={(asg) => {
-                                setPicker({ quiz, cls, existing: asg });
-                                setManagePopover(null);
-                              }}
                               onClose={() => setManagePopover(null)}
                             />
                           )}
@@ -329,7 +262,7 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
             ))}
           </div>
 
-          {/* 桌機版（≥ md）：轉置矩陣——班級為列、題組為欄，適合班級數 30+ 的場景 */}
+          {/* 桌機版（≥ md）：班級為列、題組為欄 */}
           <div className="hidden md:block bg-white rounded-[32px] border border-[#BDC3C7] shadow-[0_2px_12px_rgba(0,0,0,0.06)] overflow-hidden" data-tour="assign-matrix">
             <div className="overflow-x-auto">
             <table className="w-full border-collapse">
@@ -341,20 +274,13 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
                   {publishedQuizzes.map((quiz) => (
                     <th key={quiz.id} className="px-3 py-3 text-center border-l border-[#D5D8DC] min-w-[160px]">
                       <div className="flex items-center justify-center gap-1.5 mb-1">
-                        <span
-                          className={`text-xs font-bold px-2 py-0.5 rounded-full border
-                                     ${isScenarioTab
-                                       ? 'bg-[#E0F0E8] text-[#2E6B47] border-[#3F8B5E]'
-                                       : 'bg-[#C8EAAE] text-[#3D5A3E] border-[#BDC3C7]'}`}
-                        >
-                          {isScenarioTab ? '概念釐清' : '已發佈'}
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-full border bg-[#C8EAAE] text-[#3D5A3E] border-[#BDC3C7]">
+                          已發佈
                         </span>
                       </div>
                       <p className="text-sm font-semibold text-[#2D3436] leading-snug">{quiz.title}</p>
                       <p className="text-xs text-[#95A5A6] mt-0.5">
-                        {isScenarioTab
-                          ? `${quiz.questions?.length ?? 0} 題 · ${quiz.targetNodeId}`
-                          : `${quiz.questionCount} 題 · ${quiz.knowledgeNodeIds.length} 個節點`}
+                        {quiz.questionCount} 題 · {quiz.knowledgeNodeIds.length} 個節點
                       </p>
                     </th>
                   ))}
@@ -373,26 +299,18 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
                     </div>
                   </td>
                   {publishedQuizzes.map((quiz) => {
-                    const assignment = assignments.find((a) => {
-                      if (isScenarioTab) {
-                        return a.type === 'scenario' && a.scenarioQuizId === quiz.id && a.classId === cls.id;
-                      }
-                      return (a.type ?? 'diagnosis') === 'diagnosis' && a.quizId === quiz.id && a.classId === cls.id;
-                    }) ?? null;
+                    const assignment = assignments.find(
+                      (a) => (a.type ?? 'diagnosis') === 'diagnosis' && a.quizId === quiz.id && a.classId === cls.id,
+                    ) ?? null;
                     return (
                       <td key={quiz.id} className="p-3 border-l border-[#D5D8DC] relative align-middle min-w-[160px]">
                         {assignment === null ? (
                           <>
                             <CellEmpty onClick={() => {
                               setManagePopover(null);
-                              if (isScenarioTab) {
-                                setPicker({ quiz, cls, existing: null });
-                                setPopover(null);
-                              } else {
-                                setPopover({ quizId: quiz.id, classId: cls.id });
-                              }
+                              setPopover({ quizId: quiz.id, classId: cls.id });
                             }} />
-                            {!isScenarioTab && popover?.quizId === quiz.id && popover?.classId === cls.id && (
+                            {popover?.quizId === quiz.id && popover?.classId === cls.id && (
                               <AssignPopover
                                 quiz={quiz}
                                 cls={cls}
@@ -412,14 +330,9 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
                                 assignment={assignment}
                                 quiz={quiz}
                                 cls={cls}
-                                isScenario={isScenarioTab}
                                 onViewReport={handleViewReport}
                                 onUpdateDueDate={handleUpdateDueDate}
                                 onRemove={handleRemove}
-                                onEditTargets={(asg) => {
-                                  setPicker({ quiz, cls, existing: asg });
-                                  setManagePopover(null);
-                                }}
                                 onClose={() => setManagePopover(null)}
                               />
                             )}
@@ -438,17 +351,6 @@ export default function AssignmentManagement({ initialTab = 'diagnosis' } = {}) 
           </>
         )}
       </div>
-
-      {/* 概念釐清分頁：學生對象選擇器 Modal */}
-      {picker && (
-        <AssignTargetPicker
-          quiz={picker.quiz}
-          cls={picker.cls}
-          existing={picker.existing}
-          onConfirm={handleConfirmScenarioPicker}
-          onClose={() => setPicker(null)}
-        />
-      )}
     </TeacherLayout>
   );
 }

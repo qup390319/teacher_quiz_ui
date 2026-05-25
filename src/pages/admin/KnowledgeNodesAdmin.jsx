@@ -1,0 +1,240 @@
+import { useMemo, useState } from 'react';
+import AdminLayout from '../../components/AdminLayout';
+import { useToast } from '../../context/ToastContext';
+import {
+  useAdminKnowledgeNodes,
+  useBulkAssignUnit,
+} from '../../hooks/useAdminKnowledgeNodes';
+import { useAdminUnits } from '../../hooks/useAdminUnits';
+import AutoLayoutButton from './components/AutoLayoutButton';
+import KnowledgeNodeCanvas from './components/KnowledgeNodeCanvas';
+import KnowledgeNodeEditPanel from './components/KnowledgeNodeEditPanel';
+import NewKnowledgeNodeModal from './components/NewKnowledgeNodeModal';
+import NodeExcelImportModal from './components/NodeExcelImportModal';
+
+/**
+ * /admin/knowledge-nodes — 知識節點管理（spec-02 §3.8、spec-14）。
+ *
+ * 三個視圖：
+ *   1. 單元畫布：選一個單元，看其節點 + 先備關係，可拖曳 / 連線編輯
+ *   2. 未分配：以大節點 (parent_code) 分組，批次指派到單元
+ *   3. Excel 匯入：上傳「整合-知識節點大全」一次匯入多筆
+ */
+
+const VIEW_TABS = [
+  { value: 'canvas', label: '單元畫布', icon: 'account_tree' },
+  { value: 'unassigned', label: '未分配', icon: 'inbox' },
+];
+
+function UnassignedView({ nodes, units, onChanged }) {
+  const { toast } = useToast();
+  const bulkAssignMut = useBulkAssignUnit();
+
+  // 依大節點分組
+  const groups = useMemo(() => {
+    const map = new Map();
+    nodes.forEach((n) => {
+      const key = n.parentCode || '(無大節點)';
+      if (!map.has(key)) {
+        map.set(key, {
+          parentCode: n.parentCode,
+          parentName: n.parentName,
+          gradeBand: n.gradeBand,
+          items: [],
+        });
+      }
+      map.get(key).items.push(n);
+    });
+    return Array.from(map.values()).sort((a, b) =>
+      (a.parentCode || '').localeCompare(b.parentCode || ''),
+    );
+  }, [nodes]);
+
+  if (nodes.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl border border-[#E5E7EB] p-12 text-center text-sm text-[#6B7280]">
+        目前沒有未分配的節點。從上方「Excel 匯入」可一次加入大量節點。
+      </div>
+    );
+  }
+
+  const assignGroup = async (group, unitId) => {
+    if (!unitId) return;
+    try {
+      await bulkAssignMut.mutateAsync({
+        nodeIds: group.items.map((n) => n.id),
+        unitId,
+      });
+      toast.success(`已將 ${group.items.length} 個節點指派到 ${units.find((u) => u.id === unitId)?.name}`);
+      onChanged?.();
+    } catch (err) {
+      toast.error(err?.message || '指派失敗');
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="text-sm text-[#4B5563]">
+        共 <strong>{nodes.length}</strong> 個未分配節點 · <strong>{groups.length}</strong> 個大節點群
+      </div>
+      {groups.map((g) => (
+        <div key={g.parentCode || '_none'} className="bg-white rounded-2xl border border-[#E5E7EB] p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-semibold text-[#1F2937] font-mono mb-0.5">{g.parentCode || '(無大節點)'}</div>
+              {g.parentName && <div className="text-xs text-[#4B5563] mb-2">{g.parentName}</div>}
+              <div className="text-xs text-[#6B7280]">{g.items.length} 個小節點 · {g.gradeBand === 'middle' ? '中年級' : g.gradeBand === 'upper' ? '高年級' : '低年級'}</div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <select
+                defaultValue=""
+                onChange={(e) => { if (e.target.value) { assignGroup(g, e.target.value); e.target.value = ''; } }}
+                className="px-3 py-1.5 rounded-xl border border-[#E5E7EB] text-sm bg-white"
+              >
+                <option value="">指派到單元…</option>
+                {units.filter((u) => u.gradeBand === g.gradeBand && u.status === 'active').map((u) => (
+                  <option key={u.id} value={u.id}>{u.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {g.items.slice(0, 12).map((n) => (
+              <span key={n.id} className="inline-flex items-center px-2 py-0.5 rounded-md text-xs bg-[#F4F8F6] text-[#1F2937] border border-[#E5E7EB] font-mono">
+                {n.id}
+              </span>
+            ))}
+            {g.items.length > 12 && (
+              <span className="text-xs text-[#6B7280]">…還有 {g.items.length - 12} 個</span>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default function KnowledgeNodesAdmin() {
+  const [view, setView] = useState('canvas');
+  const [unitId, setUnitId] = useState('unit-water-solution');
+  const [selectedNode, setSelectedNode] = useState(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const { toast } = useToast();
+
+  const { data: units = [] } = useAdminUnits();
+  const { data: canvasNodes = [], refetch: refetchCanvas } = useAdminKnowledgeNodes(
+    view === 'canvas' ? { unitId } : { unitId: null, enabled: false },
+  );
+  const { data: unassignedNodes = [], refetch: refetchUnassigned } = useAdminKnowledgeNodes(
+    view === 'unassigned' ? { unassigned: true } : { unassigned: true, enabled: false },
+  );
+
+  // 重新查詢時若選中節點還在，更新其資料；否則清空
+  const liveSelectedNode = selectedNode
+    ? canvasNodes.find((n) => n.id === selectedNode.id) || null
+    : null;
+
+  return (
+    <AdminLayout title="知識節點" breadcrumb="Dashboard / 知識節點">
+      {/* 工具列 */}
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <div className="inline-flex bg-[#F4F8F6] rounded-xl p-1">
+          {VIEW_TABS.map((t) => {
+            const active = view === t.value;
+            return (
+              <button
+                key={t.value}
+                type="button"
+                onClick={() => { setView(t.value); setSelectedNode(null); }}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                  active ? 'bg-white text-[#15803D] shadow-sm' : 'text-[#6B7280] hover:text-[#1F2937]'
+                }`}
+              >
+                <span className="material-symbols-rounded text-base">{t.icon}</span>
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {view === 'canvas' && (
+          <>
+            <select
+              value={unitId}
+              onChange={(e) => { setUnitId(e.target.value); setSelectedNode(null); }}
+              className="px-3 py-2 rounded-xl border border-[#E5E7EB] bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#7DD3A8]"
+            >
+              {units.filter((u) => u.status === 'active').map((u) => (
+                <option key={u.id} value={u.id}>{u.name}</option>
+              ))}
+            </select>
+            <AutoLayoutButton rawNodes={canvasNodes} onApplied={() => { refetchCanvas(); toast.success('已自動排版'); }} />
+          </>
+        )}
+
+        <div className="flex-1" />
+
+        <button
+          type="button"
+          onClick={() => setShowImportModal(true)}
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E5E7EB] bg-white hover:bg-[#F4F8F6] text-sm font-medium text-[#1F2937]"
+        >
+          <span className="material-symbols-rounded text-base">upload_file</span>
+          Excel 匯入
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowCreateModal(true)}
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#7DD3A8] hover:bg-[#5FBF8E] text-white font-semibold text-sm"
+        >
+          <span className="material-symbols-rounded text-base">add</span>
+          新增節點
+        </button>
+      </div>
+
+      {/* 主內容 */}
+      {view === 'canvas' ? (
+        canvasNodes.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-[#E5E7EB] p-12 text-center text-sm text-[#6B7280]">
+            此單元尚未有節點。從上方「新增節點」或「Excel 匯入 → 從未分配池指派」開始。
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl border border-[#E5E7EB] overflow-hidden flex">
+            <div className="flex-1 min-w-0">
+              <KnowledgeNodeCanvas
+                nodes={canvasNodes}
+                selectedId={selectedNode?.id}
+                onSelectNode={setSelectedNode}
+              />
+            </div>
+            <KnowledgeNodeEditPanel
+              node={liveSelectedNode}
+              units={units}
+              onClose={() => setSelectedNode(null)}
+            />
+          </div>
+        )
+      ) : (
+        <UnassignedView nodes={unassignedNodes} units={units} onChanged={refetchUnassigned} />
+      )}
+
+      {showCreateModal && (
+        <NewKnowledgeNodeModal
+          units={units}
+          defaultUnitId={view === 'canvas' ? unitId : ''}
+          defaultGradeBand={units.find((u) => u.id === unitId)?.gradeBand || 'upper'}
+          onClose={() => setShowCreateModal(false)}
+          onCreated={(n) => toast.success(`已新增節點「${n.name}」`)}
+        />
+      )}
+
+      {showImportModal && (
+        <NodeExcelImportModal
+          onClose={() => setShowImportModal(false)}
+          onSuccess={() => { refetchUnassigned(); setView('unassigned'); }}
+        />
+      )}
+    </AdminLayout>
+  );
+}

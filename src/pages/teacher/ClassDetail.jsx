@@ -15,6 +15,7 @@ import ClassFormModal from './ClassFormModal';
 import DeleteClassModal from './DeleteClassModal';
 import { useAssignments } from '../../hooks/useAssignments';
 import DeleteStudentModal from './DeleteStudentModal';
+import StudentExcelImport from '../../components/StudentExcelImport';
 
 const COLOR_PRESETS = [
   { color: '#C8EAAE', textColor: '#3D5A3E' },
@@ -402,11 +403,22 @@ export default function ClassDetail() {
 
             {students.length === 0 && (
               <div className="px-6 py-10 text-center text-sm text-[#95A5A6]">
-                目前沒有學生，請使用下方表單新增
+                目前沒有學生，請使用下方表單新增，或從 Excel 一次匯入整份名冊。
               </div>
             )}
           </div>
           </div>
+
+          {/* Excel 匯入名冊（只在空班時顯示） */}
+          {students.length === 0 && (
+            <div className="border-t-2 border-[#BDC3C7] px-4 sm:px-6 py-4 bg-[#FBE9C7]/30">
+              <StudentExcelImport
+                classId={cls.id}
+                variant="teacher"
+                onSuccess={() => toast.success('已從 Excel 匯入學生名冊')}
+              />
+            </div>
+          )}
 
           {/* 新增學生 */}
           <div className="border-t-2 border-[#BDC3C7] bg-[#EEF5E6] px-4 sm:px-6 py-4">

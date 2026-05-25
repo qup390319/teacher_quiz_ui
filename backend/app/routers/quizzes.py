@@ -34,6 +34,8 @@ def _to_brief(q: Quiz) -> QuizBrief:
         status=q.status,
         knowledge_node_ids=q.knowledge_node_ids or [],
         question_count=len(q.questions),
+        is_sample=q.is_sample,
+        created_by=q.created_by,
         created_at=q.created_at.date().isoformat() if q.created_at else "",
     )
 

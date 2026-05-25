@@ -29,16 +29,19 @@
 | 5 | `quizzes` | 診斷題組主檔 | P1（seed）/ P3（CRUD） |
 | 6 | `quiz_questions` | 題組題目 | P1 / P3 |
 | 7 | `quiz_options` | 題目選項 | P1 / P3 |
-| 8 | `scenario_quizzes` | 概念釐清治療題組 | P1 / P3 |
-| 9 | `scenario_questions` | 概念釐清題目 | P1 / P3 |
+| 8 | `scenario_quizzes` | 概念釐清治療題組 | **已下線（保留 schema 不動）** |
+| 9 | `scenario_questions` | 概念釐清題目 | **已下線（保留 schema 不動）** |
 | 10 | `assignments` | 派發紀錄 | P1（seed）/ P3 |
-| 10b | `assignment_students` | 個別學生派發關聯（概念釐清派題用）| P5（個別學生派發） |
+| 10b | `assignment_students` | 個別學生派發關聯 | **已下線（保留 schema 不動）** |
 | 11 | `student_answers` | 學生作答 | P4 |
 | 12 | `followup_results` | 追問結果 | P4 |
-| 13 | `treatment_sessions` | 治療對話 session | P4 |
-| 14 | `treatment_messages` | 治療對話訊息 | P4 |
+| 13 | `treatment_sessions` | 治療對話 session | **已下線（保留 schema 不動）** |
+| 14 | `treatment_messages` | 治療對話訊息 | **已下線（保留 schema 不動）** |
 | 15 | `ai_summary_cache` | RAGFlow 摘要快取 | P3 |
 | 16 | `custom_misconceptions` | 教師私有自訂迷思（spec-04 §2.5.1） | post-P4 |
+| 17 | `units` | 課程單元（高 / 中 / 低年級分區；W5+ 知識節點與題組會關聯到此） | W4 |
+| 18 | `knowledge_nodes` | 小節點（可選擇所屬單元、含畫布座標、先備關係） | W5a |
+| 19 | `misconceptions` | 節點的迷思概念（含學生視角、AI 二次確認問句） | W5a |
 
 > 註：原本說 11 張表，實際拆細為 16 張（user / teacher / student 拆 3 張、ai cache 算 1 張、新增 assignment_students）。spec-10 §6 表格中的「11 張表」描述以本文件為準。
 
@@ -55,15 +58,22 @@ CREATE TABLE users (
     password        VARCHAR(255)  NOT NULL,              -- 明文（依 P1 決策 Q2-C）
     role            VARCHAR(16)   NOT NULL,
     password_was_default BOOLEAN  NOT NULL DEFAULT TRUE, -- 是否還是預設密碼
+    is_active       BOOLEAN       NOT NULL DEFAULT TRUE, -- 0012 migration: 管理員可停用帳號
+    disabled_at     TIMESTAMPTZ,                          -- 0012 migration: 停用時間
+    disabled_by     VARCHAR(64),                          -- 0012 migration: 停用此帳號的管理員 id
     created_at      TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
-    CONSTRAINT users_role_chk CHECK (role IN ('teacher', 'student'))
+    CONSTRAINT users_role_chk CHECK (role IN ('teacher', 'student', 'admin')) -- 0012 migration: 加入 'admin'
 );
 
 CREATE INDEX users_role_idx ON users(role);
 ```
 
 **邏輯**：`id = account`（兩者完全相同），方便除錯與引用。`password` 欄位以明文儲存。
+
+**停用機制（0012 migration）**：`is_active=false` 的帳號無法登入（後端在 `/api/auth/login` 與 `get_current_user` 都檢查）；但所有歷史資料（班級、題組、派題、作答、追問、治療 session）完整保留，不做 cascade。教師被停用後，他建立的班級與題組對學生端依然可見（學生作答歷史不受影響）。`disabled_by` 記錄執行停用操作的管理員 `users.id`，用於稽核。**沒有設 FK** 是為了允許歷史 admin 帳號被刪除後仍保留 audit trail（與 `treatments_*` 同樣手法）。
+
+**admin 角色**：系統管理員（`role='admin'`）。預設 seed 一個 `admin001` / `admin001`（migration 0012 + seed.py）。admin 不關聯到 `teachers` / `students` 子表。
 
 ### 3.2 `teachers`
 
@@ -142,6 +152,7 @@ CREATE TABLE quizzes (
     status              VARCHAR(16)   NOT NULL DEFAULT 'draft',
     knowledge_node_ids  TEXT[]        NOT NULL DEFAULT '{}',  -- ['INe-II-3-02', ...]
     created_by          VARCHAR(64)   REFERENCES users(id),   -- teacher user_id；nullable for seed
+    is_sample           BOOLEAN       NOT NULL DEFAULT FALSE, -- W6 migration 0016：admin 標記為系統範例
     created_at          TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
     updated_at          TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
     CONSTRAINT quizzes_status_chk CHECK (status IN ('draft', 'published'))
@@ -183,6 +194,8 @@ CREATE UNIQUE INDEX quiz_options_question_tag_idx ON quiz_options(question_id, t
 
 ### 3.8 `scenario_quizzes`
 
+> **已下線（保留 schema 不動）**：概念釐清模組已從實驗系統移除，但 DB schema 仍保留以維持資料完整性與 migration 歷史。後端 router 已於 `main.py` 註解，前端不再使用。
+
 ```sql
 CREATE TABLE scenario_quizzes (
     id                      VARCHAR(32)   PRIMARY KEY,           -- 'scenario-001'
@@ -200,6 +213,8 @@ CREATE INDEX scenario_quizzes_target_node_idx ON scenario_quizzes(target_node_id
 ```
 
 ### 3.9 `scenario_questions`
+
+> **已下線（保留 schema 不動）**：同 §3.8。
 
 ```sql
 CREATE TABLE scenario_questions (
@@ -248,6 +263,8 @@ CREATE INDEX assignments_scenario_idx ON assignments(scenario_quiz_id);
 ```
 
 ### 3.10b `assignment_students`
+
+> **已下線（保留 schema 不動）**：原為概念釐清個別學生派發使用，模組移除後此表不再有寫入；schema 保留以維持 migration 歷史。
 
 當 `assignments.target_type = 'students'` 時，這張關聯表記錄被指派的學生清單。
 診斷派題 (`target_type='class'`) 不寫此表（學生隱含為「該班全體」）。
@@ -313,6 +330,8 @@ CREATE TABLE followup_results (
 
 ### 3.13 `treatment_sessions`
 
+> **已下線（保留 schema 不動）**：概念釐清模組已從實驗系統移除，後端 router 已於 `main.py` 註解，前端不再寫入；schema 保留以維持資料完整性與 migration 歷史。
+
 ```sql
 CREATE TABLE treatment_sessions (
     id                       VARCHAR(64)  PRIMARY KEY,            -- 'session-{ts}'
@@ -329,6 +348,8 @@ CREATE UNIQUE INDEX treatment_sessions_unique_idx ON treatment_sessions(scenario
 ```
 
 ### 3.14 `treatment_messages`
+
+> **已下線（保留 schema 不動）**：同 §3.13。
 
 ```sql
 CREATE TABLE treatment_messages (
@@ -399,6 +420,94 @@ CREATE INDEX custom_misconceptions_teacher_node_idx ON custom_misconceptions(tea
 - 所有 router 端點都用 `WHERE teacher_id = current_user.id` 過濾
 - 寫入時 `teacher_id` 永遠取 cookie 帶來的當前 user，前端傳值會被忽略
 - 刪除時若 record 不屬於當前老師，回 404（不洩漏存在性）
+
+### 3.17 `units`（W4，migration 0013）
+
+```sql
+CREATE TABLE units (
+    id                 VARCHAR(64)  PRIMARY KEY,           -- 'unit-water-solution'
+    code               VARCHAR(64)  NOT NULL UNIQUE,       -- 'water-solution'
+    name               VARCHAR(64)  NOT NULL,              -- '水溶液'
+    grade_band         VARCHAR(16)  NOT NULL,              -- 'lower' | 'middle' | 'upper'
+    description        TEXT,
+    display_order      INTEGER      NOT NULL DEFAULT 0,
+    status             VARCHAR(16)  NOT NULL DEFAULT 'active', -- 'active' | 'archived'
+    is_system_current  BOOLEAN      NOT NULL DEFAULT FALSE,
+    created_at         TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    updated_at         TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    CONSTRAINT units_grade_band_chk CHECK (grade_band IN ('lower','middle','upper')),
+    CONSTRAINT units_status_chk     CHECK (status     IN ('active','archived'))
+);
+
+CREATE INDEX units_grade_band_idx ON units(grade_band, display_order);
+```
+
+**邏輯**：
+- 預先 seed 12 個高年級單元（migration 0013）：太陽與光的折射 / 植物世界 / 空氣與燃燒 / 聲音與樂器 / 觀測星空 / **水溶液** / 動物大觀園 / 力與運動 / 多變的天氣 / 地表的變化 / 電磁作用 / 熱對物質的影響
+- `is_system_current=true` 標記系統現有 12 個 hard-coded 知識節點所屬的單元（W4 為「水溶液」）。此旗標的單元**不可封存、不可刪除**，避免破壞既有題組與診斷流程；後端在 archive / delete 端點檢查並回 409 `UNIT_IS_SYSTEM_CURRENT`
+- W5 知識節點 DB 化後，`knowledge_nodes` 表會加 `unit_id` FK；屆時 `is_system_current` 可改為由節點關聯動態判定，本欄位作為過渡
+
+### 3.18 `knowledge_nodes`（W5a，migration 0014）
+
+```sql
+CREATE TABLE knowledge_nodes (
+    id                VARCHAR(64)  PRIMARY KEY,                -- admin 自訂；同單元內唯一
+    unit_id           VARCHAR(64)  REFERENCES units(id) ON DELETE SET NULL, -- NULL = 未分配
+    grade_band        VARCHAR(16)  NOT NULL,                   -- 'lower' | 'middle' | 'upper'
+    parent_code       VARCHAR(32),                              -- 大節點編碼，如 'INe-Ⅱ-3'
+    parent_name       TEXT,                                     -- 大節點名稱（學習內容描述）
+    name              VARCHAR(256) NOT NULL,                    -- 小節點名稱
+    description       TEXT,
+    video_title       VARCHAR(256),                             -- 課綱影片標題
+    video_url         VARCHAR(512),                             -- 課綱影片網址
+    teaching_strategy TEXT,                                       -- W5b: 教師教學策略（migration 0015）
+    student_hint      TEXT,                                       -- W5b: 學生提示（migration 0015）
+    learning_order    INTEGER      NOT NULL DEFAULT 0,          -- 同單元同 parent_code 下的順序
+    prerequisites     TEXT[]       NOT NULL DEFAULT '{}',       -- 先備節點 id 陣列（同單元內）
+    canvas_x          DOUBLE PRECISION,                          -- 畫布座標；NULL = 走自動排版
+    canvas_y          DOUBLE PRECISION,
+    is_system_seed    BOOLEAN      NOT NULL DEFAULT FALSE,      -- 12 個既有水溶液節點 = TRUE
+    created_at        TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    updated_at        TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    CONSTRAINT knowledge_nodes_grade_band_chk CHECK (grade_band IN ('lower','middle','upper'))
+);
+
+CREATE INDEX knowledge_nodes_unit_idx   ON knowledge_nodes(unit_id);
+CREATE INDEX knowledge_nodes_grade_idx  ON knowledge_nodes(grade_band);
+CREATE INDEX knowledge_nodes_parent_idx ON knowledge_nodes(parent_code);
+```
+
+**邏輯**：
+- migration 0014 把 `src/data/knowledgeGraph.js` 既有 12 個水溶液節點 seed 進 DB（全部標 `is_system_seed=true`、`unit_id='unit-water-solution'`）
+- W5a 階段教師端 / 學生端仍從前端 hard-code 讀取；admin 透過 `/admin/knowledge-nodes` 頁可看與編輯，**修改在 admin 端可看到**，教師端要等 W5b 拔掉 hard-code 才同步
+- `is_system_seed=true` 節點**可編輯但不可刪**（admin_knowledge_nodes router 在 DELETE 時檢查並回 409 `NODE_IS_SYSTEM_SEED`）
+- `canvas_x` / `canvas_y` 為 NULL 時，前端 `KnowledgeNodeCanvas` 用「parent_code 分欄、learning_order 分列」自動排版；admin 拖曳節點後 debounced 500ms 寫回
+- Excel 匯入時所有新節點以 `unit_id=NULL` 寫入「未分配池」，admin 可在 UI 上以大節點分組批次指派
+
+### 3.19 `misconceptions`（W5a，migration 0014）
+
+```sql
+CREATE TABLE misconceptions (
+    id               VARCHAR(64)  PRIMARY KEY,                  -- 例 'M01-1'
+    node_id          VARCHAR(64)  NOT NULL REFERENCES knowledge_nodes(id) ON DELETE CASCADE,
+    label            VARCHAR(256) NOT NULL,                     -- 短標題
+    detail           TEXT,                                       -- 教師視角描述
+    student_detail   TEXT,                                       -- 學生視角描述
+    confirm_question TEXT,                                       -- AI 二次確認問句
+    is_default       BOOLEAN      NOT NULL DEFAULT TRUE,        -- 系統預設 vs 教師自訂
+    owner_id         VARCHAR(64)  REFERENCES users(id) ON DELETE SET NULL, -- 自訂時填教師 id
+    display_order    INTEGER      NOT NULL DEFAULT 0,
+    created_at       TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    updated_at       TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    UNIQUE (node_id, id)
+);
+
+CREATE INDEX misconceptions_node_idx ON misconceptions(node_id);
+```
+
+**邏輯**：
+- migration 0014 從 hard-code seed 48 條既有迷思（M01-1 ~ M12-4，每節點 4 條，`is_default=true`）
+- W5b 之後會把既有 `custom_misconceptions` 表（教師自訂）整合進來，用 `is_default=false` + `owner_id` 區分
 
 ---
 

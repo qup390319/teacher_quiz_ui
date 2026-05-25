@@ -24,6 +24,8 @@ async def get_current_user(
     user = await db.get(User, payload["sub"])
     if user is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "USER_NOT_FOUND")
+    if not user.is_active:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "ACCOUNT_DISABLED")
     return user
 
 
@@ -36,4 +38,10 @@ async def require_teacher(user: User = Depends(get_current_user)) -> User:
 async def require_student(user: User = Depends(get_current_user)) -> User:
     if user.role != "student":
         raise HTTPException(status.HTTP_403_FORBIDDEN, "STUDENT_ONLY")
+    return user
+
+
+async def require_admin(user: User = Depends(get_current_user)) -> User:
+    if user.role != "admin":
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "ADMIN_ONLY")
     return user

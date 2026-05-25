@@ -114,8 +114,8 @@ for await (const chunk of chatStream({ messages })) {
 
 | 端點 | 方法 | 用途 |
 |------|------|------|
-| `POST /api/llm/chat` | 一次回覆 | N3 / N4 / N5 對話的單次模式 |
-| `POST /api/llm/chat/stream` | SSE 串流 | N3 / N4 / N5 對話的打字機模式 |
+| `POST /api/llm/chat` | 一次回覆 | N3 對話的單次模式（診斷追問） |
+| `POST /api/llm/chat/stream` | SSE 串流 | N3 對話的打字機模式（診斷追問） |
 
 後端 service：`backend/app/services/llm_service.py` 用 `httpx.AsyncClient` 包 vLLM `/chat/completions`。
 
@@ -142,8 +142,6 @@ P2 起前端不再需要為了換 LLM 而改 code。換 LLM 只需動後端：
 | 診斷題組編輯（`/teacher/quizzes`） | RAGFlow N6（`/api/ai/distractor-suggest` 等） | 出題輔助：RAGFlow 從教材檢索並建議題目 |
 | 診斷儀表板（dashboard 群） | LLM N1/N2 摘要 | AI 報告摘要：LLM 彙整班級表現重點 |
 | 診斷對話紀錄（`/teacher/diagnosis-logs`） | LLM N3（POE 追問） | AI 追問：LLM 根據學生作答產生 POE 追問 |
-| 釐清題組編輯（`/teacher/scenarios`） | RAGFlow N6 | 出題輔助：RAGFlow 協助生成釐清情境 |
-| 釐清對話紀錄（`/teacher/treatment-logs`） | LLM N5（CER 補救對話） | AI 補救對話：LLM 引導 CER 概念釐清 |
 
 > **不採用** sidebar 底部「AI 範圍說明頁」或「AI 圖例 footer」（與使用者協作後確認），保持側邊欄精簡，AI 標記直接附在項目右側即可。
 
@@ -151,7 +149,7 @@ P2 起前端不再需要為了換 LLM 而改 code。換 LLM 只需動後端：
 
 RAGFlow（spec-12）用於「檢索文獻 + 生成」場景（N1 / N2 / N6），**不走 `src/llm/`**。
 - N1 / N2 / N6 → 呼叫 `/api/ai/*`（後端 service 內部呼叫 RAGFlow agent）
-- N3 / N4 / N5 → 呼叫 `/api/llm/*`（後端 service 內部呼叫 vLLM）
+- N3 → 呼叫 `/api/llm/*`（後端 service 內部呼叫 vLLM）
 
 兩條路徑完全獨立，前端 import 路徑也不同：
 - LLM 對話：`import { chat, chatStream } from '@/llm'`
@@ -187,51 +185,11 @@ RAGFlow（spec-12）用於「檢索文獻 + 生成」場景（N1 / N2 / N6），
 - 透過 `llm_service.chat()` 呼叫 vLLM，使用專門的 system prompt 讓 LLM 從 8 大成因中選擇
 - LLM 不可用時回傳空陣列 `[]`，不阻擋流程
 
-## 12. 治療對話 system prompt registry（2026-05-14 起）
+## 12. 診斷追問對話 prompt（followup，2026-05-14 起）
 
-概念釐清治療對話（spec-08 §8B）走 `/api/llm/chat`，每題的 system prompt 統一登錄在前端 registry，便於日後擴充。
+迷思診斷追問對話（spec-05 §2.2 第二層）走 `/api/llm/chat`，採 POE + 蘇格拉底 + 成因追溯體系。
 
-| 檔案 | 用途 |
-|------|------|
-| [src/data/treatmentBotPrompts.js](../src/data/treatmentBotPrompts.js) | 以 `${scenarioQuizId}#${questionIndex}` 為 key 的 prompt registry |
-| [src/data/treatmentBotLlm.js](../src/data/treatmentBotLlm.js) | LLM-driven turn engine（buildMessages + JSON 解析 + 欄位 clamp） |
-| [src/data/treatmentBot.js](../src/data/treatmentBot.js) | 對外入口 `runTreatmentTurn(state, msg)`；自動派遣 LLM ↔ mock |
-
-### 12.1 目前已登錄的 prompt
-
-| Key | 題目 | 對應節點 / 迷思 |
-|-----|------|------------------|
-| `scenario-002#2` | 飽和糖水甜度 Q2「再加 3 匙糖會不會更甜」 | INe-II-3-03 / M03-2 |
-
-### 12.2 Prompt 結構（必含區段）
-
-每個 prompt 必須包含：
-
-1. 角色定位（「診斷型科學論證 AI 導師」、教學對象、教學法）
-2. 說話方式 / 對話承接原則
-3. 本題核心概念 + 固定情境
-4. 圖表線索清單（可被 LLM 直接引用）
-5. FSM 定義（phase 對 step 對 stage 的映射）
-6. 每個 step（1~7）的目標、規則、可用提問
-7. hintLevel 0~3 的範例
-8. feedback 規則（8~25 字）
-9. **【輸出格式（必須嚴格遵守）】** — 強制 JSON schema
-10. step / stage 規則總結
-
-### 12.3 與後端的關係
-
-- 後端不持有 treatment prompt — `chat()` 只是純粹的 LLM proxy
-- 任何題目的對話策略都在前端 registry 控制，不需要後端 deploy 就能改 prompt
-- 缺點：prompt 與其他 system prompt 一樣會被夾帶到網路（**前端 bundle 仍可見**），但因為這是教學引導而非業務 secret，可接受
-- 需登入（任何角色）
-
----
-
-## 13. 診斷追問對話 prompt（followup，2026-05-14 起）
-
-迷思診斷追問對話（spec-05 §2.2 第二層）也走 `/api/llm/chat`，但與治療對話分屬不同 prompt 體系。
-
-### 13.1 檔案結構
+### 12.1 檔案結構
 
 | 檔案 | 用途 |
 |------|------|
@@ -240,18 +198,18 @@ RAGFlow（spec-12）用於「檢索文獻 + 生成」場景（N1 / N2 / N6），
 | [src/pages/student/followUp/followUpEngine.js](../src/pages/student/followUp/followUpEngine.js) | Async dispatcher；LLM 失敗時 fallback 到 rule-based 3 輪流程 |
 | [src/pages/student/followUp/AIFollowUpPanel.jsx](../src/pages/student/followUp/AIFollowUpPanel.jsx) | UI；渲染 chips 按鈕 + textarea |
 
-### 13.2 為什麼與治療對話分開
+### 12.2 追問對話特性
 
-| 特性 | 治療對話 | 追問對話 |
-|------|---------|---------|
-| 觸發時機 | 學生選 scenario quiz 後 | 學生答完選擇題後 |
-| 教學法 | Cognitive Apprenticeship + CER | POE + 蘇格拉底 + 成因追溯 |
-| 對話長度 | 7 step（≈ 7~10 輪） | ≤ 8 輪 |
-| 學生回覆方式 | 開放式長句（CER 訓練） | Chip 選項為主、長句為輔（國小生短答友善） |
-| 主要產出 | CER restatement + 完成感 | finalDiagnosis（含 causeIds） |
-| Prompt 載點 | per-(scenarioId, qIndex) | per-knowledgeNode（共 12 節點） |
+| 特性 | 追問對話 |
+|------|---------|
+| 觸發時機 | 學生答完選擇題後 |
+| 教學法 | POE + 蘇格拉底 + 成因追溯 |
+| 對話長度 | ≤ 8 輪 |
+| 學生回覆方式 | Chip 選項為主、長句為輔（國小生短答友善） |
+| 主要產出 | finalDiagnosis（含 causeIds） |
+| Prompt 載點 | per-knowledgeNode（共 12 節點） |
 
-### 13.3 Prompt 結構（shared skeleton + per-node injection）
+### 12.3 Prompt 結構（shared skeleton + per-node injection）
 
 shared skeleton（一份，所有 12 節點共用）：
 
@@ -270,7 +228,7 @@ per-node injection（NODE_CONTEXT[nodeId]，12 份）：
 - `variants[]`：2~3 個 POE Observe 階段可丟的變體實驗
 - `causeHints`：該節點常見的 1~3 個成因提示
 
-### 13.4 LLM 輸出 JSON schema
+### 12.4 LLM 輸出 JSON schema
 
 ```json
 {
@@ -292,7 +250,7 @@ per-node injection（NODE_CONTEXT[nodeId]，12 份）：
 }
 ```
 
-### 13.5 Chip 渲染協定（前後端約定）
+### 12.5 Chip 渲染協定（前後端約定）
 
 LLM 回應的 `chips` 欄位由 [AIFollowUpPanel.jsx](../src/pages/student/followUp/AIFollowUpPanel.jsx) 渲染：
 
@@ -302,7 +260,7 @@ LLM 回應的 `chips` 欄位由 [AIFollowUpPanel.jsx](../src/pages/student/follo
 - final 階段 chips 必為 null
 - chips < 2 個時前端視為無 chips，僅顯示 textarea
 
-### 13.6 LLM 模式 vs Rule-based fallback
+### 12.6 LLM 模式 vs Rule-based fallback
 
 | 條件 | 走哪一邊 |
 |------|---------|
@@ -313,7 +271,7 @@ LLM 回應的 `chips` 欄位由 [AIFollowUpPanel.jsx](../src/pages/student/follo
 
 Fallback 邏輯在 `processStudentReply()` 內透明處理，呼叫端 (StudentQuiz.jsx) 不感知。
 
-### 13.7 與成因分析端點的關係
+### 12.7 與成因分析端點的關係
 
 LLM 模式下，POE prompt 已要求 LLM 在 `cause` 階段蒐集證據並在 `finalDiagnosis.causeIds` 中輸出。
 StudentQuiz 偵測 `causeIds.length > 0` 時，**直接寫 DB**，不再呼叫 `/api/llm/analyze-cause`，省一次 LLM 推論。
@@ -321,11 +279,11 @@ StudentQuiz 偵測 `causeIds.length > 0` 時，**直接寫 DB**，不再呼叫 `
 
 ---
 
-## 14. 適性派題 AI 端點（Adaptive AI Endpoints）
+## 13. 適性派題 AI 端點（Adaptive AI Endpoints）
 
 教師在出題介面中，可透過以下兩個 AI 端點輔助產生題目內容。兩者皆掛載在 `/api/adaptive/` router，透過後端 `llm_service.chat()` 呼叫 vLLM（與 §7 同一條 proxy 路徑），僅限教師角色 (`require_teacher`)。
 
-### 14.1 POST /api/adaptive/polish-stem — AI 潤飾題幹
+### 13.1 POST /api/adaptive/polish-stem — AI 潤飾題幹
 
 教師輸入原始題幹後，AI 將題幹改寫為國小五年級學生能清楚理解的版本。
 
@@ -356,7 +314,7 @@ StudentQuiz 偵測 `causeIds.length > 0` 時，**直接寫 DB**，不再呼叫 `
 
 **參數：** `temperature=0.7`、`max_tokens=512`
 
-### 14.2 POST /api/adaptive/suggest-options — AI 產生選項
+### 13.2 POST /api/adaptive/suggest-options — AI 產生選項
 
 根據題幹與該節點的迷思概念，AI 產生 4 個選項（1 正確 + 3 干擾）。
 
@@ -399,7 +357,7 @@ StudentQuiz 偵測 `causeIds.length > 0` 時，**直接寫 DB**，不再呼叫 `
 
 **JSON 解析：** 後端以 regex 提取回應中的 JSON 陣列（`[...]`），解析失敗回 502 `LLM_PARSE_ERROR`。
 
-### 14.3 與其他 AI 路徑的關係
+### 13.3 與其他 AI 路徑的關係
 
 | 路徑 | Router | 用途 | 底層服務 |
 |------|--------|------|---------|

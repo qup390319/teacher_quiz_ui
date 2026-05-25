@@ -98,22 +98,6 @@ const navItems = [
     ai: { description: 'AI 追問：LLM 根據學生作答產生 POE 追問' },
   },
 
-  { section: '④ 概念釐清・補救', flow: 'remediation' },
-  { to: '/teacher/scenarios', label: '釐清題組編輯', icon: ICONS.pencil },
-  { to: '/teacher/assignments/scenarios', label: '派發釐清題組', icon: ICONS.send },
-  {
-    to: '/teacher/treatment-outcomes',
-    label: '概念釐清結果',
-    icon: ICONS.chart,
-    ai: { description: '從對話自動衍生：各題釐清程度、整體星等、AI 判定是否釐清' },
-  },
-  {
-    to: '/teacher/treatment-logs',
-    label: '釐清對話紀錄',
-    icon: ICONS.chat,
-    ai: { description: 'AI 補救對話：LLM 引導 CER 概念釐清' },
-  },
-
   // 分隔線：以下與教學流程順序無關
   { divider: true },
 
@@ -131,7 +115,6 @@ const SECTION_STYLES = {
   '① 出診斷題':       { color: '#4A7324', bg: '#E4F1CE', border: '#8FC87A', label: '#2E4A1A', activeBg: '#C8DFAA', activeBorder: '#5C8A2E', hoverBg: '#D8E9BC' },
   '② 派題給班級':     { color: '#1F7A8C', bg: '#D4ECF1', border: '#5BA4B7', label: '#0E3E47', activeBg: '#A8D8E1', activeBorder: '#1F7A8C', hoverBg: '#C0E0E8' },
   '③ 看診斷結果':     { color: '#1F6FAB', bg: '#D6EAF8', border: '#5DADE2', label: '#0E3A5C', activeBg: '#A9CCE3', activeBorder: '#2E86C1', hoverBg: '#C5DFF2' },
-  '④ 概念釐清・補救': { color: '#8A3F76', bg: '#F2DDED', border: '#C77DBA', label: '#502047', activeBg: '#E5C2DA', activeBorder: '#8A3F76', hoverBg: '#EBD0E2' },
   '班級':             { color: '#6B6F71', bg: '#F4F5F5', border: '#D5D8DC', label: '#4A4D4F', activeBg: '#E5E7E8', activeBorder: '#95A5A6', hoverBg: '#ECEDEE' },
   '其他':             { color: '#6B6F71', bg: '#F4F5F5', border: '#D5D8DC', label: '#4A4D4F', activeBg: '#E5E7E8', activeBorder: '#95A5A6', hoverBg: '#ECEDEE' },
 };

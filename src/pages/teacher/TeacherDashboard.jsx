@@ -42,14 +42,11 @@ function HelpTip({ text }) {
   );
 }
 
-// 與 sidebar 對齊的步驟色票（綠→青→藍 for 流程一；紫紅漸層 for 流程二）
+// 與 sidebar 對齊的步驟色票（綠→青→藍 for 迷思診斷流程）
 const STEP_COLORS = {
   green:  { circle: 'bg-[#5C8A2E] text-white', ring: '#5C8A2E', tint: '#EEF5E6' },   // ① 出題
   teal:   { circle: 'bg-[#1F7A8C] text-white', ring: '#1F7A8C', tint: '#E1F0F4' },   // ② 派題
   blue:   { circle: 'bg-[#2E86C1] text-white', ring: '#2E86C1', tint: '#D6EAF8' },   // ③ 看結果
-  purple1:{ circle: 'bg-[#C77DBA] text-white', ring: '#8A3F76', tint: '#F2DDED' },   // ④-1 釐清出題
-  purple2:{ circle: 'bg-[#A75696] text-white', ring: '#8A3F76', tint: '#E5C2DA' },   // ④-2 釐清派題
-  purple3:{ circle: 'bg-[#8A3F76] text-white', ring: '#502047', tint: '#D2A6C5' },   // ④-3 釐清對話
 };
 
 // 單一流程步驟卡
@@ -122,22 +119,13 @@ export default function TeacherDashboard() {
     try { localStorage.removeItem(WELCOME_DISMISSED_KEY); } catch { /* ignore */ }
   };
 
-  // 流程二的子狀態（仍掛 remediation flow，但分配給不同步驟）
-  const remediationStep1Status = stage.remediation.count > 0
-    ? `${stage.remediation.count} 份釐清題組`
-    : (stage.assign.ready ? '尚未建立' : '—');
-  const remediationStep2Status = stage.remediation.assignCount > 0
-    ? `${stage.remediation.assignCount} 班已派`
-    : (stage.remediation.ready ? '尚未派發' : '—');
-  const remediationStep3Status = stage.remediation.assignCount > 0 ? '可查看' : '等待派發';
-
   return (
     <TeacherLayout>
       <div className="p-4 sm:p-6 md:p-8">
         {/* Page Header */}
         <div className="mb-4 flex items-center gap-2 flex-wrap">
           <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">首頁</h1>
-          <HelpTip text="完成一次迷思診斷與概念釐清的完整流程：出題 → 派題 → 看結果 → 釐清補救" />
+          <HelpTip text="完成一次迷思診斷流程：出題 → 派題 → 看診斷結果" />
 
           {/* 右側操作區：操作導覽（永遠可用）+ 重新開啟歡迎卡（只在已關閉時顯示） */}
           <div className="ml-auto flex items-center gap-2">
@@ -202,10 +190,6 @@ export default function TeacherDashboard() {
                       <span className="text-[#2E86C1] font-bold text-xl leading-none">③</span>
                       <span><span className="font-semibold">看診斷結果</span>：學生作答完後查看儀表板</span>
                     </li>
-                    <li className="flex items-center gap-2">
-                      <span className="text-[#8A3F76] font-bold text-xl leading-none">④</span>
-                      <span><span className="font-semibold">概念釐清・補救</span>：檢視釐清題組與學生 AI 對話紀錄</span>
-                    </li>
                   </ul>
                   <button
                     type="button"
@@ -223,7 +207,7 @@ export default function TeacherDashboard() {
           </div>
         )}
 
-        {/* 流程一：迷思概念診斷（對應 sidebar ①②③）*/}
+        {/* 迷思概念診斷流程（對應 sidebar ①②③）*/}
         <div className="mb-3 flex items-center gap-2.5 flex-wrap">
           <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-[#C8DFAA] to-[#A9CCE3] border-2 border-[#5C8A2E] text-sm font-bold text-[#2E4A1A] shadow-[0_2px_6px_rgba(92,138,46,0.18)]">
             <Icon name="edit_note" className="text-base" />
@@ -270,54 +254,6 @@ export default function TeacherDashboard() {
               ai="AI 報告摘要：LLM 彙整班級表現重點"
               onNavigate={navigate}
               tourId="home-flow-dashboard"
-            />
-          </div>
-        </div>
-
-        {/* 流程二：概念釐清補救（對應 sidebar ④）*/}
-        <div className="mb-3 flex items-center gap-2.5 flex-wrap">
-          <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-[#F2DDED] to-[#D2A6C5] border-2 border-[#8A3F76] text-sm font-bold text-[#502047] shadow-[0_2px_6px_rgba(138,63,118,0.18)]">
-            <Icon name="psychiatry" className="text-base" />
-            <span>步驟 ④→⑤→⑥</span>
-          </span>
-          <h2 className="text-base font-bold text-[#2D3436]">概念釐清・補救教學</h2>
-          <span className="text-sm text-[#636E72]">釐清出題 → 派題 → 看概念釐清結果</span>
-        </div>
-        <div className="bg-white border border-[#BDC3C7] rounded-[24px] sm:rounded-[32px] p-4 sm:p-6 mb-6 sm:mb-8 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-          <div className="flex flex-wrap items-stretch justify-between gap-2">
-            <FlowStep
-              stepIdx={4}
-              label="釐清題組編輯"
-              color="purple1"
-              to="/teacher/scenarios"
-              statusLabel={remediationStep1Status}
-              statusReady={stage.remediation.count > 0}
-              isNext={stage.nextStep === 'remediation'}
-              onNavigate={navigate}
-              tourId="home-flow-remediation-edit"
-            />
-            <FlowArrow />
-            <FlowStep
-              stepIdx={5}
-              label="派發釐清題組"
-              color="purple2"
-              to="/teacher/assignments/scenarios"
-              statusLabel={remediationStep2Status}
-              statusReady={stage.remediation.assignCount > 0}
-              onNavigate={navigate}
-              tourId="home-flow-remediation-assign"
-            />
-            <FlowArrow />
-            <FlowStep
-              stepIdx={6}
-              label="概念釐清結果"
-              color="purple3"
-              to="/teacher/treatment-outcomes"
-              statusLabel={remediationStep3Status}
-              statusReady={stage.remediation.assignCount > 0}
-              ai="AI 補救對話：LLM 引導 CER 概念釐清"
-              onNavigate={navigate}
-              tourId="home-flow-remediation-result"
             />
           </div>
         </div>

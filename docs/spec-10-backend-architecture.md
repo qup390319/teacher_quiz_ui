@@ -70,17 +70,25 @@ backend/
     │   ├── __init__.py
     │   ├── password.py     # plaintext compare（P1）
     │   ├── jwt.py          # 簽發 / 驗證 JWT
-    │   └── deps.py         # Depends：get_current_user / require_teacher / require_student
+    │   └── deps.py         # Depends：get_current_user / require_teacher / require_student / require_admin
     ├── routers/
     │   ├── __init__.py
     │   ├── auth.py         # /api/auth/login, /logout, /me, /password
+    │   ├── admin_users.py  # /api/admin/users/*（W2，admin 角色專屬）
+    │   ├── admin_classes.py # /api/admin/classes/*（W3，跨教師班級總覽）
+    │   ├── admin_units.py  # /api/admin/units/*（W4，單元 CRUD）
+    │   ├── admin_quizzes.py # /api/admin/quizzes/*（W6，跨教師題組 + 系統範例切換）
+    │   ├── admin_knowledge_nodes.py # /api/admin/knowledge-nodes/*（W5a，節點 CRUD + Excel 匯入）
+    │   ├── admin_misconceptions.py  # /api/admin/misconceptions/*（W5a，迷思 update/delete）
+    │   ├── units.py        # /api/units/*（W4，公開讀，任何登入者）
+    │   ├── knowledge_nodes.py       # /api/knowledge-nodes/*（W5a，公開讀，含迷思）
     │   ├── students.py     # /api/students/*（含明文密碼端點）
     │   ├── classes.py      # /api/classes/*（P3）
     │   ├── quizzes.py      # /api/quizzes/*（P3）
-    │   ├── scenarios.py    # /api/scenarios/*（P3）
+    │   ├── scenarios.py    # /api/scenarios/*（已下線；router 註解於 main.py）
     │   ├── assignments.py  # /api/assignments/*（P3）
     │   ├── answers.py      # /api/answers/*（P4）
-    │   ├── treatment.py    # /api/treatment/*（P4）
+    │   ├── treatment.py    # /api/treatment/*（已下線；router 註解於 main.py）
     │   ├── llm.py          # /api/llm/*（P2）
     │   ├── ai.py           # /api/ai/*（P2 / P3）
     │   └── adaptive.py     # /api/adaptive/*（適性派題）
@@ -284,6 +292,38 @@ HTTP status code：
 | `auth` | `POST /api/auth/logout` | P1 | 清除 cookie |
 | `auth` | `GET /api/auth/me` | P1 | 取得當前登入者資料 |
 | `auth` | `PATCH /api/auth/password` | P1 | 自己改密碼 |
+| `admin` | `GET /api/admin/users` | W2 | 帳號列表（admin 專屬，支援 role / q / active 篩選） |
+| `admin` | `GET /api/admin/users/{id}` | W2 | 單一帳號詳情（含明文密碼） |
+| `admin` | `POST /api/admin/users` | W2 | 新增教師（account + name；密碼預設＝帳號） |
+| `admin` | `PATCH /api/admin/users/{id}/disable` | W2 | 停用帳號（記錄 disabled_at / disabled_by；不可停用 admin） |
+| `admin` | `PATCH /api/admin/users/{id}/enable` | W2 | 啟用帳號 |
+| `admin` | `POST /api/admin/users/{id}/reset-password` | W2 | 重設密碼為帳號 |
+| `admin` | `GET /api/admin/classes` | W3 | 跨教師班級總覽（支援 teacher_id / school_year / semester / status 篩選） |
+| `admin` | `GET /api/admin/classes/{id}` | W3 | 班級詳情（admin 不受 teacher_id 隔離） |
+| `admin` | `GET /api/admin/classes/{id}/teacher` | W3 | 取得班級所屬教師（id / account / name） |
+| `classes` | `POST /api/classes/{id}/students/import-excel/preview` | W3 | Dry-run：解析 .xlsx 並回傳預覽（不寫 DB） |
+| `classes` | `POST /api/classes/{id}/students/import-excel` | W3 | 從 .xlsx 匯入學生名冊（**僅空班可用**，否則 409 CLASS_NOT_EMPTY） |
+| `admin` | `GET /api/admin/units` | W4 | 單元列表（admin 可看全部含封存） |
+| `admin` | `POST /api/admin/units` | W4 | 新增單元（自動 slug；UNIT_CODE_EXISTS 防重複） |
+| `admin` | `PATCH /api/admin/units/{id}` | W4 | 編輯單元名稱 / 年段 / 簡介 / 排序 |
+| `admin` | `POST /api/admin/units/{id}/archive\|unarchive` | W4 | 封存／啟用（系統內建單元 409 `UNIT_IS_SYSTEM_CURRENT`） |
+| `admin` | `DELETE /api/admin/units/{id}` | W4 | 永久刪除（系統內建單元 409） |
+| `units` | `GET /api/units` | W4 | 公開讀（任何登入者）：給教師端題組選擇器、學生端首頁分區用 |
+| `admin` | `GET /api/admin/knowledge-nodes` | W5a | 節點列表（依 unitId / unassigned / gradeBand 篩選；含迷思） |
+| `admin` | `GET /api/admin/knowledge-nodes/{id}` | W5a | 單一節點詳情 |
+| `admin` | `POST /api/admin/knowledge-nodes` | W5a | 新增節點 |
+| `admin` | `PATCH /api/admin/knowledge-nodes/{id}` | W5a | 編輯節點（含 prerequisites） |
+| `admin` | `DELETE /api/admin/knowledge-nodes/{id}` | W5a | 刪除節點（系統 seed 回 409） |
+| `admin` | `POST /api/admin/knowledge-nodes/bulk-positions` | W5a | 批次儲存畫布座標（拖曳結束 debounced 呼叫） |
+| `admin` | `POST /api/admin/knowledge-nodes/bulk-assign-unit` | W5a | 批次指派節點到單元（未分配池用） |
+| `admin` | `POST /api/admin/knowledge-nodes/import-excel/preview` | W5a | Excel dry-run 預覽 |
+| `admin` | `POST /api/admin/knowledge-nodes/import-excel` | W5a | Excel 正式匯入（全部進未分配池） |
+| `admin` | `POST /api/admin/knowledge-nodes/{nodeId}/misconceptions` | W5a | 新增迷思 |
+| `admin` | `PATCH/DELETE /api/admin/misconceptions/{id}` | W5a | 編輯 / 刪除迷思 |
+| `knowledge-nodes` | `GET /api/knowledge-nodes` | W5a→W5b | W5b 起改為**完全公開讀**：給教師端 / 學生端，前端 main.jsx 在 boot 階段拉取 |
+| `admin` | `GET /api/admin/quizzes` | W6 | 跨教師題組列表（含 owner 姓名） |
+| `admin` | `PATCH /api/admin/quizzes/{id}/sample` | W6 | 切換 is_sample 旗標 |
+| `quizzes` | `GET /api/quizzes` (modified) | W6 | response 加 `isSample` / `createdBy` 兩欄 |
 | `students` | `GET /api/students/{id}` | P1 | 取單一學生（含明文密碼，僅教師；**僅該教師班級內的學生**） |
 | `students` | `POST /api/students/{id}/reset-password` | P1 | 教師重設學生密碼為帳號（僅自己班級的學生） |
 | `classes` | `GET /api/classes` | P3 ✅ | **教師範圍隔離**：只回傳 `teacher_id == current_teacher.id` 的班級 |
@@ -293,9 +333,9 @@ HTTP status code：
 | `classes` | `PUT /api/classes/{class_id}/students` | P3 ✅ | 整批替換學生名冊（非自己班級回 404） |
 | `quizzes` | `GET /api/quizzes` / `GET /api/quizzes/{id}` | P3 ✅ | 教師看全部；**學生只看自己班級已被派發的**（透過 Assignment 表過濾） |
 | `quizzes` | `POST/PUT/DELETE /api/quizzes[/{id}]` | P3 ✅ | 教師專屬（CRUD）；**PUT 採 smart upsert**（match by `order_index` 在原 `quiz_questions.id` 上 UPDATE，避免破壞 `student_answers.question_id` FK）；嘗試刪除有作答的題目會回 409 `QUESTION_HAS_ANSWERS` |
-| `scenarios` | `GET /api/scenarios` / `GET /api/scenarios/{id}` | P3 ✅ | 教師看全部；**學生只看自己班級已被派發的** |
-| `scenarios` | `POST/PUT/DELETE /api/scenarios[/{id}]` | P3 ✅ | 教師專屬（CRUD） |
-| `assignments` | `GET /api/assignments` | P3 ✅ | **教師範圍隔離**：教師只看 `class_id` 屬於自己班級的派題；學生隱式過濾為自己班級。回傳含 **`completionRate / submittedCount / totalStudents`** 即時統計；對學生身份額外回傳 **`myDiagnosisCompleted`**（該生於此 assignment 是否已有 ≥1 筆作答）與 **`myScenarioCompleted`**（該生對該概念釐清題組是否已完成 treatment session），用於學生首頁判斷任務是否做完，跨刷新仍正確 |
+| `scenarios` | `GET /api/scenarios` / `GET /api/scenarios/{id}` | **已下線（router 註解於 main.py）** | 概念釐清模組已從實驗系統移除；router 實作檔仍保留 |
+| `scenarios` | `POST/PUT/DELETE /api/scenarios[/{id}]` | **已下線（router 註解於 main.py）** | 同上 |
+| `assignments` | `GET /api/assignments` | P3 ✅ | **教師範圍隔離**：教師只看 `class_id` 屬於自己班級的派題；學生隱式過濾為自己班級。回傳含 **`completionRate / submittedCount / totalStudents`** 即時統計；對學生身份額外回傳 **`myDiagnosisCompleted`**（該生於此 assignment 是否已有 ≥1 筆作答），用於學生首頁判斷任務是否做完，跨刷新仍正確 |
 | `assignments` | `POST/PATCH/DELETE /api/assignments[/{id}]` | P3 ✅ | 教師專屬；POST/PATCH 寫入前驗證 `class_id` 屬於自己 |
 | `answers` | `POST /api/answers` | P4 ✅ | 學生作答（接收陣列以批次寫入） |
 | `answers` | `POST /api/answers/{id}/followup` | P4 ✅ | 追問結果回寫（驅動 statusChange） |
@@ -303,15 +343,15 @@ HTTP status code：
 | `answers` | `GET /api/quizzes/{quiz_id}/followups?classId=` | P4 ✅ | 教師查該班完整 N3 追問對話紀錄（含 `conversationLog / aiSummary / finalStatus / misconceptionCode / reasoningQuality / statusChange`），給單班報告底部「學生第二層追問對話完整紀錄」區塊使用 |
 | `answers` | `GET /api/quizzes/{quiz_id}/stats?classId=` | P4 ✅ | 取代前端 mock `getNodePassRates / getMisconceptionStudents` |
 | `answers` | `GET /api/students/{id}/history` | P4 ✅ | 學生作答歷史；每筆額外回傳 `causeIdsByMisconception`（`{misconceptionCode: causeIds[]}`），讓「學習體檢表」在 in-memory 快照失效（重新登入）後仍能還原成因徽章 |
-| `treatment` | `POST /api/treatment/sessions/start` | P4 ✅ | 啟動治療 session |
-| `treatment` | `GET /api/treatment/sessions/{id}` | P4 ✅ | 取單一 session（含 messages） |
-| `treatment` | `GET /api/treatment/sessions/by-key/{scenario_quiz_id}/{student_id}` | P4 ✅ | 給學生端用 |
-| `treatment` | `POST /api/treatment/sessions/{id}/messages` | P4 ✅ | 一輪對話 |
-| `treatment` | `PATCH /api/treatment/sessions/{id}/advance` | P4 ✅ | 切下一題 |
-| `treatment` | `POST /api/treatment/sessions/{id}/complete` | P4 ✅ | 標記完成 |
-| `treatment` | `GET /api/teachers/treatment-logs?classId=&scenarioQuizId=` | P4 ✅ | 教師端列表（**只看自己班級學生**） |
-| `treatment` | `GET /api/teachers/treatment-logs/{session_id}` | P4 ✅ | 教師端詳情（學生不在自己班級回 404） |
-| `llm` | `POST /api/llm/chat` | P2 ✅ | vLLM proxy（N3/N4/N5） |
+| `treatment` | `POST /api/treatment/sessions/start` | **已下線（router 註解於 main.py）** | 概念釐清模組已從實驗系統移除；router 實作檔仍保留 |
+| `treatment` | `GET /api/treatment/sessions/{id}` | **已下線（router 註解於 main.py）** | 同上 |
+| `treatment` | `GET /api/treatment/sessions/by-key/{scenario_quiz_id}/{student_id}` | **已下線（router 註解於 main.py）** | 同上 |
+| `treatment` | `POST /api/treatment/sessions/{id}/messages` | **已下線（router 註解於 main.py）** | 同上 |
+| `treatment` | `PATCH /api/treatment/sessions/{id}/advance` | **已下線（router 註解於 main.py）** | 同上 |
+| `treatment` | `POST /api/treatment/sessions/{id}/complete` | **已下線（router 註解於 main.py）** | 同上 |
+| `treatment` | `GET /api/teachers/treatment-logs?classId=&scenarioQuizId=` | **已下線（router 註解於 main.py）** | 同上 |
+| `treatment` | `GET /api/teachers/treatment-logs/{session_id}` | **已下線（router 註解於 main.py）** | 同上 |
+| `llm` | `POST /api/llm/chat` | P2 ✅ | vLLM proxy（N3 診斷追問） |
 | `llm` | `POST /api/llm/chat/stream` | P2 ✅ | SSE 串流 |
 | `ai` | `POST /api/ai/distractor-suggest` | P2 ✅ | RAGFlow（N6） |
 | `ai` | `POST /api/ai/grade-summary` | P3 ✅ | RAGFlow（N1） |
