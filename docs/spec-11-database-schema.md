@@ -467,6 +467,7 @@ CREATE TABLE knowledge_nodes (
     canvas_x          DOUBLE PRECISION,                          -- 畫布座標；NULL = 走自動排版
     canvas_y          DOUBLE PRECISION,
     is_system_seed    BOOLEAN      NOT NULL DEFAULT FALSE,      -- 12 個既有水溶液節點 = TRUE
+    on_canvas         BOOLEAN      NOT NULL DEFAULT FALSE,      -- W5c migration 0017：新建節點預設不上畫布
     created_at        TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at        TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     CONSTRAINT knowledge_nodes_grade_band_chk CHECK (grade_band IN ('lower','middle','upper'))

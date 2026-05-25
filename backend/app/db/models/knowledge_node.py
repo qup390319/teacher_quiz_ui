@@ -68,6 +68,9 @@ class KnowledgeNode(Base):
     canvas_y: Mapped[float | None] = mapped_column(Float, nullable=True)
     # 既有 12 個水溶液節點標 True，可編輯但不可刪
     is_system_seed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # W5c: 是否已加入到單元畫布。新建節點預設 false（先進節點庫）；admin 從
+    # 「加入節點」picker 選擇後才上畫布。是「畫布視圖」與「節點庫」的開關。
+    on_canvas: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False,

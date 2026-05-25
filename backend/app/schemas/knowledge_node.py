@@ -37,6 +37,7 @@ class KnowledgeNodeBrief(BaseModel):
     canvas_x: float | None = Field(default=None, serialization_alias="canvasX")
     canvas_y: float | None = Field(default=None, serialization_alias="canvasY")
     is_system_seed: bool = Field(serialization_alias="isSystemSeed")
+    on_canvas: bool = Field(default=False, serialization_alias="onCanvas")
     created_at: datetime = Field(serialization_alias="createdAt")
     updated_at: datetime = Field(serialization_alias="updatedAt")
 
@@ -140,6 +141,18 @@ class CanvasPosition(BaseModel):
 
 class BulkPositionsRequest(BaseModel):
     positions: list[CanvasPosition]
+
+
+class BulkSetCanvasRequest(BaseModel):
+    """加入畫布 / 從畫布移除（W5c）。on_canvas=true → 加入畫布；false → 移回節點庫。"""
+    node_ids: list[str] = Field(
+        validation_alias="nodeIds", serialization_alias="nodeIds",
+    )
+    on_canvas: bool = Field(
+        validation_alias="onCanvas", serialization_alias="onCanvas",
+    )
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class BulkAssignUnitRequest(BaseModel):

@@ -6,6 +6,7 @@ import {
   useBulkAssignUnit,
 } from '../../hooks/useAdminKnowledgeNodes';
 import { useAdminUnits } from '../../hooks/useAdminUnits';
+import AddNodesToCanvasModal from './components/AddNodesToCanvasModal';
 import AutoLayoutButton from './components/AutoLayoutButton';
 import KnowledgeNodeCanvas from './components/KnowledgeNodeCanvas';
 import KnowledgeNodeEditPanel from './components/KnowledgeNodeEditPanel';
@@ -120,11 +121,17 @@ export default function KnowledgeNodesAdmin() {
   const [selectedNode, setSelectedNode] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showAddToCanvasModal, setShowAddToCanvasModal] = useState(false);
   const { toast } = useToast();
 
   const { data: units = [] } = useAdminUnits();
+  // W5c：畫布只顯示已加入畫布的節點
   const { data: canvasNodes = [], refetch: refetchCanvas } = useAdminKnowledgeNodes(
-    view === 'canvas' ? { unitId } : { unitId: null, enabled: false },
+    view === 'canvas' ? { unitId, onCanvas: true } : { unitId: null, enabled: false },
+  );
+  // 節點庫（在單元內但未上畫布）— 用於計數提示
+  const { data: libraryNodes = [] } = useAdminKnowledgeNodes(
+    view === 'canvas' && unitId ? { unitId, onCanvas: false } : { unitId: null, enabled: false },
   );
   const { data: unassignedNodes = [], refetch: refetchUnassigned } = useAdminKnowledgeNodes(
     view === 'unassigned' ? { unassigned: true } : { unassigned: true, enabled: false },
@@ -183,6 +190,21 @@ export default function KnowledgeNodesAdmin() {
           <span className="material-symbols-rounded text-base">upload_file</span>
           Excel 匯入
         </button>
+        {view === 'canvas' && (
+          <button
+            type="button"
+            onClick={() => setShowAddToCanvasModal(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#7DD3A8] bg-white hover:bg-[#F0FDF4] text-sm font-medium text-[#15803D]"
+          >
+            <span className="material-symbols-rounded text-base">playlist_add</span>
+            加入節點
+            {libraryNodes.length > 0 && (
+              <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-[#DCFCE7] text-[#15803D] text-xs font-bold">
+                {libraryNodes.length}
+              </span>
+            )}
+          </button>
+        )}
         <button
           type="button"
           onClick={() => setShowCreateModal(true)}
@@ -197,7 +219,19 @@ export default function KnowledgeNodesAdmin() {
       {view === 'canvas' ? (
         canvasNodes.length === 0 ? (
           <div className="bg-white rounded-2xl border border-[#E5E7EB] p-12 text-center text-sm text-[#6B7280]">
-            此單元尚未有節點。從上方「新增節點」或「Excel 匯入 → 從未分配池指派」開始。
+            畫布上還沒有節點。
+            {libraryNodes.length > 0 ? (
+              <>
+                <br />
+                此單元的節點庫有 <strong className="text-[#15803D]">{libraryNodes.length}</strong> 個節點待加入畫布；
+                點上方<strong className="text-[#15803D]">「加入節點」</strong>按鈕挑選。
+              </>
+            ) : (
+              <>
+                <br />
+                先用「新增節點」建立節點，或從「未分配」分區把節點指派到此單元，再點「加入節點」加到畫布。
+              </>
+            )}
           </div>
         ) : (
           <div className="bg-white rounded-2xl border border-[#E5E7EB] overflow-hidden flex">
@@ -225,7 +259,7 @@ export default function KnowledgeNodesAdmin() {
           defaultUnitId={view === 'canvas' ? unitId : ''}
           defaultGradeBand={units.find((u) => u.id === unitId)?.gradeBand || 'upper'}
           onClose={() => setShowCreateModal(false)}
-          onCreated={(n) => toast.success(`已新增節點「${n.name}」`)}
+          onCreated={(n) => toast.success(`已新增節點「${n.name}」到節點庫；點「加入節點」可放上畫布`)}
         />
       )}
 
@@ -233,6 +267,14 @@ export default function KnowledgeNodesAdmin() {
         <NodeExcelImportModal
           onClose={() => setShowImportModal(false)}
           onSuccess={() => { refetchUnassigned(); setView('unassigned'); }}
+        />
+      )}
+
+      {showAddToCanvasModal && (
+        <AddNodesToCanvasModal
+          unitId={unitId}
+          onClose={() => setShowAddToCanvasModal(false)}
+          onAdded={() => refetchCanvas()}
         />
       )}
     </AdminLayout>

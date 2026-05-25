@@ -12,6 +12,7 @@ from app.db.session import get_db
 from app.schemas.knowledge_node import (
     BulkAssignUnitRequest,
     BulkPositionsRequest,
+    BulkSetCanvasRequest,
     CreateMisconceptionRequest,
     CreateNodeRequest,
     KnowledgeNodeBrief,
@@ -39,6 +40,7 @@ def _node_to_brief(n: KnowledgeNode) -> KnowledgeNodeBrief:
         learning_order=n.learning_order, prerequisites=list(n.prerequisites or []),
         canvas_x=n.canvas_x, canvas_y=n.canvas_y,
         is_system_seed=n.is_system_seed,
+        on_canvas=n.on_canvas,
         created_at=n.created_at, updated_at=n.updated_at,
     )
 
@@ -66,6 +68,8 @@ async def list_nodes(
     unit_id: str | None = Query(default=None, alias="unitId"),
     unassigned: bool = Query(default=False, description="僅顯示尚未分配單元的節點"),
     grade_band: str | None = Query(default=None, alias="gradeBand"),
+    on_canvas: bool | None = Query(default=None, alias="onCanvas",
+                                     description="W5c：true=畫布上、false=節點庫；不傳=全部"),
     _admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> list[KnowledgeNodeDetail]:
@@ -76,6 +80,8 @@ async def list_nodes(
         stmt = stmt.where(KnowledgeNode.unit_id == unit_id)
     if grade_band is not None:
         stmt = stmt.where(KnowledgeNode.grade_band == grade_band)
+    if on_canvas is not None:
+        stmt = stmt.where(KnowledgeNode.on_canvas.is_(on_canvas))
     stmt = stmt.order_by(
         KnowledgeNode.parent_code.asc().nulls_last(),
         KnowledgeNode.learning_order.asc(),
@@ -207,6 +213,26 @@ async def bulk_update_positions(
         if n is not None:
             n.canvas_x = pos.x
             n.canvas_y = pos.y
+    await db.commit()
+
+
+@router.post("/bulk-set-canvas", status_code=status.HTTP_204_NO_CONTENT)
+async def bulk_set_canvas(
+    payload: BulkSetCanvasRequest,
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """加入畫布 / 從畫布移除（W5c）。
+
+    on_canvas=true：把節點加到畫布；若已有座標保留，否則 NULL 走自動排版。
+    on_canvas=false：把節點移回節點庫；節點資料與既有座標保留不動。
+    """
+    if not payload.node_ids:
+        return
+    stmt = select(KnowledgeNode).where(KnowledgeNode.id.in_(payload.node_ids))
+    nodes = list((await db.execute(stmt)).scalars().all())
+    for n in nodes:
+        n.on_canvas = payload.on_canvas
     await db.commit()
 
 
