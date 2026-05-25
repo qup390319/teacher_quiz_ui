@@ -13,6 +13,21 @@ import KnowledgeNodeEditPanel from './components/KnowledgeNodeEditPanel';
 import NewKnowledgeNodeModal from './components/NewKnowledgeNodeModal';
 import NodeExcelImportModal from './components/NodeExcelImportModal';
 
+const UNASSIGNED_GRADE_FILTERS = [
+  { value: 'all', label: '全部年段' },
+  { value: 'lower', label: '低年級' },
+  { value: 'middle', label: '中年級' },
+  { value: 'upper', label: '高年級' },
+];
+
+const UNASSIGNED_SORTS = [
+  { value: 'parent_asc', label: '大節點編碼 A→Z' },
+  { value: 'parent_desc', label: '大節點編碼 Z→A' },
+  { value: 'count_desc', label: '小節點數 多→少' },
+  { value: 'count_asc', label: '小節點數 少→多' },
+  { value: 'grade_then_parent', label: '年段 低→高、再依編碼' },
+];
+
 /**
  * /admin/knowledge-nodes — 知識節點管理（spec-02 §3.8、spec-14）。
  *
@@ -31,10 +46,24 @@ function UnassignedView({ nodes, units, onChanged }) {
   const { toast } = useToast();
   const bulkAssignMut = useBulkAssignUnit();
 
-  // 依大節點分組
+  const [gradeFilter, setGradeFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('parent_asc');
+  const [keyword, setKeyword] = useState('');
+
+  // 依大節點分組（先依篩選 + 排序處理）
   const groups = useMemo(() => {
+    const k = keyword.trim().toLowerCase();
+    const filteredNodes = nodes.filter((n) => {
+      if (gradeFilter !== 'all' && n.gradeBand !== gradeFilter) return false;
+      if (k) {
+        const hay = `${n.parentCode || ''} ${n.parentName || ''} ${n.name || ''} ${n.id || ''}`.toLowerCase();
+        if (!hay.includes(k)) return false;
+      }
+      return true;
+    });
+
     const map = new Map();
-    nodes.forEach((n) => {
+    filteredNodes.forEach((n) => {
       const key = n.parentCode || '(無大節點)';
       if (!map.has(key)) {
         map.set(key, {
@@ -46,10 +75,39 @@ function UnassignedView({ nodes, units, onChanged }) {
       }
       map.get(key).items.push(n);
     });
-    return Array.from(map.values()).sort((a, b) =>
-      (a.parentCode || '').localeCompare(b.parentCode || ''),
-    );
-  }, [nodes]);
+
+    const arr = Array.from(map.values());
+    const GRADE_ORDER = { lower: 0, middle: 1, upper: 2 };
+    const byParentAsc = (a, b) => (a.parentCode || '').localeCompare(b.parentCode || '');
+
+    switch (sortBy) {
+      case 'parent_desc':
+        arr.sort((a, b) => (b.parentCode || '').localeCompare(a.parentCode || ''));
+        break;
+      case 'count_desc':
+        arr.sort((a, b) => b.items.length - a.items.length || byParentAsc(a, b));
+        break;
+      case 'count_asc':
+        arr.sort((a, b) => a.items.length - b.items.length || byParentAsc(a, b));
+        break;
+      case 'grade_then_parent':
+        arr.sort((a, b) => {
+          const ga = GRADE_ORDER[a.gradeBand] ?? 9;
+          const gb = GRADE_ORDER[b.gradeBand] ?? 9;
+          return ga - gb || byParentAsc(a, b);
+        });
+        break;
+      case 'parent_asc':
+      default:
+        arr.sort(byParentAsc);
+    }
+    return arr;
+  }, [nodes, gradeFilter, sortBy, keyword]);
+
+  const totalFiltered = useMemo(
+    () => groups.reduce((sum, g) => sum + g.items.length, 0),
+    [groups],
+  );
 
   if (nodes.length === 0) {
     return (
@@ -75,9 +133,53 @@ function UnassignedView({ nodes, units, onChanged }) {
 
   return (
     <div className="space-y-4">
-      <div className="text-sm text-[#4B5563]">
-        共 <strong>{nodes.length}</strong> 個未分配節點 · <strong>{groups.length}</strong> 個大節點群
+      {/* 工具列：搜尋 + 年段篩選 + 排序 */}
+      <div className="bg-white rounded-2xl border border-[#E5E7EB] p-4 flex flex-wrap items-center gap-3">
+        <div className="relative">
+          <span className="material-symbols-rounded absolute left-3 top-1/2 -translate-y-1/2 text-[#9CA3AF] text-lg pointer-events-none">search</span>
+          <input
+            type="text"
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            placeholder="搜尋大節點 / 小節點 / 名稱"
+            className="pl-9 pr-3 py-2 w-64 rounded-xl border border-[#E5E7EB] bg-white text-sm placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#7DD3A8]"
+          />
+        </div>
+        <select
+          value={gradeFilter}
+          onChange={(e) => setGradeFilter(e.target.value)}
+          className="px-3 py-2 rounded-xl border border-[#E5E7EB] bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#7DD3A8]"
+        >
+          {UNASSIGNED_GRADE_FILTERS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value)}
+          className="px-3 py-2 rounded-xl border border-[#E5E7EB] bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#7DD3A8]"
+        >
+          {UNASSIGNED_SORTS.map((o) => <option key={o.value} value={o.value}>排序：{o.label}</option>)}
+        </select>
+        {(gradeFilter !== 'all' || keyword.trim() || sortBy !== 'parent_asc') && (
+          <button
+            type="button"
+            onClick={() => { setGradeFilter('all'); setKeyword(''); setSortBy('parent_asc'); }}
+            className="text-xs text-[#6B7280] hover:text-[#1F2937] underline"
+          >
+            重設
+          </button>
+        )}
+        <div className="flex-1" />
+        <div className="text-sm text-[#4B5563]">
+          顯示 <strong>{totalFiltered}</strong> / {nodes.length} 個節點 · <strong>{groups.length}</strong> 個大節點群
+        </div>
       </div>
+
+      {groups.length === 0 && (
+        <div className="bg-white rounded-2xl border border-[#E5E7EB] p-12 text-center text-sm text-[#6B7280]">
+          沒有符合篩選條件的節點
+        </div>
+      )}
+
       {groups.map((g) => (
         <div key={g.parentCode || '_none'} className="bg-white rounded-2xl border border-[#E5E7EB] p-4">
           <div className="flex items-start gap-3">
@@ -90,12 +192,29 @@ function UnassignedView({ nodes, units, onChanged }) {
               <select
                 defaultValue=""
                 onChange={(e) => { if (e.target.value) { assignGroup(g, e.target.value); e.target.value = ''; } }}
-                className="px-3 py-1.5 rounded-xl border border-[#E5E7EB] text-sm bg-white"
+                className="px-3 py-1.5 rounded-xl border border-[#E5E7EB] text-sm bg-white max-w-[220px]"
               >
                 <option value="">指派到單元…</option>
-                {units.filter((u) => u.gradeBand === g.gradeBand && u.status === 'active').map((u) => (
-                  <option key={u.id} value={u.id}>{u.name}</option>
-                ))}
+                {/* 同年段優先（不加標籤），其他年段加標籤提醒 admin */}
+                {units
+                  .filter((u) => u.status === 'active')
+                  .sort((a, b) => {
+                    const aMatch = a.gradeBand === g.gradeBand ? 0 : 1;
+                    const bMatch = b.gradeBand === g.gradeBand ? 0 : 1;
+                    return aMatch - bMatch || (a.displayOrder ?? 0) - (b.displayOrder ?? 0);
+                  })
+                  .map((u) => {
+                    const sameBand = u.gradeBand === g.gradeBand;
+                    const bandLabel = u.gradeBand === 'middle' ? '中' : u.gradeBand === 'upper' ? '高' : '低';
+                    return (
+                      <option key={u.id} value={u.id}>
+                        {sameBand ? u.name : `[${bandLabel}] ${u.name}`}
+                      </option>
+                    );
+                  })}
+                {units.filter((u) => u.status === 'active').length === 0 && (
+                  <option value="" disabled>沒有可用的單元，請先到「單元管理」建立</option>
+                )}
               </select>
             </div>
           </div>
