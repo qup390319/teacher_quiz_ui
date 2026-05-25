@@ -42,6 +42,7 @@
 | 17 | `units` | 課程單元（高 / 中 / 低年級分區；W5+ 知識節點與題組會關聯到此） | W4 |
 | 18 | `knowledge_nodes` | 小節點（可選擇所屬單元、含畫布座標、先備關係） | W5a |
 | 19 | `misconceptions` | 節點的迷思概念（含學生視角、AI 二次確認問句） | W5a |
+| 20 | `parent_nodes` | 大節點 / 課綱內容細目（介於 unit 與 knowledge_node 的階層） | W7a |
 
 > 註：原本說 11 張表，實際拆細為 16 張（user / teacher / student 拆 3 張、ai cache 算 1 張、新增 assignment_students）。spec-10 §6 表格中的「11 張表」描述以本文件為準。
 
@@ -509,6 +510,31 @@ CREATE INDEX misconceptions_node_idx ON misconceptions(node_id);
 **邏輯**：
 - migration 0014 從 hard-code seed 48 條既有迷思（M01-1 ~ M12-4，每節點 4 條，`is_default=true`）
 - W5b 之後會把既有 `custom_misconceptions` 表（教師自訂）整合進來，用 `is_default=false` + `owner_id` 區分
+
+### 3.20 `parent_nodes`（W7a，migration 0018）
+
+```sql
+CREATE TABLE parent_nodes (
+    id              VARCHAR(64)  PRIMARY KEY,                  -- 'pnode-water-solution-ine-3' (slug 自動產生)
+    unit_id         VARCHAR(64)  REFERENCES units(id) ON DELETE SET NULL,
+    code            VARCHAR(64)  NOT NULL,                      -- 'INe-Ⅱ-3'
+    name            TEXT         NOT NULL,                      -- '認識水溶液中的變化（溶解）'
+    description     TEXT,
+    display_order   INTEGER      NOT NULL DEFAULT 0,            -- 同單元內大節點之間的順序
+    prerequisites   TEXT[]       NOT NULL DEFAULT '{}',         -- 同單元內其他大節點 id（大節點間先備）
+    created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    UNIQUE (unit_id, code)
+);
+
+CREATE INDEX parent_nodes_unit_idx ON parent_nodes(unit_id);
+```
+
+**邏輯**：
+- 對應 108 課綱 docx 中的「課綱內容細目指標」(如 INe-Ⅱ-3、INe-Ⅲ-5)，介於次主題（unit）與知識節點（knowledge_node）之間
+- migration 0018 自動從既有 `knowledge_nodes.parent_code` 字串升級：依 (unit_id, parent_code) distinct 建 parent_node、依文件順序 backfill `display_order`
+- `knowledge_nodes` 加 `parent_node_id` FK 並回填；`parent_code` / `parent_name` 仍保留作 denormalized cache（公開 API 不必 join）
+- W7b（後續）：Word docx 匯入會用此 schema 一次建立 unit + parent_nodes + knowledge_nodes 完整階層
 
 ---
 

@@ -24,6 +24,7 @@ class KnowledgeNodeBrief(BaseModel):
     id: str
     unit_id: str | None = Field(default=None, serialization_alias="unitId")
     grade_band: GradeBand = Field(serialization_alias="gradeBand")
+    parent_node_id: str | None = Field(default=None, serialization_alias="parentNodeId")
     parent_code: str | None = Field(default=None, serialization_alias="parentCode")
     parent_name: str | None = Field(default=None, serialization_alias="parentName")
     name: str
@@ -97,6 +98,10 @@ class UpdateNodeRequest(BaseModel):
     )
     grade_band: GradeBand | None = Field(
         default=None, validation_alias="gradeBand", serialization_alias="gradeBand",
+    )
+    parent_node_id: str | None = Field(
+        default=None,
+        validation_alias="parentNodeId", serialization_alias="parentNodeId",
     )
     parent_code: str | None = Field(
         default=None, max_length=32,

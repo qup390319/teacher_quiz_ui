@@ -13,6 +13,7 @@ import KnowledgeNodeCanvas from './components/KnowledgeNodeCanvas';
 import KnowledgeNodeEditPanel from './components/KnowledgeNodeEditPanel';
 import NewKnowledgeNodeModal from './components/NewKnowledgeNodeModal';
 import NodeExcelImportModal from './components/NodeExcelImportModal';
+import ThreeColumnEditor from './components/ThreeColumnEditor';
 
 const UNASSIGNED_GRADE_FILTERS = [
   { value: 'all', label: '全部年段' },
@@ -39,6 +40,7 @@ const UNASSIGNED_SORTS = [
  */
 
 const VIEW_TABS = [
+  { value: 'structure', label: '階層結構', icon: 'list_alt' },
   { value: 'canvas', label: '單元畫布', icon: 'account_tree' },
   { value: 'library', label: '節點庫', icon: 'folder_open' },
   { value: 'unassigned', label: '未分配', icon: 'inbox' },
@@ -460,7 +462,7 @@ function LibraryView({ nodes, unitId, unitName, onChanged }) {
 }
 
 export default function KnowledgeNodesAdmin() {
-  const [view, setView] = useState('canvas');
+  const [view, setView] = useState('structure');
   const [unitId, setUnitId] = useState('unit-water-solution');
   const [selectedNode, setSelectedNode] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -605,6 +607,9 @@ export default function KnowledgeNodesAdmin() {
       )}
       {view === 'unassigned' && (
         <UnassignedView nodes={unassignedNodes} units={units} onChanged={refetchUnassigned} />
+      )}
+      {view === 'structure' && (
+        <ThreeColumnEditor />
       )}
 
       {showCreateModal && (

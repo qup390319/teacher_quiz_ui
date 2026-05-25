@@ -317,6 +317,9 @@ HTTP status code：
 | `admin` | `POST /api/admin/knowledge-nodes/bulk-positions` | W5a | 批次儲存畫布座標（拖曳結束 debounced 呼叫） |
 | `admin` | `POST /api/admin/knowledge-nodes/bulk-assign-unit` | W5a | 批次指派節點到單元（未分配池用） |
 | `admin` | `POST /api/admin/knowledge-nodes/bulk-set-canvas` | W5c | 批次加入畫布 / 移回節點庫（onCanvas=true/false） |
+| `admin` | `GET/POST/PATCH/DELETE /api/admin/parent-nodes` | W7a | 大節點 CRUD（unit_id / code / name / display_order / prerequisites） |
+| `admin` | `POST /api/admin/parent-nodes/bulk-reorder` | W7a | 批次更新 display_order（拖曳排序） |
+| `parent-nodes` | `GET /api/parent-nodes?unitId=...` | W7a | 公開讀；給三欄式 UI / 未來教師端用 |
 | `admin` | `GET /api/admin/knowledge-nodes?onCanvas=true\|false` | W5c | 新增 query：篩選畫布上的或節點庫內的節點 |
 | `admin` | `POST /api/admin/knowledge-nodes/import-excel/preview` | W5a | Excel dry-run 預覽 |
 | `admin` | `POST /api/admin/knowledge-nodes/import-excel` | W5a | Excel 正式匯入（全部進未分配池） |

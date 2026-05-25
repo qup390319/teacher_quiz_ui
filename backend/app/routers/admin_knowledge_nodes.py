@@ -33,6 +33,7 @@ MAX_NODE_EXCEL_SIZE = 2 * 1024 * 1024  # 2 MiB
 def _node_to_brief(n: KnowledgeNode) -> KnowledgeNodeBrief:
     return KnowledgeNodeBrief(
         id=n.id, unit_id=n.unit_id, grade_band=n.grade_band,
+        parent_node_id=n.parent_node_id,
         parent_code=n.parent_code, parent_name=n.parent_name,
         name=n.name, description=n.description,
         video_title=n.video_title, video_url=n.video_url,

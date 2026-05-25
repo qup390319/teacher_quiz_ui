@@ -7,6 +7,7 @@ from app.routers import adaptive as adaptive_router
 from app.routers import admin_classes as admin_classes_router
 from app.routers import admin_knowledge_nodes as admin_knowledge_nodes_router
 from app.routers import admin_misconceptions as admin_misconceptions_router
+from app.routers import admin_parent_nodes as admin_parent_nodes_router
 from app.routers import admin_quizzes as admin_quizzes_router
 from app.routers import admin_units as admin_units_router
 from app.routers import admin_users as admin_users_router
@@ -21,6 +22,7 @@ from app.routers import classes as classes_router
 from app.routers import knowledge_nodes as knowledge_nodes_router
 from app.routers import llm as llm_router
 from app.routers import misconceptions as misconceptions_router
+from app.routers import parent_nodes as parent_nodes_router
 from app.routers import quizzes as quizzes_router
 from app.routers import students as students_router
 from app.routers import units as units_router
@@ -50,6 +52,8 @@ app.include_router(admin_units_router.router, prefix="/api/admin/units", tags=["
 app.include_router(admin_quizzes_router.router, prefix="/api/admin/quizzes", tags=["admin"])
 app.include_router(admin_knowledge_nodes_router.router, prefix="/api/admin/knowledge-nodes", tags=["admin"])
 app.include_router(admin_misconceptions_router.router, prefix="/api/admin/misconceptions", tags=["admin"])
+app.include_router(admin_parent_nodes_router.router, prefix="/api/admin/parent-nodes", tags=["admin"])
+app.include_router(parent_nodes_router.router, prefix="/api/parent-nodes", tags=["parent-nodes"])
 app.include_router(units_router.router, prefix="/api/units", tags=["units"])
 app.include_router(knowledge_nodes_router.router, prefix="/api/knowledge-nodes", tags=["knowledge-nodes"])
 app.include_router(students_router.router, prefix="/api/students", tags=["students"])

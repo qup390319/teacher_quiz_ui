@@ -45,7 +45,14 @@ class KnowledgeNode(Base):
         nullable=True,
     )
     grade_band: Mapped[str] = mapped_column(String(16), nullable=False)
-    # 大節點（學習內容）資訊：直接以欄位存，不獨立成表
+    # 大節點（學習內容）資訊
+    # W7a：parent_node_id FK 為新欄位（migration 0018 backfill 既有資料）。
+    # parent_code / parent_name 仍保留作 denormalized cache，方便公開 API 不必 join。
+    parent_node_id: Mapped[str | None] = mapped_column(
+        String(64),
+        ForeignKey("parent_nodes.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     parent_code: Mapped[str | None] = mapped_column(String(32), nullable=True)
     parent_name: Mapped[str | None] = mapped_column(Text, nullable=True)
 
