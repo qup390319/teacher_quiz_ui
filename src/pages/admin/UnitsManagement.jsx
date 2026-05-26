@@ -8,6 +8,7 @@ import {
   useUnarchiveUnit,
 } from '../../hooks/useAdminUnits';
 import AdminConfirmModal from './components/AdminConfirmModal';
+import DocxImportModal from './components/DocxImportModal';
 import UnitFormModal from './components/UnitFormModal';
 
 /**
@@ -154,6 +155,7 @@ export default function UnitsManagement() {
   const deleteMut = useDeleteUnit();
 
   const [showCreate, setShowCreate] = useState(false);
+  const [showDocxImport, setShowDocxImport] = useState(false);
   const [editingUnit, setEditingUnit] = useState(null);
   const [confirmAction, setConfirmAction] = useState(null); // { type, unit }
   const [includeArchived, setIncludeArchived] = useState(true);
@@ -243,6 +245,14 @@ export default function UnitsManagement() {
         <div className="flex-1" />
         <button
           type="button"
+          onClick={() => setShowDocxImport(true)}
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#E5E7EB] bg-white hover:bg-[#F4F8F6] text-[#1F2937] font-medium transition-colors"
+        >
+          <span className="material-symbols-rounded text-lg">upload_file</span>
+          從 Word 匯入
+        </button>
+        <button
+          type="button"
           onClick={() => setShowCreate(true)}
           className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#7DD3A8] hover:bg-[#5FBF8E] text-white font-semibold transition-colors"
         >
@@ -287,6 +297,17 @@ export default function UnitsManagement() {
         <UnitFormModal
           onClose={() => setShowCreate(false)}
           onSuccess={(u) => toast.success(`已新增單元「${u.name}」`)}
+        />
+      )}
+
+      {showDocxImport && (
+        <DocxImportModal
+          onClose={() => setShowDocxImport(false)}
+          onSuccess={(r) => {
+            const created = r.results.filter((x) => x.status === 'created').length;
+            const merged = r.results.filter((x) => x.status === 'merged').length;
+            toast.success(`已匯入：新建 ${created} 個次主題、合併 ${merged} 個`);
+          }}
         />
       )}
 

@@ -558,6 +558,13 @@
 - `useCreateUnit()` / `useUpdateUnit()` / `useArchiveUnit()` / `useUnarchiveUnit()` / `useDeleteUnit()`
 - `useUnits({ gradeBand?, includeArchived? })`：未來題組選擇器用（公開讀，任何登入者）
 
+**Word 匯入（W7b）**：
+- 工具列「從 Word 匯入」按鈕 → `DocxImportModal`
+- 支援 .docx 單檔或 .zip 批次（35 份 108 課綱「知識節點關聯圖」一次匯入）
+- 後端 `services/docx_import.py` 解析次主題 + 大節點 + 小節點，**不解析 SmartArt 箭頭**
+- 模式：merge（預設，新增缺漏節點）/ skip（已存在跳過）/ create（已存在回報錯誤）
+- merge 模式下，已存在但 `unit_id=NULL` 的小節點會自動 attach 到新 unit 與對應的 parent_node
+
 ---
 
 ### 3.8 KnowledgeNodesAdmin (`/admin/knowledge-nodes`)

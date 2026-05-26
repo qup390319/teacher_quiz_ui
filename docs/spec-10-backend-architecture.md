@@ -320,6 +320,8 @@ HTTP status code：
 | `admin` | `GET/POST/PATCH/DELETE /api/admin/parent-nodes` | W7a | 大節點 CRUD（unit_id / code / name / display_order / prerequisites） |
 | `admin` | `POST /api/admin/parent-nodes/bulk-reorder` | W7a | 批次更新 display_order（拖曳排序） |
 | `parent-nodes` | `GET /api/parent-nodes?unitId=...` | W7a | 公開讀；給三欄式 UI / 未來教師端用 |
+| `admin` | `POST /api/admin/units/import-docx/preview` | W7b | Dry-run 解析 .docx 或 .zip（含多個 docx），回傳階層 |
+| `admin` | `POST /api/admin/units/import-docx` | W7b | 寫入 DB；mode=merge / skip / create；自動 attach 既有未分配節點 |
 | `admin` | `GET /api/admin/knowledge-nodes?onCanvas=true\|false` | W5c | 新增 query：篩選畫布上的或節點庫內的節點 |
 | `admin` | `POST /api/admin/knowledge-nodes/import-excel/preview` | W5a | Excel dry-run 預覽 |
 | `admin` | `POST /api/admin/knowledge-nodes/import-excel` | W5a | Excel 正式匯入（全部進未分配池） |

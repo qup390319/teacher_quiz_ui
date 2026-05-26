@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.routers import adaptive as adaptive_router
 from app.routers import admin_classes as admin_classes_router
+from app.routers import admin_docx_import as admin_docx_import_router
 from app.routers import admin_knowledge_nodes as admin_knowledge_nodes_router
 from app.routers import admin_misconceptions as admin_misconceptions_router
 from app.routers import admin_parent_nodes as admin_parent_nodes_router
@@ -49,6 +50,8 @@ app.include_router(auth_router.router, prefix="/api/auth", tags=["auth"])
 app.include_router(admin_users_router.router, prefix="/api/admin/users", tags=["admin"])
 app.include_router(admin_classes_router.router, prefix="/api/admin/classes", tags=["admin"])
 app.include_router(admin_units_router.router, prefix="/api/admin/units", tags=["admin"])
+# docx 匯入：掛同樣 prefix 讓 URL 自然落在 /api/admin/units/import-docx
+app.include_router(admin_docx_import_router.router, prefix="/api/admin/units", tags=["admin"])
 app.include_router(admin_quizzes_router.router, prefix="/api/admin/quizzes", tags=["admin"])
 app.include_router(admin_knowledge_nodes_router.router, prefix="/api/admin/knowledge-nodes", tags=["admin"])
 app.include_router(admin_misconceptions_router.router, prefix="/api/admin/misconceptions", tags=["admin"])
