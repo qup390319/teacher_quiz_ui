@@ -104,13 +104,44 @@ export default function KnowledgeNodeCanvas({ nodes: rawNodes, selectedId, onSel
   const updateNodeMut = useUpdateKnowledgeNode();
   const debounceRef = useRef(null);
 
-  const initialNodes = useMemo(() => toRfNodes(rawNodes, selectedId), [rawNodes, selectedId]);
-  const initialEdges = useMemo(() => toRfEdges(rawNodes), [rawNodes]);
+  // 只在「節點 ID / 先備關係」結構真的變了才重設 React Flow 狀態。
+  // 這樣點選節點（只改 selectedId）不會把進行中的拖曳位置打回原樣。
+  const structureKey = useMemo(
+    () => rawNodes
+      .map((n) => `${n.id}::${(n.prerequisites || []).join(',')}`)
+      .sort()
+      .join('|'),
+    [rawNodes],
+  );
 
   useEffect(() => {
-    setRfNodes(initialNodes);
-    setRfEdges(initialEdges);
-  }, [initialNodes, initialEdges, setRfNodes, setRfEdges]);
+    setRfNodes(toRfNodes(rawNodes, selectedId));
+    setRfEdges(toRfEdges(rawNodes));
+    // 故意省略 rawNodes / selectedId 依賴：我們只在 structureKey 變時重設。
+    // 選取樣式由下面那個 effect 獨立處理。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [structureKey]);
+
+  // selectedId 改變時，只重算每個節點的「邊框 / 陰影」style，
+  // 保留 React Flow 內部目前的 position，不打斷拖曳。
+  useEffect(() => {
+    setRfNodes((nds) => nds.map((n) => {
+      const raw = rawNodes.find((r) => r.id === n.id);
+      const color = colorForParent(raw?.parentCode);
+      const isSel = n.id === selectedId;
+      return {
+        ...n,
+        style: {
+          ...n.style,
+          border: `2px solid ${isSel ? '#15803D' : color}`,
+          boxShadow: isSel
+            ? '0 4px 10px rgba(21,128,61,0.25)'
+            : '0 1px 2px rgba(0,0,0,0.05)',
+        },
+      };
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId]);
 
   const flushPositions = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
