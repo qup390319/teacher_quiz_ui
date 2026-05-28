@@ -12,6 +12,7 @@ import {
   useUpdateKnowledgeNode,
 } from '../../../hooks/useAdminKnowledgeNodes';
 import { useAdminUnits } from '../../../hooks/useAdminUnits';
+import KnowledgeNodeEditPanel from './KnowledgeNodeEditPanel';
 import SortableList from './SortableList';
 
 /**
@@ -27,9 +28,10 @@ import SortableList from './SortableList';
 const COL_HEADER = 'px-4 py-3 border-b border-[#E5E7EB] flex items-center justify-between gap-2';
 const COL_BODY = 'flex-1 overflow-y-auto p-3 space-y-1.5';
 
-export default function ThreeColumnEditor() {
+export default function ThreeColumnEditor({ units: unitsProp }) {
   const { toast } = useToast();
-  const { data: units = [] } = useAdminUnits();
+  const { data: unitsFallback = [] } = useAdminUnits();
+  const units = unitsProp || unitsFallback;
   const activeUnits = useMemo(() => units.filter((u) => u.status === 'active'), [units]);
 
   const [unitId, setUnitId] = useState(() => activeUnits[0]?.id || '');
@@ -47,8 +49,8 @@ export default function ThreeColumnEditor() {
   const deleteParentMut = useDeleteParentNode();
 
   const [selectedParentId, setSelectedParentId] = useState(null);
+  const [selectedChildId, setSelectedChildId] = useState(null);
   const liveSelectedParent = parentNodes.find((p) => p.id === selectedParentId) || null;
-  // 切換單元時自動選第一個大節點
   const effectiveSelectedParent = liveSelectedParent || parentNodes[0] || null;
 
   // ─────────── 小節點 ───────────
@@ -65,6 +67,10 @@ export default function ThreeColumnEditor() {
   }, [childNodes, effectiveSelectedParent]);
 
   const updateChildMut = useUpdateKnowledgeNode();
+
+  const liveSelectedChild = selectedChildId
+    ? childNodes.find((n) => n.id === selectedChildId) || null
+    : null;
 
   // ─────────── handler ───────────
   const handleParentReorder = async (newOrder) => {
@@ -151,7 +157,7 @@ export default function ThreeColumnEditor() {
               <button
                 key={u.id}
                 type="button"
-                onClick={() => { setUnitId(u.id); setSelectedParentId(null); }}
+                onClick={() => { setUnitId(u.id); setSelectedParentId(null); setSelectedChildId(null); }}
                 className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
                   isSel
                     ? 'bg-[#DCFCE7] text-[#15803D] font-semibold'
@@ -208,7 +214,7 @@ export default function ThreeColumnEditor() {
                     <span className="material-symbols-rounded text-[#9CA3AF] text-base cursor-grab shrink-0 mt-0.5" title="拖曳排序">drag_indicator</span>
                     <button
                       type="button"
-                      onClick={() => setSelectedParentId(p.id)}
+                      onClick={() => { setSelectedParentId(p.id); setSelectedChildId(null); }}
                       className="flex-1 min-w-0 text-left"
                     >
                       <div className="text-xs font-mono text-[#1F2937] font-semibold">{p.code}</div>
@@ -228,8 +234,8 @@ export default function ThreeColumnEditor() {
         </div>
       </div>
 
-      {/* 右欄：小節點 */}
-      <div className="flex-1 flex flex-col min-w-[360px]">
+      {/* 第三欄：小節點 */}
+      <div className={`flex flex-col ${liveSelectedChild ? 'w-72 shrink-0' : 'flex-1 min-w-[360px]'}`}>
         <div className={COL_HEADER}>
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <div className="text-xs uppercase tracking-wide text-[#6B7280] shrink-0">小節點 / 知識節點</div>
@@ -253,31 +259,51 @@ export default function ThreeColumnEditor() {
             <SortableList
               items={filteredChildren}
               onReorder={handleChildReorder}
-              renderItem={(n, { isDragging }) => (
-                <div className={`flex items-start gap-2 px-2 py-2 rounded-lg border transition-colors ${
-                  isDragging
-                    ? 'bg-white border-[#7DD3A8] shadow-md'
-                    : 'bg-white border-[#E5E7EB] hover:bg-[#F4F8F6]'
-                }`}>
-                  <span className="material-symbols-rounded text-[#9CA3AF] text-base cursor-grab shrink-0 mt-0.5" title="拖曳排序">drag_indicator</span>
-                  <div className="w-7 h-7 rounded-full bg-[#F4F8F6] text-[#6B7280] flex items-center justify-center text-xs font-semibold shrink-0">
-                    {n.learningOrder}
+              renderItem={(n, { isDragging }) => {
+                const isSel = n.id === selectedChildId;
+                return (
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setSelectedChildId(n.id)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') setSelectedChildId(n.id); }}
+                    className={`flex items-start gap-2 px-2 py-2 rounded-lg border transition-colors cursor-pointer ${
+                      isDragging
+                        ? 'bg-white border-[#7DD3A8] shadow-md'
+                        : isSel
+                          ? 'bg-[#DCFCE7] border-[#7DD3A8]'
+                          : 'bg-white border-[#E5E7EB] hover:bg-[#F4F8F6]'
+                    }`}
+                  >
+                    <span className="material-symbols-rounded text-[#9CA3AF] text-base cursor-grab shrink-0 mt-0.5" title="拖曳排序">drag_indicator</span>
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 ${
+                      isSel ? 'bg-[#7DD3A8] text-white' : 'bg-[#F4F8F6] text-[#6B7280]'
+                    }`}>
+                      {n.learningOrder}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm text-[#1F2937]">{n.name}</div>
+                      <div className="text-xs font-mono text-[#6B7280] mt-0.5">{n.id}</div>
+                    </div>
+                    {n.onCanvas && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-[#DBEAFE] text-[#1E40AF] shrink-0" title="已在畫布上">
+                        畫布
+                      </span>
+                    )}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm text-[#1F2937]">{n.name}</div>
-                    <div className="text-xs font-mono text-[#6B7280] mt-0.5">{n.id}</div>
-                  </div>
-                  {n.onCanvas && (
-                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-[#DBEAFE] text-[#1E40AF] shrink-0" title="已在畫布上">
-                      畫布
-                    </span>
-                  )}
-                </div>
-              )}
+                );
+              }}
             />
           )}
         </div>
       </div>
+
+      {/* 第四欄：節點編輯面板 */}
+      <KnowledgeNodeEditPanel
+        node={liveSelectedChild}
+        units={units}
+        onClose={() => setSelectedChildId(null)}
+      />
     </div>
   );
 }

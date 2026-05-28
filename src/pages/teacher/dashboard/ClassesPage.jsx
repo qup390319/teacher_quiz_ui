@@ -26,7 +26,8 @@ export default function ClassesPage() {
 
   const classStats = useMemo(() => overviewData?.classStats ?? [], [overviewData]);
 
-  const [viewMode, setViewMode] = useState('list');
+  // 預設顯示完整卡片（使用者偏好——資訊量更完整）
+  const [viewMode, setViewMode] = useState('card');
   const [sortBy, setSortBy] = useState('default');
   const [search, setSearch] = useState('');
   const [expanded, setExpanded] = useState({});

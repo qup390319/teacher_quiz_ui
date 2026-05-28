@@ -45,8 +45,8 @@
 | `/admin/users` | `UsersManagement` | 帳號管理：教師/學生列表 + 新增/停用/重設密碼 | `AdminLayout` |
 | `/admin/classes` | `ClassesOverview` | 跨教師班級總覽：篩選 + 列表 | `AdminLayout` |
 | `/admin/classes/:classId` | `ClassDetailAdmin` | 班級詳情：基本資訊 + 學生名冊（唯讀）+ 空班 Excel 匯入 | `AdminLayout` |
-| `/admin/units` | `UnitsManagement` | 單元管理：依年段分區、CRUD、封存／啟用 | `AdminLayout` |
-| `/admin/knowledge-nodes` | `KnowledgeNodesAdmin` | 知識節點畫布編輯 + 迷思 CRUD + Excel 匯入 + 未分配池 | `AdminLayout` |
+| `/admin/units` | `UnitsManagement` | 教學單元管理（`type='unit'`）：依年段分區、CRUD、封存／啟用 | `AdminLayout` |
+| `/admin/knowledge-nodes` | `KnowledgeNodesAdmin` | 知識節點畫布編輯 + 迷思 CRUD + 未分配池 | `AdminLayout` |
 | `/admin/sample-quizzes` | `SampleQuizzes` | 範例題庫：跨教師列出題組 + 切換系統範例標記 | `AdminLayout` |
 | `*` | `Navigate to /` | 404 重導向首頁 | — |
 
@@ -194,15 +194,22 @@
 - 透過 `<Outlet context={{ quizId, overviewData, classes, assignments, quizzes }}>` 把計算好的跨班 `overviewData` 傳給子頁
 - `/teacher/dashboard` 本身 index 路由 `<Navigate to="overview" replace />`
 
-**UI 元素**:
-- 頂部標題列：標題「診斷結果」（移除副標，避免與 tab 列重複表達範圍）
-- **學年篩選器**（最上方一列；與 `/teacher/classes` 共用同一組 AppContext 狀態）：
-  - 學年度下拉：`getCurrentSchoolYear()` 為預設，可往前選 5 個學年度
-  - 學期下拉：上學期 / 下學期
-  - 「顯示已封存班級」checkbox（預設關）
-  - 影響範圍：本層計算的 `classes` / `assignments` 都套用此篩選後再傳給子頁，避免歷史班級污染當期統計（詳見 spec-05 §1.5.3）
-- **題組選擇器與 tab 列上下分列**：題組以綠色 chip 顯示在上排，下排為 5 個 tab（含 Material Symbol icon + 啟用時填滿綠色 pill）；題組選單僅列出有派發給「目前篩選範圍班級」的題組
-- 子分頁 tab 列：5 個 NavLink（所有班級答題分布 / 各班級比較 / 知識節點答對率 / 高頻迷思排行 / 個別學生報告），切換時保留 `searchParams`。命名一律帶「範圍 + 指標」前綴，回應「tab 名稱看不出資料維度」回饋
+**UI 元素**（2026-05-28 重排版，三層水平分離以解決「篩選器混亂」回饋）:
+
+1. **Header 列**：只放標題「診斷結果」+ 操作導覽鈕，不再夾入任何篩選器
+2. **Filter Row**：所有篩選器集中一列，視覺上分主/次兩組
+   - **主篩選器（題組）**：綠底 chip + leading label「目前題組」+ 題組下拉（白底 select，最寬 260px 截斷）
+   - **垂直分隔線**（≥sm 顯示）
+   - **次篩選器（時間軸 + 封存）**（`SchoolYearFilter`，與 `/teacher/classes` 共用 AppContext 狀態）：
+     - 學年度 chip：`school` icon + select（option 直接顯示「114 學年度」，移除冗餘 label）
+     - 學期 chip：`calendar_month` icon + select（option 顯示「上學期/下學期」）
+     - 「含封存」toggle：checkbox + `inventory_2` icon + label，active 時切換為綠底
+   - 影響範圍：本層計算的 `classes` / `assignments` 都套用此篩選後再傳給子頁，避免歷史班級污染當期統計（詳見 spec-05 §1.5.3）
+3. **Tab 列**：5 個 NavLink（所有班級答題分布 / 各班級比較 / 知識節點答對率 / 高頻迷思排行 / 個別學生報告），含 Material Symbol icon + 啟用時填滿綠色 pill；切換時保留 `searchParams`
+
+> **設計原則**：Header（身份）→ Filter（資料篩選）→ Tabs（視角切換）三層由上到下、語意分明，避免任何兩層的元素混在同一列。
+>
+> **題組選擇器顏色**：刻意用綠底凸顯，與次篩選器（白底）形成主從對比；leading label「目前題組」做為 caption（uppercase + tracking）強化「這是當前焦點」的提示。
 - **空狀態使用 `<EmptyStateGuide>`**（D2-C）：未建立任何題組 → 引導去 `① 出診斷題`；已建題組但未派 → 引導去 `② 派題給班級`；當前學年篩選結果為空 → 顯示「此學年/學期沒有班級資料，試試切換學年度或勾選『顯示已封存班級』」
 
 **狀態依賴**:
@@ -371,7 +378,7 @@
 ---
 
 ### 2.6 AssignmentManagement (`/teacher/assignments`)
-**檔案**: `src/pages/teacher/AssignmentManagement.jsx`
+**檔案**: `src/pages/teacher/AssignmentManagement.jsx`（主控）+ `src/pages/teacher/assignment/` 子模組
 
 **功能描述**:
 - 管理診斷題組派發記錄
@@ -379,15 +386,45 @@
 - 檢視已派題記錄及完成狀態
 - 可刪除或更新派題
 
-**UI 元素**:
-- **排序控制**：下拉選單可選預設順序／建立時間新→舊／舊→新／題組名稱 A→Z／Z→A／已派班級數多→少／少→多；旁邊顯示「共 N 份診斷題組」
-- 圖例（未派發／待作答／進行中／已完成）置於矩陣**上方**，方便對照後再點選格子
-- 派題矩陣（列為題組、欄為班級）；格子最小高度 120px
-- 新增派題的 `AssignPopover` 與管理派題的 `ManagePopover` 採 `position: fixed` + 觸發按鈕 bounding rect 計算座標，避免被外層 `overflow-hidden / overflow-x-auto` 切掉
-- `AssignPopover` 含**派發模式選擇器**：兩個 toggle 按鈕「診斷模式」與「複習模式」，各附說明文字；`onConfirm` 回傳 `(dueDate, dispatchMode)`，`dispatchMode` 為 `'diagnosis'` 或 `'review'`
-- 完成率進度條與狀態徽章
+**設計（2026-05-28 重構，從矩陣改為雙視角卡片列表）**:
 
-**狀態依賴**: `assignments`, `addAssignment`, `updateAssignment`, `removeAssignment`, `quizzes`, `classes`
+> **歷史**：原為 N×M 矩陣（題組為列、班級為欄），在 10+ 個班級或多份題組時水平/垂直滾動爆炸、認知負擔過高。新設計以**雙視角卡片**取代，兩個視角都是垂直列表，自然支援大量班級或題組。
+
+#### 結構（由上到下）
+1. **頁首**：`派題管理` h1 + 操作導覽鈕 + 副說明
+2. **全頁概覽列 `OverviewBar`**：題組總數、班級數、進行中筆數、已完成筆數、總派發紀錄數
+3. **視角切換 `ViewTabs`**（題組視角 / 班級視角，預設題組視角，存 `localStorage.scilens.assignmentViewMode`）+ 右側排序選單
+4. **內容區**：依當前視角渲染 `QuizCardView` 或 `ClassCardView`
+
+#### 題組視角 `QuizCardView`
+每份已發佈題組一張卡：
+- **Header**：`已發佈` badge、題組標題、`X 題 · Y 個知識節點`、右側 summary（已派 M/N 班、整體完成率 Z%）
+- **已派發班級列表**：每列班色點 + 班名 + 完成率進度條 + `X/Y 人完成` + 截止日 + `⋮` 管理鈕（開啟 `ManagePopover`）
+- **派發給其他班級 pill 群**：未派發班級以虛線 pill 呈現，點 pill 開啟 `AssignPopover` 派發
+- 空狀態（尚未派任何班）：顯示 info 提示 + pill 引導
+
+#### 班級視角 `ClassCardView`
+每個班級一張卡：
+- **Header**：班色點 + 班名 + N 人 + 右側 summary（已派 N/M 份題組、進行中/已完成筆數）
+- **已派題組列表**：每列題組標題 + meta + 完成率進度條 + 截止日 + `⋮` 管理鈕
+- **派發其他題組 pill 群**：未派題組以虛線 pill 呈現，點 pill 開啟 `AssignPopover` 派發
+
+#### 共用元件複用
+- `AssignmentMatrixParts.jsx` 內的 `AssignPopover` / `ManagePopover` 不變（採 `position: fixed` + bounding rect 定位）
+- `AssignPopover` 含**派發模式選擇器**：toggle「診斷模式 / 複習模式」；`onConfirm(dueDate, dispatchMode)`
+- 兩個視角的 popover 都靠 trigger element 的 parent `<div className="relative">` + `querySelector('button')` 自動定位
+
+#### 排序選項
+- 預設順序
+- 名稱 A→Z / Z→A
+- 派發數 多→少 / 少→多
+- （僅題組視角）建立時間 新→舊 / 舊→新
+
+#### 不再使用的元素
+- ~~派題矩陣 N×M table~~（廢棄）
+- ~~圖例列（未派發／待作答／進行中／已完成）~~（廢棄，進度條本身用顏色傳達狀態）
+
+**狀態依賴**: `assignments`, `addAssignment`, `updateAssignment`, `removeAssignment`, `quizzes`, `classes`, `viewMode (localStorage)`
 
 ---
 
@@ -537,7 +574,8 @@
 **檔案**: `src/pages/admin/UnitsManagement.jsx`
 
 **功能描述**:
-- 管理員管理「課程單元」（單元 = 一組獨立的知識節點 + 迷思概念集合）
+- 管理員管理「教學單元」（`type='unit'`），與課綱次主題（`type='subtheme'`）分開管理
+- 此頁只列 `type='unit'` 的項目；次主題在「知識節點 > 階層結構」管理
 - W4 階段預設 seed 12 個高年級單元（依使用者參考截圖：太陽與光的折射 / 植物世界 / 空氣與燃燒 / 聲音與樂器 / 觀測星空 / **水溶液** / 動物大觀園 / 力與運動 / 多變的天氣 / 地表的變化 / 電磁作用 / 熱對物質的影響）
 - 「水溶液」標 `is_system_current=true`：系統目前 12 個知識節點都掛在此單元下，**不可封存或刪除**（後端 409 `UNIT_IS_SYSTEM_CURRENT` + 前端按鈕 disabled + tooltip 說明）
 
@@ -576,30 +614,27 @@
 - W5a 階段教師端 / 學生端仍從 hard-code（`src/data/knowledgeGraph.js`）讀取；W5b 後切換為 API
 
 **四個視圖（W7a 起）**:
-1. **階層結構**（預設）：三欄式 — 左欄主題（單元）/ 中欄大節點 / 右欄小節點；每欄都是拖曳清單（dnd-kit），對應課綱「次主題 → 內容細目 → 知識節點」三層結構
-2. **單元畫布**：選一個單元，看到該單元**已加入畫布**（`on_canvas=true`）的小節點 + 先備關係箭頭。可在畫布拖曳節點、連線、點選節點開啟右側編輯面板
+1. **階層結構**（預設）：三欄＋編輯面板 — 左欄主題（單元）/ 中欄大節點 / 右欄小節點 / 第四欄編輯面板；每欄都是拖曳清單（dnd-kit），對應課綱「次主題 → 內容細目 → 知識節點」三層結構。右欄點選小節點後，第四欄展開 `KnowledgeNodeEditPanel`，可編輯節點所有欄位與迷思概念
+2. **知識節點畫布**：選一個次主題（`type='subtheme'`），看到該次主題**已加入畫布**（`on_canvas=true`）的小節點 + 先備關係箭頭。純拓撲編輯器——僅支援拖曳定位與拉線連接先備關係，不提供節點欄位編輯（欄位編輯請至「階層結構」）
 3. **節點庫**：列出當前單元中 `on_canvas=false` 的節點，可批次「加入畫布」或「移回未分配」
 4. **未分配**：列出所有 `unit_id IS NULL` 的節點，依大節點 (`parent_code`) 分組；每組可選擇下拉一鍵指派到對應年段的單元
-5. **Excel 匯入** modal（W5a-4）：上傳「整合-知識節點大全」xlsx → 預覽（依年段 + 大節點分組統計）→ 確認後全部以 `unit_id=NULL` 寫入未分配池
 
 **節點生命週期（W5c）**：
 - **新增節點** → 進入「節點庫」（unit_id 已指定但 on_canvas=false）；不會立刻出現在畫布上
 - **「加入節點」按鈕** → 從節點庫挑選要繪製到畫布的節點（多選 + 搜尋 + 依大節點分組），確認後 on_canvas=true
-- **「從畫布移除」按鈕**（右側編輯面板）→ 把節點從畫布拿掉但保留資料（on_canvas=false）；節點回到節點庫，先備關係保留
+- **「從畫布移除」** → 可從節點庫視圖操作；把節點從畫布拿掉但保留資料（on_canvas=false），節點回到節點庫，先備關係保留
 - 既有 12 個 seed 節點預設 on_canvas=true（migration 0017 升級時 backfill）
 
 **UI 元素**（spec-14）:
-- 工具列：視圖 tab pill + 單元下拉（僅 canvas tab 顯示）+ 自動排版 + Excel 匯入 + 新增節點按鈕
-- **畫布**：React Flow（`@xyflow/react`）+ Background grid + Controls + MiniMap；節點以 `parent_code` 著色；箭頭從先備指向後續節點
-- **編輯側邊欄**（`KnowledgeNodeEditPanel`）：選中節點時開啟，包含基本資訊（名稱 / 單元 / 大節點 / 學習順序 / 影片）+ 迷思清單（每條可獨立編輯 / 刪除 / 新增）；ID 永遠唯讀
+- 工具列：視圖 tab pill + 次主題下拉（僅 canvas / library tab 顯示，只列 `type='subtheme'`）+ 自動排版 + 新增節點按鈕
+- **畫布**：React Flow（`@xyflow/react`）+ dagre 自動排版 + custom node（卡片設計，左側 accent stripe）+ custom edge（smoothstep + 中點 × 刪除鈕）+ Dots background + Controls + MiniMap；節點以 `parent_code` 著色；箭頭從先備指向後續節點。畫布為純拓撲編輯器，不含節點欄位編輯面板
+- **編輯面板**（`KnowledgeNodeEditPanel`）：位於「階層結構」視圖第四欄，點選小節點後展開，包含基本資訊（名稱 / 單元 / 大節點 / 學習順序 / 影片）+ 迷思清單（每條可獨立編輯 / 刪除 / 新增）；ID 永遠唯讀
 - **新增節點** modal：自訂 ID + 名稱 + 單元 + 年段 + 大節點（選填）
-- **Excel 匯入** modal：兩步驟 preview→confirm
 
 **子元件**（位於 `src/pages/admin/components/`）:
-- `KnowledgeNodeCanvas.jsx` — React Flow 畫布（拖曳 / 連線 / 自動排版）
-- `KnowledgeNodeEditPanel.jsx` — 右側編輯面板 + 迷思 CRUD
+- `KnowledgeNodeCanvas.jsx` — React Flow 畫布（dagre 自動排版 / 拖曳定位 / 拉線連接先備關係 / 中點 × 刪除）；純拓撲，無欄位編輯
+- `KnowledgeNodeEditPanel.jsx` — 節點編輯面板 + 迷思 CRUD（嵌入 `ThreeColumnEditor` 第四欄）
 - `NewKnowledgeNodeModal.jsx` — 新增節點 modal
-- `NodeExcelImportModal.jsx` — Excel 匯入 modal
 - `AutoLayoutButton.jsx` — 自動排版按鈕
 
 **狀態依賴**:
@@ -609,12 +644,6 @@
 - `useBulkAssignUnit()`：未分配池批次指派
 - `useCreateMisconception()` / `useUpdateMisconception()` / `useDeleteMisconception()`
 - `useAdminUnits()`：單元下拉資料源
-
-**Excel 匯入規格**：
-- 必須 sheet name = `整合`
-- 欄位：A 序號 / B 星空圖名稱 / C 學習階段（2=middle、3=upper）/ D 大節點編碼 / E 大節點名稱 / F 小節點編碼 / G 小節點名稱 / H 影片名稱 / I 影片網址
-- 既存節點 ID（如 12 個 seed 節點）匯入時跳過
-- 所有節點以 `unit_id=NULL` 進入未分配池，admin 後續再指派
 
 ---
 

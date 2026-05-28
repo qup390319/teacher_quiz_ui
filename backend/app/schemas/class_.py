@@ -95,3 +95,37 @@ class StudentInput(BaseModel):
 
 class UpdateStudentsRequest(BaseModel):
     students: list[StudentInput]
+
+
+class AdminCreateClassRequest(BaseModel):
+    """POST /api/admin/classes — admin creates a class and assigns it to a teacher."""
+    name: str = Field(min_length=1, max_length=64)
+    grade: str = Field(min_length=1, max_length=16)
+    subject: str = Field(min_length=1, max_length=32)
+    color: str = Field(pattern=r"^#[0-9A-Fa-f]{6}$")
+    text_color: str = Field(
+        pattern=r"^#[0-9A-Fa-f]{6}$",
+        validation_alias="textColor",
+        serialization_alias="textColor",
+    )
+    teacher_id: str = Field(
+        min_length=1,
+        validation_alias="teacherId",
+        serialization_alias="teacherId",
+    )
+    note: str | None = Field(default=None, max_length=200)
+    school_year: int | None = Field(
+        default=None, ge=2000, le=2100,
+        validation_alias="schoolYear", serialization_alias="schoolYear",
+    )
+    semester: Literal["first", "second"] | None = None
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class AddStudentRequest(BaseModel):
+    """POST /api/admin/classes/:classId/students — add a single student."""
+    name: str = Field(min_length=1, max_length=64)
+    seat: int = Field(gt=0)
+
+    model_config = ConfigDict(populate_by_name=True)

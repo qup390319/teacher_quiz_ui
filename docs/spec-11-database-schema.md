@@ -433,11 +433,13 @@ CREATE TABLE units (
     description        TEXT,
     display_order      INTEGER      NOT NULL DEFAULT 0,
     status             VARCHAR(16)  NOT NULL DEFAULT 'active', -- 'active' | 'archived'
+    type               VARCHAR(16)  NOT NULL DEFAULT 'subtheme', -- 'unit' | 'subtheme'
     is_system_current  BOOLEAN      NOT NULL DEFAULT FALSE,
     created_at         TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at         TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     CONSTRAINT units_grade_band_chk CHECK (grade_band IN ('lower','middle','upper')),
-    CONSTRAINT units_status_chk     CHECK (status     IN ('active','archived'))
+    CONSTRAINT units_status_chk     CHECK (status     IN ('active','archived')),
+    CONSTRAINT units_type_chk       CHECK (type       IN ('unit','subtheme'))
 );
 
 CREATE INDEX units_grade_band_idx ON units(grade_band, display_order);
@@ -447,6 +449,9 @@ CREATE INDEX units_grade_band_idx ON units(grade_band, display_order);
 - 預先 seed 12 個高年級單元（migration 0013）：太陽與光的折射 / 植物世界 / 空氣與燃燒 / 聲音與樂器 / 觀測星空 / **水溶液** / 動物大觀園 / 力與運動 / 多變的天氣 / 地表的變化 / 電磁作用 / 熱對物質的影響
 - `is_system_current=true` 標記系統現有 12 個 hard-coded 知識節點所屬的單元（W4 為「水溶液」）。此旗標的單元**不可封存、不可刪除**，避免破壞既有題組與診斷流程；後端在 archive / delete 端點檢查並回 409 `UNIT_IS_SYSTEM_CURRENT`
 - W5 知識節點 DB 化後，`knowledge_nodes` 表會加 `unit_id` FK；屆時 `is_system_current` 可改為由節點關聯動態判定，本欄位作為過渡
+- **`type` 欄位區分兩種記錄**：
+  - `type='unit'`：教學單元（如「水溶液」），在「單元管理」頁面管理
+  - `type='subtheme'`：108 課綱次主題（如「物質的形態、性質及分類（Ab）」），在「知識節點 > 階層結構」管理；docx 匯入預設建立此類型
 
 ### 3.18 `knowledge_nodes`（W5a，migration 0014）
 

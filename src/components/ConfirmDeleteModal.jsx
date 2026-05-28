@@ -18,12 +18,12 @@ export default function ConfirmDeleteModal({
 }) {
   return (
     <div
-      className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4 cursor-pointer"
       onClick={onClose}
       role="presentation"
     >
       <div
-        className="bg-white border border-[#BDC3C7] rounded-[32px] shadow-[0_8px_40px_rgba(0,0,0,0.08)] w-full max-w-sm p-6"
+        className="bg-white border border-[#BDC3C7] rounded-[32px] shadow-[0_8px_40px_rgba(0,0,0,0.08)] w-full max-w-sm p-6 cursor-default"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-3 mb-4">

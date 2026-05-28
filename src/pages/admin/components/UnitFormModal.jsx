@@ -50,7 +50,7 @@ export default function UnitFormModal({ isEdit = false, initial = null, onClose,
       if (isEdit) {
         unit = await updateMut.mutateAsync({ id: initial.id, ...body });
       } else {
-        unit = await createMut.mutateAsync(body);
+        unit = await createMut.mutateAsync({ ...body, type: 'unit' });
       }
       onSuccess?.(unit);
       onClose();
@@ -65,13 +65,13 @@ export default function UnitFormModal({ isEdit = false, initial = null, onClose,
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 cursor-pointer"
       role="dialog"
       aria-modal="true"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md bg-white rounded-3xl border border-[#E5E7EB] shadow-lg p-6"
+        className="w-full max-w-md bg-white rounded-3xl border border-[#E5E7EB] shadow-lg p-6 cursor-default"
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="text-lg font-bold text-[#1F2937] mb-1">

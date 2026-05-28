@@ -55,9 +55,9 @@ export default function NewKnowledgeNodeModal({ units, defaultUnitId, defaultGra
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 cursor-pointer"
          role="dialog" aria-modal="true" onClick={onClose}>
-      <div className="w-full max-w-md bg-white rounded-3xl border border-[#E5E7EB] shadow-lg p-6"
+      <div className="w-full max-w-md bg-white rounded-3xl border border-[#E5E7EB] shadow-lg p-6 cursor-default"
            onClick={(e) => e.stopPropagation()}>
         <h3 className="text-lg font-bold text-[#1F2937] mb-1">新增節點</h3>
         <p className="text-sm text-[#6B7280] mb-5">建立後可在畫布拖曳調整位置、連線設定先備關係，並從右側欄補上完整資訊。</p>

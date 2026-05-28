@@ -71,71 +71,83 @@ export default function DashboardLayout() {
   return (
     <TeacherLayout>
       <div className="p-4 sm:p-6 md:p-8">
-        <div className="mb-4 sm:mb-6 flex flex-wrap items-center justify-between gap-3" data-tour="dash-header">
-          <div className="flex items-center gap-3">
-            <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">診斷結果</h1>
-            <button
-              type="button"
-              onClick={() => startTour('dashboard')}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[#C8D6C9] text-[#3D5A3E] text-sm font-semibold hover:bg-[#EEF5E6] transition-colors shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
-              title="瞭解診斷結果功能"
-            >
-              <Icon name="tour" className="text-base" />
-              操作導覽
-            </button>
-          </div>
-          {/* 學年篩選器（spec-02 §2.3.0；與 /teacher/classes 共用 AppContext 狀態） */}
+        {/* ── Header：純標題 + 操作導覽（不再夾入篩選器，2026-05-28 重構） ── */}
+        <div className="mb-3 flex items-center gap-3 flex-wrap" data-tour="dash-header">
+          <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">診斷結果</h1>
+          <button
+            type="button"
+            onClick={() => startTour('dashboard')}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[#C8D6C9] text-[#3D5A3E] text-sm font-semibold hover:bg-[#EEF5E6] transition-colors shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
+            title="瞭解診斷結果功能"
+          >
+            <Icon name="tour" className="text-base" />
+            操作導覽
+          </button>
+        </div>
+
+        {/* ── Filter Row：主篩選（題組）│ 次篩選（時間軸 + 封存）── */}
+        <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2" data-tour="dash-filters">
+          {availableQuizzes.length > 0 && (
+            <>
+              {/* 主篩選器：題組（綠底凸顯，加 leading label「目前題組」） */}
+              <div
+                className="inline-flex items-center gap-2 bg-[#EEF5E6] border border-[#8FC87A] rounded-2xl pl-3 pr-1.5 py-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
+                data-tour="dash-quiz-selector"
+              >
+                <span className="material-symbols-rounded text-[#3D5A3E] flex-shrink-0" style={{ fontSize: 18 }}>quiz</span>
+                <span className="text-xs font-bold text-[#3D5A3E] whitespace-nowrap uppercase tracking-wider">目前題組</span>
+                <div className="relative">
+                  <select
+                    value={effectiveQuizId ?? ''}
+                    onChange={e => handleQuizChange(e.target.value)}
+                    className="appearance-none bg-white border border-[#C8D6C9] rounded-lg pl-2.5 pr-7 py-1 text-sm font-semibold text-[#2D3436] focus:outline-none focus:ring-2 focus:ring-[#8FC87A] cursor-pointer max-w-[260px] truncate"
+                    aria-label="選擇題組"
+                  >
+                    {availableQuizzes.map(q => (<option key={q.id} value={q.id}>{q.title}</option>))}
+                  </select>
+                  <svg className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#636E72] pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
+
+              {/* 主/次篩選分隔線 */}
+              <div className="hidden sm:block w-px h-7 bg-[#D5D8DC] mx-1" aria-hidden="true" />
+            </>
+          )}
+
+          {/* 次篩選器：學年 / 學期 / 含封存 */}
           <SchoolYearFilter />
         </div>
 
-        {/* B4：題組選擇器與 tab 列上下分列，避免擠在同一列顯得雜亂 */}
-        <div className="mb-6 space-y-2">
-          {availableQuizzes.length > 0 && (
-            <div className="inline-flex items-center gap-2 bg-[#EEF5E6] border border-[#C8D6C9] rounded-2xl pl-3 pr-2 py-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.04)]" data-tour="dash-quiz-selector">
-              <span className="material-symbols-rounded text-[#3D5A3E]" style={{ fontSize: 18 }}>quiz</span>
-              <span className="text-sm font-bold text-[#3D5A3E] whitespace-nowrap">題組</span>
-              <div className="relative">
-                <select
-                  value={effectiveQuizId ?? ''}
-                  onChange={e => handleQuizChange(e.target.value)}
-                  className="appearance-none bg-white border border-[#C8D6C9] rounded-lg pl-2.5 pr-7 py-1 text-sm font-semibold text-[#2D3436] focus:outline-none focus:ring-2 focus:ring-[#8FC87A] cursor-pointer"
-                >
-                  {availableQuizzes.map(q => (<option key={q.id} value={q.id}>{q.title}</option>))}
-                </select>
-                <svg className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#636E72] pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-            </div>
-          )}
-          <div className="bg-white rounded-2xl border border-[#E1E6E2] p-1.5 inline-flex items-center gap-1 shadow-[0_2px_10px_rgba(0,0,0,0.05)] flex-wrap" data-tour="dash-tabs">
-            {TABS.map(tab => (
-              <NavLink
-                key={tab.to}
-                to={`/teacher/dashboard/${tab.to}${tabSearch}`}
-                data-tour={tab.tour}
-                className={({ isActive }) =>
-                  `inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all duration-150 ${
-                    isActive
-                      ? 'bg-[#6FB55C] text-white shadow-[0_2px_6px_rgba(111,181,92,0.35)]'
-                      : 'text-[#5A6663] hover:bg-[#F1F6EE] hover:text-[#2D3436]'
-                  }`
-                }
-              >
-                {({ isActive }) => (
-                  <>
-                    <span
-                      className="material-symbols-rounded"
-                      style={{ fontSize: 18, fontVariationSettings: isActive ? '"FILL" 1' : '"FILL" 0' }}
-                    >
-                      {tab.icon}
-                    </span>
-                    <span>{tab.label}</span>
-                  </>
-                )}
-              </NavLink>
-            ))}
-          </div>
+        {/* ── Tabs：分頁切換 ── */}
+        <div className="mb-6 bg-white rounded-2xl border border-[#E1E6E2] p-1.5 inline-flex items-center gap-1 shadow-[0_2px_10px_rgba(0,0,0,0.05)] flex-wrap" data-tour="dash-tabs">
+          {TABS.map(tab => (
+            <NavLink
+              key={tab.to}
+              to={`/teacher/dashboard/${tab.to}${tabSearch}`}
+              data-tour={tab.tour}
+              className={({ isActive }) =>
+                `inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all duration-150 ${
+                  isActive
+                    ? 'bg-[#6FB55C] text-white shadow-[0_2px_6px_rgba(111,181,92,0.35)]'
+                    : 'text-[#5A6663] hover:bg-[#F1F6EE] hover:text-[#2D3436]'
+                }`
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <span
+                    className="material-symbols-rounded"
+                    style={{ fontSize: 18, fontVariationSettings: isActive ? '"FILL" 1' : '"FILL" 0' }}
+                  >
+                    {tab.icon}
+                  </span>
+                  <span>{tab.label}</span>
+                </>
+              )}
+            </NavLink>
+          ))}
         </div>
 
         {availableQuizzes.length === 0 || !effectiveQuizId ? (

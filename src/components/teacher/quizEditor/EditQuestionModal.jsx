@@ -200,11 +200,11 @@ export default function EditQuestionModal({ question, selectedNodeIds, onSave, o
       )}
       {suggestForIdx !== null && !suggestMisconception && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4 cursor-pointer"
           onClick={() => setSuggestForIdx(null)}
         >
           <div
-            className="bg-white border border-[#BDC3C7] rounded-2xl p-6 max-w-sm text-center"
+            className="bg-white border border-[#BDC3C7] rounded-2xl p-6 max-w-sm text-center cursor-default"
             onClick={(e) => e.stopPropagation()}
           >
             <p className="text-sm text-[#636E72] mb-4">

@@ -74,13 +74,13 @@ export default function DistractorSuggestPopover({
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm p-3 sm:p-4"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm p-3 sm:p-4 cursor-pointer"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
     >
       <div
-        className="w-full max-w-lg max-h-[90vh] overflow-y-auto bg-white border border-[#BDC3C7] rounded-[24px] sm:rounded-[28px] shadow-[0_8px_40px_rgba(0,0,0,0.15)]"
+        className="w-full max-w-lg max-h-[90vh] overflow-y-auto bg-white border border-[#BDC3C7] rounded-[24px] sm:rounded-[28px] shadow-[0_8px_40px_rgba(0,0,0,0.15)] cursor-default"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="bg-gradient-to-r from-[#FBE9C7] to-[#FCF0C2] border-b border-[#D9C58E] px-4 sm:px-5 py-3 flex items-center gap-3">

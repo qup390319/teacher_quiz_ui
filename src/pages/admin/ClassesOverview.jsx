@@ -4,6 +4,7 @@ import AdminLayout from '../../components/AdminLayout';
 import { useAdminClasses } from '../../hooks/useAdminClasses';
 import { useAdminUsers } from '../../hooks/useAdminUsers';
 import { formatSchoolYearLabel, formatSemesterLabel } from '../../utils/schoolYear';
+import AdminNewClassModal from './components/AdminNewClassModal';
 
 /**
  * /admin/classes — 班級總覽（spec-02 §3.4、spec-14）。
@@ -38,6 +39,7 @@ export default function ClassesOverview() {
   const [teacherId, setTeacherId] = useState('');
   const [classStatus, setClassStatus] = useState('all');
   const [keyword, setKeyword] = useState('');
+  const [showNewClassModal, setShowNewClassModal] = useState(false);
 
   const { data, isLoading, error } = useAdminClasses({
     teacherId: teacherId || undefined,
@@ -65,6 +67,10 @@ export default function ClassesOverview() {
 
   return (
     <AdminLayout title="班級總覽" breadcrumb="Dashboard / 班級總覽">
+      {showNewClassModal && (
+        <AdminNewClassModal onClose={() => setShowNewClassModal(false)} />
+      )}
+
       {/* 工具列 */}
       <div className="flex flex-wrap items-center gap-3 mb-5">
         <div className="relative">
@@ -106,6 +112,15 @@ export default function ClassesOverview() {
         <span className="text-sm text-[#6B7280]">
           {isLoading ? '載入中…' : error ? '載入失敗' : `共 ${items.length} 班`}
         </span>
+        <button
+          type="button"
+          onClick={() => setShowNewClassModal(true)}
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#7DD3A8] hover:bg-[#5FBF8E]
+                     text-white font-semibold text-sm transition-colors"
+        >
+          <span className="material-symbols-rounded text-base">add</span>
+          新增班級
+        </button>
       </div>
 
       {/* 表格 */}

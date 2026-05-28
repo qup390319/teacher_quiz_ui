@@ -18,6 +18,7 @@ from app.schemas.unit import (
     GradeBand,
     UnitBrief,
     UnitStatus,
+    UnitType,
     UpdateUnitRequest,
 )
 
@@ -29,6 +30,7 @@ def _to_brief(u: Unit) -> UnitBrief:
         id=u.id, code=u.code, name=u.name,
         grade_band=u.grade_band, description=u.description,
         display_order=u.display_order, status=u.status,
+        type=u.type,
         is_system_current=u.is_system_current,
         created_at=u.created_at, updated_at=u.updated_at,
     )
@@ -56,6 +58,7 @@ async def _next_display_order(db: AsyncSession, grade_band: str) -> int:
 async def list_units(
     grade_band: GradeBand | None = Query(default=None, alias="gradeBand"),
     status_filter: UnitStatus | None = Query(default=None, alias="status"),
+    type_filter: UnitType | None = Query(default=None, alias="type"),
     _admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> list[UnitBrief]:
@@ -64,6 +67,8 @@ async def list_units(
         stmt = stmt.where(Unit.grade_band == grade_band)
     if status_filter is not None:
         stmt = stmt.where(Unit.status == status_filter)
+    if type_filter is not None:
+        stmt = stmt.where(Unit.type == type_filter)
     stmt = stmt.order_by(Unit.grade_band, Unit.display_order, Unit.id)
     units = list((await db.execute(stmt)).scalars().all())
     return [_to_brief(u) for u in units]
@@ -92,6 +97,7 @@ async def create_unit(
     unit = Unit(
         id=new_id, code=code, name=payload.name.strip(),
         grade_band=payload.grade_band,
+        type=payload.type,
         description=(payload.description or None),
         display_order=display_order,
         status="active",

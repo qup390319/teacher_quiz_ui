@@ -1170,6 +1170,39 @@ grep -rE "\btext-xs\b|text-\[1[0-4]px\]" src/pages/teacher src/components --excl
 
 **禁止**：自行調整教師端側邊欄 section 顏色，須遵守上表。
 
+### 14.3 教師端側邊欄分類標題與按鈕視覺分層（2026-05-28）
+
+**問題**：原 section 容器（淡色底 + 2px 邊框 + 圓角）與內部 NavLink 按鈕（同樣淡色底 + hover 變色）視覺結構過於相似，使用者反映「分類標題長得像按鈕」，無法直觀分辨可點性。
+
+**規則**（不影響 §14.2 規定的顏色與 2px 邊框）：
+
+1. **Section 標題列**：純 label 風格
+   - 移除標題列下方的 `borderBottom`（原本的填色橫條會讓標題列獨立成「卡片頂部」）
+   - 字級：`text-sm`（14px）— 分類標題是輔助資訊（label / caption），允許比通則的 16px 略小以降低視覺重量；其他主要可讀文字（按鈕、子項目）仍維持 16px
+   - 字重：`font-medium`（比按鈕的 `font-semibold` 輕，降低視覺重量）
+   - 字距：`tracking-wider`
+   - 字色：`color: ss.label` + `opacity: 0.7`（更淡，讓標題視覺權重低於按鈕）
+   - padding：`px-3 pt-2 pb-1`（緊貼上緣，像角落小標籤）
+
+2. **Section 內 NavLink 按鈕**：白底卡片浮起
+   - 非 active 狀態：`bg: rgba(255,255,255,0.7)` + `border: 1px solid rgba(255,255,255,0.9)`
+   - Hover：`bg: #FFFFFF`（純白實底）
+   - Active：保持 §14.2 規定（`activeBg` + 2px `activeBorder`）
+   - 按鈕之間垂直間距：`space-y-2`（8px，避免兩顆按鈕貼太近）
+   - 視覺重量倒轉：白色卡片浮在淡色 section 背景上 → 使用者一眼辨識「白底的才能點」
+
+3. **群組 (group) 子項目**：彩色點點 + 16px 字
+   - 字級：`text-base`（**最小 16px**）
+   - 每個子項目前加 `w-1.5 h-1.5 rounded-full` 的彩色實心點，顏色用 section 的 `ss.color`
+   - 子項目間距：`space-y-1`（4px，比同級按鈕更密，符合「子項目」階層感）
+   - 左側彩色直條 `border-left: 2px solid ss.color` 保留作為群組視覺錨點
+
+4. **文字最小尺寸通則**：sidebar 主要可讀文字（按鈕、子項目）皆 ≥ 16px（`text-base`），不得使用 `text-xs`/`text-[N]px` 小於 14 的字級。例外：分類標題（section 標題）為 caption 性質，使用 `text-sm`（14px）以降低視覺重量。
+
+5. **適用範圍**：僅教師端 `TeacherLayout` 的 flow section（① 出診斷題、② 派題給班級、③ 看診斷結果、班級、其他）
+
+**實作參考**：`src/components/TeacherLayout.jsx` 的 `renderNavSections()` 與 `renderNavItem()`
+
 ---
 
 ## 10. 風格演進歷史

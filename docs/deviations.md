@@ -5,6 +5,20 @@
 
 ---
 
+### [2026-05-28] AssignmentManagement 從 N×M 矩陣改為雙視角卡片列表
+- **涉及 Spec**: `spec-02-routes-and-pages.md` §2.6
+- **問題**: 原 spec §2.6 規定「派題矩陣（列為題組、欄為班級）」，但實際在多班級（10+）多題組情境下，矩陣會雙向滾動、認知負擔過高，且最常見動作「派發到多班」需要點 N 次格子。
+- **替代方案**:
+  1. 改為雙視角卡片列表：題組視角（每題一張卡，內含已派班級進度 + 未派 pill 群）與班級視角（每班一張卡，內含已派題組進度 + 未派 pill 群）
+  2. 視角切換存 `localStorage.scilens.assignmentViewMode`
+  3. 拆檔到 `src/pages/teacher/assignment/`：`ViewTabs.jsx` / `OverviewBar.jsx` / `QuizCardView.jsx` / `ClassCardView.jsx` / `assignmentStats.js`
+  4. 既有 `AssignmentMatrixParts.jsx` 的 `AssignPopover` / `ManagePopover` 全部沿用不改
+  5. 移除原 N×M table / 矩陣圖例（顏色資訊改由進度條傳達）
+- **Spec 已更新**: ✅（§2.6 完整改寫）
+- **Phase 2 後續**：多選班級批次派發、狀態 filter chip、搜尋
+
+---
+
 ## 格式
 
 ```

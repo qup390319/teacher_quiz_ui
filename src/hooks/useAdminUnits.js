@@ -3,10 +3,11 @@ import { api } from '../lib/api';
 
 /** Admin-only: list units（含已封存）。 */
 export function useAdminUnits(params = {}) {
-  const { gradeBand, status: unitStatus } = params;
+  const { gradeBand, status: unitStatus, type } = params;
   const search = new URLSearchParams();
   if (gradeBand) search.set('gradeBand', gradeBand);
   if (unitStatus) search.set('status', unitStatus);
+  if (type) search.set('type', type);
   const qs = search.toString();
   return useQuery({
     queryKey: ['admin-units', params],

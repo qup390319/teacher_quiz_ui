@@ -10,9 +10,7 @@ import { useAdminUnits } from '../../hooks/useAdminUnits';
 import AddNodesToCanvasModal from './components/AddNodesToCanvasModal';
 import AutoLayoutButton from './components/AutoLayoutButton';
 import KnowledgeNodeCanvas from './components/KnowledgeNodeCanvas';
-import KnowledgeNodeEditPanel from './components/KnowledgeNodeEditPanel';
 import NewKnowledgeNodeModal from './components/NewKnowledgeNodeModal';
-import NodeExcelImportModal from './components/NodeExcelImportModal';
 import ThreeColumnEditor from './components/ThreeColumnEditor';
 
 const UNASSIGNED_GRADE_FILTERS = [
@@ -33,15 +31,16 @@ const UNASSIGNED_SORTS = [
 /**
  * /admin/knowledge-nodes — 知識節點管理（spec-02 §3.8、spec-14）。
  *
- * 三個視圖：
- *   1. 單元畫布：選一個單元，看其節點 + 先備關係，可拖曳 / 連線編輯
- *   2. 未分配：以大節點 (parent_code) 分組，批次指派到單元
- *   3. Excel 匯入：上傳「整合-知識節點大全」一次匯入多筆
+ * 四個視圖：
+ *   1. 階層結構：次主題→大節點→小節點 三欄 + 編輯面板
+ *   2. 知識節點畫布：選一個次主題，純拓撲編輯（拖曳定位 + 拉線先備關係）
+ *   3. 節點庫：次主題內未上畫布的節點
+ *   4. 未分配：以大節點分組，批次指派到次主題
  */
 
 const VIEW_TABS = [
   { value: 'structure', label: '階層結構', icon: 'list_alt' },
-  { value: 'canvas', label: '單元畫布', icon: 'account_tree' },
+  { value: 'canvas', label: '知識節點畫布', icon: 'account_tree' },
   { value: 'library', label: '節點庫', icon: 'folder_open' },
   { value: 'unassigned', label: '未分配', icon: 'inbox' },
 ];
@@ -116,7 +115,7 @@ function UnassignedView({ nodes, units, onChanged }) {
   if (nodes.length === 0) {
     return (
       <div className="bg-white rounded-2xl border border-[#E5E7EB] p-12 text-center text-sm text-[#6B7280]">
-        目前沒有未分配的節點。從上方「Excel 匯入」可一次加入大量節點。
+        目前沒有未分配的節點。
       </div>
     );
   }
@@ -463,31 +462,28 @@ function LibraryView({ nodes, unitId, unitName, onChanged }) {
 
 export default function KnowledgeNodesAdmin() {
   const [view, setView] = useState('structure');
-  const [unitId, setUnitId] = useState('unit-water-solution');
-  const [selectedNode, setSelectedNode] = useState(null);
+  const [unitId, setUnitId] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showImportModal, setShowImportModal] = useState(false);
   const [showAddToCanvasModal, setShowAddToCanvasModal] = useState(false);
   const { toast } = useToast();
 
-  const { data: units = [] } = useAdminUnits();
+  const { data: units = [] } = useAdminUnits({ type: 'subtheme' });
+  const activeUnits = useMemo(() => units.filter((u) => u.status === 'active'), [units]);
+  const effectiveUnitId = unitId && activeUnits.find((u) => u.id === unitId)
+    ? unitId : (activeUnits[0]?.id || '');
+
   // W5c：畫布只顯示已加入畫布的節點
   const { data: canvasNodes = [], refetch: refetchCanvas } = useAdminKnowledgeNodes(
-    view === 'canvas' ? { unitId, onCanvas: true } : { unitId: null, enabled: false },
+    view === 'canvas' && effectiveUnitId ? { unitId: effectiveUnitId, onCanvas: true } : { unitId: null, enabled: false },
   );
   // 節點庫（在單元內但未上畫布）— 用於計數提示與 library 視圖
-  const needLibrary = (view === 'canvas' || view === 'library') && !!unitId;
+  const needLibrary = (view === 'canvas' || view === 'library') && !!effectiveUnitId;
   const { data: libraryNodes = [], refetch: refetchLibrary } = useAdminKnowledgeNodes(
-    needLibrary ? { unitId, onCanvas: false } : { unitId: null, enabled: false },
+    needLibrary ? { unitId: effectiveUnitId, onCanvas: false } : { unitId: null, enabled: false },
   );
   const { data: unassignedNodes = [], refetch: refetchUnassigned } = useAdminKnowledgeNodes(
     view === 'unassigned' ? { unassigned: true } : { unassigned: true, enabled: false },
   );
-
-  // 重新查詢時若選中節點還在，更新其資料；否則清空
-  const liveSelectedNode = selectedNode
-    ? canvasNodes.find((n) => n.id === selectedNode.id) || null
-    : null;
 
   return (
     <AdminLayout title="知識節點" breadcrumb="Dashboard / 知識節點">
@@ -500,7 +496,7 @@ export default function KnowledgeNodesAdmin() {
               <button
                 key={t.value}
                 type="button"
-                onClick={() => { setView(t.value); setSelectedNode(null); }}
+                onClick={() => setView(t.value)}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
                   active ? 'bg-white text-[#15803D] shadow-sm' : 'text-[#6B7280] hover:text-[#1F2937]'
                 }`}
@@ -514,11 +510,11 @@ export default function KnowledgeNodesAdmin() {
 
         {(view === 'canvas' || view === 'library') && (
           <select
-            value={unitId}
-            onChange={(e) => { setUnitId(e.target.value); setSelectedNode(null); }}
+            value={effectiveUnitId}
+            onChange={(e) => setUnitId(e.target.value)}
             className="px-3 py-2 rounded-xl border border-[#E5E7EB] bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#7DD3A8]"
           >
-            {units.filter((u) => u.status === 'active').map((u) => (
+            {activeUnits.map((u) => (
               <option key={u.id} value={u.id}>{u.name}</option>
             ))}
           </select>
@@ -529,14 +525,6 @@ export default function KnowledgeNodesAdmin() {
 
         <div className="flex-1" />
 
-        <button
-          type="button"
-          onClick={() => setShowImportModal(true)}
-          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E5E7EB] bg-white hover:bg-[#F4F8F6] text-sm font-medium text-[#1F2937]"
-        >
-          <span className="material-symbols-rounded text-base">upload_file</span>
-          Excel 匯入
-        </button>
         {view === 'canvas' && (
           <button
             type="button"
@@ -570,38 +558,27 @@ export default function KnowledgeNodesAdmin() {
             {libraryNodes.length > 0 ? (
               <>
                 <br />
-                此單元的節點庫有 <strong className="text-[#15803D]">{libraryNodes.length}</strong> 個節點待加入畫布；
+                此次主題的節點庫有 <strong className="text-[#15803D]">{libraryNodes.length}</strong> 個節點待加入畫布；
                 點上方<strong className="text-[#15803D]">「加入節點」</strong>按鈕挑選。
               </>
             ) : (
               <>
                 <br />
-                先用「新增節點」建立節點，或從「未分配」分區把節點指派到此單元，再點「加入節點」加到畫布。
+                先用「新增節點」建立節點，或從「未分配」分區把節點指派到此次主題，再點「加入節點」加到畫布。
               </>
             )}
           </div>
         ) : (
-          <div className="bg-white rounded-2xl border border-[#E5E7EB] overflow-hidden flex">
-            <div className="flex-1 min-w-0">
-              <KnowledgeNodeCanvas
-                nodes={canvasNodes}
-                selectedId={selectedNode?.id}
-                onSelectNode={setSelectedNode}
-              />
-            </div>
-            <KnowledgeNodeEditPanel
-              node={liveSelectedNode}
-              units={units}
-              onClose={() => setSelectedNode(null)}
-            />
+          <div className="bg-white rounded-2xl border border-[#E5E7EB] overflow-hidden">
+            <KnowledgeNodeCanvas nodes={canvasNodes} />
           </div>
         )
       )}
       {view === 'library' && (
         <LibraryView
           nodes={libraryNodes}
-          unitId={unitId}
-          unitName={units.find((u) => u.id === unitId)?.name || ''}
+          unitId={effectiveUnitId}
+          unitName={activeUnits.find((u) => u.id === effectiveUnitId)?.name || ''}
           onChanged={() => { refetchLibrary(); refetchCanvas(); }}
         />
       )}
@@ -609,29 +586,22 @@ export default function KnowledgeNodesAdmin() {
         <UnassignedView nodes={unassignedNodes} units={units} onChanged={refetchUnassigned} />
       )}
       {view === 'structure' && (
-        <ThreeColumnEditor />
+        <ThreeColumnEditor units={units} />
       )}
 
       {showCreateModal && (
         <NewKnowledgeNodeModal
           units={units}
-          defaultUnitId={view === 'canvas' ? unitId : ''}
-          defaultGradeBand={units.find((u) => u.id === unitId)?.gradeBand || 'upper'}
+          defaultUnitId={view === 'canvas' ? effectiveUnitId : ''}
+          defaultGradeBand={activeUnits.find((u) => u.id === effectiveUnitId)?.gradeBand || 'upper'}
           onClose={() => setShowCreateModal(false)}
           onCreated={(n) => toast.success(`已新增節點「${n.name}」到節點庫；點「加入節點」可放上畫布`)}
         />
       )}
 
-      {showImportModal && (
-        <NodeExcelImportModal
-          onClose={() => setShowImportModal(false)}
-          onSuccess={() => { refetchUnassigned(); setView('unassigned'); }}
-        />
-      )}
-
-      {showAddToCanvasModal && (
+{showAddToCanvasModal && (
         <AddNodesToCanvasModal
-          unitId={unitId}
+          unitId={effectiveUnitId}
           onClose={() => setShowAddToCanvasModal(false)}
           onAdded={() => refetchCanvas()}
         />

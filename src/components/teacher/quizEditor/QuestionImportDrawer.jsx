@@ -92,7 +92,7 @@ export default function QuestionImportDrawer({
 
   return (
     <div className="fixed inset-0 z-50 flex">
-      <div className="flex-1 bg-black/30" onClick={onClose}></div>
+      <div className="flex-1 bg-black/30 cursor-pointer" onClick={onClose}></div>
       <div className="w-full max-w-xl bg-white border-l border-[#BDC3C7] shadow-[-4px_0_20px_rgba(0,0,0,0.08)] flex flex-col">
         <div className="px-5 py-4 border-b border-[#D5D8DC] flex items-center justify-between flex-shrink-0">
           <div>

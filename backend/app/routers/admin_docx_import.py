@@ -240,6 +240,7 @@ async def _persist_one(
         unit = Unit(
             id=new_unit_id, code=_slug(unit_code), name=unit_name,
             grade_band=grade_band, display_order=int(max_order) + 1,
+            type="subtheme",
             status="active", is_system_current=False,
         )
         db.add(unit)

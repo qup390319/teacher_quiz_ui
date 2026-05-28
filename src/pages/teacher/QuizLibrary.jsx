@@ -227,10 +227,11 @@ export default function QuizLibrary() {
                           {quiz.knowledgeNodeIds.length} 個知識節點
                         </span>
                       </div>
-                      {/* 知識節點 badges */}
+                      {/* 知識節點標籤（純資訊，非可點選） */}
                       <div className="flex flex-wrap gap-1.5 mb-3">
                         {coveredNodes.map((node) => (
-                          <span key={node.id} className="text-sm bg-[#EEF5E6] border border-[#D5D8DC] text-[#636E72] px-2 py-0.5 rounded-full">
+                          <span key={node.id} className="inline-flex items-center gap-1 text-xs bg-[#EEF5E6] text-[#4A6E4B] px-2 py-0.5 rounded">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#8FC87A] flex-shrink-0" />
                             {node.id} {node.name}
                           </span>
                         ))}
@@ -253,7 +254,7 @@ export default function QuizLibrary() {
                     <div className="flex flex-col gap-2 flex-shrink-0">
                       <button
                         onClick={() => handleEdit(quiz)}
-                        className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-[#636E72] border border-[#BDC3C7] rounded-xl hover:bg-[#EEF5E6] transition-colors"
+                        className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-[#3D5A3E] bg-white border border-[#8FC87A] rounded-xl hover:bg-[#EEF5E6] transition-colors shadow-sm cursor-pointer"
                       >
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -262,7 +263,7 @@ export default function QuizLibrary() {
                       </button>
                       <button
                         onClick={() => handleClone(quiz)}
-                        className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-[#2E86C1] bg-[#BADDF4] border border-[#BDC3C7] rounded-xl hover:bg-[#A8D2EC] transition-colors"
+                        className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-[#2E86C1] bg-[#BADDF4] border border-[#7EC8E3] rounded-xl hover:bg-[#A8D2EC] transition-colors shadow-sm cursor-pointer"
                         title="以這份為範本，建立新題組"
                       >
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -273,7 +274,7 @@ export default function QuizLibrary() {
                       <button
                         onClick={() => setDeletingQuiz(quiz)}
                         disabled={deleteQuiz.isPending}
-                        className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-[#E74C5E] bg-[#FAC8CC] border border-[#BDC3C7] rounded-xl hover:bg-[#F5B8BA] transition-colors disabled:opacity-50"
+                        className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-[#E74C5E] bg-[#FAC8CC] border border-[#F1939A] rounded-xl hover:bg-[#F5B8BA] transition-colors shadow-sm cursor-pointer disabled:opacity-50"
                       >
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

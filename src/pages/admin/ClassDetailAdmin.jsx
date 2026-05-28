@@ -1,8 +1,9 @@
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import AdminLayout from '../../components/AdminLayout';
 import StudentExcelImport from '../../components/StudentExcelImport';
 import { useToast } from '../../context/ToastContext';
-import { useAdminClass, useAdminClassTeacher } from '../../hooks/useAdminClasses';
+import { useAdminClass, useAdminClassTeacher, useAdminAddStudent } from '../../hooks/useAdminClasses';
 import { formatSchoolYearLabel, formatSemesterLabel } from '../../utils/schoolYear';
 
 /**
@@ -19,6 +20,74 @@ function Field({ label, children }) {
       <div className="text-xs uppercase tracking-wide text-[#6B7280] mb-1">{label}</div>
       <div className="text-sm text-[#1F2937]">{children}</div>
     </div>
+  );
+}
+
+function AddStudentForm({ classId }) {
+  const { toast } = useToast();
+  const [seat, setSeat] = useState('');
+  const [name, setName] = useState('');
+  const [addError, setAddError] = useState('');
+  const { mutateAsync: addStudent, isPending } = useAdminAddStudent(classId);
+
+  const handleAdd = async (e) => {
+    e.preventDefault();
+    setAddError('');
+    const seatNum = parseInt(seat, 10);
+    if (!seatNum || seatNum <= 0) { setAddError('請輸入有效座號（正整數）'); return; }
+    if (!name.trim()) { setAddError('請輸入學生姓名'); return; }
+    try {
+      await addStudent({ seat: seatNum, name: name.trim() });
+      toast.success(`已新增：座號 ${seatNum}，${name.trim()}`);
+      setSeat('');
+      setName('');
+    } catch (err) {
+      if (err.code === 'DUPLICATE_SEAT') setAddError(`座號 ${seatNum} 已存在`);
+      else if (err.code?.startsWith('ACCOUNT_ALREADY_EXISTS'))
+        setAddError(`自動產生的帳號已被佔用：${err.code.split(':')[1]}`);
+      else setAddError(err.message || '新增失敗');
+    }
+  };
+
+  return (
+    <form onSubmit={handleAdd} className="flex flex-wrap items-end gap-2 mt-4 pt-4 border-t border-[#E5E7EB]">
+      <div>
+        <div className="text-xs text-[#6B7280] mb-1">座號</div>
+        <input
+          type="number"
+          min="1"
+          max="99"
+          value={seat}
+          onChange={(e) => setSeat(e.target.value)}
+          placeholder="1"
+          className="w-20 px-3 py-2 rounded-xl border border-[#E5E7EB] text-sm focus:outline-none focus:ring-2 focus:ring-[#7DD3A8] focus:border-transparent"
+        />
+      </div>
+      <div className="flex-1 min-w-32">
+        <div className="text-xs text-[#6B7280] mb-1">姓名</div>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="學生姓名"
+          maxLength={64}
+          className="w-full px-3 py-2 rounded-xl border border-[#E5E7EB] text-sm focus:outline-none focus:ring-2 focus:ring-[#7DD3A8] focus:border-transparent"
+        />
+      </div>
+      <button
+        type="submit"
+        disabled={isPending}
+        className="px-4 py-2 rounded-xl bg-[#7DD3A8] hover:bg-[#5FBF8E] text-white font-semibold text-sm
+                   disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      >
+        {isPending ? '新增中…' : '新增'}
+      </button>
+      {addError && (
+        <div className="w-full mt-1 px-3 py-2 rounded-xl bg-[#FEE2E2] border border-[#FCA5A5] text-sm text-[#B91C1C]">
+          {addError}
+        </div>
+      )}
+    </form>
   );
 }
 
@@ -95,8 +164,11 @@ export default function ClassDetailAdmin() {
         </div>
       </div>
 
-      {/* Excel 匯入 / 已有學生提示 */}
-      <div className="mb-5">
+      {/* 學生管理 */}
+      <div className="bg-white rounded-2xl border border-[#E5E7EB] p-5 mb-5">
+        <h3 className="text-sm font-semibold text-[#1F2937] mb-3">學生管理</h3>
+
+        {/* Excel 匯入（僅空班） */}
         {isEmpty ? (
           <StudentExcelImport
             classId={cls.id}
@@ -104,12 +176,17 @@ export default function ClassDetailAdmin() {
             onSuccess={() => { toast.success('已從 Excel 匯入學生名冊'); refetch(); }}
           />
         ) : (
-          <div className="bg-[#F4F8F6] rounded-2xl border border-[#E5E7EB] p-4 text-sm text-[#4B5563]">
-            <strong className="text-[#1F2937]">此班級已有 {students.length} 位學生</strong>，
-            Excel 匯入僅在空班時可用，避免覆蓋既有名冊。
-            個別帳號的停用 / 啟用 / 重設密碼請至 <Link to="/admin/users" className="text-[#15803D] hover:underline">帳號管理</Link>。
+          <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-[#F4F8F6] text-sm text-[#4B5563]">
+            <span className="material-symbols-rounded text-[#9CA3AF] text-base mt-0.5 shrink-0">info</span>
+            <span>
+              Excel 批次匯入僅在空班時可用。個別帳號管理請至
+              {' '}<Link to="/admin/users" className="text-[#15803D] hover:underline">帳號管理</Link>。
+            </span>
           </div>
         )}
+
+        {/* 手動新增單一學生（空班 / 非空班均可） */}
+        <AddStudentForm classId={cls.id} />
       </div>
 
       {/* 學生名冊（唯讀） */}

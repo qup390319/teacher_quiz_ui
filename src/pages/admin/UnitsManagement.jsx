@@ -148,7 +148,7 @@ function GradeSection({ band, units, onEdit, onArchive, onUnarchive, onDelete })
 }
 
 export default function UnitsManagement() {
-  const { data: units = [], isLoading, error } = useAdminUnits();
+  const { data: units = [], isLoading, error } = useAdminUnits({ type: 'unit' });
   const { toast } = useToast();
   const archiveMut = useArchiveUnit();
   const unarchiveMut = useUnarchiveUnit();

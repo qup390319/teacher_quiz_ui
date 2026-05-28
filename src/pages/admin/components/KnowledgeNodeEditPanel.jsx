@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useToast } from '../../../context/ToastContext';
 import {
-  useBulkSetCanvas,
   useCreateMisconception,
   useDeleteKnowledgeNode,
   useDeleteMisconception,
@@ -170,7 +169,6 @@ function NodeEditForm({ node, units, onClose }) {
   const [videoUrl, setVideoUrl] = useState(node.videoUrl || '');
   const updateMut = useUpdateKnowledgeNode();
   const deleteMut = useDeleteKnowledgeNode();
-  const canvasMut = useBulkSetCanvas();
   const { toast } = useToast();
 
   const handleSave = async () => {
@@ -200,16 +198,6 @@ function NodeEditForm({ node, units, onClose }) {
       } else {
         toast.error(err?.message || '刪除失敗');
       }
-    }
-  };
-
-  const handleRemoveFromCanvas = async () => {
-    try {
-      await canvasMut.mutateAsync({ nodeIds: [node.id], onCanvas: false });
-      toast.success(`已將「${node.name}」移回節點庫`);
-      onClose?.();
-    } catch (err) {
-      toast.error(err?.message || '操作失敗');
     }
   };
 
@@ -290,13 +278,6 @@ function NodeEditForm({ node, units, onClose }) {
         </FieldRow>
 
         <div className="flex flex-wrap justify-end gap-2 pt-2 border-t border-[#E5E7EB]">
-          {node.onCanvas && (
-            <button type="button" onClick={handleRemoveFromCanvas} disabled={canvasMut.isPending}
-                    className="px-3 py-2 rounded-xl text-sm font-medium border border-[#E5E7EB] bg-white hover:bg-[#FEF3C7] text-[#B45309] disabled:opacity-50"
-                    title="僅從畫布移除（節點資料保留在節點庫）">
-              {canvasMut.isPending ? '處理中…' : '從畫布移除'}
-            </button>
-          )}
           {!node.isSystemSeed && (
             <button type="button" onClick={handleDelete} disabled={deleteMut.isPending}
                     className="px-3 py-2 rounded-xl text-sm font-medium border border-[#E5E7EB] bg-white hover:bg-[#FEE2E2] text-[#B91C1C] disabled:opacity-50">
@@ -336,7 +317,7 @@ export default function KnowledgeNodeEditPanel({ node, units, onClose }) {
   if (!node) {
     return (
       <aside className="w-80 border-l border-[#E5E7EB] bg-white p-5 text-sm text-[#6B7280]">
-        從畫布點選任一節點以編輯。
+        從左側點選小節點以編輯。
       </aside>
     );
   }

@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 GradeBand = Literal["lower", "middle", "upper"]
 UnitStatus = Literal["active", "archived"]
+UnitType = Literal["unit", "subtheme"]
 
 
 class UnitBrief(BaseModel):
@@ -16,6 +17,7 @@ class UnitBrief(BaseModel):
     description: str | None = None
     display_order: int = Field(serialization_alias="displayOrder")
     status: UnitStatus
+    type: UnitType
     is_system_current: bool = Field(serialization_alias="isSystemCurrent")
     created_at: datetime = Field(serialization_alias="createdAt")
     updated_at: datetime = Field(serialization_alias="updatedAt")
@@ -26,6 +28,7 @@ class UnitBrief(BaseModel):
 class CreateUnitRequest(BaseModel):
     name: str = Field(min_length=1, max_length=64)
     grade_band: GradeBand = Field(validation_alias="gradeBand", serialization_alias="gradeBand")
+    type: UnitType = Field(default="unit")
     code: str | None = Field(
         default=None, max_length=64, pattern=r"^[a-z0-9-]+$",
         description="留空後端會由 name 自動產生 slug",

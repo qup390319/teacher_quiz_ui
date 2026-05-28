@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 
 /** Admin-only: list all classes across teachers. */
@@ -31,5 +31,27 @@ export function useAdminClassTeacher(classId, opts = {}) {
     queryFn: () => api.get(`/admin/classes/${classId}/teacher`),
     enabled: !!classId && (opts.enabled ?? true),
     ...opts,
+  });
+}
+
+export function useAdminCreateClass() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload) => api.post('/admin/classes', payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-classes'] });
+    },
+  });
+}
+
+export function useAdminAddStudent(classId) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload) => api.post(`/admin/classes/${classId}/students`, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-classes', classId] });
+      qc.invalidateQueries({ queryKey: ['admin-classes'] });
+      qc.invalidateQueries({ queryKey: ['admin-users'] });
+    },
   });
 }

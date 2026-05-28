@@ -1,7 +1,8 @@
-"""Admin-only class overview endpoints (W3).
+"""Admin-only class overview + write endpoints.
 
-對應 /admin/classes 頁面，列出跨教師班級 + 詳情。
-寫入動作（建立 / 編輯 / 封存 / 刪除）仍由教師端 `/api/classes/*` 走，避免重複維護。
+GET 端點：列出跨教師班級 + 詳情。
+POST /api/admin/classes：管理員建立班級並指定所屬教師。
+POST /api/admin/classes/:id/students：管理員手動新增學生。
 """
 from typing import Literal
 
@@ -12,10 +13,58 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.deps import require_admin
 from app.db.models import Class, Student, Teacher, User
 from app.db.session import get_db
-from app.routers.classes import _get_class_for_admin_or_teacher
-from app.schemas.class_ import ClassBrief, ClassDetail
+from app.routers.classes import (
+    _account_for,
+    _generate_class_id,
+    _get_class_for_admin_or_teacher,
+)
+from app.schemas.class_ import (
+    AddStudentRequest,
+    AdminCreateClassRequest,
+    ClassBrief,
+    ClassDetail,
+    StudentBrief,
+)
+from app.utils.school_year import get_current_school_year, get_current_semester
 
 router = APIRouter()
+
+
+@router.post("", response_model=ClassBrief, response_model_by_alias=True, status_code=status.HTTP_201_CREATED)
+async def admin_create_class(
+    payload: AdminCreateClassRequest,
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> ClassBrief:
+    """Admin creates a class and assigns it to a specific teacher."""
+    teacher = await db.get(User, payload.teacher_id)
+    if teacher is None or teacher.role != "teacher":
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "TEACHER_NOT_FOUND")
+
+    new_id = await _generate_class_id(db)
+    cls = Class(
+        id=new_id,
+        name=payload.name,
+        grade=payload.grade,
+        subject=payload.subject,
+        color=payload.color,
+        text_color=payload.text_color,
+        teacher_id=payload.teacher_id,
+        note=payload.note,
+        school_year=payload.school_year if payload.school_year is not None else get_current_school_year(),
+        semester=payload.semester if payload.semester is not None else get_current_semester(),
+        status="active",
+        archived_at=None,
+    )
+    db.add(cls)
+    await db.commit()
+    await db.refresh(cls)
+    return ClassBrief(
+        id=cls.id, name=cls.name, grade=cls.grade, subject=cls.subject,
+        color=cls.color, text_color=cls.text_color, student_count=0,
+        note=cls.note, school_year=cls.school_year, semester=cls.semester,
+        status=cls.status, archived_at=cls.archived_at, teacher_id=cls.teacher_id,
+    )
 
 
 @router.get("", response_model=list[ClassBrief], response_model_by_alias=True)
@@ -88,3 +137,36 @@ async def admin_get_class_teacher(
         "teacherAccount": teacher_user.account if teacher_user else None,
         "teacherName": teacher_profile.name if teacher_profile else None,
     }
+
+
+@router.post("/{class_id}/students", response_model=ClassDetail, response_model_by_alias=True)
+async def admin_add_student(
+    class_id: str,
+    payload: AddStudentRequest,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> ClassDetail:
+    """Admin manually adds a single student to a class."""
+    cls = await db.get(Class, class_id)
+    if cls is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "CLASS_NOT_FOUND")
+
+    existing_seats = {s.seat for s in (cls.students or [])}
+    if payload.seat in existing_seats:
+        raise HTTPException(status.HTTP_409_CONFLICT, "DUPLICATE_SEAT")
+
+    account = _account_for(class_id, payload.seat)
+    existing_user = await db.get(User, account)
+    if existing_user is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, f"ACCOUNT_ALREADY_EXISTS:{account}")
+
+    db.add(User(
+        id=account, account=account, password=account,
+        role="student", password_was_default=True, is_active=True,
+    ))
+    db.add(Student(
+        user_id=account, name=payload.name, seat=payload.seat, class_id=class_id,
+    ))
+    await db.commit()
+    await db.refresh(cls)
+    return await _get_class_for_admin_or_teacher(class_id, admin, db)

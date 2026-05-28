@@ -35,6 +35,16 @@ coverage/
 # Generated artifacts (regenerate via scripts/export-backend-plan-pdf.py)
 docs/backend-plan.pdf
 
+# Office temp/lock files
+~$*
+
+# Generated teacher cheatsheet (regenerate via scripts/build-teacher-cheatsheet-pptx.mjs)
+*.pptx
+
+# Knowledge-graph docx parse intermediates (regenerate via scripts/parse_knowledge_docx.py)
+scripts/docx_parsed.json
+scripts/docx_parsed_summary.md
+
 # Python (backend)
 __pycache__/
 *.py[cod]

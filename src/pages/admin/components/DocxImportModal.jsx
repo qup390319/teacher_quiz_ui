@@ -178,11 +178,11 @@ export default function DocxImportModal({ onClose, onSuccess }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 cursor-pointer"
       role="dialog" aria-modal="true" onClick={onClose}
     >
       <div
-        className="w-full max-w-4xl bg-white rounded-3xl border border-[#E5E7EB] shadow-lg max-h-[90vh] flex flex-col"
+        className="w-full max-w-4xl bg-white rounded-3xl border border-[#E5E7EB] shadow-lg max-h-[90vh] flex flex-col cursor-default"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-5 border-b border-[#E5E7EB]">

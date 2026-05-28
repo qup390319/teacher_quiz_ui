@@ -198,13 +198,13 @@ function LoginModal({ variant, onClose, onSuccess }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 cursor-pointer"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
     >
       <div
-        className={`w-full max-w-sm ${WOOD_OUTER} animate-fade-up`}
+        className={`w-full max-w-sm ${WOOD_OUTER} animate-fade-up cursor-default`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className={`${WOOD_INNER_CREAM} p-6`}>

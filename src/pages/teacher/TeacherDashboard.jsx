@@ -207,14 +207,12 @@ export default function TeacherDashboard() {
           </div>
         )}
 
-        {/* 迷思概念診斷流程（對應 sidebar ①②③）*/}
-        <div className="mb-3 flex items-center gap-2.5 flex-wrap">
-          <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-[#C8DFAA] to-[#A9CCE3] border-2 border-[#5C8A2E] text-sm font-bold text-[#2E4A1A] shadow-[0_2px_6px_rgba(92,138,46,0.18)]">
-            <Icon name="edit_note" className="text-base" />
-            <span>步驟 ①→②→③</span>
-          </span>
-          <h2 className="text-base font-bold text-[#2D3436]">迷思概念診斷</h2>
-          <span className="text-sm text-[#636E72]">出題 → 派題 → 看結果</span>
+        {/* 章節標題：迷思概念診斷流程
+            （下方 FlowStep 卡片本身已視覺化 ①②③ 與步驟名稱，這裡只放一行 heading 即可，
+              避免與 welcome banner、流程卡的步驟說明形成三重重複） */}
+        <div className="mb-3 flex items-center gap-2">
+          <Icon name="edit_note" className="text-[#5C8A2E] text-xl flex-shrink-0" />
+          <h2 className="text-lg font-bold text-[#2D3436]">迷思概念診斷流程</h2>
         </div>
         <div className="bg-white border border-[#BDC3C7] rounded-[24px] sm:rounded-[32px] p-4 sm:p-6 mb-6 sm:mb-8 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
           <div className="flex flex-wrap items-stretch justify-between gap-2">

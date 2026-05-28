@@ -1,12 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TeacherLayout from '../../components/TeacherLayout';
-import {
-  AssignPopover,
-  CellActive,
-  CellEmpty,
-  ManagePopover,
-} from './AssignmentMatrixParts';
 import { useApp } from '../../context/AppContext';
 import { useClasses } from '../../hooks/useClasses';
 import { useQuizzes } from '../../hooks/useQuizzes';
@@ -19,6 +13,10 @@ import {
 import { useTour } from '../../context/TourContext';
 import { useToast } from '../../context/ToastContext';
 import { Icon } from '../../components/ui/woodKit';
+
+import OverviewBar from './assignment/OverviewBar';
+import MatrixView from './assignment/MatrixView';
+import { getGlobalSummary } from './assignment/assignmentStats';
 
 // ─── 主頁面 ───────────────────────────────────────────────────────────────────
 export default function AssignmentManagement() {
@@ -37,10 +35,10 @@ export default function AssignmentManagement() {
   const [managePopover, setManagePopover] = useState(null);
   const [sortBy, setSortBy] = useState('default');
 
-  /* published 診斷題組列表 */
+  /* published 診斷題組 */
   const publishedQuizzesRaw = quizzes.filter((q) => q.status === 'published');
 
-  /* 排序：依使用者選擇對題組（矩陣 row）排序 */
+  /* 排序 */
   const assignCountByQuiz = (q) => assignments.filter(
     (a) => (a.type ?? 'diagnosis') === 'diagnosis' && a.quizId === q.id,
   ).length;
@@ -53,23 +51,13 @@ export default function AssignmentManagement() {
       case 'assigned-asc':   return assignCountByQuiz(a) - assignCountByQuiz(b);
       case 'newest':         return (b.createdAt ?? '').localeCompare(a.createdAt ?? '');
       case 'oldest':         return (a.createdAt ?? '').localeCompare(b.createdAt ?? '');
-      default:               return 0; // 預設不變動原順序
+      default:               return 0;
     }
   });
 
-  /* 矩陣 */
-  const matrix = publishedQuizzes.map((quiz) => ({
-    quiz,
-    cells: classes.map((cls) => ({
-      cls,
-      assignment: assignments.find(
-        (a) => (a.type ?? 'diagnosis') === 'diagnosis' && a.quizId === quiz.id && a.classId === cls.id,
-      ) ?? null,
-    })),
-  }));
 
-  // 整班派發
-  // eslint-disable-next-line no-unused-vars -- mode will be used when backend assignment model supports dispatch_mode
+  // ── Assignment 操作 ──────────────────────────────────────────────────────
+  // eslint-disable-next-line no-unused-vars -- mode will be used when backend supports dispatch_mode
   const handleConfirmDiagnosis = async (quizId, classId, dueDate, _mode) => {
     if (!dueDate) {
       toast.error('請選擇截止日期');
@@ -117,10 +105,24 @@ export default function AssignmentManagement() {
     }
   };
 
+  // Popover state handlers（共用給兩個 view）
+  const handleOpenAssign = ({ quizId, classId }) => {
+    setManagePopover(null);
+    setPopover({ quizId, classId });
+  };
+  const handleOpenManage = ({ assignmentId, quizId, classId }) => {
+    setPopover(null);
+    setManagePopover({ assignmentId, quizId, classId });
+  };
+
+  // ── 全頁概覽 ────────────────────────────────────────────────────────────
+  const globalSummary = getGlobalSummary(publishedQuizzes, classes, assignments);
+
   return (
     <TeacherLayout>
-      <div className="p-4 sm:p-6 md:p-8">
-        <div className="mb-4 sm:mb-6" data-tour="assign-page-header">
+      <div className="p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-5">
+        {/* ── 頁面標題 ── */}
+        <div data-tour="assign-page-header">
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436]">派題管理</h1>
             <button
@@ -134,15 +136,20 @@ export default function AssignmentManagement() {
             </button>
           </div>
           <p className="text-[#636E72] mt-1 text-sm">
-            點擊空格即可將題組派發給班級，點擊已派格子可管理派發狀態或查看診斷報告
+            每格代表一份題組對一個班級的派發狀態。空格點擊即可派發，已派格點擊可管理。
           </p>
         </div>
 
-        {/* 排序控制 */}
-        <div className="mb-4 sm:mb-6 flex flex-wrap items-center gap-3 bg-white border border-[#BDC3C7] rounded-2xl px-3 py-2 shadow-[0_2px_8px_rgba(0,0,0,0.04)] w-fit max-w-full">
-          <div className="inline-flex items-center gap-1.5">
-            <span className="material-symbols-rounded text-[#5A6663]" style={{ fontSize: 18 }}>sort</span>
-            <label htmlFor="assign-sort" className="text-sm font-semibold text-[#5A6663] whitespace-nowrap">排序</label>
+        {/* ── 全頁概覽 ── */}
+        {publishedQuizzes.length > 0 && <OverviewBar summary={globalSummary} />}
+
+        {/* ── 題組排序 ── */}
+        {publishedQuizzes.length > 0 && (
+          <div className="flex items-center justify-end gap-2">
+            <Icon name="sort" className="text-base text-[#5A6663]" />
+            <label htmlFor="assign-sort" className="text-sm font-semibold text-[#5A6663] whitespace-nowrap">
+              題組排序
+            </label>
             <select
               id="assign-sort"
               value={sortBy}
@@ -150,207 +157,57 @@ export default function AssignmentManagement() {
               className="appearance-none bg-white border border-[#C8D6C9] rounded-lg pl-2 pr-7 py-1 text-sm font-semibold text-[#2D3436] focus:outline-none focus:ring-2 focus:ring-[#8FC87A] cursor-pointer"
             >
               <option value="default">預設順序</option>
+              <option value="title-asc">名稱 A→Z</option>
+              <option value="title-desc">名稱 Z→A</option>
+              <option value="assigned-desc">已派班數 多→少</option>
+              <option value="assigned-asc">已派班數 少→多</option>
               <option value="newest">建立時間：新→舊</option>
               <option value="oldest">建立時間：舊→新</option>
-              <option value="title-asc">題組名稱 A→Z</option>
-              <option value="title-desc">題組名稱 Z→A</option>
-              <option value="assigned-desc">已派班級數 多→少</option>
-              <option value="assigned-asc">已派班級數 少→多</option>
             </select>
           </div>
-          <span className="text-sm text-[#95A5A6] whitespace-nowrap">共 {publishedQuizzes.length} 份診斷題組</span>
-        </div>
+        )}
 
+        {/* ── 矩陣視圖 ── */}
         {publishedQuizzes.length === 0 ? (
-          <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-12 text-center shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-            <div className="w-14 h-14 bg-[#EEF5E6] rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-7 h-7 text-[#95A5A6]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <p className="text-[#636E72] font-medium mb-1">目前沒有已發佈的題組</p>
-            <p className="text-sm text-[#95A5A6] mb-5">請先建立題組，再回來進行派發</p>
-            <button
-              onClick={() => navigate('/teacher/quizzes')}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#8FC87A] text-[#2D3436] border border-[#BDC3C7] rounded-2xl text-sm font-semibold hover:bg-[#76B563] transition-colors"
-            >
-              前往出題管理
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          </div>
+          <EmptyState onGoToQuizzes={() => navigate('/teacher/quizzes')} />
         ) : (
-          <>
-          {/* 圖例 */}
-          <div className="mb-4 px-4 py-3 bg-white border border-[#BDC3C7] rounded-2xl flex flex-wrap items-center gap-x-4 gap-y-2 sm:gap-6 shadow-[0_2px_8px_rgba(0,0,0,0.04)]" data-tour="assign-legend">
-            <span className="text-sm text-[#95A5A6] font-medium">圖例：</span>
-            {[
-              { color: 'border-dashed border-[#D5D8DC] bg-white', label: '未派發', textColor: 'text-[#95A5A6]' },
-              { color: 'bg-[#EEF5E6] border-[#D5D8DC]', label: '待作答', textColor: 'text-[#95A5A6]' },
-              { color: 'bg-[#FCF0C2] border-[#F5D669]', label: '進行中', textColor: 'text-[#B7950B]' },
-              { color: 'bg-[#C8EAAE] border-[#8FC87A]', label: '已完成', textColor: 'text-[#3D5A3E]' },
-            ].map((item) => (
-              <div key={item.label} className="flex items-center gap-1.5">
-                <div className={`w-4 h-4 rounded border ${item.color}`} />
-                <span className={`text-sm ${item.textColor}`}>{item.label}</span>
-              </div>
-            ))}
-          </div>
-          {/* 手機版：每張題組一張卡片 */}
-          <div className="md:hidden space-y-4">
-            {matrix.map(({ quiz, cells }) => (
-              <div key={quiz.id} className="bg-white rounded-2xl border border-[#BDC3C7] shadow-[0_2px_12px_rgba(0,0,0,0.06)] overflow-hidden">
-                <div className="px-4 py-3 bg-[#EEF5E6] border-b border-[#D5D8DC]">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <span className="text-sm font-bold px-2 py-0.5 rounded-full border bg-[#C8EAAE] text-[#3D5A3E] border-[#BDC3C7]">
-                      已發佈
-                    </span>
-                  </div>
-                  <p className="text-sm font-semibold text-[#2D3436] leading-snug">{quiz.title}</p>
-                  <p className="text-sm text-[#95A5A6] mt-0.5">
-                    {quiz.questionCount} 題 · {quiz.knowledgeNodeIds.length} 個節點
-                  </p>
-                </div>
-                <div className="divide-y divide-[#D5D8DC]">
-                  {cells.map(({ cls, assignment }) => (
-                    <div key={cls.id} className="p-3 relative">
-                      <div className="flex items-center gap-1.5 mb-2">
-                        <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: cls.color }} />
-                        <span className="text-sm font-semibold text-[#2D3436]">{cls.name}</span>
-                        <span className="text-sm text-[#95A5A6]">· {cls.studentCount} 人</span>
-                      </div>
-                      {assignment === null ? (
-                        <>
-                          <CellEmpty onClick={() => {
-                            setManagePopover(null);
-                            setPopover({ quizId: quiz.id, classId: cls.id });
-                          }} />
-                          {popover?.quizId === quiz.id && popover?.classId === cls.id && (
-                            <AssignPopover
-                              quiz={quiz}
-                              cls={cls}
-                              onConfirm={(dueDate, mode) => handleConfirmDiagnosis(quiz.id, cls.id, dueDate, mode)}
-                              onClose={() => setPopover(null)}
-                            />
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          <CellActive
-                            assignment={assignment}
-                            onClick={() => { setManagePopover({ assignmentId: assignment.id, quizId: quiz.id, classId: cls.id }); setPopover(null); }}
-                          />
-                          {managePopover?.assignmentId === assignment.id && (
-                            <ManagePopover
-                              assignment={assignment}
-                              quiz={quiz}
-                              cls={cls}
-                              onViewReport={handleViewReport}
-                              onUpdateDueDate={handleUpdateDueDate}
-                              onRemove={handleRemove}
-                              onClose={() => setManagePopover(null)}
-                            />
-                          )}
-                        </>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* 桌機版（≥ md）：班級為列、題組為欄 */}
-          <div className="hidden md:block bg-white rounded-[32px] border border-[#BDC3C7] shadow-[0_2px_12px_rgba(0,0,0,0.06)] overflow-hidden" data-tour="assign-matrix">
-            <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead className="sticky top-0 z-10">
-                <tr className="bg-[#EEF5E6] border-b border-[#D5D8DC]">
-                  <th className="px-4 sm:px-5 py-3 text-left min-w-[180px] w-[200px]">
-                    <span className="text-sm font-bold text-[#636E72] uppercase tracking-wide">班級</span>
-                  </th>
-                  {publishedQuizzes.map((quiz) => (
-                    <th key={quiz.id} className="px-3 py-3 text-center border-l border-[#D5D8DC] min-w-[160px]">
-                      <div className="flex items-center justify-center gap-1.5 mb-1">
-                        <span className="text-xs font-bold px-2 py-0.5 rounded-full border bg-[#C8EAAE] text-[#3D5A3E] border-[#BDC3C7]">
-                          已發佈
-                        </span>
-                      </div>
-                      <p className="text-sm font-semibold text-[#2D3436] leading-snug">{quiz.title}</p>
-                      <p className="text-xs text-[#95A5A6] mt-0.5">
-                        {quiz.questionCount} 題 · {quiz.knowledgeNodeIds.length} 個節點
-                      </p>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-              {classes.map((cls, clsIdx) => (
-                <tr key={cls.id} className={clsIdx < classes.length - 1 ? 'border-b border-[#D5D8DC]' : ''}>
-                  <td className="px-4 sm:px-5 py-3 align-middle min-w-[180px] w-[200px]">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: cls.color }} />
-                      <div>
-                        <span className="text-sm font-semibold text-[#2D3436]">{cls.name}</span>
-                        <span className="text-sm text-[#95A5A6] ml-1.5">{cls.studentCount} 人</span>
-                      </div>
-                    </div>
-                  </td>
-                  {publishedQuizzes.map((quiz) => {
-                    const assignment = assignments.find(
-                      (a) => (a.type ?? 'diagnosis') === 'diagnosis' && a.quizId === quiz.id && a.classId === cls.id,
-                    ) ?? null;
-                    return (
-                      <td key={quiz.id} className="p-3 border-l border-[#D5D8DC] relative align-middle min-w-[160px]">
-                        {assignment === null ? (
-                          <>
-                            <CellEmpty onClick={() => {
-                              setManagePopover(null);
-                              setPopover({ quizId: quiz.id, classId: cls.id });
-                            }} />
-                            {popover?.quizId === quiz.id && popover?.classId === cls.id && (
-                              <AssignPopover
-                                quiz={quiz}
-                                cls={cls}
-                                onConfirm={(dueDate, mode) => handleConfirmDiagnosis(quiz.id, cls.id, dueDate, mode)}
-                                onClose={() => setPopover(null)}
-                              />
-                            )}
-                          </>
-                        ) : (
-                          <>
-                            <CellActive
-                              assignment={assignment}
-                              onClick={() => { setManagePopover({ assignmentId: assignment.id, quizId: quiz.id, classId: cls.id }); setPopover(null); }}
-                            />
-                            {managePopover?.assignmentId === assignment.id && (
-                              <ManagePopover
-                                assignment={assignment}
-                                quiz={quiz}
-                                cls={cls}
-                                onViewReport={handleViewReport}
-                                onUpdateDueDate={handleUpdateDueDate}
-                                onRemove={handleRemove}
-                                onClose={() => setManagePopover(null)}
-                              />
-                            )}
-                          </>
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-              </tbody>
-            </table>
-            </div>
-          </div>
-
-          </>
+          <MatrixView
+            quizzes={publishedQuizzes}
+            classes={classes}
+            assignments={assignments}
+            popover={popover}
+            managePopover={managePopover}
+            onOpenAssign={handleOpenAssign}
+            onOpenManage={handleOpenManage}
+            onAssignConfirm={handleConfirmDiagnosis}
+            onAssignClose={() => setPopover(null)}
+            onManageClose={() => setManagePopover(null)}
+            onUpdateDueDate={handleUpdateDueDate}
+            onRemove={handleRemove}
+            onViewReport={handleViewReport}
+          />
         )}
       </div>
     </TeacherLayout>
+  );
+}
+
+// ─── 空狀態 ─────────────────────────────────────────────────────────────────
+function EmptyState({ onGoToQuizzes }) {
+  return (
+    <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-12 text-center shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+      <div className="w-14 h-14 bg-[#EEF5E6] rounded-full flex items-center justify-center mx-auto mb-4">
+        <Icon name="description" className="text-3xl text-[#95A5A6]" />
+      </div>
+      <p className="text-[#636E72] font-medium mb-1">目前沒有已發佈的題組</p>
+      <p className="text-sm text-[#95A5A6] mb-5">請先建立題組，再回來進行派發</p>
+      <button
+        onClick={onGoToQuizzes}
+        className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#8FC87A] text-[#2D3436] border border-[#BDC3C7] rounded-2xl text-sm font-semibold hover:bg-[#76B563] transition-colors"
+      >
+        前往出題管理
+        <Icon name="arrow_forward" className="text-base" />
+      </button>
+    </div>
   );
 }

@@ -80,7 +80,7 @@ const navItems = [
   { section: '③ 看診斷結果', flow: 'dashboard' },
   {
     group: 'dashboard',
-    label: '診斷儀表板',
+    label: '儀表板',
     icon: ICONS.chart,
     ai: { description: 'AI 報告摘要：LLM 彙整班級表現重點' },
     children: [
@@ -93,7 +93,7 @@ const navItems = [
   },
   {
     to: '/teacher/diagnosis-logs',
-    label: '診斷對話紀錄',
+    label: '學生對話紀錄',
     icon: ICONS.chat,
     ai: { description: 'AI 追問：LLM 根據學生作答產生 POE 追問' },
   },
@@ -195,14 +195,14 @@ export default function TeacherLayout({ children }) {
       const active = isGroupActive(item.children, location.pathname);
       const expanded = item.alwaysOpen || (openOverrides[item.group] ?? active);
       const childList = (
-        <div className="ml-4 pl-3" style={{ borderLeft: `2px solid ${ss?.color || '#D5D8DC'}` }}>
+        <div className="ml-4 pl-3 mt-1 space-y-1" style={{ borderLeft: `2px solid ${ss?.color || '#D5D8DC'}` }}>
           {item.children.map(child => (
             <NavLink
               key={child.to}
               to={child.to}
               onClick={closeDrawer}
               className={({ isActive }) =>
-                `block px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                `flex items-center gap-2 px-3 py-1.5 rounded-lg text-base font-medium transition-colors ${
                   isActive ? 'border-l-4 -ml-px' : 'border border-transparent'
                 }`
               }
@@ -214,7 +214,12 @@ export default function TeacherLayout({ children }) {
               onMouseEnter={(e) => { if (!e.currentTarget.classList.contains('border-l-4')) e.currentTarget.style.backgroundColor = ss?.hoverBg || ''; }}
               onMouseLeave={(e) => { if (!e.currentTarget.classList.contains('border-l-4')) e.currentTarget.style.backgroundColor = ''; }}
             >
-              {child.label}
+              <span
+                className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                style={{ backgroundColor: ss?.color || '#95A5A6' }}
+                aria-hidden="true"
+              />
+              <span>{child.label}</span>
             </NavLink>
           ))}
         </div>
@@ -223,7 +228,7 @@ export default function TeacherLayout({ children }) {
         return (
           <div key={item.group}>
             <div
-              className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-[15px] font-semibold select-none [&_svg]:w-5 [&_svg]:h-5 ${
+              className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-base font-semibold select-none [&_svg]:w-5 [&_svg]:h-5 ${
                 active ? 'text-[#2D3436]' : 'text-[#4A4D4F]'
               }`}
             >
@@ -240,10 +245,24 @@ export default function TeacherLayout({ children }) {
           <button
             type="button"
             onClick={() => toggleGroup(item.group)}
-            className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-[15px] font-semibold transition-colors [&_svg]:w-5 [&_svg]:h-5 ${
+            className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-base font-semibold transition-colors [&_svg]:w-5 [&_svg]:h-5 ${
               active ? 'text-[#2D3436]' : 'text-[#4A4A4A]'
             }`}
-            style={active ? { backgroundColor: ss?.activeBg, border: `2px solid ${ss?.activeBorder}` } : { border: '2px solid transparent' }}
+            style={
+              active
+                ? { backgroundColor: ss?.activeBg, border: `2px solid ${ss?.activeBorder}` }
+                : ss
+                  ? { backgroundColor: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.9)' }
+                  : { border: '2px solid transparent' }
+            }
+            onMouseEnter={(e) => {
+              if (active) return;
+              if (ss) e.currentTarget.style.backgroundColor = '#FFFFFF';
+            }}
+            onMouseLeave={(e) => {
+              if (active) return;
+              if (ss) e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.7)';
+            }}
           >
             <span className="flex-shrink-0" style={{ color: ss?.color }}>{item.icon}</span>
             <span className="flex-1 text-left">{item.label}</span>
@@ -256,6 +275,8 @@ export default function TeacherLayout({ children }) {
         </div>
       );
     }
+    // 在 section 內（ss 非 null）時，按鈕加白底卡片感，讓按鈕視覺重量壓過分類標題
+    const inSection = !!ss;
     return (
       <NavLink
         key={item.to}
@@ -264,17 +285,26 @@ export default function TeacherLayout({ children }) {
         onClick={closeDrawer}
         data-tour={item.tour}
         className={({ isActive }) =>
-          `flex items-center gap-2 px-3 py-2.5 rounded-xl text-[15px] font-semibold transition-colors [&_svg]:w-5 [&_svg]:h-5 ${
+          `flex items-center gap-2 px-3 py-2.5 rounded-xl text-base font-semibold transition-colors [&_svg]:w-5 [&_svg]:h-5 ${
             isActive ? 'text-[#2D3436]' : 'text-[#636E72]'
           }`
         }
         style={({ isActive }) =>
           isActive
             ? { backgroundColor: ss?.activeBg, border: `2px solid ${ss?.activeBorder}` }
-            : undefined
+            : inSection
+              ? { backgroundColor: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.9)' }
+              : undefined
         }
-        onMouseEnter={(e) => { if (!e.currentTarget.style.backgroundColor) e.currentTarget.style.backgroundColor = ss?.hoverBg || ''; }}
-        onMouseLeave={(e) => { if (!e.currentTarget.style.backgroundColor?.includes(ss?.activeBg)) e.currentTarget.style.backgroundColor = ''; }}
+        onMouseEnter={(e) => {
+          // active 狀態不覆寫；section 內非 active hover 改為純白；section 外維持原 hoverBg 行為
+          if (e.currentTarget.style.backgroundColor === ss?.activeBg) return;
+          e.currentTarget.style.backgroundColor = inSection ? '#FFFFFF' : (ss?.hoverBg || '');
+        }}
+        onMouseLeave={(e) => {
+          if (e.currentTarget.style.backgroundColor === ss?.activeBg) return;
+          e.currentTarget.style.backgroundColor = inSection ? 'rgba(255,255,255,0.7)' : '';
+        }}
       >
         <span className="flex-shrink-0" style={{ color: ss?.color }}>{item.icon}</span>
         <span className="flex-1">{item.label}</span>
@@ -297,7 +327,7 @@ export default function TeacherLayout({ children }) {
         return (
           <div
             key={section}
-            className="rounded-xl overflow-hidden mt-3"
+            className="rounded-xl mt-3"
             data-tour={tourKey}
             style={{
               backgroundColor: ss?.bg,
@@ -305,21 +335,19 @@ export default function TeacherLayout({ children }) {
               boxShadow: isNext ? `0 0 0 2px ${ss?.activeBorder}55, 0 2px 8px ${ss?.activeBorder}33` : undefined,
             }}
           >
-            <div
-              className="px-3 py-1.5 select-none"
-              style={{ borderBottom: `2px solid ${ss?.border}` }}
-            >
-              <div className="flex items-center gap-2">
+            {/* 標題列：純 label 風格，無 borderBottom、無填色橫條，視覺權重低於下方按鈕 */}
+            <div className="px-3 pt-2 pb-1 select-none">
+              <div className="flex items-center gap-1.5">
                 {isNext && <NextStepDot ss={ss} />}
                 <p
-                  className="tracking-wider flex-1 text-sm font-bold"
-                  style={{ color: ss?.label }}
+                  className="flex-1 text-sm font-medium tracking-wider"
+                  style={{ color: ss?.label, opacity: 0.7 }}
                 >
                   {section}
                 </p>
               </div>
             </div>
-            <div className="px-1 py-1.5 space-y-0.5">
+            <div className="px-1.5 pb-2 space-y-2">
               {items.map(item => renderNavItem(item, ss))}
             </div>
           </div>

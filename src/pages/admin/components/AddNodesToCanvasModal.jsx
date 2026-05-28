@@ -91,11 +91,11 @@ export default function AddNodesToCanvasModal({ unitId, onClose, onAdded }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 cursor-pointer"
       role="dialog" aria-modal="true" onClick={onClose}
     >
       <div
-        className="w-full max-w-2xl bg-white rounded-3xl border border-[#E5E7EB] shadow-lg max-h-[80vh] flex flex-col"
+        className="w-full max-w-2xl bg-white rounded-3xl border border-[#E5E7EB] shadow-lg max-h-[80vh] flex flex-col cursor-default"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-5 border-b border-[#E5E7EB]">
