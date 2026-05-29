@@ -260,3 +260,27 @@
   - 教師端 `/teacher/assignments/diagnosis` 渲染並顯示 100% / 20/20 等統計（screenshot 已比對）
   - 學生端 `/student` 顯示 5 筆任務（標題、題數、截止日皆正確）
 - **Spec 已更新**: ✅（spec-04、spec-10、spec-13 已同步）
+
+---
+
+### [2026-05-29] 班級分類視圖以 localStorage 暫存（後端化延後）→ **同日正式化** ✅
+- **涉及 Spec**: spec-02b §2.7（ClassManagement）、spec-04 §5.1、spec-10 §6（路由表）、spec-11 §3.3 / §3.3b
+- **背景**: 教師希望班級管理頁可自訂分類、班級可拖曳跨分類移動。先以 localStorage 出 PoC、確認 UX 後同日整套搬到後端。
+- **PoC（已過時）**:
+  - 曾新增 `src/hooks/useClassCategoriesLocal.js`：localStorage key `teacher_class_categories_v1:{teacherId}`。
+  - ClassManagement 新增 `groups` 視圖（預設），用 `ClassCategorySection` + `ClassMiniCard` 渲染；DnD 走 `@dnd-kit`。
+  - 已刪除 `useClassCategoriesLocal.js`，UI 元件不變。
+- **正式化（採用）**:
+  1. **DB**：新增 `class_categories` 表（id / teacher_id / name / sort_order / timestamps，UNIQUE (teacher_id, name)）；`classes` 新增 `category_id` FK `ON DELETE SET NULL`。Migration `0020_class_categories`。
+  2. **後端**：`app/db/models/class_category.py`、`app/schemas/class_category.py`、`app/routers/class_categories.py`（GET / POST / PATCH / DELETE / PUT reorder）；`classes` 的 PATCH 支援 `categoryId`（會驗證屬於該教師）；`ClassBrief` schema 暴露 `categoryId`。
+  3. **前端**：新增 `src/hooks/useClassCategories.js`（React Query 包後端 CRUD）；ClassManagement 改用 server 端 `class.categoryId` 渲染，DnD 落下時呼叫 `useUpdateClass.mutate({ classId, categoryId })`。
+  4. **一次性遷移**：ClassManagement 掛載時自動偵測舊版 `teacher_class_categories_v1:{teacherId}` localStorage，若有資料就 POST 到後端後清掉 key（碰到重名分類自動重用既有的）。教師若在過渡期試過 PoC 就無感升級。
+- **同步更新項目**:
+  - 程式：新增 `backend/alembic/versions/20260529_0020_class_categories.py`、`backend/app/db/models/class_category.py`、`backend/app/schemas/class_category.py`、`backend/app/routers/class_categories.py`、`src/hooks/useClassCategories.js`；改 `backend/app/db/models/{__init__.py, class_.py}`、`backend/app/schemas/class_.py`、`backend/app/routers/classes.py`、`backend/app/main.py`、`src/pages/teacher/ClassManagement.jsx`；刪 `src/hooks/useClassCategoriesLocal.js`。
+  - Spec：spec-02b §2.7（改寫分類視圖說明）、spec-04 §5.1（從「localStorage 暫存」改寫為「後端 + 自動遷移」）、spec-10 §6（補 5 條 `/api/class-categories` 端點 + PATCH classes 支援 categoryId）、spec-11 §2 / §3.3 / §3.3b（新增 `class_categories` 表 + `classes.category_id` 欄位）
+- **驗證**:
+  - 後端 `python -m ruff check`（新增/改動檔案）✅
+  - Migration `alembic upgrade head` ✅
+  - 前端 `npm run build` + `npm run lint` ✅
+  - Preview 手動測試：登入示範老師 → 新增分類 → 拖曳班級跨分類 → 重整頁面後分類關係保留 ✅
+- **Spec 已更新**: ✅（spec-02b、spec-04、spec-10、spec-11 全部同步）

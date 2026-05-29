@@ -4,6 +4,7 @@ from app.db.models.assignment import Assignment
 from app.db.models.assignment_student import AssignmentStudent
 from app.db.models.cache import AiSummaryCache
 from app.db.models.class_ import Class
+from app.db.models.class_category import ClassCategory
 from app.db.models.custom_misconception import CustomMisconception
 from app.db.models.knowledge_node import KnowledgeNode, Misconception
 from app.db.models.parent_node import ParentNode
@@ -18,6 +19,7 @@ __all__ = [
     "Assignment",
     "AssignmentStudent",
     "Class",
+    "ClassCategory",
     "CustomMisconception",
     "FollowupResult",
     "KnowledgeNode",

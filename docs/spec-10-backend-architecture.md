@@ -335,7 +335,12 @@ HTTP status code：
 | `students` | `POST /api/students/{id}/reset-password` | P1 | 教師重設學生密碼為帳號（僅自己班級的學生） |
 | `classes` | `GET /api/classes` | P3 ✅ | **教師範圍隔離**：只回傳 `teacher_id == current_teacher.id` 的班級 |
 | `classes` | `POST /api/classes` | ✅ | 教師建立空班；server 自動產生 id；新建班級的 `teacher_id` = 建立者 |
-| `classes` | `PATCH /api/classes/{class_id}` | ✅ | 教師編輯班級資訊（name/grade/subject/color/textColor/note 部分更新；非自己班級回 404） |
+| `classes` | `PATCH /api/classes/{class_id}` | ✅ | 教師編輯班級資訊（name/grade/subject/color/textColor/note/schoolYear/semester/**categoryId** 部分更新；非自己班級回 404；`categoryId` 不屬於該教師回 404 `CATEGORY_NOT_FOUND`） |
+| `class-categories` | `GET /api/class-categories` | ✅ | 教師私有：列出自訂分類（依 sort_order） |
+| `class-categories` | `POST /api/class-categories` | ✅ | 新增分類 `{ name }`；重名回 409 `DUPLICATE_NAME` |
+| `class-categories` | `PATCH /api/class-categories/{id}` | ✅ | 改名 |
+| `class-categories` | `DELETE /api/class-categories/{id}` | ✅ | 刪除；該分類下班級的 `category_id` 經 FK `ON DELETE SET NULL` 自動回到「未分類」 |
+| `class-categories` | `PUT /api/class-categories/reorder` | ✅ | 批次重排，body `{ ids: [...] }`；未列出的維持原相對順序排在後面 |
 | `classes` | `GET /api/classes/{class_id}` | P3 ✅ | 班級詳情含學生（非自己班級回 404） |
 | `classes` | `PUT /api/classes/{class_id}/students` | P3 ✅ | 整批替換學生名冊（非自己班級回 404） |
 | `quizzes` | `GET /api/quizzes` / `GET /api/quizzes/{id}` | P3 ✅ | 教師看全部；**學生只看自己班級已被派發的**（透過 Assignment 表過濾） |

@@ -250,6 +250,9 @@ export default function QuizLibrary() {
                       )}
                     </div>
 
+                    {/* 資訊區與操作區的分隔線 */}
+                    <div className="w-px self-stretch bg-[#BDC3C7] flex-shrink-0" aria-hidden="true" />
+
                     {/* 操作按鈕 */}
                     <div className="flex flex-col gap-2 flex-shrink-0">
                       <button

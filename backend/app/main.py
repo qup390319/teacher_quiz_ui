@@ -16,6 +16,7 @@ from app.routers import ai as ai_router
 from app.routers import answers as answers_router
 from app.routers import assignments as assignments_router
 from app.routers import auth as auth_router
+from app.routers import class_categories as class_categories_router
 from app.routers import classes as classes_router
 
 # 概念釐清模組已下線（前端 UI 移除）；router 保留實作檔但不再 mount。
@@ -61,6 +62,7 @@ app.include_router(units_router.router, prefix="/api/units", tags=["units"])
 app.include_router(knowledge_nodes_router.router, prefix="/api/knowledge-nodes", tags=["knowledge-nodes"])
 app.include_router(students_router.router, prefix="/api/students", tags=["students"])
 app.include_router(classes_router.router, prefix="/api/classes", tags=["classes"])
+app.include_router(class_categories_router.router, prefix="/api/class-categories", tags=["class-categories"])
 app.include_router(quizzes_router.router, prefix="/api/quizzes", tags=["quizzes"])
 app.include_router(misconceptions_router.router, prefix="/api/misconceptions", tags=["misconceptions"])
 # 概念釐清模組已下線（前端 UI 移除）；router 保留實作檔但不再 mount。

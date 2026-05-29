@@ -455,3 +455,35 @@ interface ClassAnswer {
 - quizData.js 內部獨立維護一份學生姓名列表
 - 與 classData.js 的 CLASSES_DATA 中的 students 陣列名稱對應
 - 用於 `getClassAnswers()` 中產生模擬作答資料
+
+---
+
+## 5. 教師端衍生資料
+
+### 5.1 班級分類（`ClassCategory`）
+**ORM**: `backend/app/db/models/class_category.py` → `class_categories` table（spec-11）
+**Hooks**: `src/hooks/useClassCategories.js`
+**API**: `/api/class-categories`（list / create / rename / delete / reorder）+ `PATCH /api/classes/{id}` 帶 `categoryId`
+
+```typescript
+interface ClassCategory {
+  id: string;          // 後端產生：`cat_{16hex}`
+  name: string;        // 教師自訂；同教師下 UNIQUE
+  sortOrder: number;   // 教師自訂排序
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Class（spec-04 §2.x）新增欄位：
+//   categoryId: string | null  // null = 未分類
+```
+
+**操作**（hook 對應 API）:
+- `useClassCategories()` → GET `/api/class-categories`
+- `useCreateClassCategory()` → POST，body `{ name }`，重名回 409 `DUPLICATE_NAME`
+- `useRenameClassCategory()` → PATCH `/api/class-categories/{id}`
+- `useDeleteClassCategory()` → DELETE `/api/class-categories/{id}`；該分類下的 class 透過 FK `ON DELETE SET NULL` 自動變為未分類
+- `useReorderClassCategories()` → PUT `/api/class-categories/reorder`，body `{ ids: [...] }`
+- 移動班級：呼叫 `useUpdateClass()` 傳 `{ categoryId }`；傳 `null` 移出分類
+
+**舊版 localStorage 自動遷移**：2026-05-29 之前曾使用過 `teacher_class_categories_v1:{teacherId}` 暫存版的教師，登入後 `ClassManagement` 會自動把舊資料 POST 到後端後清掉 key（詳見 `docs/deviations.md`）。

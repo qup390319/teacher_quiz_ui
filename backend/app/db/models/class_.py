@@ -38,6 +38,9 @@ class Class(Base):
     teacher_id: Mapped[str | None] = mapped_column(
         String(64), ForeignKey("users.id", ondelete="SET NULL"), nullable=True,
     )
+    category_id: Mapped[str | None] = mapped_column(
+        String(40), ForeignKey("class_categories.id", ondelete="SET NULL"), nullable=True,
+    )
     note: Mapped[str | None] = mapped_column(String(200), nullable=True)
     school_year: Mapped[int] = mapped_column(Integer, nullable=False, server_default="2025")
     semester: Mapped[Literal["first", "second"]] = mapped_column(

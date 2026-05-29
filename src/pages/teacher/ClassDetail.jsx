@@ -279,7 +279,6 @@ export default function ClassDetail() {
             </div>
             <p className="text-[#636E72] text-sm mt-0.5">
               {formatSchoolYearLabel(cls.schoolYear)} · {formatSemesterLabel(cls.semester)} · {cls.studentCount} 位學生
-              <span className="ml-2 text-[#95A5A6]">· 預設密碼與帳號相同</span>
             </p>
           </div>
 
@@ -335,7 +334,67 @@ export default function ClassDetail() {
         )}
 
         <div className="bg-white rounded-[24px] sm:rounded-[32px] border border-[#BDC3C7] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
-          <div className="overflow-x-auto">
+          {/* 預設密碼說明（適用於兩種新增方式） */}
+          <div className="bg-[#F5F8F2] px-4 sm:px-6 pt-4 pb-1 flex items-center gap-1.5 text-sm text-[#636E72]">
+            <span className="material-symbols-rounded text-base text-[#95A5A6]">info</span>
+            無論單筆新增或批次匯入，學生預設密碼皆等於帳號。
+          </div>
+          {/* 新增學生：單筆新增 + 批次匯入（空班時並排顯示） */}
+          <div className={`bg-[#F5F8F2] px-4 sm:px-6 pt-2 pb-4 grid gap-4 ${students.length === 0 ? 'md:grid-cols-2' : ''}`}>
+            {/* 單筆新增 */}
+            <div className="bg-[#EEF5E6] rounded-2xl border border-[#BDC3C7] p-5">
+              <div className="flex items-start gap-3 mb-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-[#C8EAAE] text-[#3D5A3E]">
+                  <span className="material-symbols-rounded text-xl">person_add</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold mb-0.5 text-[#2D3436]">單筆新增學生</h3>
+                  <p className="text-sm text-[#636E72]">輸入座號與姓名，系統會自動產生帳號。</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-start gap-2 sm:gap-3">
+                <input
+                  type="number"
+                  placeholder="座號"
+                  value={newForm.seat}
+                  onChange={(e) => setNewForm((f) => ({ ...f, seat: e.target.value }))}
+                  className="w-20 border border-[#BDC3C7] rounded-xl px-3 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-[#8FC87A] bg-white"
+                />
+                <input
+                  type="text"
+                  placeholder="學生姓名"
+                  value={newForm.name}
+                  onChange={(e) => setNewForm((f) => ({ ...f, name: e.target.value }))}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); }}
+                  className="flex-1 min-w-[140px] border border-[#BDC3C7] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8FC87A] bg-white"
+                />
+                <button
+                  onClick={handleAdd}
+                  disabled={updateStudentsMut.isPending}
+                  className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold bg-[#8FC87A] text-[#2D3436] border border-[#BDC3C7] rounded-xl hover:bg-[#76B563] disabled:opacity-50"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  {updateStudentsMut.isPending ? '儲存中…' : '新增'}
+                </button>
+              </div>
+              {newFormError && (
+                <p className="text-sm text-[#E74C5E] mt-2">{newFormError}</p>
+              )}
+            </div>
+
+            {/* 批次匯入（只在空班時顯示） */}
+            {students.length === 0 && (
+              <StudentExcelImport
+                classId={cls.id}
+                variant="teacher"
+                onSuccess={() => toast.success('已從 Excel 匯入學生名冊')}
+              />
+            )}
+          </div>
+
+          <div className="border-t-2 border-[#BDC3C7] overflow-x-auto">
           {/* 表格標題 */}
           <div className="bg-[#C8EAAE] border-b border-[#BDC3C7] px-4 sm:px-6 py-3 grid grid-cols-[56px_minmax(120px,1fr)_140px_240px_140px] min-w-[760px] items-center gap-3">
             <span className="text-sm font-bold text-[#636E72] uppercase tracking-wide text-center">座號</span>
@@ -401,62 +460,14 @@ export default function ClassDetail() {
               );
             })}
 
-            {students.length === 0 && (
-              <div className="px-6 py-10 text-center text-sm text-[#95A5A6]">
-                目前沒有學生，請使用下方表單新增，或從 Excel 一次匯入整份名冊。
-              </div>
-            )}
           </div>
           </div>
 
-          {/* Excel 匯入名冊（只在空班時顯示） */}
           {students.length === 0 && (
-            <div className="border-t-2 border-[#BDC3C7] px-4 sm:px-6 py-4 bg-[#FBE9C7]/30">
-              <StudentExcelImport
-                classId={cls.id}
-                variant="teacher"
-                onSuccess={() => toast.success('已從 Excel 匯入學生名冊')}
-              />
+            <div className="border-t-2 border-[#BDC3C7] px-6 py-10 text-center text-sm text-[#95A5A6]">
+              目前沒有學生，請使用上方表單新增，或從 Excel 一次匯入整份名冊。
             </div>
           )}
-
-          {/* 新增學生 */}
-          <div className="border-t-2 border-[#BDC3C7] bg-[#EEF5E6] px-4 sm:px-6 py-4">
-            <p className="text-sm font-semibold text-[#636E72] uppercase tracking-wide mb-3">新增學生</p>
-            <div className="flex flex-wrap items-start gap-2 sm:gap-3">
-              <input
-                type="number"
-                placeholder="座號"
-                value={newForm.seat}
-                onChange={(e) => setNewForm((f) => ({ ...f, seat: e.target.value }))}
-                className="w-20 border border-[#BDC3C7] rounded-xl px-3 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-[#8FC87A] bg-white"
-              />
-              <input
-                type="text"
-                placeholder="學生姓名"
-                value={newForm.name}
-                onChange={(e) => setNewForm((f) => ({ ...f, name: e.target.value }))}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); }}
-                className="flex-1 min-w-[140px] border border-[#BDC3C7] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8FC87A] bg-white"
-              />
-              <button
-                onClick={handleAdd}
-                disabled={updateStudentsMut.isPending}
-                className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold bg-[#8FC87A] text-[#2D3436] border border-[#BDC3C7] rounded-xl hover:bg-[#76B563] disabled:opacity-50"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                {updateStudentsMut.isPending ? '儲存中…' : '新增'}
-              </button>
-            </div>
-            {newFormError && (
-              <p className="text-sm text-[#E74C5E] mt-2">{newFormError}</p>
-            )}
-            <p className="text-[15px] text-[#95A5A6] mt-2">
-              新增 / 編輯 / 刪除會即時呼叫 PUT /api/classes/{cls.id}/students 整批替換名冊。
-            </p>
-          </div>
         </div>
       </div>
 

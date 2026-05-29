@@ -16,11 +16,14 @@
 **UI 元素**:
 - 頁首：標題「班級管理」+「+ 新增班級」按鈕
 - 學年篩選器（與 DashboardLayout 共用 AppContext 狀態，spec-05 §1.5）
-- 顯示模式切換 chip：`[列表] [完整卡片]`（預設列表，圖示 `view_list` / `dashboard`）
-- 班級項目（兩種視圖共用同一套設計語言，定義於 `ClassListRow.jsx` / `ClassCardItem.jsx`）：
-  - 列表列（`ClassListRow`）：色塊（左側 1.5px 圓條）+ 班名（粗體）+ 副標「N 位學生 · 114 下」+ 右側 chevron；整列可點、鍵盤 Enter/Space 同效；hover/focus 變淺綠
-  - 完整卡片（`ClassCardItem`）：同樣的內容比例，版面較大；左側細色條 + 粗體班名 + 副標
-  - 已封存：opacity 60% + grayscale + 「已封存」chip；唯有勾選「顯示已封存班級」才會出現在列表
+- 「+ 新增分類」按鈕（位於學年篩選器右側）— 開啟 `window.prompt` 輸入分類名稱；後端去重，重名回 409 `DUPLICATE_NAME` 提示再試
+- 班級分類視圖（`ClassCategorySection` + `ClassMiniCard`）：
+  - 依教師自訂分類分區段（依 `sortOrder` 排）
+  - 每段 header 顯示分類名 / 班級數 / 改名 ✏️ / 刪除 🗑️
+  - 下方是 `grid-cols-2/3` 小卡片；卡片內容：色塊（左側 1.5px）+ 粗體班名 + 副標「N 位學生 · 114 下」
+  - 最後一段恆為「未分類」（無對應 `category_id`，不可改名 / 刪除）
+  - 卡片可拖曳跨分類（`@dnd-kit`），落下時呼叫 `PATCH /api/classes/{id}` 寫入 `categoryId`
+  - 已封存班級：opacity 60% + grayscale + 「已封存」chip；唯有勾選「顯示已封存班級」才會出現
 - 空狀態：「目前學年/學期沒有班級。點右上『新增班級』… 或勾選『顯示已封存班級』查閱歷史。」
 - **新增班級**：開啟 `ClassFormModal` (isEdit=false)；提交 → `useCreateClass()`
 
@@ -32,6 +35,9 @@
 - `useApp()`：`currentSchoolYear`、`currentSemester`、`includeArchivedClasses`
 - `useClasses()`：依篩選器即時拉取班級清單
 - `useCreateClass()`：新增班級
+- `useClassCategories()` / `useCreateClassCategory()` / `useRenameClassCategory()` / `useDeleteClassCategory()`：分類資料（後端 `/api/class-categories`，per-teacher 隔離，spec-11 §3.x）
+- `useUpdateClass()`：拖曳卡片落下時呼叫，傳 `{ categoryId }`（傳 `null` = 移出分類）
+- ClassManagement 初次掛載會自動偵測舊版 `localStorage[teacher_class_categories_v1:{teacherId}]`，存在則一次性遷移到後端（呼叫 POST /class-categories + PATCH /classes/{id}）後清掉
 
 ---
 

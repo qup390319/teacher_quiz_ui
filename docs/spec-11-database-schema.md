@@ -26,6 +26,7 @@
 | 2 | `teachers` | 教師專屬欄位 | P1 |
 | 3 | `students` | 學生專屬欄位 | P1 |
 | 4 | `classes` | 班級 | P1 |
+| 4b | `class_categories` | 教師自訂班級分類 | 2026-05-29 (0020) |
 | 5 | `quizzes` | 診斷題組主檔 | P1（seed）/ P3（CRUD） |
 | 6 | `quiz_questions` | 題組題目 | P1 / P3 |
 | 7 | `quiz_options` | 題目選項 | P1 / P3 |
@@ -97,6 +98,7 @@ CREATE TABLE classes (
     color        VARCHAR(7)    NOT NULL,               -- '#C8EAAE'
     text_color   VARCHAR(7)    NOT NULL,               -- '#3D5A3E'
     teacher_id   VARCHAR(64)   REFERENCES users(id) ON DELETE SET NULL,  -- 0003 migration
+    category_id  VARCHAR(40)   REFERENCES class_categories(id) ON DELETE SET NULL,  -- 0020 migration: 教師自訂分類；NULL = 未分類
     note         VARCHAR(200),                          -- 0004 migration: 教師備註，如「114 學年度」
     school_year  INTEGER       NOT NULL DEFAULT 2025,   -- 0011 migration: 學年度（西元年；114 學年度 = 2025）
     semester     VARCHAR(8)    NOT NULL DEFAULT 'second', -- 0011 migration: 'first' | 'second'
@@ -111,6 +113,7 @@ CREATE TABLE classes (
 );
 CREATE INDEX classes_teacher_idx       ON classes(teacher_id);
 CREATE INDEX classes_term_idx          ON classes(teacher_id, school_year, semester, status); -- 0011 migration
+CREATE INDEX classes_category_idx      ON classes(category_id); -- 0020 migration
 ```
 
 > **教師範圍隔離（0003 migration）**：`teacher_id` 是該班所屬教師。所有讀取
@@ -125,6 +128,31 @@ CREATE INDEX classes_term_idx          ON classes(teacher_id, school_year, semes
 > 帶 `include_archived=true` 可同時回封存班級。`POST /api/classes/{id}/archive` 與 `/unarchive`
 > 為狀態切換端點（不刪資料）；assignments / answers / followups / treatment_sessions 不受班級
 > 封存影響，仍依 FK 保留以供歷史查閱。詳見 spec-05 §1.5。
+
+> **教師自訂分類（0020 migration）**：班級新增 `category_id` FK → `class_categories(id)`，`ON DELETE SET NULL`。
+> 教師可自定分類並把班級拖到任意分類；未分類班級 `category_id IS NULL`。
+> `PATCH /api/classes/{id}` 接受 `{ categoryId: "cat_xxx" | null }`；後端會驗證 `category` 屬於該老師，
+> 否則回 404 `CATEGORY_NOT_FOUND`。
+
+### 3.3b `class_categories`（0020 migration）
+
+```sql
+CREATE TABLE class_categories (
+    id          VARCHAR(40)  PRIMARY KEY,                                -- 'cat_{16hex}'
+    teacher_id  VARCHAR(64)  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name        VARCHAR(64)  NOT NULL,                                   -- 教師自訂，UNIQUE per teacher
+    sort_order  INTEGER      NOT NULL DEFAULT 0,                         -- 教師自訂排序
+    created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    updated_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    CONSTRAINT class_categories_teacher_name_uq UNIQUE (teacher_id, name)
+);
+CREATE INDEX class_categories_teacher_order_idx ON class_categories(teacher_id, sort_order);
+```
+
+> **設計動機**：原本以 localStorage 暫存的「班級分類」功能（2026-05-29 deviations 條目）正式落地。
+> 教師可建立任意數量分類、自訂名稱與排序、拖曳班級跨分類移動；資料隨帳號跨裝置同步。
+> 教師被刪除 → 分類 CASCADE 刪除；分類被刪除 → 該分類下的班級 `category_id` SET NULL（不會丟掉班級資料）。
+> 從 localStorage 升級到後端的一次性遷移由前端 `ClassManagement` 掛載時自動執行，詳見 spec-04 §5.1。
 
 ### 3.4 `students`
 

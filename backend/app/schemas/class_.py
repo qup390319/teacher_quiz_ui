@@ -30,6 +30,8 @@ class ClassBrief(BaseModel):
     archived_at: datetime | None = Field(default=None, serialization_alias="archivedAt")
     # 班級所屬教師 user_id（admin overview 用；teacher 端固定是自己，但仍會帶出來）
     teacher_id: str | None = Field(default=None, serialization_alias="teacherId")
+    # 教師自訂分類（spec-04 §5.1 / spec-11）；null = 未分類
+    category_id: str | None = Field(default=None, serialization_alias="categoryId")
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -81,6 +83,12 @@ class UpdateClassRequest(BaseModel):
         validation_alias="schoolYear", serialization_alias="schoolYear",
     )
     semester: Literal["first", "second"] | None = None
+    # 教師自訂分類 id；傳 null = 移出分類；未指定 = 不變更
+    category_id: str | None = Field(
+        default=None,
+        validation_alias="categoryId",
+        serialization_alias="categoryId",
+    )
 
     model_config = ConfigDict(populate_by_name=True)
 

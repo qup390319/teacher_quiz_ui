@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.deps import get_current_user, require_teacher
-from app.db.models import Class, Student, User
+from app.db.models import Class, ClassCategory, Student, User
 from app.db.session import get_db
 from app.schemas.class_ import (
     ClassBrief,
@@ -36,6 +36,7 @@ def _to_brief(cls: Class, student_count: int | None = None) -> ClassBrief:
         school_year=cls.school_year, semester=cls.semester, status=cls.status,
         archived_at=cls.archived_at,
         teacher_id=cls.teacher_id,
+        category_id=cls.category_id,
     )
 
 
@@ -121,6 +122,13 @@ async def update_class(
     for key in ("name", "grade", "subject", "color", "text_color", "note", "school_year", "semester"):
         if key in data:
             setattr(cls, key, data[key])
+    if "category_id" in data:
+        new_cat = data["category_id"]
+        if new_cat is not None:
+            cat = await db.get(ClassCategory, new_cat)
+            if cat is None or cat.teacher_id != teacher.id:
+                raise HTTPException(status.HTTP_404_NOT_FOUND, "CATEGORY_NOT_FOUND")
+        cls.category_id = new_cat
     await db.commit()
     await db.refresh(cls)
     return _to_brief(cls)
@@ -182,6 +190,7 @@ async def get_class(
         student_count=len(students), note=cls.note,
         school_year=cls.school_year, semester=cls.semester, status=cls.status,
         archived_at=cls.archived_at, teacher_id=cls.teacher_id,
+        category_id=cls.category_id,
         students=[
             StudentBrief(
                 id=s.user_id, name=s.name, seat=s.seat,
@@ -417,6 +426,7 @@ async def _get_class_for_admin_or_teacher(
         student_count=len(students), note=cls.note,
         school_year=cls.school_year, semester=cls.semester, status=cls.status,
         archived_at=cls.archived_at, teacher_id=cls.teacher_id,
+        category_id=cls.category_id,
         students=[
             StudentBrief(
                 id=s.user_id, name=s.name, seat=s.seat,

@@ -140,11 +140,11 @@ export default function StudentExcelImport({ classId, variant = 'teacher', onSuc
         </div>
         <div className="flex-1 min-w-0">
           <h3 className={`font-semibold mb-0.5 ${variant === 'admin' ? 'text-[#1F2937]' : 'text-[#5A3E22]'}`}>
-            從 Excel 匯入名冊
+            從 Excel 批次匯入名冊
           </h3>
           <p className={`text-sm ${variant === 'admin' ? 'text-[#6B7280]' : 'text-[#7A5232]'}`}>
             Excel <strong>只需要兩欄</strong>：第一欄座號、第二欄姓名（第一列可放標題）。<br />
-            匯入後系統會自動依座號產生學生帳號，預設密碼等於帳號。
+            匯入後系統會自動依座號產生學生帳號。
           </p>
         </div>
       </div>
