@@ -170,6 +170,8 @@ export default function AssignmentManagement() {
         {/* ── 矩陣視圖 ── */}
         {publishedQuizzes.length === 0 ? (
           <EmptyState onGoToQuizzes={() => navigate('/teacher/quizzes')} />
+        ) : classes.length === 0 ? (
+          <NoClassesEmptyState onGoToClasses={() => navigate('/teacher/classes')} />
         ) : (
           <MatrixView
             quizzes={publishedQuizzes}
@@ -206,6 +208,25 @@ function EmptyState({ onGoToQuizzes }) {
         className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#8FC87A] text-[#2D3436] border border-[#BDC3C7] rounded-2xl text-sm font-semibold hover:bg-[#76B563] transition-colors"
       >
         前往出題管理
+        <Icon name="arrow_forward" className="text-base" />
+      </button>
+    </div>
+  );
+}
+
+function NoClassesEmptyState({ onGoToClasses }) {
+  return (
+    <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-12 text-center shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+      <div className="w-14 h-14 bg-[#EEF5E6] rounded-full flex items-center justify-center mx-auto mb-4">
+        <Icon name="group" className="text-3xl text-[#95A5A6]" />
+      </div>
+      <p className="text-[#636E72] font-medium mb-1">目前還沒有班級</p>
+      <p className="text-sm text-[#95A5A6] mb-5">請先建立班級，才能把題組派發給學生</p>
+      <button
+        onClick={onGoToClasses}
+        className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#8FC87A] text-[#2D3436] border border-[#BDC3C7] rounded-2xl text-sm font-semibold hover:bg-[#76B563] transition-colors"
+      >
+        前往班級名單管理
         <Icon name="arrow_forward" className="text-base" />
       </button>
     </div>

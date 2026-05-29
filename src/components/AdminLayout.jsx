@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { to: '/admin/users', label: '帳號管理', icon: 'group' },
   { to: '/admin/classes', label: '班級總覽', icon: 'school' },
   { to: '/admin/units', label: '單元管理', icon: 'category' },
+  { to: '/admin/subthemes', label: '課綱次主題庫', icon: 'menu_book' },
   { to: '/admin/knowledge-nodes', label: '知識節點', icon: 'account_tree' },
   { to: '/admin/sample-quizzes', label: '範例題庫', icon: 'library_books' },
 ];

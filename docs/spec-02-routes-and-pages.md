@@ -46,7 +46,8 @@
 | `/admin/classes` | `ClassesOverview` | 跨教師班級總覽：篩選 + 列表 | `AdminLayout` |
 | `/admin/classes/:classId` | `ClassDetailAdmin` | 班級詳情：基本資訊 + 學生名冊（唯讀）+ 空班 Excel 匯入 | `AdminLayout` |
 | `/admin/units` | `UnitsManagement` | 教學單元管理（`type='unit'`）：依年段分區、CRUD、封存／啟用 | `AdminLayout` |
-| `/admin/knowledge-nodes` | `KnowledgeNodesAdmin` | 知識節點畫布編輯 + 迷思 CRUD + 未分配池 | `AdminLayout` |
+| `/admin/subthemes` | `SubthemesLibrary` | 課綱次主題庫（`type='subtheme'`）：唯讀瀏覽匯入結果，依年段分區、顯示每個次主題的大節點 / 小節點計數 | `AdminLayout` |
+| `/admin/knowledge-nodes` | `KnowledgeNodesAdmin` | 知識節點畫布編輯 + 迷思 CRUD + 未分配池 + 從 Word 匯入次主題 | `AdminLayout` |
 | `/admin/sample-quizzes` | `SampleQuizzes` | 範例題庫：跨教師列出題組 + 切換系統範例標記 | `AdminLayout` |
 | `*` | `Navigate to /` | 404 重導向首頁 | — |
 
@@ -597,15 +598,34 @@
 - `useUnits({ gradeBand?, includeArchived? })`：未來題組選擇器用（公開讀，任何登入者）
 
 **Word 匯入（W7b）**：
-- 工具列「從 Word 匯入」按鈕 → `DocxImportModal`
-- 支援 .docx 單檔或 .zip 批次（35 份 108 課綱「知識節點關聯圖」一次匯入）
-- 後端 `services/docx_import.py` 解析次主題 + 大節點 + 小節點，**不解析 SmartArt 箭頭**
-- 模式：merge（預設，新增缺漏節點）/ skip（已存在跳過）/ create（已存在回報錯誤）
-- merge 模式下，已存在但 `unit_id=NULL` 的小節點會自動 attach 到新 unit 與對應的 parent_node
+- **「從 Word 匯入」按鈕已搬到 `/admin/knowledge-nodes` §3.9**——本頁不再列出，避免「教學單元」與「課綱次主題」的入口混淆。
 
 ---
 
-### 3.8 KnowledgeNodesAdmin (`/admin/knowledge-nodes`)
+### 3.8 SubthemesLibrary (`/admin/subthemes`)
+**檔案**: `src/pages/admin/SubthemesLibrary.jsx`
+
+**功能描述**：
+- admin 唯讀瀏覽從 docx 匯入的 108 課綱「次主題」階層（`units.type='subtheme'`）
+- 摘要列：總次主題數 / 大節點總數 / 小節點總數
+- 依年段（高 / 中 / 低）分區，每個次主題顯示名稱、code（如 `Ab`、`Ba`）、所屬大節點數、小節點數
+- 不提供編輯 / 封存 / 刪除——若要改階層內容請到「知識節點 > 階層結構」；若要匯入新檔請到「知識節點」右上角「從 Word 匯入」
+
+**API（既有，未新增）**：
+- `GET /api/admin/units?type=subtheme`
+- `GET /api/admin/parent-nodes`
+- `GET /api/admin/knowledge-nodes`（計算每個次主題的子節點數）
+
+**Hooks**：`useAdminUnits({ type: 'subtheme' })` / `useAdminParentNodes()` / `useAdminKnowledgeNodes()`
+
+**為何分頁**：W7b 之前「從 Word 匯入」放在 `/admin/units`，但 docx 匯入的是「課綱次主題」（`type='subtheme'`），與該頁的「教學單元」（`type='unit'`）邏輯混淆，使用者誤以為次主題也是單元。拆出本頁可：
+1. 讓 `/admin/units` 只列教學單元
+2. 給次主題一個獨立、清楚標示「課綱結構」的瀏覽入口
+3. 匯入按鈕放到 `/admin/knowledge-nodes`（W7b 階層結構的真正所在地）
+
+---
+
+### 3.9 KnowledgeNodesAdmin (`/admin/knowledge-nodes`)
 **檔案**: `src/pages/admin/KnowledgeNodesAdmin.jsx`
 
 **功能描述**:
@@ -647,7 +667,7 @@
 
 ---
 
-### 3.9 SampleQuizzes (`/admin/sample-quizzes`)
+### 3.10 SampleQuizzes (`/admin/sample-quizzes`)
 **檔案**: `src/pages/admin/SampleQuizzes.jsx`
 
 **功能描述**:

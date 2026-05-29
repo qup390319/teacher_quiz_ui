@@ -35,6 +35,7 @@ import ClassesOverview from './pages/admin/ClassesOverview';
 import ClassDetailAdmin from './pages/admin/ClassDetailAdmin';
 import ComingSoonPage from './pages/admin/ComingSoonPage';
 import UnitsManagement from './pages/admin/UnitsManagement';
+import SubthemesLibrary from './pages/admin/SubthemesLibrary';
 import KnowledgeNodesAdmin from './pages/admin/KnowledgeNodesAdmin';
 import SampleQuizzes from './pages/admin/SampleQuizzes';
 
@@ -85,6 +86,7 @@ export default function App() {
             <Route path="/admin/classes" element={<Admin><ClassesOverview /></Admin>} />
             <Route path="/admin/classes/:classId" element={<Admin><ClassDetailAdmin /></Admin>} />
             <Route path="/admin/units" element={<Admin><UnitsManagement /></Admin>} />
+            <Route path="/admin/subthemes" element={<Admin><SubthemesLibrary /></Admin>} />
             <Route path="/admin/knowledge-nodes" element={<Admin><KnowledgeNodesAdmin /></Admin>} />
             <Route path="/admin/sample-quizzes" element={<Admin><SampleQuizzes /></Admin>} />
 

@@ -57,3 +57,8 @@ __pycache__/
 # Load-test artefacts
 src/data/__loadtest__/
 load-tests/reports/
+
+# DB dumps / prod backups (contain plaintext seeded passwords)
+backups/
+*.dump
+*.sql.gz

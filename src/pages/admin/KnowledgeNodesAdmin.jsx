@@ -9,6 +9,7 @@ import {
 import { useAdminUnits } from '../../hooks/useAdminUnits';
 import AddNodesToCanvasModal from './components/AddNodesToCanvasModal';
 import AutoLayoutButton from './components/AutoLayoutButton';
+import DocxImportModal from './components/DocxImportModal';
 import KnowledgeNodeCanvas from './components/KnowledgeNodeCanvas';
 import NewKnowledgeNodeModal from './components/NewKnowledgeNodeModal';
 import ThreeColumnEditor from './components/ThreeColumnEditor';
@@ -465,6 +466,7 @@ export default function KnowledgeNodesAdmin() {
   const [unitId, setUnitId] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showAddToCanvasModal, setShowAddToCanvasModal] = useState(false);
+  const [showDocxImport, setShowDocxImport] = useState(false);
   const { toast } = useToast();
 
   const { data: units = [] } = useAdminUnits({ type: 'subtheme' });
@@ -542,6 +544,15 @@ export default function KnowledgeNodesAdmin() {
         )}
         <button
           type="button"
+          onClick={() => setShowDocxImport(true)}
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E5E7EB] bg-white hover:bg-[#F4F8F6] text-[#1F2937] font-medium text-sm transition-colors"
+          title="上傳 108 課綱知識節點關聯圖 docx，自動建立次主題 → 大節點 → 小節點階層"
+        >
+          <span className="material-symbols-rounded text-base">upload_file</span>
+          從 Word 匯入
+        </button>
+        <button
+          type="button"
           onClick={() => setShowCreateModal(true)}
           className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#7DD3A8] hover:bg-[#5FBF8E] text-white font-semibold text-sm"
         >
@@ -604,6 +615,22 @@ export default function KnowledgeNodesAdmin() {
           unitId={effectiveUnitId}
           onClose={() => setShowAddToCanvasModal(false)}
           onAdded={() => refetchCanvas()}
+        />
+      )}
+
+      {showDocxImport && (
+        <DocxImportModal
+          onClose={() => setShowDocxImport(false)}
+          onSuccess={(r) => {
+            const created = r.results.filter((x) => x.status === 'created').length;
+            const merged = r.results.filter((x) => x.status === 'merged').length;
+            const errors = r.results.filter((x) => x.status === 'error').length;
+            const parts = [];
+            if (created) parts.push(`新建 ${created} 個次主題`);
+            if (merged) parts.push(`合併 ${merged} 個`);
+            if (errors) parts.push(`失敗 ${errors} 個`);
+            toast.success(`已匯入：${parts.join('、') || '無變更'}`);
+          }}
         />
       )}
     </AdminLayout>
