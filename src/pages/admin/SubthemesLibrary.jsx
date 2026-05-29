@@ -1,16 +1,17 @@
-import { useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { useMemo, useState } from 'react';
 import AdminLayout from '../../components/AdminLayout';
 import { useAdminUnits } from '../../hooks/useAdminUnits';
 import { useAdminParentNodes } from '../../hooks/useAdminParentNodes';
 import { useAdminKnowledgeNodes } from '../../hooks/useAdminKnowledgeNodes';
+import { useToast } from '../../context/ToastContext';
+import DocxImportModal from './components/DocxImportModal';
 
 /**
  * /admin/subthemes — 課綱次主題庫（spec-02 §3.9、spec-14）。
  *
- * 用途：admin 瀏覽從 docx 匯入的 108 課綱「次主題」階層（次主題 → 大節點 → 小節點）。
- * 純瀏覽，不提供編輯 / 封存 / 刪除——次主題的編修走「知識節點」頁的階層結構視圖。
- * 「從 Word 匯入」按鈕已移到「知識節點」頁右上角。
+ * 用途：admin 瀏覽 + 匯入 108 課綱「次主題」階層（次主題 → 大節點 → 小節點）。
+ * 純瀏覽，編輯既有次主題的內容（大節點 / 小節點）走「知識節點」頁的階層結構視圖。
+ * 「從 Word 匯入」按鈕在本頁右上角；畫布頁不再提供匯入入口，避免功能重複。
  */
 
 const GRADE_BAND_LABELS = {
@@ -94,9 +95,11 @@ function GradeSection({ band, subthemes, countsByUnit }) {
 }
 
 export default function SubthemesLibrary() {
+  const { toast } = useToast();
   const { data: subthemes = [], isLoading, error } = useAdminUnits({ type: 'subtheme' });
   const { data: parentNodes = [] } = useAdminParentNodes();
   const { data: knowledgeNodes = [] } = useAdminKnowledgeNodes();
+  const [showDocxImport, setShowDocxImport] = useState(false);
 
   const countsByUnit = useMemo(() => {
     const m = new Map();
@@ -134,6 +137,19 @@ export default function SubthemesLibrary() {
 
   return (
     <AdminLayout title="課綱次主題庫" breadcrumb="Dashboard / 課綱次主題庫">
+      {/* Toolbar */}
+      <div className="flex items-center justify-end mb-4">
+        <button
+          type="button"
+          onClick={() => setShowDocxImport(true)}
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E5E7EB] bg-white hover:bg-[#F4F8F6] text-[#1F2937] font-medium text-sm transition-colors"
+          title="上傳 108 課綱知識節點關聯圖 docx，自動建立次主題 → 大節點 → 小節點階層"
+        >
+          <span className="material-symbols-rounded text-base">upload_file</span>
+          從 Word 匯入
+        </button>
+      </div>
+
       {/* Summary */}
       <div className="bg-white rounded-2xl border border-[#E5E7EB] px-4 py-3 mb-5 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
         <div className="text-[#1F2937]">
@@ -150,11 +166,7 @@ export default function SubthemesLibrary() {
         <div className="flex-1" />
         <div className="text-xs text-[#6B7280] inline-flex items-center gap-1">
           <span className="material-symbols-rounded text-base">info</span>
-          本頁僅供瀏覽。匯入請至
-          <Link to="/admin/knowledge-nodes" className="text-[#15803D] hover:underline font-medium">
-            知識節點
-          </Link>
-          頁。
+          本頁僅供瀏覽與匯入；既有次主題的大節點 / 小節點編修請至「知識節點」頁的階層結構視圖。
         </div>
       </div>
 
@@ -170,15 +182,16 @@ export default function SubthemesLibrary() {
           <span className="material-symbols-rounded text-4xl text-[#9CA3AF]">menu_book</span>
           <p className="text-sm text-[#1F2937] font-medium mt-2">目前還沒有任何課綱次主題</p>
           <p className="text-xs text-[#6B7280] mt-1">
-            到「知識節點」頁右上角的「從 Word 匯入」按鈕上傳 108 課綱 docx 即可建立。
+            點右上「從 Word 匯入」上傳 108 課綱 docx，即可批次建立次主題 → 大節點 → 小節點階層。
           </p>
-          <Link
-            to="/admin/knowledge-nodes"
+          <button
+            type="button"
+            onClick={() => setShowDocxImport(true)}
             className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-xl bg-[#7DD3A8] hover:bg-[#5FBF8E] text-white text-sm font-semibold"
           >
-            <span className="material-symbols-rounded text-base">arrow_forward</span>
-            前往知識節點頁
-          </Link>
+            <span className="material-symbols-rounded text-base">upload_file</span>
+            從 Word 匯入
+          </button>
         </div>
       )}
 
@@ -188,6 +201,22 @@ export default function SubthemesLibrary() {
           <GradeSection band="middle" subthemes={grouped.middle} countsByUnit={countsByUnit} />
           <GradeSection band="lower" subthemes={grouped.lower} countsByUnit={countsByUnit} />
         </>
+      )}
+
+      {showDocxImport && (
+        <DocxImportModal
+          onClose={() => setShowDocxImport(false)}
+          onSuccess={(r) => {
+            const created = r.results.filter((x) => x.status === 'created').length;
+            const merged = r.results.filter((x) => x.status === 'merged').length;
+            const errors = r.results.filter((x) => x.status === 'error').length;
+            const parts = [];
+            if (created) parts.push(`新建 ${created} 個次主題`);
+            if (merged) parts.push(`合併 ${merged} 個`);
+            if (errors) parts.push(`失敗 ${errors} 個`);
+            toast.success(`已匯入：${parts.join('、') || '無變更'}`);
+          }}
+        />
       )}
     </AdminLayout>
   );

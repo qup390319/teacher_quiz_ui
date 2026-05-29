@@ -46,7 +46,7 @@
 | `/admin/classes` | `ClassesOverview` | 跨教師班級總覽：篩選 + 列表 | `AdminLayout` |
 | `/admin/classes/:classId` | `ClassDetailAdmin` | 班級詳情：基本資訊 + 學生名冊（唯讀）+ 空班 Excel 匯入 | `AdminLayout` |
 | `/admin/units` | `UnitsManagement` | 教學單元管理（`type='unit'`）：依年段分區、CRUD、封存／啟用 | `AdminLayout` |
-| `/admin/subthemes` | `SubthemesLibrary` | 課綱次主題庫（`type='subtheme'`）：唯讀瀏覽匯入結果，依年段分區、顯示每個次主題的大節點 / 小節點計數 | `AdminLayout` |
+| `/admin/subthemes` | `SubthemesLibrary` | 課綱次主題庫（`type='subtheme'`）：瀏覽 + 從 Word 匯入課綱次主題階層；依年段分區、顯示每個次主題的大節點 / 小節點計數 | `AdminLayout` |
 | `/admin/knowledge-nodes` | `KnowledgeNodesAdmin` | 知識節點畫布編輯 + 迷思 CRUD + 未分配池 + 從 Word 匯入次主題 | `AdminLayout` |
 | `/admin/sample-quizzes` | `SampleQuizzes` | 範例題庫：跨教師列出題組 + 切換系統範例標記 | `AdminLayout` |
 | `*` | `Navigate to /` | 404 重導向首頁 | — |
@@ -606,22 +606,24 @@
 **檔案**: `src/pages/admin/SubthemesLibrary.jsx`
 
 **功能描述**：
-- admin 唯讀瀏覽從 docx 匯入的 108 課綱「次主題」階層（`units.type='subtheme'`）
+- admin 瀏覽與**從 Word 批次匯入** 108 課綱「次主題」階層（`units.type='subtheme'`）
 - 摘要列：總次主題數 / 大節點總數 / 小節點總數
 - 依年段（高 / 中 / 低）分區，每個次主題顯示名稱、code（如 `Ab`、`Ba`）、所屬大節點數、小節點數
-- 不提供編輯 / 封存 / 刪除——若要改階層內容請到「知識節點 > 階層結構」；若要匯入新檔請到「知識節點」右上角「從 Word 匯入」
+- 右上「從 Word 匯入」按鈕 → 開啟 `DocxImportModal`，上傳 .docx 或 .zip（多檔批次），後端 dry-run 預覽階層後確認寫入
+- 不提供既有次主題的編輯 / 封存 / 刪除——大節點 / 小節點的編修請到「知識節點 > 階層結構」
 
 **API（既有，未新增）**：
 - `GET /api/admin/units?type=subtheme`
 - `GET /api/admin/parent-nodes`
 - `GET /api/admin/knowledge-nodes`（計算每個次主題的子節點數）
+- `POST /api/admin/units/import-docx/preview` + `POST /api/admin/units/import-docx`（W7b 既有端點）
 
-**Hooks**：`useAdminUnits({ type: 'subtheme' })` / `useAdminParentNodes()` / `useAdminKnowledgeNodes()`
+**Hooks**：`useAdminUnits({ type: 'subtheme' })` / `useAdminParentNodes()` / `useAdminKnowledgeNodes()`；子元件 `DocxImportModal` 自帶 fetch + QueryClient invalidation
 
-**為何分頁**：W7b 之前「從 Word 匯入」放在 `/admin/units`，但 docx 匯入的是「課綱次主題」（`type='subtheme'`），與該頁的「教學單元」（`type='unit'`）邏輯混淆，使用者誤以為次主題也是單元。拆出本頁可：
+**為何分頁**：W7b 之前「從 Word 匯入」放在 `/admin/units`，但 docx 匯入的是「課綱次主題」（`type='subtheme'`），與該頁的「教學單元」（`type='unit'`）邏輯混淆。拆出本頁可：
 1. 讓 `/admin/units` 只列教學單元
-2. 給次主題一個獨立、清楚標示「課綱結構」的瀏覽入口
-3. 匯入按鈕放到 `/admin/knowledge-nodes`（W7b 階層結構的真正所在地）
+2. 給次主題一個獨立、清楚標示「課綱結構」的瀏覽 + 匯入入口
+3. `/admin/knowledge-nodes` 畫布頁僅負責節點階層編輯與畫布拓撲，不再提供匯入入口（2026-05-29 移除，避免重複）
 
 ---
 
@@ -646,7 +648,7 @@
 - 既有 12 個 seed 節點預設 on_canvas=true（migration 0017 升級時 backfill）
 
 **UI 元素**（spec-14）:
-- 工具列：視圖 tab pill + 次主題下拉（僅 canvas / library tab 顯示，只列 `type='subtheme'`）+ 自動排版 + 新增節點按鈕
+- 工具列：視圖 tab pill + 次主題下拉（僅 canvas / library tab 顯示，只列 `type='subtheme'`）+ 自動排版 + 新增節點按鈕（「從 Word 匯入」已移到 `/admin/subthemes` §3.8，避免畫布與次主題庫雙入口混淆）
 - **畫布**：React Flow（`@xyflow/react`）+ dagre 自動排版 + custom node（卡片設計，左側 accent stripe）+ custom edge（smoothstep + 中點 × 刪除鈕）+ Dots background + Controls + MiniMap；節點以 `parent_code` 著色；箭頭從先備指向後續節點。畫布為純拓撲編輯器，不含節點欄位編輯面板
 - **編輯面板**（`KnowledgeNodeEditPanel`）：位於「階層結構」視圖第四欄，點選小節點後展開，包含基本資訊（名稱 / 單元 / 大節點 / 學習順序 / 影片）+ 迷思清單（每條可獨立編輯 / 刪除 / 新增）；ID 永遠唯讀
 - **新增節點** modal：自訂 ID + 名稱 + 單元 + 年段 + 大節點（選填）
