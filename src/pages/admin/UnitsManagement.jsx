@@ -9,26 +9,17 @@ import {
 } from '../../hooks/useAdminUnits';
 import AdminConfirmModal from './components/AdminConfirmModal';
 import UnitFormModal from './components/UnitFormModal';
+import UnitParentNodesModal from './components/UnitParentNodesModal';
 
 /**
  * /admin/units — 單元管理（spec-02 §3.7、spec-14）。
  *
- * - 列表依年段分區（高 / 中 / 低）
+ * - 單一清單，依 display_order 排序（不再分年段）
  * - 「水溶液」標 is_system_current，不可封存 / 刪除（後端 409 防呆 + 前端按鈕 disabled）
  * - 新增 / 編輯 / 封存 / 啟用 / 刪除
  */
 
-const GRADE_BAND_LABELS = {
-  upper: '高年級（5–6 年級）',
-  middle: '中年級（3–4 年級）',
-  lower: '低年級（1–2 年級）',
-};
-
-const GRADE_BAND_COLORS = {
-  upper: { bar: '#5BA8DC', soft: '#DBEAFE', strong: '#1E40AF' },
-  middle: { bar: '#7DD3A8', soft: '#DCFCE7', strong: '#15803D' },
-  lower: { bar: '#F0B962', soft: '#FEF3C7', strong: '#B45309' },
-};
+const UNIT_BAR_COLOR = '#7DD3A8';
 
 function StatusPill({ status }) {
   if (status === 'archived') {
@@ -54,13 +45,37 @@ function SystemBadge() {
   );
 }
 
-function UnitRow({ unit, color, onEdit, onArchive, onUnarchive, onDelete }) {
+function ParentNodeChips({ nodes }) {
+  if (!nodes || nodes.length === 0) {
+    return (
+      <div className="text-[11px] text-[#9CA3AF] mt-1">尚未綁定大節點</div>
+    );
+  }
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
+      <span className="text-[11px] text-[#6B7280]">
+        包含 <strong className="text-[#15803D]">{nodes.length}</strong> 個大節點
+      </span>
+      {nodes.map((n) => (
+        <span
+          key={n.parentNodeId}
+          title={n.name}
+          className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-mono font-medium bg-[#F0FAF4] text-[#15803D] border border-[#D1F0DE]"
+        >
+          {n.code}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function UnitRow({ unit, onEdit, onArchive, onUnarchive, onDelete, onManageParents }) {
   const isSystem = unit.isSystemCurrent;
   return (
     <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl border ${unit.status === 'archived' ? 'border-[#E5E7EB] bg-[#F9FAFB] opacity-75' : 'border-[#E5E7EB] bg-white hover:bg-[#F4F8F6]'} transition-colors`}>
       <span
         className="w-1 h-10 rounded-full shrink-0"
-        style={{ background: color.bar }}
+        style={{ background: UNIT_BAR_COLOR }}
         aria-hidden
       />
       <div className="flex-1 min-w-0">
@@ -69,12 +84,21 @@ function UnitRow({ unit, color, onEdit, onArchive, onUnarchive, onDelete }) {
           {isSystem && <SystemBadge />}
           <StatusPill status={unit.status} />
         </div>
-        <div className="text-xs text-[#6B7280] mt-0.5 font-mono">{unit.code}</div>
         {unit.description && (
           <div className="text-xs text-[#4B5563] mt-1 line-clamp-2">{unit.description}</div>
         )}
+        <ParentNodeChips nodes={unit.parentNodes} />
       </div>
       <div className="flex items-center gap-1.5 shrink-0">
+        <button
+          type="button"
+          onClick={() => onManageParents(unit)}
+          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border border-[#E5E7EB] bg-white hover:bg-[#DCFCE7] text-[#15803D]"
+          title="管理本單元下的大節點（課綱內容細目）"
+        >
+          <span className="material-symbols-rounded text-sm">account_tree</span>
+          管理大節點
+        </button>
         <button
           type="button"
           onClick={() => onEdit(unit)}
@@ -115,34 +139,28 @@ function UnitRow({ unit, color, onEdit, onArchive, onUnarchive, onDelete }) {
   );
 }
 
-function GradeSection({ band, units, onEdit, onArchive, onUnarchive, onDelete }) {
-  const color = GRADE_BAND_COLORS[band];
-  return (
-    <section className="mb-8">
-      <div className="flex items-baseline gap-2 mb-3">
-        <h2 className="text-base font-semibold text-[#1F2937]">{GRADE_BAND_LABELS[band]}</h2>
-        <span className="text-xs text-[#6B7280]">{units.length} 個單元</span>
+function UnitList({ units, onEdit, onArchive, onUnarchive, onDelete, onManageParents }) {
+  if (units.length === 0) {
+    return (
+      <div className="rounded-2xl border border-dashed border-[#E5E7EB] p-6 text-center text-sm text-[#9CA3AF]">
+        尚未建立單元
       </div>
-      {units.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-[#E5E7EB] p-6 text-center text-sm text-[#9CA3AF]">
-          此年段尚未建立單元
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {units.map((u) => (
-            <UnitRow
-              key={u.id}
-              unit={u}
-              color={color}
-              onEdit={onEdit}
-              onArchive={onArchive}
-              onUnarchive={onUnarchive}
-              onDelete={onDelete}
-            />
-          ))}
-        </div>
-      )}
-    </section>
+    );
+  }
+  return (
+    <div className="space-y-2">
+      {units.map((u) => (
+        <UnitRow
+          key={u.id}
+          unit={u}
+          onEdit={onEdit}
+          onArchive={onArchive}
+          onUnarchive={onUnarchive}
+          onDelete={onDelete}
+          onManageParents={onManageParents}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -157,14 +175,13 @@ export default function UnitsManagement() {
   const [editingUnit, setEditingUnit] = useState(null);
   const [confirmAction, setConfirmAction] = useState(null); // { type, unit }
   const [includeArchived, setIncludeArchived] = useState(true);
+  const [managingParents, setManagingParents] = useState(null); // unit obj or null
 
-  const grouped = useMemo(() => {
+  const visibleUnits = useMemo(() => {
     const filtered = includeArchived ? units : units.filter((u) => u.status === 'active');
-    const acc = { upper: [], middle: [], lower: [] };
-    filtered.forEach((u) => {
-      if (acc[u.gradeBand]) acc[u.gradeBand].push(u);
-    });
-    return acc;
+    return [...filtered].sort(
+      (a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0) || a.name.localeCompare(b.name),
+    );
   }, [units, includeArchived]);
 
   const counts = useMemo(() => ({
@@ -255,32 +272,14 @@ export default function UnitsManagement() {
       {error && <div className="text-sm text-[#B91C1C] py-12 text-center">載入失敗</div>}
 
       {!isLoading && !error && (
-        <>
-          <GradeSection
-            band="upper"
-            units={grouped.upper}
-            onEdit={setEditingUnit}
-            onArchive={(u) => setConfirmAction({ type: 'archive', unit: u })}
-            onUnarchive={(u) => setConfirmAction({ type: 'unarchive', unit: u })}
-            onDelete={(u) => setConfirmAction({ type: 'delete', unit: u })}
-          />
-          <GradeSection
-            band="middle"
-            units={grouped.middle}
-            onEdit={setEditingUnit}
-            onArchive={(u) => setConfirmAction({ type: 'archive', unit: u })}
-            onUnarchive={(u) => setConfirmAction({ type: 'unarchive', unit: u })}
-            onDelete={(u) => setConfirmAction({ type: 'delete', unit: u })}
-          />
-          <GradeSection
-            band="lower"
-            units={grouped.lower}
-            onEdit={setEditingUnit}
-            onArchive={(u) => setConfirmAction({ type: 'archive', unit: u })}
-            onUnarchive={(u) => setConfirmAction({ type: 'unarchive', unit: u })}
-            onDelete={(u) => setConfirmAction({ type: 'delete', unit: u })}
-          />
-        </>
+        <UnitList
+          units={visibleUnits}
+          onEdit={setEditingUnit}
+          onArchive={(u) => setConfirmAction({ type: 'archive', unit: u })}
+          onUnarchive={(u) => setConfirmAction({ type: 'unarchive', unit: u })}
+          onDelete={(u) => setConfirmAction({ type: 'delete', unit: u })}
+          onManageParents={setManagingParents}
+        />
       )}
 
       {showCreate && (
@@ -296,6 +295,13 @@ export default function UnitsManagement() {
           initial={editingUnit}
           onClose={() => setEditingUnit(null)}
           onSuccess={(u) => toast.success(`已更新「${u.name}」`)}
+        />
+      )}
+
+      {managingParents && (
+        <UnitParentNodesModal
+          unit={managingParents}
+          onClose={() => setManagingParents(null)}
         />
       )}
 

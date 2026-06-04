@@ -9,7 +9,9 @@ export default function AutoLayoutButton({ rawNodes, onApplied }) {
   const handler = () => {
     const positions = computeAutoLayout(rawNodes);
     const payload = Object.entries(positions).map(([id, { x, y }]) => ({ id, x, y }));
-    positionMut.mutate(payload, { onSuccess: () => onApplied?.() });
+    // 先把算好的座標交給畫布即時套用（不等 DB 來回），再持久化
+    onApplied?.(positions);
+    positionMut.mutate(payload);
   };
   return (
     <button

@@ -114,6 +114,20 @@ function KnowledgeFlowNode({ id, data, selected }) {
               padding: '2px 6px', borderRadius: 4,
             }}>{data.parentCode}</span>
           )}
+          {/-Ⅲ-|-III-/.test(data.nodeId) && (
+            <span style={{
+              fontSize: 10, fontWeight: 500,
+              color: '#1E40AF', background: '#DBEAFE',
+              padding: '2px 6px', borderRadius: 999,
+            }}>高年級</span>
+          )}
+          {/-Ⅱ-|-II-/.test(data.nodeId) && !/-Ⅲ-|-III-/.test(data.nodeId) && (
+            <span style={{
+              fontSize: 10, fontWeight: 500,
+              color: '#B45309', background: '#FEF3C7',
+              padding: '2px 6px', borderRadius: 999,
+            }}>中年級</span>
+          )}
         </div>
       </div>
       <Handle
@@ -251,10 +265,11 @@ function toRfEdges(rawNodes) {
   return edges;
 }
 
-export default function KnowledgeNodeCanvas({ nodes: rawNodes }) {
+export default function KnowledgeNodeCanvas({ nodes: rawNodes, focusNode = null, appliedLayout = null }) {
   const [rfNodes, setRfNodes, onNodesChange] = useNodesState([]);
   const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState([]);
   const edgeReconnectSuccessful = useRef(true);
+  const rfInstanceRef = useRef(null);
   const positionMut = useBulkUpdatePositions();
   const updateNodeMut = useUpdateKnowledgeNode();
   const setCanvasMut = useBulkSetCanvas();
@@ -279,6 +294,33 @@ export default function KnowledgeNodeCanvas({ nodes: rawNodes }) {
     setRfEdges(toRfEdges(rawNodes));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [structureKey]);
+
+  // 左側清單點「在畫布」節點 → 平移聚焦並選取高亮（focusNode = { id, nonce }）。
+  useEffect(() => {
+    if (!focusNode?.id) return;
+    const inst = rfInstanceRef.current;
+    const node = rfNodesRef.current.find((n) => n.id === focusNode.id);
+    if (!inst || !node) return;
+    inst.setCenter(
+      node.position.x + NODE_WIDTH / 2,
+      node.position.y + NODE_HEIGHT / 2,
+      { zoom: 1, duration: 400 },
+    );
+    setRfNodes((ns) => ns.map((n) => ({ ...n, selected: n.id === focusNode.id })));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusNode]);
+
+  // 自動排版：把按鈕算好的座標即時套到畫布節點並重新框選全圖（不等 DB 來回，馬上看到效果）。
+  useEffect(() => {
+    if (!appliedLayout?.positions) return;
+    setRfNodes((ns) => ns.map((n) => {
+      const p = appliedLayout.positions[n.id];
+      return p ? { ...n, position: { x: p.x, y: p.y } } : n;
+    }));
+    const inst = rfInstanceRef.current;
+    if (inst) setTimeout(() => inst.fitView({ padding: 0.2, duration: 400 }), 60);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appliedLayout]);
 
   const flushPositions = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -400,6 +442,7 @@ export default function KnowledgeNodeCanvas({ nodes: rawNodes }) {
           onReconnectStart={onReconnectStart}
           onReconnectEnd={onReconnectEnd}
           onNodeDragStop={onNodeDragStop}
+          onInit={(inst) => { rfInstanceRef.current = inst; }}
           fitView
           fitViewOptions={{ padding: 0.2 }}
           proOptions={{ hideAttribution: true }}

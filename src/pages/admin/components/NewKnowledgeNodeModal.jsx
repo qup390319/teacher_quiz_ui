@@ -68,7 +68,7 @@ export default function NewKnowledgeNodeModal({ units, defaultUnitId, defaultGra
               節點 ID <span className="text-[#DC2626]">*</span>
             </label>
             <input type="text" value={id} onChange={(e) => setId(e.target.value)}
-                   placeholder="例：INe-II-3-06 或 light-01" autoFocus required
+                   placeholder="例：INe-Ⅱ-3-06 或 light-01" autoFocus required
                    className="w-full px-3 py-2 rounded-xl border border-[#E5E7EB] font-mono text-sm focus:ring-2 focus:ring-[#7DD3A8]" />
             <p className="mt-1 text-xs text-[#6B7280]">同單元內 ID 須唯一</p>
           </div>

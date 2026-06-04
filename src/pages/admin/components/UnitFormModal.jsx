@@ -2,12 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { ApiError } from '../../../lib/api';
 import { useCreateUnit, useUpdateUnit } from '../../../hooks/useAdminUnits';
 
-const GRADE_BAND_OPTIONS = [
-  { value: 'lower', label: '低年級（1–2 年級）' },
-  { value: 'middle', label: '中年級（3–4 年級）' },
-  { value: 'upper', label: '高年級（5–6 年級）' },
-];
-
 const ERROR_MESSAGES = {
   UNIT_CODE_EXISTS: '此 code 已被使用',
   UNIT_ID_EXISTS: '此 id 已被使用',
@@ -22,7 +16,7 @@ const ERROR_MESSAGES = {
  */
 export default function UnitFormModal({ isEdit = false, initial = null, onClose, onSuccess }) {
   const [name, setName] = useState(initial?.name ?? '');
-  const [gradeBand, setGradeBand] = useState(initial?.gradeBand ?? 'upper');
+  const gradeBand = initial?.gradeBand ?? 'upper'; // 介面不再分年級；後端仍需此欄位
   const [description, setDescription] = useState(initial?.description ?? '');
   const [error, setError] = useState('');
   const inputRef = useRef(null);
@@ -100,22 +94,6 @@ export default function UnitFormModal({ isEdit = false, initial = null, onClose,
                          focus:outline-none focus:ring-2 focus:ring-[#7DD3A8] focus:border-transparent"
               required
             />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-[#1F2937] mb-1.5">
-              年段 <span className="text-[#DC2626]">*</span>
-            </label>
-            <select
-              value={gradeBand}
-              onChange={(e) => setGradeBand(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-[#E5E7EB] bg-white
-                         text-[#1F2937] focus:outline-none focus:ring-2 focus:ring-[#7DD3A8] focus:border-transparent"
-            >
-              {GRADE_BAND_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
           </div>
 
           <div>

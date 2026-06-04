@@ -13,6 +13,7 @@ import {
 } from '../../../hooks/useAdminKnowledgeNodes';
 import { useAdminUnits } from '../../../hooks/useAdminUnits';
 import KnowledgeNodeEditPanel from './KnowledgeNodeEditPanel';
+import GradeBandBadge from './GradeBandBadge';
 import SortableList from './SortableList';
 
 /**
@@ -144,10 +145,10 @@ export default function ThreeColumnEditor({ units: unitsProp }) {
   // ─────────── render ───────────
   return (
     <div className="bg-white rounded-2xl border border-[#E5E7EB] flex overflow-x-auto" style={{ minHeight: 520 }}>
-      {/* 左欄：單元 / 次主題 */}
+      {/* 左欄：次主題 */}
       <div className="w-56 shrink-0 border-r border-[#E5E7EB] flex flex-col bg-[#F9FAFB]">
         <div className={COL_HEADER}>
-          <div className="text-xs uppercase tracking-wide text-[#6B7280]">主題 / 單元</div>
+          <div className="text-xs uppercase tracking-wide text-[#6B7280]">次主題</div>
           <span className="text-[11px] text-[#9CA3AF]">{activeUnits.length}</span>
         </div>
         <div className={COL_BODY}>
@@ -217,7 +218,10 @@ export default function ThreeColumnEditor({ units: unitsProp }) {
                       onClick={() => { setSelectedParentId(p.id); setSelectedChildId(null); }}
                       className="flex-1 min-w-0 text-left"
                     >
-                      <div className="text-xs font-mono text-[#1F2937] font-semibold">{p.code}</div>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-xs font-mono text-[#1F2937] font-semibold">{p.code}</span>
+                        <GradeBandBadge code={p.code} />
+                      </div>
                       <div className="text-xs text-[#4B5563] mt-0.5 line-clamp-2">{p.name}</div>
                     </button>
                     <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
@@ -283,10 +287,13 @@ export default function ThreeColumnEditor({ units: unitsProp }) {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm text-[#1F2937]">{n.name}</div>
-                      <div className="text-xs font-mono text-[#6B7280] mt-0.5">{n.id}</div>
+                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                        <span className="text-xs font-mono text-[#6B7280]">{n.id}</span>
+                        <GradeBandBadge code={n.id} />
+                      </div>
                     </div>
                     {n.onCanvas && (
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-[#DBEAFE] text-[#1E40AF] shrink-0" title="已在畫布上">
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-[#E0E7FF] text-[#3730A3] shrink-0" title="已在畫布上">
                         畫布
                       </span>
                     )}

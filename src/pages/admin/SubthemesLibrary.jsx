@@ -197,9 +197,15 @@ export default function SubthemesLibrary() {
 
       {!isLoading && !error && totals.subthemes > 0 && (
         <>
-          <GradeSection band="upper" subthemes={grouped.upper} countsByUnit={countsByUnit} />
-          <GradeSection band="middle" subthemes={grouped.middle} countsByUnit={countsByUnit} />
-          <GradeSection band="lower" subthemes={grouped.lower} countsByUnit={countsByUnit} />
+          {grouped.upper.length > 0 && (
+            <GradeSection band="upper" subthemes={grouped.upper} countsByUnit={countsByUnit} />
+          )}
+          {grouped.middle.length > 0 && (
+            <GradeSection band="middle" subthemes={grouped.middle} countsByUnit={countsByUnit} />
+          )}
+          {grouped.lower.length > 0 && (
+            <GradeSection band="lower" subthemes={grouped.lower} countsByUnit={countsByUnit} />
+          )}
         </>
       )}
 
