@@ -245,7 +245,13 @@ export default function KnowledgeNodesAdmin() {
   const { toast } = useToast();
 
   const { data: units = [] } = useAdminUnits({ type: 'subtheme' });
-  const activeUnits = useMemo(() => units.filter((u) => u.status === 'active'), [units]);
+  // 次主題依英文編號（code，如 Aa→Ab→Ba…）排序，方便對照課綱
+  const activeUnits = useMemo(
+    () => units
+      .filter((u) => u.status === 'active')
+      .sort((a, b) => (a.code || '').localeCompare(b.code || '') || a.name.localeCompare(b.name)),
+    [units],
+  );
   const effectiveUnitId = unitId && activeUnits.find((u) => u.id === unitId)
     ? unitId : (activeUnits[0]?.id || '');
 

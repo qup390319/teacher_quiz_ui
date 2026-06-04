@@ -652,7 +652,7 @@
 - 既有 12 個 seed 節點預設 on_canvas=true（migration 0017 升級時 backfill）
 
 **UI 元素**（spec-14）:
-- 工具列：視圖 tab pill + 次主題下拉（僅 canvas tab 顯示，只列 `type='subtheme'`）+ 自動排版 + 新增節點按鈕（「從 Word 匯入」已移到 `/admin/subthemes` §3.8，避免畫布與次主題庫雙入口混淆）
+- 工具列：視圖 tab pill + 次主題下拉（僅 canvas tab 顯示，只列 `type='subtheme'`，**依英文編號 `code` 排序**，如 Aa→Ab→Ba…Nc；「階層結構」左欄次主題清單同序）+ 自動排版 + 新增節點按鈕（「從 Word 匯入」已移到 `/admin/subthemes` §3.8，避免畫布與次主題庫雙入口混淆）
 - **畫布**：React Flow（`@xyflow/react`）+ dagre 自動排版 + custom node（卡片設計，左側 accent stripe）+ custom edge（smoothstep + 中點 × 刪除鈕）+ Dots background + Controls + MiniMap；節點以 `parent_code` 著色；箭頭從先備指向後續節點。畫布為純拓撲編輯器，不含節點欄位編輯面板
 - **編輯面板**（`KnowledgeNodeEditPanel`）：位於「階層結構」視圖第四欄，點選小節點後展開，包含基本資訊（名稱 / 單元 / 大節點 / 學習順序 / 影片）+ 迷思清單（每條可獨立編輯 / 刪除 / 新增）；ID 永遠唯讀
 - **新增節點** modal：自訂 ID + 名稱 + 單元 + 年段 + 大節點（選填）

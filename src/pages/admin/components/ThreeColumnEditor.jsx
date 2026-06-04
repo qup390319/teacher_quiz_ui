@@ -33,7 +33,13 @@ export default function ThreeColumnEditor({ units: unitsProp }) {
   const { toast } = useToast();
   const { data: unitsFallback = [] } = useAdminUnits();
   const units = unitsProp || unitsFallback;
-  const activeUnits = useMemo(() => units.filter((u) => u.status === 'active'), [units]);
+  // 次主題依英文編號（code，如 Aa→Ab→Ba…）排序，與畫布下拉一致
+  const activeUnits = useMemo(
+    () => units
+      .filter((u) => u.status === 'active')
+      .sort((a, b) => (a.code || '').localeCompare(b.code || '') || a.name.localeCompare(b.name)),
+    [units],
+  );
 
   const [unitId, setUnitId] = useState(() => activeUnits[0]?.id || '');
   // unitId 由 activeUnits 第一個提供初值；切換後可能 stale，這裡再保險一次：
