@@ -104,7 +104,7 @@
     - 學生：藍漸層 (`from-[#5DADE2] to-[#2E86C1]`)
   - **ⓘ 圓木紐扣**（卡片右上角，超出邊界 -top-2 -right-2）：圓形米色木框（`border-[3px] border-[#8B5E3C]`）+ `info` icon + 立體陰影；hover 旋轉 12deg + 縮放 110%
   - **功能說明 Popover**：木框包覆（沿用 `WOOD_OUTER` + `WOOD_INNER_CREAM`） + 上方木紋小三角箭頭指向 ⓘ + 標題「📖 主要功能」+ 特性清單
-- **底部資訊條**：木框迷你 pill + `account_tree` icon + 「水溶液單元 · INe-II-3-01 至 INe-Ⅲ-5-7（共 12 個知識節點）」
+- **底部資訊條**：木框迷你 pill + `account_tree` icon + 「水溶液單元 · INe-Ⅱ-3-01 至 INe-Ⅲ-5-7（共 12 個知識節點）」
 - **動畫**：
   - 載入：整頁以 `animate-fade-up` 系列 stagger（頂部列 → 標題 → 教師卡 +0.15s → 學生卡 +0.30s → 底部 +0.45s）
   - 互動：卡片 hover 用 cubic-bezier(0.34,1.56,0.64,1) 彈簧曲線（`-translate-y-1` + `scale-[1.02]`）；ⓘ 紐扣 hover 旋轉縮放；齒輪 hover 旋轉
@@ -583,18 +583,22 @@
 **UI 元素**（spec-14）:
 - 工具列：統計列（共 N 個 · 使用中 N · 已封存 N）+ 「顯示已封存」checkbox + 「+ 新增單元」按鈕
 - 依年段三大分區呈現（**高年級** 藍木條 / **中年級** 薄荷條 / **低年級** 橙木條），各區帶區段標題 + 計數
-- 單元列卡片：色彩條 + 名稱 + 系統徽章（若 isSystemCurrent）+ 狀態 pill + code（mono）+ 簡介
-- 操作按鈕：編輯 / 封存（或啟用）/ 刪除；系統內建單元的封存與刪除按鈕 disabled
+- 單元列卡片：色彩條 + 名稱 + 系統徽章（若 isSystemCurrent）+ 狀態 pill + 簡介 + **大節點標籤列**（`ParentNodeChips`：「包含 N 個大節點」+ 各大節點 `code` 小標籤；hover 顯示節點名稱；未綁定時顯示「尚未綁定大節點」灰字）。資料來自清單回應內嵌的 `parentNodes`（見 spec-11 §3.21），不另發請求
+- 操作按鈕：**管理大節點** / 編輯 / 封存（或啟用）/ 刪除；系統內建單元的封存與刪除按鈕 disabled
 - 新增 / 編輯 → `UnitFormModal`：名稱 + 年段下拉（低/中/高）+ 簡介
 - 確認 modal：封存 / 啟用（primary）/ 刪除（danger）共用 `AdminConfirmModal`
+- **管理大節點 modal**（`UnitParentNodesModal`，spec-11 §3.21）：左欄列所有大節點（依次主題分組、可搜尋）+ checkbox 多選；右欄列本單元已綁定大節點（可逐筆移除）。底部「新增到單元（N）」按鈕一次送出。對應端點 `GET/POST/DELETE/PUT /api/admin/units/{id}/parent-nodes`
 
 **子元件**（位於 `src/pages/admin/components/`）:
 - `UnitFormModal.jsx` — 新增 / 編輯單元表單 modal
+- `UnitParentNodesModal.jsx` — 教學單元附掛大節點管理 modal（2026-05-29 新增）
 - 共用 `AdminConfirmModal.jsx`（W2 既有）
 
 **狀態依賴**:
 - `useAdminUnits({ gradeBand?, status? })`：列表（admin 可看全部含已封存）
 - `useCreateUnit()` / `useUpdateUnit()` / `useArchiveUnit()` / `useUnarchiveUnit()` / `useDeleteUnit()`
+- `useAdminParentNodes()`：modal 左欄列所有大節點
+- `useUnitParentNodes(unitId)` / `useAttachUnitParentNodes(unitId)` / `useDetachUnitParentNode(unitId)` / `useReorderUnitParentNodes(unitId)`：單元 ↔ 大節點 M:N 關聯
 - `useUnits({ gradeBand?, includeArchived? })`：未來題組選擇器用（公開讀，任何登入者）
 
 **Word 匯入（W7b）**：
@@ -610,6 +614,7 @@
 - 摘要列：總次主題數 / 大節點總數 / 小節點總數
 - 依年段（高 / 中 / 低）分區，每個次主題顯示名稱、code（如 `Ab`、`Ba`）、所屬大節點數、小節點數
 - 右上「從 Word 匯入」按鈕 → 開啟 `DocxImportModal`，上傳 .docx 或 .zip（多檔批次），後端 dry-run 預覽階層後確認寫入
+  - merge 寫入時**不建立空殼大節點**：某大節點的小節點若全已屬其他單元（無任何新節點或未分配節點會掛上來），則略過不建立該大節點，避免產生同代碼重複；結果表的 message 會顯示「略過 N 個空殼大節點」（後端回傳 `shellsSkipped`）。既有已分配節點一律不搬動。
 - 不提供既有次主題的編輯 / 封存 / 刪除——大節點 / 小節點的編修請到「知識節點 > 階層結構」
 
 **API（既有，未新增）**：
@@ -635,29 +640,29 @@
 - 既有 12 個水溶液節點 + 48 條迷思已 seed 進 DB（`is_system_seed=true`，可編輯但不可刪）
 - W5a 階段教師端 / 學生端仍從 hard-code（`src/data/knowledgeGraph.js`）讀取；W5b 後切換為 API
 
-**四個視圖（W7a 起）**:
+**三個視圖（W7a 起；節點庫分頁已於 2026-06-03 移除，詳見 `docs/deviations.md`）**:
 1. **階層結構**（預設）：三欄＋編輯面板 — 左欄主題（單元）/ 中欄大節點 / 右欄小節點 / 第四欄編輯面板；每欄都是拖曳清單（dnd-kit），對應課綱「次主題 → 內容細目 → 知識節點」三層結構。右欄點選小節點後，第四欄展開 `KnowledgeNodeEditPanel`，可編輯節點所有欄位與迷思概念
-2. **知識節點畫布**：選一個次主題（`type='subtheme'`），看到該次主題**已加入畫布**（`on_canvas=true`）的小節點 + 先備關係箭頭。純拓撲編輯器——僅支援拖曳定位與拉線連接先備關係，不提供節點欄位編輯（欄位編輯請至「階層結構」）
-3. **節點庫**：列出當前單元中 `on_canvas=false` 的節點，可批次「加入畫布」或「移回未分配」
-4. **未分配**：列出所有 `unit_id IS NULL` 的節點，依大節點 (`parent_code`) 分組；每組可選擇下拉一鍵指派到對應年段的單元
+2. **知識節點畫布**：選一個次主題（`type='subtheme'`），看到該次主題**已加入畫布**（`on_canvas=true`）的小節點 + 先備關係箭頭。純拓撲編輯器——僅支援拖曳定位與拉線連接先備關係，不提供節點欄位編輯（欄位編輯請至「階層結構」）。**左側可收合清單面板**（`CanvasNodeListPanel`）列出該次主題**全部**小節點（依大節點分組），標示「在畫布（綠點）/ 節點庫（灰點）」並有計數摘要（共 N · 在畫布 M · 待加入 K）；點節點庫節點 → 快速加入畫布（`on_canvas=true`）、點在畫布節點 → 畫布平移置中並高亮選取
+3. **未分配**：列出所有 `unit_id IS NULL` 的節點，依大節點 (`parent_code`) 分組；每組可選擇下拉一鍵指派到對應年段的單元
 
 **節點生命週期（W5c）**：
-- **新增節點** → 進入「節點庫」（unit_id 已指定但 on_canvas=false）；不會立刻出現在畫布上
-- **「加入節點」按鈕** → 從節點庫挑選要繪製到畫布的節點（多選 + 搜尋 + 依大節點分組），確認後 on_canvas=true
-- **「從畫布移除」** → 可從節點庫視圖操作；把節點從畫布拿掉但保留資料（on_canvas=false），節點回到節點庫，先備關係保留
+- **新增節點** → 進入單元的待加入池（unit_id 已指定但 on_canvas=false）；不會立刻出現在畫布上
+- **「加入節點」按鈕** → 在畫布視圖工具列，從待加入池挑選要繪製到畫布的節點（多選 + 搜尋 + 依大節點分組），確認後 on_canvas=true；按鈕上的徽章顯示待加入數量
+- **「從畫布移除」** → 於畫布上操作（custom edge / node 控制）；把節點從畫布拿掉但保留資料（on_canvas=false），先備關係保留
 - 既有 12 個 seed 節點預設 on_canvas=true（migration 0017 升級時 backfill）
 
 **UI 元素**（spec-14）:
-- 工具列：視圖 tab pill + 次主題下拉（僅 canvas / library tab 顯示，只列 `type='subtheme'`）+ 自動排版 + 新增節點按鈕（「從 Word 匯入」已移到 `/admin/subthemes` §3.8，避免畫布與次主題庫雙入口混淆）
+- 工具列：視圖 tab pill + 次主題下拉（僅 canvas tab 顯示，只列 `type='subtheme'`）+ 自動排版 + 新增節點按鈕（「從 Word 匯入」已移到 `/admin/subthemes` §3.8，避免畫布與次主題庫雙入口混淆）
 - **畫布**：React Flow（`@xyflow/react`）+ dagre 自動排版 + custom node（卡片設計，左側 accent stripe）+ custom edge（smoothstep + 中點 × 刪除鈕）+ Dots background + Controls + MiniMap；節點以 `parent_code` 著色；箭頭從先備指向後續節點。畫布為純拓撲編輯器，不含節點欄位編輯面板
 - **編輯面板**（`KnowledgeNodeEditPanel`）：位於「階層結構」視圖第四欄，點選小節點後展開，包含基本資訊（名稱 / 單元 / 大節點 / 學習順序 / 影片）+ 迷思清單（每條可獨立編輯 / 刪除 / 新增）；ID 永遠唯讀
 - **新增節點** modal：自訂 ID + 名稱 + 單元 + 年段 + 大節點（選填）
 
 **子元件**（位於 `src/pages/admin/components/`）:
-- `KnowledgeNodeCanvas.jsx` — React Flow 畫布（dagre 自動排版 / 拖曳定位 / 拉線連接先備關係 / 中點 × 刪除）；純拓撲，無欄位編輯
+- `KnowledgeNodeCanvas.jsx` — React Flow 畫布（dagre 自動排版 / 拖曳定位 / 拉線連接先備關係 / 中點 × 刪除）；純拓撲，無欄位編輯。接 `focusNode` prop（`{ id, nonce }`）→ 用 React Flow `setCenter` 平移聚焦並選取高亮；接 `appliedLayout` prop（`{ positions, nonce }`）→ 把「自動排版」算好的座標**即時**套到畫布節點並 `fitView` 重新框選全圖（不等 DB 來回）
+- `CanvasNodeListPanel.jsx` — 畫布視圖左側「本次主題小節點」可收合清單（依大節點分組 + 在畫布/節點庫狀態 + 點擊快速加入畫布 / 聚焦）
 - `KnowledgeNodeEditPanel.jsx` — 節點編輯面板 + 迷思 CRUD（嵌入 `ThreeColumnEditor` 第四欄）
 - `NewKnowledgeNodeModal.jsx` — 新增節點 modal
-- `AutoLayoutButton.jsx` — 自動排版按鈕
+- `AutoLayoutButton.jsx` — 自動排版按鈕（dagre 計算座標 → 透過 `onApplied(positions)` 交給畫布即時套用，並 bulk-update 持久化）
 
 **狀態依賴**:
 - `useAdminKnowledgeNodes({ unitId?, unassigned? })`：列表（含迷思）

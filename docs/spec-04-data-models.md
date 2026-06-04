@@ -47,7 +47,7 @@ const { currentUser, loading, role, login, logout } = useAuth();
 |------|------|--------|------|
 | ~~`role`~~ | — | — | **P1 移除**：改由 `useAuth().role` 提供 |
 | `quizQuestions` | `Question[]` | `[...defaultQuestions]` | 出題精靈中正在編輯的題目（純 UI 狀態） |
-| `selectedNodeIds` | `string[]` | `['INe-II-3-02', 'INe-II-3-03', 'INe-II-3-05', 'INe-Ⅲ-5-4', 'INe-Ⅲ-5-7']` | 出題精靈中選定的知識節點 |
+| `selectedNodeIds` | `string[]` | `['INe-Ⅱ-3-02', 'INe-Ⅱ-3-03', 'INe-Ⅱ-3-05', 'INe-Ⅲ-5-4', 'INe-Ⅲ-5-7']` | 出題精靈中選定的知識節點 |
 | `nodeQuestionCounts` | `Record<string, number>` | `{}` | 出題精靈中各節點的預期出題數（key = 節點 ID，value = 題數 1–4，預設 1）；由 Step1Nodes 的 chip stepper 管理，供 Step2Edit 用於 CoveragePanel 顯示「實際 / 目標」 |
 | `editingQuizId` | `string \| null` | `null` | 出題精靈當前正在編輯的 quiz id：`null` = 新建 / 複製模式（儲存走 POST）；有值 = 編輯既有 quiz（儲存走 PUT，含自動暫存覆蓋同一份）。由 QuizLibrary 的「編輯／繼續編輯」設置；「複製為新題組」與 TeacherDashboard 的「新增題組／推薦題組」皆會清空此值 |
 | `editingQuizStatus` | `'draft' \| 'published' \| null` | `null` | 編輯時帶入的原始 status，用於 Step2Edit 判定是否啟用自動暫存（`published` 卷自動暫存停用，避免被降級為 draft） |
@@ -150,7 +150,7 @@ export function useClasses(filter) {
 interface Question {
   id: number;                    // 題號（1-based）
   stem: string;                  // 題幹文字
-  knowledgeNodeId: string;       // 對應知識節點 ID（如 'INe-II-3-02'）
+  knowledgeNodeId: string;       // 對應知識節點 ID（如 'INe-Ⅱ-3-02'）
   options: Option[];             // 選項陣列（固定 4 個：A/B/C/D）
 }
 
@@ -179,8 +179,8 @@ interface Quiz {
 **預設資料**:
 | ID | 標題 | 題數 | 狀態 | 涵蓋節點 |
 |----|------|------|------|----------|
-| `quiz-001` | 水溶液 · 迷思診斷（第一次） | 5 | published | INe-II-3-02, INe-II-3-03, INe-II-3-05, INe-Ⅲ-5-4, INe-Ⅲ-5-7 |
-| `quiz-002` | 水溶液 · 迷思診斷（第二次） | 5 | published | INe-II-3-02, INe-II-3-03, INe-II-3-05, INe-Ⅲ-5-4, INe-Ⅲ-5-7 |
+| `quiz-001` | 水溶液 · 迷思診斷（第一次） | 5 | published | INe-Ⅱ-3-02, INe-Ⅱ-3-03, INe-Ⅱ-3-05, INe-Ⅲ-5-4, INe-Ⅲ-5-7 |
+| `quiz-002` | 水溶液 · 迷思診斷（第二次） | 5 | published | INe-Ⅱ-3-02, INe-Ⅱ-3-03, INe-Ⅱ-3-05, INe-Ⅲ-5-4, INe-Ⅲ-5-7 |
 
 ### 2.3 Class（班級）
 **來源**: `src/data/classData.js`
@@ -271,7 +271,7 @@ interface Assignment {
 
 ```typescript
 interface KnowledgeNode {
-  id: string;                    // 節點 ID（如 'INe-II-3-02'）
+  id: string;                    // 節點 ID（如 'INe-Ⅱ-3-02'）
   name: string;                  // 節點名稱（如 '溶解現象'）
   description: string;           // 簡述
   level: 1 | 2 | 3 | 4;        // 難度層級
@@ -295,11 +295,11 @@ interface Misconception {
 子主題 A — 水溶液中的變化（溶解）
 | ID | 名稱 | Level | 先備知識 | 迷思概念數 |
 |----|------|-------|----------|-----------|
-| INe-II-3-01 | 生活中溶解的現象 | 1 | 無 | 4 |
-| INe-II-3-02 | 溶解現象（看不見與沉澱） | 1 | INe-II-3-01 | 4 |
-| INe-II-3-03 | 攪拌與溶解 | 2 | INe-II-3-02 | 4 |
-| INe-II-3-04 | 不同物質的溶解程度不同 | 3 | INe-II-3-05 | 4 |
-| INe-II-3-05 | 溶解量上限與沉澱 | 3 | INe-II-3-03 | 4 |
+| INe-Ⅱ-3-01 | 生活中溶解的現象 | 1 | 無 | 4 |
+| INe-Ⅱ-3-02 | 溶解現象（看不見與沉澱） | 1 | INe-Ⅱ-3-01 | 4 |
+| INe-Ⅱ-3-03 | 攪拌與溶解 | 2 | INe-Ⅱ-3-02 | 4 |
+| INe-Ⅱ-3-04 | 不同物質的溶解程度不同 | 3 | INe-Ⅱ-3-05 | 4 |
+| INe-Ⅱ-3-05 | 溶解量上限與沉澱 | 3 | INe-Ⅱ-3-03 | 4 |
 
 子主題 B — 酸鹼反應
 | ID | 名稱 | Level | 先備知識 | 迷思概念數 |
@@ -313,9 +313,9 @@ interface Misconception {
 | INe-Ⅲ-5-7 | 酸鹼解決生活問題 | 4 | INe-Ⅲ-5-5, INe-Ⅲ-5-6 | 4 |
 
 **ID 前綴注意事項**:
-- 子主題 A 使用 `INe-II-3-*`（II 為阿拉伯化羅馬數字「2」）
-- 子主題 B 使用 `INe-Ⅲ-5-*`（Ⅲ 為 Unicode 羅馬數字三 `Ⅲ`，**不是** ASCII 三個 I）
-- 兩個前綴並存，比對 ID 時需注意字元差異
+- 子主題 A 使用 `INe-Ⅱ-3-*`（Ⅱ 為 Unicode 羅馬數字二 `Ⅱ` U+2161，**不是** ASCII 兩個 I）
+- 子主題 B 使用 `INe-Ⅲ-5-*`（Ⅲ 為 Unicode 羅馬數字三 `Ⅲ` U+2162，**不是** ASCII 三個 I）
+- 全庫年段一律用 Unicode 羅馬數字，2026-06-03 起已不再並存英文 II/III 寫法（詳見 `docs/deviations.md`）
 
 #### 2.5.1 CustomMisconception（教師自訂迷思 — per-teacher 私有）
 

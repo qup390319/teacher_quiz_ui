@@ -292,7 +292,7 @@ StudentQuiz 偵測 `causeIds.length > 0` 時，**直接寫 DB**，不再呼叫 `
 ```json
 {
   "stem": "原始題幹文字",
-  "nodeId": "INe-II-3-03",
+  "nodeId": "INe-Ⅱ-3-03",
   "nodeName": "攪拌與溶解速度"
 }
 ```
@@ -323,7 +323,7 @@ StudentQuiz 偵測 `causeIds.length > 0` 時，**直接寫 DB**，不再呼叫 `
 ```json
 {
   "stem": "題幹文字",
-  "nodeId": "INe-II-3-03",
+  "nodeId": "INe-Ⅱ-3-03",
   "nodeName": "攪拌與溶解速度",
   "misconceptions": [
     {"id": "M03-1", "label": "…", "detail": "…"},

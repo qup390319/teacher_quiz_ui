@@ -303,11 +303,15 @@ HTTP status code：
 | `admin` | `GET /api/admin/classes/{id}/teacher` | W3 | 取得班級所屬教師（id / account / name） |
 | `classes` | `POST /api/classes/{id}/students/import-excel/preview` | W3 | Dry-run：解析 .xlsx 並回傳預覽（不寫 DB） |
 | `classes` | `POST /api/classes/{id}/students/import-excel` | W3 | 從 .xlsx 匯入學生名冊（**僅空班可用**，否則 409 CLASS_NOT_EMPTY） |
-| `admin` | `GET /api/admin/units` | W4 | 單元列表（admin 可看全部含封存） |
+| `admin` | `GET /api/admin/units` | W4 | 單元列表（admin 可看全部含封存）；每個 `UnitBrief` 內嵌 `parentNodes` 摘要（精簡大節點，依 sort_order；一支 JOIN 一次撈齊，供清單列顯示用） |
 | `admin` | `POST /api/admin/units` | W4 | 新增單元（自動 slug；UNIT_CODE_EXISTS 防重複） |
 | `admin` | `PATCH /api/admin/units/{id}` | W4 | 編輯單元名稱 / 年段 / 簡介 / 排序 |
 | `admin` | `POST /api/admin/units/{id}/archive\|unarchive` | W4 | 封存／啟用（系統內建單元 409 `UNIT_IS_SYSTEM_CURRENT`） |
 | `admin` | `DELETE /api/admin/units/{id}` | W4 | 永久刪除（系統內建單元 409） |
+| `admin` | `GET /api/admin/units/{id}/parent-nodes` | ✅ 2026-05-29 | 列出本教學單元附掛的大節點（依 sort_order；含次主題名稱方便 UI 顯示） |
+| `admin` | `POST /api/admin/units/{id}/parent-nodes` | ✅ 2026-05-29 | 批次新增 `{ parentNodeIds: [...] }`；idempotent，已存在的略過；不存在的 id 回 404 `PARENT_NODE_NOT_FOUND:...` |
+| `admin` | `DELETE /api/admin/units/{id}/parent-nodes/{parentNodeId}` | ✅ 2026-05-29 | 解除單一綁定；找不到視為成功（idempotent） |
+| `admin` | `PUT /api/admin/units/{id}/parent-nodes/reorder` | ✅ 2026-05-29 | 批次重排 `{ parentNodeIds: [...] }`；未列出的維持原相對順序排在後面 |
 | `units` | `GET /api/units` | W4 | 公開讀（任何登入者）：給教師端題組選擇器、學生端首頁分區用 |
 | `admin` | `GET /api/admin/knowledge-nodes` | W5a | 節點列表（依 unitId / unassigned / gradeBand 篩選；含迷思） |
 | `admin` | `GET /api/admin/knowledge-nodes/{id}` | W5a | 單一節點詳情 |
@@ -321,7 +325,7 @@ HTTP status code：
 | `admin` | `POST /api/admin/parent-nodes/bulk-reorder` | W7a | 批次更新 display_order（拖曳排序） |
 | `parent-nodes` | `GET /api/parent-nodes?unitId=...` | W7a | 公開讀；給三欄式 UI / 未來教師端用 |
 | `admin` | `POST /api/admin/units/import-docx/preview` | W7b | Dry-run 解析 .docx 或 .zip（含多個 docx），回傳階層 |
-| `admin` | `POST /api/admin/units/import-docx` | W7b | 寫入 DB；mode=merge / skip / create；自動 attach 既有未分配節點 |
+| `admin` | `POST /api/admin/units/import-docx` | W7b | 寫入 DB；mode=merge / skip / create；自動 attach 既有未分配節點；**不建立空殼大節點**（某大節點的小節點全已屬其他單元時略過，避免同代碼重複，回傳 `shellsSkipped` 計數） |
 | `admin` | `GET /api/admin/knowledge-nodes?onCanvas=true\|false` | W5c | 新增 query：篩選畫布上的或節點庫內的節點 |
 | `admin` | `POST /api/admin/knowledge-nodes/import-excel/preview` | W5a | Excel dry-run 預覽 |
 | `admin` | `POST /api/admin/knowledge-nodes/import-excel` | W5a | Excel 正式匯入（全部進未分配池） |
@@ -415,7 +419,7 @@ HTTP status code：
 
 靜態 Python dict `NODES`，鏡射前端 `src/data/knowledgeGraph.js`，包含 12 個知識節點及其先備關係：
 
-- 子主題 A（水溶液中的變化）：`INe-II-3-01` → `02` → `03` → `05` → `04`（5 節點）
+- 子主題 A（水溶液中的變化）：`INe-Ⅱ-3-01` → `02` → `03` → `05` → `04`（5 節點）
 - 子主題 B（酸鹼反應）：`INe-Ⅲ-5-1` → `2` → `3` → `4` → [`5`, `6` 平行] → `7`（7 節點）
 
 每個節點包含 `name`（節點名稱）、`level`（層級深度）、`subtopic`（A/B）、`prerequisites`（直接先備 ID 陣列）。

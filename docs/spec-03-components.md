@@ -156,7 +156,7 @@
 `src/components/NodeBadge.jsx`
 
 ### 功能
-知識節點識別徽章。子主題 A（INe-II-3-*）藍系、子主題 B（INe-Ⅲ-5-*）橘系。預設顯示短編號（去掉 `INe-` 前綴），完整 ID + 名稱在 `title` tooltip。
+知識節點識別徽章。子主題 A（INe-Ⅱ-3-*）藍系、子主題 B（INe-Ⅲ-5-*）橘系。預設顯示短編號（去掉 `INe-` 前綴），完整 ID + 名稱在 `title` tooltip。
 
 ### Props
 - `nodeId: string` — 完整節點 ID

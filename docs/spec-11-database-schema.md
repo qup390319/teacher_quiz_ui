@@ -10,7 +10,7 @@
 - 表名：snake_case 複數（`users`、`student_answers`）
 - 欄位名：snake_case
 - 主鍵 ID 命名規則：
-  - **語意 ID**（前端需引用、URL 友善）：使用字串，例如 `class-A`、`quiz-001`、`scenario-001`、`assign-001`、`session-{ts}`、`INe-II-3-02`、`M02-1`
+  - **語意 ID**（前端需引用、URL 友善）：使用字串，例如 `class-A`、`quiz-001`、`scenario-001`、`assign-001`、`session-{ts}`、`INe-Ⅱ-3-02`、`M02-1`
   - **代理 ID**（內部關聯，前端不暴露）：使用 `BIGSERIAL`
 - 時間欄位：`TIMESTAMPTZ`，預設 `NOW()`
 - JSON 欄位：用 `JSONB`（可索引、可查詢）
@@ -44,6 +44,8 @@
 | 18 | `knowledge_nodes` | 小節點（可選擇所屬單元、含畫布座標、先備關係） | W5a |
 | 19 | `misconceptions` | 節點的迷思概念（含學生視角、AI 二次確認問句） | W5a |
 | 20 | `parent_nodes` | 大節點 / 課綱內容細目（介於 unit 與 knowledge_node 的階層） | W7a |
+| 21 | `unit_parent_nodes` | 教學單元 ↔ 大節點 M:N 綁定 | 2026-05-29 (0021) |
+| — | （seed） | 14 個高年級教學單元（type='unit'）+ 對應 parent_node M:N | 2026-05-29 (0022) |
 
 > 註：原本說 11 張表，實際拆細為 16 張（user / teacher / student 拆 3 張、ai cache 算 1 張、新增 assignment_students）。spec-10 §6 表格中的「11 張表」描述以本文件為準。
 
@@ -179,7 +181,7 @@ CREATE TABLE quizzes (
     id                  VARCHAR(32)   PRIMARY KEY,            -- 'quiz-001'
     title               VARCHAR(128)  NOT NULL,
     status              VARCHAR(16)   NOT NULL DEFAULT 'draft',
-    knowledge_node_ids  TEXT[]        NOT NULL DEFAULT '{}',  -- ['INe-II-3-02', ...]
+    knowledge_node_ids  TEXT[]        NOT NULL DEFAULT '{}',  -- ['INe-Ⅱ-3-02', ...]
     created_by          VARCHAR(64)   REFERENCES users(id),   -- teacher user_id；nullable for seed
     is_sample           BOOLEAN       NOT NULL DEFAULT FALSE, -- W6 migration 0016：admin 標記為系統範例
     created_at          TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
@@ -474,12 +476,36 @@ CREATE INDEX units_grade_band_idx ON units(grade_band, display_order);
 ```
 
 **邏輯**：
-- 預先 seed 12 個高年級單元（migration 0013）：太陽與光的折射 / 植物世界 / 空氣與燃燒 / 聲音與樂器 / 觀測星空 / **水溶液** / 動物大觀園 / 力與運動 / 多變的天氣 / 地表的變化 / 電磁作用 / 熱對物質的影響
 - `is_system_current=true` 標記系統現有 12 個 hard-coded 知識節點所屬的單元（W4 為「水溶液」）。此旗標的單元**不可封存、不可刪除**，避免破壞既有題組與診斷流程；後端在 archive / delete 端點檢查並回 409 `UNIT_IS_SYSTEM_CURRENT`
 - W5 知識節點 DB 化後，`knowledge_nodes` 表會加 `unit_id` FK；屆時 `is_system_current` 可改為由節點關聯動態判定，本欄位作為過渡
 - **`type` 欄位區分兩種記錄**：
-  - `type='unit'`：教學單元（如「水溶液」），在「單元管理」頁面管理
-  - `type='subtheme'`：108 課綱次主題（如「物質的形態、性質及分類（Ab）」），在「知識節點 > 階層結構」管理；docx 匯入預設建立此類型
+  - `type='unit'`：教學單元（如「水溶液」「空氣與燃燒」），在「單元管理」頁面管理；教師端選單元時看到的就是這層
+  - `type='subtheme'`：108 課綱次主題（如「物質的形態、性質及分類（Ab）」「波動、光及聲音（Ka）」），在「知識節點 > 階層結構」管理；docx 匯入預設建立此類型
+  - 兩者透過 `unit_parent_nodes`（§3.21）M:N 連結；同一個次主題下的大節點可以拆/併到不同教學單元
+
+**Seed 歷史**：
+- migration 0013 預先 seed 12 個高年級單元（太陽與光的折射 / 植物世界 / 空氣與燃燒 / 聲音與樂器 / 觀測星空 / 水溶液 / 動物大觀園 / 力與運動 / 多變的天氣 / 地表的變化 / 電磁作用 / 熱對物質的影響）；其中 11 個 placeholder 在 W7a-W7b 期間經 admin UI 清除，僅留「水溶液」
+- migration 0022（2026-05-29）以「康軒風格但避開其專有修辭」為原則，重新 seed 14 個國小高年級教學單元並 attach 對應次主題的 parent_nodes：
+
+  | display_order | 學期 | 教學單元 | 對應次主題 / 拆分依據 |
+  |---|---|---|---|
+  | 1 | 五上 | 太陽與光的探究 | Ka 拆光：parent_codes ∈ {INe-Ⅲ-7 色光, INe-Ⅲ-8 光的折射} |
+  | 2 | 五上 | 植物的世界 | （Db 次主題下實際只有動物 parent；植物相關 parent 後續手動指派） |
+  | 3 | 五上 | 空氣與燃燒 | Ec 氣體 全部 |
+  | 4 | 五上 | 力與運動 | Eb 力與運動 全部 |
+  | 5 | 五下 | 觀測星空 | Fb 地球與太空 全部 |
+  | 6 | 五下 | 動物的世界 | Db 拆動物：parent_codes ∈ {INb-Ⅲ-6 動物形態} |
+  | 7 | 五下 | 熱與保溫 | Bb 溫度與熱量 全部 |
+  | 8 | 五下 | 聲音與樂器 | Ka 拆聲音：parent_codes ∈ {INe-Ⅲ-6 聲音性質} |
+  | 9 | 六上 | 天氣的變化 | Ib 天氣與氣候變化 全部 |
+  | 10 | 六上 | 地表的變化 | Ia + Hb + Fa 合併 |
+  | 11 | 六上 | 水溶液（既有，由 0022 由 display_order=6 調整為 11） | — |
+  | 12 | 六上 | 電磁作用 | Kc 電磁現象 全部 |
+  | 13 | 六下 | 簡單機械 | （課綱無直接對應的大節點；空殼） |
+  | 14 | 六下 | 物質的變化 | Ja + Jc 合併 |
+  | 15 | 六下 | 生物與環境 | Bd + Fc + Lb 合併 |
+
+  > 命名原則：避開康軒專有修辭（「面面觀／奧祕／大地／美麗」），保留課綱原文（「空氣與燃燒／力與運動／水溶液／電磁作用／簡單機械／物質的變化／生物與環境」）。docx 匯入造成的 parent_node 資料雜訊（如 Eb 力與運動 下混入 INc-II/INd-II 等跨次主題節點）保留給 admin 透過「管理大節點」 modal 手動清整。
 
 ### 3.18 `knowledge_nodes`（W5a，migration 0014）
 
@@ -567,7 +593,32 @@ CREATE INDEX parent_nodes_unit_idx ON parent_nodes(unit_id);
 - 對應 108 課綱 docx 中的「課綱內容細目指標」(如 INe-Ⅱ-3、INe-Ⅲ-5)，介於次主題（unit）與知識節點（knowledge_node）之間
 - migration 0018 自動從既有 `knowledge_nodes.parent_code` 字串升級：依 (unit_id, parent_code) distinct 建 parent_node、依文件順序 backfill `display_order`
 - `knowledge_nodes` 加 `parent_node_id` FK 並回填；`parent_code` / `parent_name` 仍保留作 denormalized cache（公開 API 不必 join）
-- W7b（後續）：Word docx 匯入會用此 schema 一次建立 unit + parent_nodes + knowledge_nodes 完整階層
+- W7b（後續）：Word docx 匯入會用此 schema 一次建立 unit + parent_nodes + knowledge_nodes 完整階層。匯入時**不建立空殼大節點**：若某大節點底下的小節點全已屬其他單元（無任何新節點或未分配節點會掛上來），則略過該大節點不建，從源頭避免產生同代碼重複（呼應 §3.20 不變量；端點回傳 `shellsSkipped` 計數）。既有已分配節點一律不搬動。
+- **不變量**：`parent_nodes.unit_id` 應指向**次主題**（`units.type='subtheme'`），而非教學單元（`type='unit'`）。早期（migration 0014/0018）從原型水溶液節點升級的 legacy 大節點曾誤指向教學單元 `unit-water-solution`，與課綱 docx 匯入建立的正規次主題節點形成同 code 重複；**migration 0025（2026-06-03）已去重**：保留正規次主題節點、把 legacy 的 `knowledge_nodes`/`unit_parent_nodes` 引用重指過去後刪除 legacy（含 fresh-DB 防呆：canonical 不存在即略過）。**migration 0026（2026-06-04）補正連帶問題**：0025 僅改了那 12 個示範知識節點的 `parent_node_id`，`unit_id` 仍停在教學單元，使三欄編輯器（先以次主題 `unit_id` 抓節點）在 Jb/Jd 下看不到它們；0026 把 5 個改 `unit_id=unit-jb`、7 個改 `unit_id=unit-jd`，並 `on_canvas=false` + 清空座標（退出畫布待重排）。同理 `knowledge_nodes.unit_id` 亦應指向次主題。詳見 `docs/deviations.md`。
+
+### 3.21 `unit_parent_nodes`（2026-05-29，migration 0021）
+
+```sql
+CREATE TABLE unit_parent_nodes (
+    unit_id         VARCHAR(64)  NOT NULL REFERENCES units(id)        ON DELETE CASCADE,
+    parent_node_id  VARCHAR(64)  NOT NULL REFERENCES parent_nodes(id) ON DELETE CASCADE,
+    sort_order      INTEGER      NOT NULL DEFAULT 0,
+    created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (unit_id, parent_node_id)
+);
+
+CREATE INDEX unit_parent_nodes_unit_idx ON unit_parent_nodes(unit_id, sort_order);
+```
+
+**邏輯**：
+- M:N 中介表，讓**教學單元**（`units.type='unit'`）可以**附掛**多個課綱大節點（`parent_nodes`）。
+- 與 `parent_nodes.unit_id`（大節點的「原次主題」歸屬）**分開**：原 FK 不動，本表只追加教學用的綁定。
+- 一個大節點可同時被多個教學單元綁定；刪除 unit 或 parent_node 都會 CASCADE 清掉對應綁定，但不會影響另一邊的本體資料。
+- `sort_order` 由 admin 在 `UnitParentNodesModal`（spec-02 §3.7）拖曳維護。
+
+**清單內嵌摘要**：`GET /api/admin/units` 回傳的每個 `UnitBrief` 內嵌 `parentNodes`（精簡欄位 `parentNodeId` / `code` / `name` / `sortOrder`，依 `sort_order` 排序），讓單元管理頁每列可直接顯示「包含哪些大節點」而不必逐單元再查（一支 JOIN 查詢一次撈齊）。公開端點 `GET /api/units` 不填充此欄位（回空陣列）。
+
+**對應 router**：`spec-10 §6` 的 `GET/POST/DELETE/PUT /api/admin/units/{id}/parent-nodes`。
 
 ---
 

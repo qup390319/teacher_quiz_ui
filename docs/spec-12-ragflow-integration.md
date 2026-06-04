@@ -76,7 +76,7 @@ Content-Type: application/json
 
 {
   "session_id": "<session_id>",
-  "question": "請列出文獻中針對 INe-II-3-02 / M02-1 的學生真實說法 3 條，並附引用。",
+  "question": "請列出文獻中針對 INe-Ⅱ-3-02 / M02-1 的學生真實說法 3 條，並附引用。",
   "stream": false
 }
 ```
@@ -173,7 +173,7 @@ Content-Type: application/json
 
 Request:
 {
-  "nodeId": "INe-II-3-02",
+  "nodeId": "INe-Ⅱ-3-02",
   "nodeName": "溶解現象（看不見與沉澱）",
   "misconceptionId": "M02-1",                 // 必填
   "misconceptionLabel": "溶解後物質消失了",      // 由前端從 knowledgeGraph 帶入
@@ -288,7 +288,7 @@ Request:
       "classId": "class-A", "className": "五年甲班",
       "studentCount": 20, "submittedCount": 20, "completionRate": 100,
       "averageMastery": 40,                    // 0~100
-      "nodePassRates": { "INe-II-3-02": 40, ... },
+      "nodePassRates": { "INe-Ⅱ-3-02": 40, ... },
       "topMisconceptions": [
         { "id": "M02-1", "label": "...", "count": 6 }, ...
       ]
@@ -296,7 +296,7 @@ Request:
     ...
   ],
   "knowledgeNodes": [                          // 涉及到的節點，給 RAGFlow 上下文
-    { "id": "INe-II-3-02", "name": "..." }, ...
+    { "id": "INe-Ⅱ-3-02", "name": "..." }, ...
   ]
 }
 

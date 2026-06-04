@@ -5,6 +5,102 @@
 
 ---
 
+### [2026-06-04] water-solution 12 知識節點所屬次主題補正（migration 0026）— 承 0025
+
+- **涉及 Spec**: `docs/spec-11-database-schema.md` §3.20 parent_nodes / knowledge_nodes 雙軸模型
+- **背景**: migration 0025 去重後，使用者於「知識節點 > 階層結構」三欄編輯器發現次主題 **Jb** 的大節點 `INe-Ⅱ-3` 顯示「沒有小節點」。根因：0025 只改了 12 個示範知識節點的 `parent_node_id`（指到正規次主題大節點 `pnode-jb-ine-ii-3` / `pnode-jd-ine-5`），但 `unit_id` 仍停在教學單元 `unit-water-solution`；而三欄編輯器第三欄[ThreeColumnEditor.jsx](../src/pages/admin/components/ThreeColumnEditor.jsx) 先以**次主題 unit_id** 抓知識節點再依大節點過濾，故 `unit_id≠次主題` 的節點不會出現 → **0025 只做了一半**。依雙軸模型 `knowledge_nodes.unit_id` 本應指向次主題（這 12 筆指向教學單元亦為 migration 0014 歷史遺留）。
+- **安全性確認**: 後端無任何處硬編碼靠 `unit-water-solution` 抓這些節點（端點皆依當下 unitId 過濾）；教學單元「水溶液」對這些節點的關聯走 `unit_parent_nodes`（M:N，0025 已重指 canonical），搬 `unit_id` 不影響、單元列大節點標籤照常；示範題組／教師端為 Mock／前端、靠節點代碼不靠 unit_id。
+- **處置（migration 0026，使用者 2026-06-04 選「修階層 + 退出畫布待重排」）**:
+  - `parent_node_id=pnode-jb-ine-ii-3` 的 5 個（INe-Ⅱ-3-01~05）→ `unit_id=unit-jb`；`pnode-jd-ine-5` 的 7 個（INe-Ⅲ-5-1~7）→ `unit_id=unit-jd`。
+  - 同時 `on_canvas=false` 並**清空 canvas 座標**（`bulk-set-canvas` 對既有座標會沿用，故必須清空才能於重加時走自動排版），避免與 Jd 既有 3 個畫布節點重疊。
+  - selector 以 `parent_node_id` 鎖定 → 全新 DB（0025 已略過合併、節點仍指 legacy）上命中 0 列、安全 no-op。downgrade 還原 `unit_id=unit-water-solution` + `on_canvas=true`（座標走自動排版，best-effort）。
+  - ⚠️ 踩雷：revision id 過長（`alembic_version` 為 `varchar(32)`），首版 id 35 字元 → `StringDataRightTruncationError`、交易整個回滾（資料未動）。已縮短為 `0026_relocate_water_kn`。
+- **備份**: `backend/backups/pre_relocate_water_kn_20260604.sql`。
+- **驗證**: 編輯器等價查詢確認 Jb→INe-Ⅱ-3→5 子節點、Jd→INe-Ⅲ-5→7 子節點；12 筆 `unit_id` 已正確、`on_canvas=false`、座標已清空；水溶液教學單元 `unit_parent_nodes` 綁定完好。
+- **Spec 已更新**: ✅（spec-11 §3.20；本筆 deviations）
+
+---
+
+### [2026-06-03] 去重 water-solution 大節點（migration 0025）— **推翻本日稍早「合理共用」之認定**
+
+- **涉及 Spec**: `docs/spec-11-database-schema.md` §3.20 `parent_nodes` / §3.21 `unit_parent_nodes`
+- **背景**: 後台「管理大節點」modal 左欄出現「（未指派次主題）」分組，內含 `INe-Ⅱ-3`、`INe-Ⅲ-5`。盤查發現同一課綱代碼存在**兩份** `parent_node`：
+  - legacy（migration 0014/0018 從原型 12 個水溶液知識節點升級）`pnode-water-solution-ine-3` / `-ine-5`，其 `unit_id` 指向**教學單元** `unit-water-solution`（`type='unit'`）。
+  - canonical（runtime 課綱 Word 匯入建立、**不在任何 migration/seed**）`pnode-jb-ine-ii-3`（次主題 `unit-jb`）/ `pnode-jd-ine-5`（次主題 `unit-jd`），原本 0 引用（空殼）。
+  - modal 左欄分組以 `subthemeById.get(parentNode.unitId)` 對應，legacy 的 `unit_id` 指到教學單元（非次主題）→ 對不到 → 落入「（未指派次主題）」。根因：`parent_nodes.unit_id` 依設計應指向**次主題**（§3.20），legacy 早於次主題概念、指到教學單元，屬語意錯誤。
+- **與前一決定的衝突（必讀）**: 本日稍早〈資料一致性盤點〉(下方同日記錄) 第 31-33 點曾**刻意**：(a) 把 `unit-water-solution` 綁到 legacy `pnode-water-solution-ine-3/5`；(b) 認定「同 code 跨不同單元屬**合理共用**…非錯誤」而保留重複。**本筆推翻 (b) 對 `INe-Ⅱ-3` / `INe-Ⅲ-5` 的認定**：因該 pair 並非「跨兩個次主題的合理共用」，而是「legacy 掛在教學單元（非次主題）」的歷史誤建。經使用者 2026-06-03 明示「確保資料沒有重複」、並選擇「以官方課綱文件名稱為主」後執行去重。
+- **替代方案 / 處置（migration 0025）**: 保留 canonical（官方課綱細目名稱 + 正確次主題歸屬），把 legacy 的所有引用重指到 canonical，再刪除 legacy：
+  - `knowledge_nodes.parent_node_id` 12 筆（INe-Ⅱ-3-01~05 → `pnode-jb-ine-ii-3`；INe-Ⅲ-5-1~7 → `pnode-jd-ine-5`）+ 同步反正規化 `parent_name` 快取（`parent_code` 不變）。
+  - `unit_parent_nodes.parent_node_id` 2 筆（`unit-water-solution` 的綁定改指 canonical；canonical 原 0 綁定，無 PK 衝突）。
+  - 刪除 2 筆 legacy `parent_nodes`。`parent_nodes` 203→201。
+  - **fresh-DB 防呆**：canonical 由 runtime 匯入、不在 migration 鏈中。upgrade 對每筆合併先檢查 canonical 是否存在，不存在（全新 DB 尚未匯入課綱、亦無重複）即略過，避免 FK 違規。
+  - downgrade 可還原（重建 legacy + 引用指回，以 code 鎖定本批）。已實測 downgrade→upgrade 往返正確。
+- **已知殘留 / 後續**: 課綱 docx 匯入本身仍可能對「既有知識節點已有的大節點」再建一份同 code 節點（本案重複的源頭）。根治需改匯入邏輯（匯入時偵測既有 parent_node 並複用），屬更大範圍，未在本次處理。
+- **備份**: `backend/backups/pre_dedup_water_parent_nodes_20260603.sql`（全庫 pg_dump）。
+- **驗證**: legacy 0 筆殘留、`INe-Ⅱ-3`/`INe-Ⅲ-5` 各 1 筆且均歸正確次主題、modal「未指派」不再含此 2 碼（`orphanMissing` 2→0）、12+2 引用已重指、`parent_name` 已同步、down/up 往返 ✅。
+- **Spec 已更新**: ✅（spec-11 §3.20/§3.21；本筆 deviations）
+
+---
+
+### [2026-06-03] 知識節點頁移除「節點庫」分頁（四視圖 → 三視圖）
+- **涉及 Spec**: `docs/spec-02-routes-and-pages.md` §3.8（KnowledgeNodesAdmin 視圖清單）
+- **背景**: 使用者檢視 `/admin/knowledge-nodes` 工具列時，詢問「節點庫」與「未分配」兩個分頁是否仍有用途。盤點後確認兩者皆為功能性視圖，但「節點庫」與畫布視圖工具列的「加入節點」modal（`AddNodesToCanvasModal`）功能高度重疊——兩者都是從單元待加入池（`on_canvas=false`）挑節點上畫布。使用者決定只移除「節點庫」分頁、保留「未分配」（後者是唯一能批次指派 `unit_id IS NULL` 節點到單元的入口，無替代路徑）。
+- **替代方案 / 影響**:
+  - 「加入畫布」改由畫布視圖的「加入節點」modal 達成（功能等價）。
+  - 「移回未分配」動作隨「節點庫」視圖一併移除；此動作目前無其他 UI 入口（使用者已知並接受）。若日後需要，可在畫布 node 控制或 modal 內補回。
+- **同步更新項目**:
+  - 程式：`src/pages/admin/KnowledgeNodesAdmin.jsx` — 移除 `VIEW_TABS` 的 `library` 項、刪除 `LibraryView` 元件（約 215 行）與其 render 區塊、移除未再使用的 `useBulkSetCanvas` import；`needLibrary` 與次主題下拉條件由 `(canvas || library)` 收斂為 `canvas`；`libraryNodes` 仍保留供畫布「加入節點」徽章與空畫布說明使用，並將 `refetchLibrary()` 接到 modal `onAdded` 讓徽章即時更新。
+  - Spec：spec-02 §3.8 由「四個視圖」改寫為「三個視圖」、調整節點生命週期與工具列說明（下拉僅 canvas tab 顯示）。
+- **驗證**: `npm run lint` ✅ / `npm run build` ✅ / Preview 手動確認三分頁切換正常、畫布「加入節點」徽章運作。
+- **Spec 已更新**: ✅（spec-02）
+
+---
+
+### [2026-06-03] 資料一致性盤點：稽核 SQL 與實際 schema 落差 + 連帶清整
+
+- **涉及 Spec**: `docs/spec-11-database-schema.md`（subthemes / parent_nodes / unit_parent_nodes 雙軸模型）、`docs/sop-knowledge-node-canvas-import.md` §4.3
+- **背景**: 應使用者要求對知識節點做三大塊一致性盤點（階層 / 畫布 / 教學單元↔大節點）。原稽核 SQL 依舊版理解撰寫，與實際 schema 不符，揭露以下落差與待清整項目。
+- **稽核 SQL 落差（重要，下次稽核請沿用正解）**:
+  1. **無 `subthemes` 表**：次主題實際是 `units` 內 `type='subtheme'` 的列（39 筆）。
+  2. **`parent_nodes` 無 `subtheme_id` 欄**：歸屬次主題用 `parent_nodes.unit_id`。
+  3. **雙軸模型**：`knowledge_nodes.unit_id` 指向「次主題 unit」（舊直連）；`unit_parent_nodes` 則是「教學 unit（type='unit'）↔ 大節點」的 M:N 掛載（migration 0021/0022 新增）。兩者命名空間幾乎不交集——因此「kn 的 parent 是否掛在該 unit」這類稽核若混用兩軸會 100% 誤判（當時誤報 404/404）。正解：教學單元用 `unit_parent_nodes`、次主題結構用 `knowledge_nodes.unit_id` + `parent_nodes.unit_id`，**分開稽核、不可交叉比對**。
+  4. `grade_band` 全為 `upper`；中/高年級（Ⅱ/Ⅲ）區分只在 code 字串，不在 `grade_band` 欄。年段徽章 `GradeBandBadge.detectGradeFromCode()` 正確改讀 code，無誤。
+- **連帶清整（同次盤點，使用者逐項授權執行）**:
+  1. **補 water-solution 大節點掛載**：示範單元 `unit-water-solution` 先前 `unit_parent_nodes` 為 0 筆，後台「管理大節點」modal（走 `useUnitParentNodes`）看不到其大節點。已 INSERT 2 筆（`pnode-water-solution-ine-3` / `-ine-5`，sort_order 0/1）。
+  2. **刪 6 筆空殼 parent_nodes**（docx 匯入雜訊，kn=0 且 attached=0）：`pnode-id-inc-13`、`pnode-noteunit-inc-13`、`pnode-la-ine-ii-1-9faa98`、`pnode-noteunit-ine-1`、`pnode-me-inf-ii-5`、`pnode-noteunit-inf-5`。parent_nodes 209→203。其餘重複 code 的「本尊」（有 kn 或 attached）全數保留；同 code 跨不同單元屬合理共用（如 `INe-Ⅱ-3` 同時存在 unit-jb 與 unit-water-solution），非錯誤。
+     > ⚠️ **2026-06-03 後續更正**：本點對 `INe-Ⅱ-3` / `INe-Ⅲ-5` 的「合理共用」認定已被**同日稍晚的去重**推翻——該 pair 實為「legacy 掛在教學單元（非次主題）」的歷史誤建，已於 migration 0025 合併去重。詳見本檔最上方〈去重 water-solution 大節點（migration 0025）〉。第 1 點所 INSERT 的 2 筆綁定亦改指 canonical 節點。
+  3. **重排 3 單元畫布**（SOP §4.3：群組間 x ≥ 460、卡片寬 240）：`unit-ea` / `unit-ab` / `unit-kc` 原群組 x 區間互相穿插，已整群平移至不重疊區段（77 個節點座標更新）。`unit-ea` 因 docx 匯入時群內節點本就散落，採「整群不重疊、不動群內相對位置」方案（使用者選 a），故單元總寬較大但群組清楚分離。
+- **未處理 / 保留**:
+  - 96 個空大節點（多為 `pnode-noteunit-*`，unit_id NULL 的課綱母清單）暫留，待確認是否為後台指派來源池。
+  - `INb-Ⅲ-4`（無「新增」字樣）兩筆接近空殼，因 unit-eb 那筆 attached=1，保守保留待人工確認。
+- **備份**: `backend/backups/pre_fixes_20260603_155435.sql`；套用腳本留存 `backend/backups/apply_d4_d6.sql`、座標清單 `backend/backups/moves.json`。
+- **驗證**: D4 刪除後無新孤兒 kn（0）；D6 三單元群組 x 區間驗證互不重疊 ✅。
+- **Spec 已更新**: ✅（本筆 deviations；spec-11 雙軸模型理解已澄清於此）
+
+---
+
+### [2026-06-03] 知識節點編號統一為 Unicode 羅馬數字（覆蓋「禁止改編號格式」鐵律）
+
+- **涉及 Spec / 規範**: `CLAUDE.md`「禁止事項 — 禁止修改知識節點 ID 格式」、`CLAUDE.md`「領域知識速查」、`docs/spec-11-database-schema.md`（knowledge_nodes / misconceptions / quizzes）、`docs/sop-knowledge-node-canvas-import.md` §5
+- **背景**: 資料一致性盤點發現 24 個知識節點 id 仍使用**英文 `II` / `III`**（其餘節點皆為 Unicode 羅馬數字 `Ⅱ`=U+2161 / `Ⅲ`=U+2162），其中含 docx 匯入殘留與一筆四段手誤 `INc-II-2-1-2`。使用者於 2026-06-03 **明示授權全面統一**，並確認接受動到示範題組（quiz-001/002，含 MEMORY 標記「不要動」的 `INe-II-3-*`）。
+- **⚠️ 鐵律覆蓋說明**: CLAUDE.md 原寫「禁止修改知識節點 ID 格式（特別注意 `INe-II-3-*` 與 `INe-Ⅲ-5-*` 兩種前綴並存）」。本次經使用者明確指示後**一次性覆蓋**此鐵律，將英文寫法全面正規化為羅馬數字；自此系統內**不再並存**英文 II/III 寫法。
+- **替代方案 / 執行**:
+  1. **備份**: 執行前 `pg_dump` 全庫 → `backend/backups/pre_romanize_20260603_153211.sql`（可回滾）。
+  2. **Migration** `0024_romanize_node_ids`（`backend/alembic/versions/20260603_0024_romanize_node_ids.py`）：24 筆 `knowledge_nodes.id` 改名（含 `INc-II-2-1-2`→`INc-Ⅱ-2-2` 手誤修正）；連帶 `misconceptions.node_id`（先卸 `misconceptions_node_id_fkey`→改→重掛，因該 FK 為 ON UPDATE NO ACTION）、`quiz_questions.knowledge_node_id`、`quizzes.knowledge_node_ids`(text[])、`knowledge_nodes.prerequisites`(text[])、`custom_misconceptions.node_id`。附帶修 `INe-Ⅲ-10-08` 先備的英文 III 錯字、`INc-Ⅲ-15-1` 名稱開頭重複編號。具 `downgrade()`。
+  3. **後端種子**: `knowledge_nodes_seed.json` / `quizzes.json` / `scenarios.json` 三檔的 `INe-II-3-*`→羅馬（確保 `seed --reset` 不會打回英文）。
+  4. **前端**: 14 個原始碼檔（`quizData.js`、`followUpEngine.js`、`followUpPrompts.js`、`KnowledgeMap.jsx`、`Step1Nodes.jsx`、`AppContext.jsx`、`theme.js`、`NodeBadge.jsx`、`KnowledgeSkillTree.jsx`、`StudentReport.jsx`、`LoginPage.jsx`、`NewKnowledgeNodeModal.jsx`、`__loadtest__/{meta.json,answers.large.js}`）的寫死 `INe-II-3-*`→羅馬。
+- **影響範圍**: 僅 `INe-II-3-*`（示範題組那 5 個）寫死於前端/種子；其餘 19 個英文編號僅存在於 DB（docx 匯入），不在原始碼。學生作答歷史透過 `quiz_questions` FK 保留、不受影響。
+- **驗證**:
+  - DB: `alembic upgrade head` → 0024 ✅；英文編號殘留 0、手誤已修、20 條迷思與 8 題出題正確跟轉、quiz 陣列全羅馬、先備 0 斷鏈、FK 0 孤兒 ✅
+  - 前端: `npm run build` ✅（11.13s）、`npm run lint` ✅（0/0）
+  - 中文編碼: UTF-8 無 BOM 寫回，抽查中文完好 ✅
+- **遺留事項**:
+  - backend 容器**未掛載**原始碼（image build-in），本次以 `docker cp` 將 migration 送入執行中容器套用；**下次 rebuild image 才會內含 0024**，新環境直接 `alembic upgrade head` 即可。
+  - 容器內未安裝 `ruff`/`uv`（CLAUDE.md 假設 `uv run ruff`），migration 改用 **host ruff 0.15.12** 檢查通過（`All checks passed!`）。
+- **Spec 已更新**: ✅（本筆 deviations + CLAUDE.md「禁止事項」與「領域知識速查」改為「統一羅馬數字、不再並存」）
+
+---
+
 ### [2026-05-28] AssignmentManagement 從 N×M 矩陣改為雙視角卡片列表
 - **涉及 Spec**: `spec-02-routes-and-pages.md` §2.6
 - **問題**: 原 spec §2.6 規定「派題矩陣（列為題組、欄為班級）」，但實際在多班級（10+）多題組情境下，矩陣會雙向滾動、認知負擔過高，且最常見動作「派發到多班」需要點 N 次格子。

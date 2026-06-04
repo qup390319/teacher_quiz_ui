@@ -1129,7 +1129,7 @@ grep -rE "\btext-xs\b|text-\[1[0-4]px\]" src/pages/teacher src/components --excl
 
 **規則**：
 - 根據 node ID 前綴自動判定子主題並上色：
-  - 子主題 A（溶解 `INe-II-3-*`）→ 藍系（bg `#E6F2FB` / border `#3B8BC2` / text `#0E3A5C`）
+  - 子主題 A（溶解 `INe-Ⅱ-3-*`）→ 藍系（bg `#E6F2FB` / border `#3B8BC2` / text `#0E3A5C`）
   - 子主題 B（酸鹼 `INe-Ⅲ-5-*`）→ 橘系（bg `#FBEFE0` / border `#D4843C` / text `#7A4A18`）
   - 其他 → 灰系（fallback）
 - 預設顯示**短編號**（去掉 `INe-` 前綴，如 `II-3-02`），完整 ID + 節點名稱放在 `title` 屬性提供 hover tooltip
@@ -1138,7 +1138,7 @@ grep -rE "\btext-xs\b|text-\[1[0-4]px\]" src/pages/teacher src/components --excl
 
 **Props**：`nodeId`（必填）、`name`（hover 顯示）、`size`、`showFullId`、`className`
 
-**禁止**：在任何頁面自寫 `<span>INe-II-3-02</span>` 或類似節點 ID 顯示，必須用 NodeBadge。
+**禁止**：在任何頁面自寫 `<span>INe-Ⅱ-3-02</span>` 或類似節點 ID 顯示，必須用 NodeBadge。
 
 ### 14.3 KnowledgeMap 節點顯示（2026-05）
 

@@ -127,10 +127,18 @@ bg-[<status-bg>] text-[<status-text>]
 └─────────────┴────────────────────────────────────────────┘
 ```
 
-- Sidebar 寬 `w-60`（240px），背景 `bg-white`，右側細 border
+- Sidebar 寬 `w-56`（224px），背景 `bg-white`，右側細 border
 - 頂部 logo 區：`SciLens Admin` + 薄荷綠 dot
 - 中間 nav：Dashboard / 帳號管理 / 班級總覽 / 知識節點 / 單元管理 / 範例題庫 / 系統設定
 - 底部：登出按鈕 + 當前 admin 名稱
+
+#### Sidebar 開關（可收合）
+
+- Header 左側放摺疊鈕（Material Symbols `menu` / `menu_open`，`w-10 h-10` hover `bg-[#F4F8F6]`）。
+- 展開：`w-56`（224px），顯示 logo 文字、nav label、admin 名稱與「登出」文字。
+- 收合：`w-16`（64px）的純圖示 rail——隱藏所有文字，nav 圖示置中（`justify-center`），原文字改以 `title` 屬性提供 hover tooltip。
+- 寬度切換套 `transition-[width] duration-200`；收合時 nav 加 `overflow-x-hidden` 避免內容外溢。
+- 收合狀態存於 `localStorage` key `scilens.admin.sidebarCollapsed`（`'1'`/`'0'`），跨頁導覽維持一致（`AdminLayout` 每頁重新掛載）。
 
 ---
 
