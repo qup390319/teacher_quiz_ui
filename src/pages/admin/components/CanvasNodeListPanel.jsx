@@ -1,14 +1,5 @@
 import { useMemo, useState } from 'react';
 
-// 用 inline style 做多行截斷：本專案 Tailwind build 未產生 line-clamp 工具類別，
-// 改用 inline -webkit-box（一定生效），避免長名稱換行撐破面板版面。
-const CLAMP_2 = {
-  display: '-webkit-box',
-  WebkitBoxOrient: 'vertical',
-  WebkitLineClamp: 2,
-  overflow: 'hidden',
-};
-
 /**
  * 畫布視圖左側「本次主題小節點」清單面板（spec-02 §3.9）。
  *
@@ -120,7 +111,7 @@ export default function CanvasNodeListPanel({
                       className={`mt-1 w-2 h-2 rounded-full shrink-0 ${n._onCanvas ? 'bg-[#22C55E]' : 'bg-[#D1D5DB]'}`}
                     />
                     <span className="flex-1 min-w-0">
-                      <span className="text-xs text-[#1F2937]" style={CLAMP_2}>{n.name}</span>
+                      <span className="block text-xs text-[#1F2937] line-clamp-2">{n.name}</span>
                       <span className="block text-[10px] font-mono text-[#9CA3AF] mt-0.5 truncate">{n.id}</span>
                     </span>
                     <span className="shrink-0 self-center">

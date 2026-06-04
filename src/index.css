@@ -96,6 +96,38 @@ td, th {
   white-space: normal;
 }
 
+/* ── 多行截斷工具：line-clamp（修正 Tailwind v4 cascade-layer 順序衝突）──────────
+ * 問題：Tailwind v4 把 .block / .flex / .grid / .inline-* 等 display utility 排在
+ *       .line-clamp-* 之後（同一 @layer utilities、同 specificity），因此元素若「同時」
+ *       有 line-clamp-N 與某個 display utility，display:-webkit-box 會被 block/flex 覆蓋，
+ *       多行截斷靜默失效、長文字換行撐破版面。
+ *       （單獨用 line-clamp-N 仍可運作；新版 Chromium 會把 computed display 序列化成
+ *        flow-root，截斷照常生效，但易讓人在 devtools 誤判為壞掉。）
+ * 解法：在此用「未分層（unlayered）」規則重新定義 line-clamp。依 CSS cascade layers 規範，
+ *       未分層宣告優先於任何 @layer 內宣告，故能穩定贏過 display utility，讓全專案所有
+ *       line-clamp-N className 一次生效且面向未來，無需逐處改。
+ * 限制：本組為固定 class 選擇器，不涵蓋 responsive 變體（如 md:line-clamp-2）；目前專案
+ *       未使用 responsive line-clamp，若日後需要，請避免在同元素混用 display utility。
+ * 詳見 docs/deviations.md、docs/spec-07-ui-design-system.md §6。
+ */
+.line-clamp-1,
+.line-clamp-2,
+.line-clamp-3,
+.line-clamp-4,
+.line-clamp-5,
+.line-clamp-6 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.line-clamp-1 { -webkit-line-clamp: 1; }
+.line-clamp-2 { -webkit-line-clamp: 2; }
+.line-clamp-3 { -webkit-line-clamp: 3; }
+.line-clamp-4 { -webkit-line-clamp: 4; }
+.line-clamp-5 { -webkit-line-clamp: 5; }
+.line-clamp-6 { -webkit-line-clamp: 6; }
+.line-clamp-none { -webkit-line-clamp: unset; }
+
 /* ── Material Symbols 預設設定 ─────────────────────────────────── */
 .material-symbols-rounded {
   font-variation-settings:

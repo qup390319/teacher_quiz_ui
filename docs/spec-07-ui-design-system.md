@@ -580,6 +580,21 @@ ease-[cubic-bezier(0.34,1.56,0.64,1)]
 <div className="animate-fade-up-delay-3">{/* 底部資訊 */}</div>
 ```
 
+### 6.5 多行文字截斷 `line-clamp`（`src/index.css` 全域工具）
+
+長文字（單元簡介、大/小節點名稱、迷思 label、匯入預覽等）一律用 `line-clamp-N` 截斷成固定行數，避免換行撐破卡片版面。專案在 `src/index.css` 以**未分層（unlayered）規則**重新定義了 `.line-clamp-1`～`.line-clamp-6` 與 `.line-clamp-none`。
+
+| class | 行數 |
+|-------|------|
+| `line-clamp-1` ~ `line-clamp-6` | 截斷為 1～6 行（加 `…`） |
+| `line-clamp-none` | 取消截斷 |
+| `truncate` | 單行截斷（Tailwind 內建，不受本規則影響） |
+
+**為何要在 `index.css` 自訂而非直接用 Tailwind 內建？**
+Tailwind v4 把 `.block / .flex / .grid` 等 display utility 排在 `.line-clamp-*` 之後（同一 `@layer utilities`、同 specificity），導致元素若同時有 `line-clamp-N` 與某個 display utility，`display:-webkit-box` 會被覆蓋、截斷靜默失效。未分層宣告依 CSS cascade layers 規範優先於任何 `@layer` 內宣告，故能穩定生效。詳見 `docs/deviations.md`。
+
+> ⚠️ 此組為固定 class 選擇器，**不涵蓋 responsive 變體**（如 `md:line-clamp-2`）。目前專案未使用 responsive line-clamp；若日後需要，請避免在同元素混用 display utility。
+
 ---
 
 ## 7. 間距與佈局
