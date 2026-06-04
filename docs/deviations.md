@@ -5,6 +5,36 @@
 
 ---
 
+### [2026-06-04] 知識節點完整階層收進版控（migration 0027 快照 upsert）
+
+- **涉及 Spec**: `docs/spec-11-database-schema.md` §3.20（parent_nodes / knowledge_nodes 資料來源）
+- **背景**: 完整課綱階層（39 次主題 + 201 大節點 + 404 小節點 + 48 迷思 + 36 綁定）原本只透過 runtime「Word 匯入」+ ad-hoc SQL 建在 DB 裡、**不在版控**，所以 `git push + alembic upgrade` 部署不會帶這份資料——各環境各自匯入、彼此不一致（部署後發現 production 只有 35 個次主題、缺 `aa/bc/jb/me`、畫布/去重都沒有）。
+- **處置（migration 0027，使用者 2026-06-04 選「快照 migration」）**:
+  - 把本地當前完整階層匯出為快照 `backend/alembic/versions/data/0027_knowledge_hierarchy.json`（commit 進 repo，約 309 KB；排除 created_at/updated_at）。
+  - migration 0027 用 SQLAlchemy `on_conflict_do_update`（**upsert**）依外鍵相依順序（units→parent_nodes→knowledge_nodes→misconceptions→unit_parent_nodes）載入，作為最後一支。
+  - **upsert 而非 insert**：不論前面 0014/0022/0024/0025/0026 對這些列做了什麼，最終狀態都被強制覆蓋成快照 → fresh 與既有 DB 皆得一致結果，且冪等。
+  - **只新增/更新、不刪除快照外的列**：避免誤刪被題組引用的節點（prod 題組僅引用 5 個 demo 節點，皆在快照內）。
+  - downgrade 為 no-op（資料快照無法乾淨還原；需回復改用部署前 pg_dump 全量備份）。
+- **後續維護**: 之後若在本地再匯入/調整課綱，需**重新產生快照 JSON 並新增 0028**（snapshot migration 的本質——資料變更要出新版）。
+- **驗證**: 本地套用 0027（既有資料→no-op upsert，counts 不變）；受控測試竄改 2 筆名稱 + 刪 1 筆節點 → downgrade 0026 → upgrade head → 名稱還原（UPDATE 路徑）、節點與迷思重新插回（INSERT 路徑）✅；ruff + py_compile 通過。
+- **Spec 已更新**: ✅（spec-11 §3.20；本筆 deviations）
+
+---
+
+### [2026-06-04] `line-clamp-*` 多行截斷修正：Tailwind v4 cascade-layer 順序衝突
+
+- **涉及 Spec**: `docs/spec-07-ui-design-system.md` §6.5（新增）
+- **問題描述**: 全專案多處用 `line-clamp-N`（單元簡介、大/小節點名稱、迷思 label、匯入預覽等）做多行截斷。瀏覽器實測（dev server 注入長字串量測 `clientHeight`/`scrollHeight`）發現：
+  - Tailwind v4 **有**正確產生 `.line-clamp-2 { display:-webkit-box; … }`，且**單獨**使用 `line-clamp-N` 時截斷正常運作（新版 Chromium 會把 computed `display` 序列化成 `flow-root`，截斷仍生效，但易在 devtools 被誤判為壞掉）。
+  - 真正失效情境：元素**同時**有 `line-clamp-N` 與某個 display utility（`block` / `flex` / `grid` / `inline-*`）。Tailwind v4 把 display utility 排在 `.line-clamp-*` **之後**（同一 `@layer utilities`、同 specificity），`display:block/flex` 覆蓋 `-webkit-box` → 截斷靜默失效、長文字撐破版面。className 寫的順序不影響（勝負取決於產生的 CSS 順序）。
+  - `CanvasNodeListPanel.jsx` 曾踩此雷，先前以 inline `-webkit-box` style 繞過。
+- **替代方案 / 處置**: 在 `src/index.css` 以**未分層（unlayered）規則**重新定義 `.line-clamp-1`～`.line-clamp-6` + `.line-clamp-none`。依 CSS cascade layers 規範，未分層宣告優先於任何 `@layer` 內宣告，故能穩定贏過 display utility，讓全專案所有 `line-clamp-N` className 一次生效且面向未來、無需逐處改。同步移除 `CanvasNodeListPanel.jsx` 的 inline workaround，回歸統一 `className="… line-clamp-2"` 寫法。
+- **限制**: 固定 class 選擇器，不涵蓋 responsive 變體（如 `md:line-clamp-2`）；目前專案未使用，已於 index.css 註解與 spec-07 §6.5 註明。
+- **驗證**: `npm run build` + `npm run lint` 通過；dev server 實測 `line-clamp-2` / `line-clamp-2 block` / `line-clamp-2 flex` 三者皆 `clientHeight < scrollHeight`（截斷生效）。
+- **Spec 已更新**: ✅（spec-07 §6.5；本筆 deviations）
+
+---
+
 ### [2026-06-04] water-solution 12 知識節點所屬次主題補正（migration 0026）— 承 0025
 
 - **涉及 Spec**: `docs/spec-11-database-schema.md` §3.20 parent_nodes / knowledge_nodes 雙軸模型
