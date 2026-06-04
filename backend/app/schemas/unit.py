@@ -9,6 +9,16 @@ UnitStatus = Literal["active", "archived"]
 UnitType = Literal["unit", "subtheme"]
 
 
+class UnitParentNodeBrief(BaseModel):
+    """單元清單列上顯示用的精簡大節點（spec-11 §3.21）。"""
+    parent_node_id: str = Field(serialization_alias="parentNodeId")
+    code: str
+    name: str
+    sort_order: int = Field(serialization_alias="sortOrder")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
 class UnitBrief(BaseModel):
     id: str
     code: str
@@ -19,6 +29,11 @@ class UnitBrief(BaseModel):
     status: UnitStatus
     type: UnitType
     is_system_current: bool = Field(serialization_alias="isSystemCurrent")
+    # 本單元綁定的大節點（依 sort_order）。僅清單端點填充；
+    # 其他端點（建立 / 封存等）回空陣列，前端操作後會重抓清單。
+    parent_nodes: list[UnitParentNodeBrief] = Field(
+        default_factory=list, serialization_alias="parentNodes",
+    )
     created_at: datetime = Field(serialization_alias="createdAt")
     updated_at: datetime = Field(serialization_alias="updatedAt")
 

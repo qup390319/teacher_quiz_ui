@@ -69,6 +69,8 @@ class ImportResult(BaseModel):
     units_added: int = Field(default=0, serialization_alias="unitsAdded")
     parents_added: int = Field(default=0, serialization_alias="parentsAdded")
     children_added: int = Field(default=0, serialization_alias="childrenAdded")
+    # 略過未建立的「空殼大節點」數：其小節點全已屬其他單元，建了只會是同代碼重複
+    shells_skipped: int = Field(default=0, serialization_alias="shellsSkipped")
     message: str | None = None
 
     model_config = ConfigDict(populate_by_name=True)
@@ -197,19 +199,28 @@ async def _persist_one(
             status="error", message="UNIT_CODE_OR_NAME_MISSING",
         )
 
-    # 找既有 unit
+    # 找既有 unit：必須同 grade_band 才能合併，避免跨年段同 code 互蓋（2026-05-29 fix）
     existing = await db.execute(
-        select(Unit).where(Unit.code == unit_code.lower()),
+        select(Unit).where(
+            Unit.code == unit_code.lower(),
+            Unit.grade_band == grade_band,
+        ),
     )
     unit = existing.scalar_one_or_none()
     if unit is None:
         # 嘗試用原樣（保留大小寫）找一次
-        existing = await db.execute(select(Unit).where(Unit.code == unit_code))
+        existing = await db.execute(
+            select(Unit).where(
+                Unit.code == unit_code,
+                Unit.grade_band == grade_band,
+            ),
+        )
         unit = existing.scalar_one_or_none()
 
     units_added = 0
     parents_added = 0
     children_added = 0
+    shells_skipped = 0
 
     if unit is not None:
         if mode == "skip":
@@ -224,8 +235,9 @@ async def _persist_one(
             )
         # merge — 繼續往下處理
     else:
-        # 建新 unit
-        new_unit_id = f"unit-{_slug(unit_code)}"
+        # 建新 unit — id 帶年段後綴，避免不同年段同 code 撞 id（2026-05-29 fix）
+        suffix = {"upper": "", "middle": "-mid", "lower": "-low"}.get(grade_band, "")
+        new_unit_id = f"unit-{_slug(unit_code)}{suffix}"
         if await db.get(Unit, new_unit_id):
             return ImportResult(
                 file_name=file_name, unit_code=unit_code, status="error",
@@ -253,14 +265,36 @@ async def _persist_one(
         p_name = p["name"].strip()
         if not p_code:
             continue
-        # 找既有
+
+        # 先抓出本大節點所有小節點的現況，判斷是否真的會有節點掛上來
+        child_states: list[tuple[str, str, int, KnowledgeNode | None]] = []
+        for c_order, c in enumerate(p.get("children", []), start=1):
+            c_code = c["code"].strip()
+            c_name = c["name"].strip()
+            if not c_code:
+                continue
+            child_states.append(
+                (c_code, c_name, c_order, await db.get(KnowledgeNode, c_code)),
+            )
+        # 「會掛上來」= 全新節點，或既有但尚未分配（unit_id 為 None）
+        will_attach = any(
+            kn is None or kn.unit_id is None for _, _, _, kn in child_states
+        )
+
+        # 找既有（本次主題下同 code）
         existing_p = (await db.execute(
             select(ParentNode).where(
                 ParentNode.unit_id == unit.id,
                 ParentNode.code == p_code,
             ),
         )).scalar_one_or_none()
+
         if existing_p is None:
+            if not will_attach:
+                # 所有小節點都已屬於別的單元（或本大節點根本沒小節點）→
+                # 新建只會是同代碼空殼重複，故略過不建（不搬動既有節點）。
+                shells_skipped += 1
+                continue
             pn_id = f"pnode-{_slug(unit.code)}-{_slug(p_code)}"[:64]
             if await db.get(ParentNode, pn_id):
                 # 撞 id，加 hash 避免
@@ -274,13 +308,8 @@ async def _persist_one(
             await db.flush()
             parents_added += 1
 
-        # 處理 children
-        for c_order, c in enumerate(p.get("children", []), start=1):
-            c_code = c["code"].strip()
-            c_name = c["name"].strip()
-            if not c_code:
-                continue
-            existing_kn = await db.get(KnowledgeNode, c_code)
+        # 掛 children（沿用先前抓好的 child_states，避免重複查詢）
+        for c_code, c_name, c_order, existing_kn in child_states:
             if existing_kn is not None:
                 # merge 模式：
                 #   - 若節點已分配到別的 unit：完全不動（避免破壞既有結構）
@@ -307,9 +336,17 @@ async def _persist_one(
 
     await db.commit()
 
+    message = None
+    if shells_skipped:
+        message = (
+            f"略過 {shells_skipped} 個空殼大節點"
+            "（其小節點已屬其他單元，避免同代碼重複）"
+        )
+
     return ImportResult(
         file_name=file_name, unit_code=unit_code,
         status="created" if units_added else "merged",
         units_added=units_added, parents_added=parents_added,
-        children_added=children_added,
+        children_added=children_added, shells_skipped=shells_skipped,
+        message=message,
     )

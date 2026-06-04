@@ -1,7 +1,7 @@
 """Unit table — 課程單元（W4）。See spec-11 §3.17."""
 from datetime import datetime
 
-from sqlalchemy import TIMESTAMP, CheckConstraint, Index, String, Text
+from sqlalchemy import TIMESTAMP, CheckConstraint, Index, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
@@ -24,10 +24,12 @@ class Unit(Base):
             name="units_type_chk",
         ),
         Index("units_grade_band_idx", "grade_band", "display_order"),
+        # 同一 code 在不同年段可重複（middle/upper 都有 'ab'）— migration 0022
+        UniqueConstraint("code", "grade_band", name="units_code_grade_band_uq"),
     )
 
-    id: Mapped[str] = mapped_column(String(64), primary_key=True)
-    code: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    id: Mapped[str] = mapped_column(String(64), nullable=False, primary_key=True)
+    code: Mapped[str] = mapped_column(String(64), nullable=False)
     name: Mapped[str] = mapped_column(String(64), nullable=False)
     grade_band: Mapped[str] = mapped_column(String(16), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)

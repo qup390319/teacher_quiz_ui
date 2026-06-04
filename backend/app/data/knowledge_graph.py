@@ -5,35 +5,35 @@ determine prerequisite chains and topological ordering.
 """
 
 NODES: dict[str, dict] = {
-    "INe-II-3-01": {
+    "INe-Ⅱ-3-01": {
         "name": "生活中溶解的現象",
         "level": 1,
         "subtopic": "A",
         "prerequisites": [],
     },
-    "INe-II-3-02": {
+    "INe-Ⅱ-3-02": {
         "name": "溶解現象（看不見與沉澱）",
         "level": 1,
         "subtopic": "A",
-        "prerequisites": ["INe-II-3-01"],
+        "prerequisites": ["INe-Ⅱ-3-01"],
     },
-    "INe-II-3-03": {
+    "INe-Ⅱ-3-03": {
         "name": "攪拌與溶解速度",
         "level": 2,
         "subtopic": "A",
-        "prerequisites": ["INe-II-3-02"],
+        "prerequisites": ["INe-Ⅱ-3-02"],
     },
-    "INe-II-3-05": {
+    "INe-Ⅱ-3-05": {
         "name": "溶解量上限與沉澱",
         "level": 3,
         "subtopic": "A",
-        "prerequisites": ["INe-II-3-03"],
+        "prerequisites": ["INe-Ⅱ-3-03"],
     },
-    "INe-II-3-04": {
+    "INe-Ⅱ-3-04": {
         "name": "不同物質的溶解程度不同",
         "level": 3,
         "subtopic": "A",
-        "prerequisites": ["INe-II-3-05"],
+        "prerequisites": ["INe-Ⅱ-3-05"],
     },
     "INe-Ⅲ-5-1": {
         "name": "水溶液包含溶質和溶劑",

@@ -1,6 +1,6 @@
 [
   {
-    "id": "INe-II-3-01",
+    "id": "INe-Ⅱ-3-01",
     "name": "生活中溶解的現象",
     "description": "在日常生活中觀察並辨識常見的溶解現象",
     "videoUrl": "https://market.cloud.edu.tw/resources/video/1838699",
@@ -41,14 +41,14 @@
     ]
   },
   {
-    "id": "INe-II-3-02",
+    "id": "INe-Ⅱ-3-02",
     "name": "溶解是物質在水中變小而看不見，有的物質能夠溶解，有的物質不容易溶解在水中，會出現沉澱",
     "description": "溶解是物質在水中變小而看不見，有的物質能夠溶解，有的物質不容易溶解在水中而出現沉澱",
     "videoUrl": "https://market.cloud.edu.tw/resources/video/1838700",
     "videoTitle": "生活中溶解的現象",
     "level": 1,
     "prerequisites": [
-      "INe-II-3-01"
+      "INe-Ⅱ-3-01"
     ],
     "teachingStrategy": "把鹽水加熱蒸發，讓學生親眼看到鹽結晶重新出現，破除「溶解＝消失」的迷思；同時對照冰塊融化過程，凸顯「溶解」與「融化」的差別。",
     "studentHint": "你知道嗎？糖溶在水裡看不見，是因為它變成超級小的粒子分散在水中，糖其實還在喔，把水蒸發掉就會看到糖跑出來。",
@@ -84,14 +84,14 @@
     ]
   },
   {
-    "id": "INe-II-3-03",
+    "id": "INe-Ⅱ-3-03",
     "name": "攪拌可以增加物質在水中溶解的速度，但是不能增加溶解的量",
     "description": "攪拌可以增加物質在水中溶解的速度，但是不能增加溶解的量",
     "videoUrl": "https://market.cloud.edu.tw/resources/video/1844511",
     "videoTitle": "如何增加物質溶解的速度",
     "level": 2,
     "prerequisites": [
-      "INe-II-3-02"
+      "INe-Ⅱ-3-02"
     ],
     "teachingStrategy": "兩杯相同水量各加 5 g 糖，一杯快速攪拌、一杯不動，計時觀察兩杯完全溶解的時間差異；然後把糖加到飽和讓學生討論「攪拌能不能讓更多糖溶進去」，澄清速度與量的差別。",
     "studentHint": "你知道嗎？攪拌只能讓糖溶得更快，但水裡能溶解的糖總量是有限的，攪到天荒地老也不會讓水溶下更多糖。",
@@ -127,14 +127,14 @@
     ]
   },
   {
-    "id": "INe-II-3-04",
+    "id": "INe-Ⅱ-3-04",
     "name": "不同物質在水中的溶解程度不同",
     "description": "不同物質在水中的溶解程度不同，有些容易溶解、有些不容易",
     "videoUrl": "https://market.cloud.edu.tw/resources/video/1844512",
     "videoTitle": "不同物質的溶解程度",
     "level": 3,
     "prerequisites": [
-      "INe-II-3-05"
+      "INe-Ⅱ-3-05"
     ],
     "teachingStrategy": "在同樣水量、同樣溫度下，分組測試糖、鹽、麵粉、油等四種物質的溶解情形，比較哪些能溶、哪些不能、能溶多少，引導學生歸納「不同物質溶解程度不同」。",
     "studentHint": "你知道嗎？同樣是一杯水，能溶解的糖量跟能溶解的鹽量是不一樣的，每種物質都有自己的溶解能力。",
@@ -170,14 +170,14 @@
     ]
   },
   {
-    "id": "INe-II-3-05",
+    "id": "INe-Ⅱ-3-05",
     "name": "同一種物質在相同的環境下，在水中有一定的溶解量，超過這個量會出現沉澱",
     "description": "同一種物質在相同的環境下，在水中有一定的溶解量，超過這個量會出現沉澱",
     "videoUrl": "https://market.cloud.edu.tw/resources/video/1844513",
     "videoTitle": "不同物質的溶解的程度",
     "level": 3,
     "prerequisites": [
-      "INe-II-3-03"
+      "INe-Ⅱ-3-03"
     ],
     "teachingStrategy": "在 100 mL 水中持續加鹽並攪拌，直到出現飽和沉澱；引導學生記錄「能溶幾匙」並討論為何攪拌也無法再溶。再把同一杯水加熱，觀察沉澱重新溶解、放涼後又出現沉澱的循環，建立「溶解量上限」與「溫度」的概念。",
     "studentHint": "你知道嗎？一杯水能溶解的糖是有上限的，超過這個量再加糖，糖就會沉在杯底，再怎麼攪也溶不下去囉。",

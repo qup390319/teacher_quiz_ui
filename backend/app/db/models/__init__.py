@@ -12,6 +12,7 @@ from app.db.models.quiz import Quiz, QuizOption, QuizQuestion
 from app.db.models.scenario import ScenarioQuestion, ScenarioQuiz
 from app.db.models.treatment import TreatmentMessage, TreatmentSession
 from app.db.models.unit import Unit
+from app.db.models.unit_parent_node import UnitParentNode
 from app.db.models.user import Student, Teacher, User
 
 __all__ = [
@@ -36,5 +37,6 @@ __all__ = [
     "TreatmentMessage",
     "TreatmentSession",
     "Unit",
+    "UnitParentNode",
     "User",
 ]

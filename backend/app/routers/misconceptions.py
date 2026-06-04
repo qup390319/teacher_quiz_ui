@@ -23,7 +23,7 @@ router = APIRouter()
 # Allowed knowledge node IDs (must match src/data/knowledgeGraph.js).
 # Hard-coded since the curriculum is fixed (12 nodes for 水溶液 unit).
 _ALLOWED_NODE_IDS = {
-    "INe-II-3-01", "INe-II-3-02", "INe-II-3-03", "INe-II-3-04", "INe-II-3-05",
+    "INe-Ⅱ-3-01", "INe-Ⅱ-3-02", "INe-Ⅱ-3-03", "INe-Ⅱ-3-04", "INe-Ⅱ-3-05",
     "INe-Ⅲ-5-1", "INe-Ⅲ-5-2", "INe-Ⅲ-5-3", "INe-Ⅲ-5-4",
     "INe-Ⅲ-5-5", "INe-Ⅲ-5-6", "INe-Ⅲ-5-7",
 }
