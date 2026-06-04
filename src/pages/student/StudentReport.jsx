@@ -92,7 +92,7 @@ export default function StudentReport() {
       ? misconceptionSource
           .map((mId) => knowledgeNodes.find((n) => n.misconceptions.find((m) => m.id === mId))?.id)
           .filter(Boolean)
-      : ['INe-II-3-02', 'INe-Ⅲ-5-4']
+      : ['INe-Ⅱ-3-02', 'INe-Ⅲ-5-4']
   ).filter(Boolean);
 
   const uniqueWrongNodes = [...new Set(wrongNodeIds)];
@@ -104,7 +104,7 @@ export default function StudentReport() {
   const needsPrereqReview = wrongNodesWithPrereqs.length > 0;
 
   const remedialNodeIds = needsPrereqReview
-    ? ['INe-II-3-01', 'INe-II-3-02', 'INe-Ⅲ-5-1']
+    ? ['INe-Ⅱ-3-01', 'INe-Ⅱ-3-02', 'INe-Ⅲ-5-1']
     : uniqueWrongNodes;
 
   const remedialNodes = remedialNodeIds

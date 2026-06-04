@@ -444,7 +444,7 @@ export default function LoginPage() {
       <div className="relative z-10 flex justify-center mt-4 sm:mt-6 animate-fade-up-delay-3">
         <p className="text-xs sm:text-sm font-medium text-[#5A3E22] flex items-center gap-1.5 drop-shadow-[0_1px_0_rgba(255,255,255,0.5)]">
           <Icon name="account_tree" filled className="text-[#7A5232] text-base" />
-          水溶液單元 · INe-II-3-01 至 INe-Ⅲ-5-7（共 12 個知識節點）
+          水溶液單元 · INe-Ⅱ-3-01 至 INe-Ⅲ-5-7（共 12 個知識節點）
         </p>
       </div>
 

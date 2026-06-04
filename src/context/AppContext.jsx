@@ -49,7 +49,7 @@ export function AppProvider({ children }) {
   // 出題精靈
   const [quizQuestions, setQuizQuestions] = useState([...defaultQuestions]);
   const [selectedNodeIds, setSelectedNodeIds] = useState([
-    'INe-II-3-02', 'INe-II-3-03', 'INe-II-3-05', 'INe-Ⅲ-5-4', 'INe-Ⅲ-5-7',
+    'INe-Ⅱ-3-02', 'INe-Ⅱ-3-03', 'INe-Ⅱ-3-05', 'INe-Ⅲ-5-4', 'INe-Ⅲ-5-7',
   ]);
   const [nodeQuestionCounts, setNodeQuestionCounts] = useState({});
   // 出題精靈正在編輯的 quiz id（null = 新建 / 複製；有值 = 編輯既有）

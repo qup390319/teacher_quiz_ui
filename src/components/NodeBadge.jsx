@@ -2,14 +2,14 @@
  * NodeBadge — 知識節點識別徽章（D5 強化版）
  *
  * spec-07 §節點徽章 規範：
- * - 子主題 A（溶解 INe-II-3-*）= 藍系
+ * - 子主題 A（溶解 INe-Ⅱ-3-*）= 藍系
  * - 子主題 B（酸鹼 INe-Ⅲ-5-*）= 橘系
  * - 左側色帶（color stripe）強化辨識，不只靠文字色
  * - 字體放大、min-width 加寬，回應教授「字體或圖標弄大」回饋
  * - 預設顯示短編號（去掉 INe- 前綴），完整 ID 在 tooltip
  *
  * Props:
- *   - nodeId: 完整節點 ID（如 'INe-II-3-02', 'INe-Ⅲ-5-4'）
+ *   - nodeId: 完整節點 ID（如 'INe-Ⅱ-3-02', 'INe-Ⅲ-5-4'）
  *   - name?: 節點名稱（會放 title 屬性供 hover）
  *   - size?: 'sm' | 'md' | 'lg'（預設 'md'）
  *   - showFullId?: boolean（預設 false，true 時顯示完整 ID）

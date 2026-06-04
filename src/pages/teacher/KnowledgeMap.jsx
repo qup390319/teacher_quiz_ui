@@ -51,7 +51,7 @@ export default function KnowledgeMap() {
             </button>
           </div>
           <p className="text-sm text-[#636E72] ml-8">
-            水溶液單元 · 因材網對應節點 INe-II-3-01 至 INe-Ⅲ-5-7 ·
+            水溶液單元 · 因材網對應節點 INe-Ⅱ-3-01 至 INe-Ⅲ-5-7 ·
             <span className="ml-2 font-medium text-[#2D3436]">{knowledgeNodes.length} 個知識節點</span>
             <span className="mx-1 text-[#BDC3C7]">·</span>
             <span className="font-medium text-[#2D3436]">{totalDefault} 個系統預設迷思</span>

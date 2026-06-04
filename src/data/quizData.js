@@ -3,7 +3,7 @@ export const defaultQuestions = [
   {
     id: 1,
     stem: '媽媽在杯子裡的水加了一匙糖，用湯匙攪一攪後，糖看不見了。請問糖跑去哪裡了？',
-    knowledgeNodeId: 'INe-II-3-02',
+    knowledgeNodeId: 'INe-Ⅱ-3-02',
     options: [
       { tag: 'A', content: '糖還在水裡，只是變成很小很小的粒子，眼睛看不到。', diagnosis: 'CORRECT' },
       { tag: 'B', content: '糖不見了，已經完全消失了。', diagnosis: 'M02-1' },
@@ -14,7 +14,7 @@ export const defaultQuestions = [
   {
     id: 2,
     stem: '小明在一杯水裡加了好多糖，攪了很久之後，杯底還是有一些糖沒有溶解。為什麼？',
-    knowledgeNodeId: 'INe-II-3-03',
+    knowledgeNodeId: 'INe-Ⅱ-3-03',
     options: [
       { tag: 'A', content: '攪得不夠用力，再多攪一下就一定能全部溶完。', diagnosis: 'M03-1' },
       { tag: 'B', content: '這杯水已經溶不下那麼多糖了，攪拌只能讓糖溶得比較快，不能溶更多。', diagnosis: 'CORRECT' },
@@ -25,7 +25,7 @@ export const defaultQuestions = [
   {
     id: 3,
     stem: '小華把鹽一直加進一杯水中，加到後來杯底有鹽溶不掉了。為什麼？',
-    knowledgeNodeId: 'INe-II-3-05',
+    knowledgeNodeId: 'INe-Ⅱ-3-05',
     options: [
       { tag: 'A', content: '一杯水能溶的鹽有限，太多就溶不了了。', diagnosis: 'CORRECT' },
       { tag: 'B', content: '鹽沉到杯底是因為鹽比較重，不是因為溶不下。', diagnosis: 'M05-2' },
@@ -62,7 +62,7 @@ export const quiz002Questions = [
   {
     id: 1,
     stem: '把鹽放進水裡攪一攪，鹽看不見了，但是水變鹹了。為什麼？',
-    knowledgeNodeId: 'INe-II-3-02',
+    knowledgeNodeId: 'INe-Ⅱ-3-02',
     options: [
       { tag: 'A', content: '鹽已經變成另一種東西了。', diagnosis: 'M02-4' },
       { tag: 'B', content: '鹽變成很小的粒子散在水中，所以水是鹹的。', diagnosis: 'CORRECT' },
@@ -73,7 +73,7 @@ export const quiz002Questions = [
   {
     id: 2,
     stem: '兩杯一樣多的水，各放入一樣多的糖。A 杯不攪拌，B 杯用湯匙快速攪拌。比較這兩杯水，會發現什麼？',
-    knowledgeNodeId: 'INe-II-3-03',
+    knowledgeNodeId: 'INe-Ⅱ-3-03',
     options: [
       { tag: 'A', content: '最後兩杯溶的糖一樣多，只是 B 杯比較快溶完。', diagnosis: 'CORRECT' },
       { tag: 'B', content: 'B 杯可以溶比較多糖，因為攪拌會讓水裝下更多糖。', diagnosis: 'M03-1' },
@@ -84,7 +84,7 @@ export const quiz002Questions = [
   {
     id: 3,
     stem: '在一杯水中一直加糖並攪拌，加到水溶不下為止。你會看到什麼？',
-    knowledgeNodeId: 'INe-II-3-05',
+    knowledgeNodeId: 'INe-Ⅱ-3-05',
     options: [
       { tag: 'A', content: '多出來的糖會沉在杯底，因為這杯水已經溶不下了。', diagnosis: 'CORRECT' },
       { tag: 'B', content: '糖沉在杯底只是因為太重，再多攪一下就會溶了。', diagnosis: 'M05-2' },
@@ -280,7 +280,7 @@ export const QUIZZES_DATA = [
     title: '水溶液 · 迷思診斷（第一次）',
     status: 'published',
     questionCount: 5,
-    knowledgeNodeIds: ['INe-II-3-02', 'INe-II-3-03', 'INe-II-3-05', 'INe-Ⅲ-5-4', 'INe-Ⅲ-5-7'],
+    knowledgeNodeIds: ['INe-Ⅱ-3-02', 'INe-Ⅱ-3-03', 'INe-Ⅱ-3-05', 'INe-Ⅲ-5-4', 'INe-Ⅲ-5-7'],
     questions: defaultQuestions,
     createdAt: '2024-03-01',
   },
@@ -289,7 +289,7 @@ export const QUIZZES_DATA = [
     title: '水溶液 · 迷思診斷（第二次）',
     status: 'published',
     questionCount: 5,
-    knowledgeNodeIds: ['INe-II-3-02', 'INe-II-3-03', 'INe-II-3-05', 'INe-Ⅲ-5-4', 'INe-Ⅲ-5-7'],
+    knowledgeNodeIds: ['INe-Ⅱ-3-02', 'INe-Ⅱ-3-03', 'INe-Ⅱ-3-05', 'INe-Ⅲ-5-4', 'INe-Ⅲ-5-7'],
     questions: quiz002Questions,
     createdAt: '2024-03-20',
   },

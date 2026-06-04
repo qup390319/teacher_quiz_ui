@@ -3,7 +3,7 @@ import { useApp } from '../../../context/AppContext';
 import { knowledgeNodes } from '../../../data/knowledgeGraph';
 import KnowledgeSkillTree from '../../../components/teacher/KnowledgeSkillTree';
 
-const SUBTOPIC_A_IDS = ['INe-II-3-01', 'INe-II-3-02', 'INe-II-3-03', 'INe-II-3-05', 'INe-II-3-04'];
+const SUBTOPIC_A_IDS = ['INe-Ⅱ-3-01', 'INe-Ⅱ-3-02', 'INe-Ⅱ-3-03', 'INe-Ⅱ-3-05', 'INe-Ⅱ-3-04'];
 const SUBTOPIC_B_IDS = ['INe-Ⅲ-5-1', 'INe-Ⅲ-5-2', 'INe-Ⅲ-5-3', 'INe-Ⅲ-5-4', 'INe-Ⅲ-5-5', 'INe-Ⅲ-5-6', 'INe-Ⅲ-5-7'];
 const TOTAL_A = SUBTOPIC_A_IDS.length;
 const TOTAL_B = SUBTOPIC_B_IDS.length;

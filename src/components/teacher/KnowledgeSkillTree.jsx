@@ -29,11 +29,11 @@ const HEX_R = 42;
 const SVG_H = 610;
 
 const A_NODES = [
-  { id: 'INe-II-3-01', x: COL_X[0], y: ROW_Y_A, stage: 0 },
-  { id: 'INe-II-3-02', x: COL_X[1], y: ROW_Y_A, stage: 1 },
-  { id: 'INe-II-3-03', x: COL_X[2], y: ROW_Y_A, stage: 2 },
-  { id: 'INe-II-3-05', x: COL_X[3], y: ROW_Y_A, stage: 3 },
-  { id: 'INe-II-3-04', x: COL_X[4], y: ROW_Y_A, stage: 4, gold: true },
+  { id: 'INe-Ⅱ-3-01', x: COL_X[0], y: ROW_Y_A, stage: 0 },
+  { id: 'INe-Ⅱ-3-02', x: COL_X[1], y: ROW_Y_A, stage: 1 },
+  { id: 'INe-Ⅱ-3-03', x: COL_X[2], y: ROW_Y_A, stage: 2 },
+  { id: 'INe-Ⅱ-3-05', x: COL_X[3], y: ROW_Y_A, stage: 3 },
+  { id: 'INe-Ⅱ-3-04', x: COL_X[4], y: ROW_Y_A, stage: 4, gold: true },
 ];
 
 const B_NODES = [
