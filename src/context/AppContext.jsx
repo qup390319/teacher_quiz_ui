@@ -48,6 +48,8 @@ const AppContext = createContext(null);
 export function AppProvider({ children }) {
   // 出題精靈
   const [quizQuestions, setQuizQuestions] = useState([...defaultQuestions]);
+  // 出題精靈當前選定的單元（一份題組只綁一個單元）。預設「水溶液」相容既有示範資料。
+  const [selectedUnitId, setSelectedUnitId] = useState('unit-water-solution');
   const [selectedNodeIds, setSelectedNodeIds] = useState([
     'INe-Ⅱ-3-02', 'INe-Ⅱ-3-03', 'INe-Ⅱ-3-05', 'INe-Ⅲ-5-4', 'INe-Ⅲ-5-7',
   ]);
@@ -98,6 +100,7 @@ export function AppProvider({ children }) {
     <AppContext.Provider value={{
       // 出題精靈
       quizQuestions, setQuizQuestions,
+      selectedUnitId, setSelectedUnitId,
       selectedNodeIds, setSelectedNodeIds,
       nodeQuestionCounts, setNodeQuestionCounts,
       editingQuizId, setEditingQuizId,

@@ -312,7 +312,7 @@ HTTP status code：
 | `admin` | `POST /api/admin/units/{id}/parent-nodes` | ✅ 2026-05-29 | 批次新增 `{ parentNodeIds: [...] }`；idempotent，已存在的略過；不存在的 id 回 404 `PARENT_NODE_NOT_FOUND:...` |
 | `admin` | `DELETE /api/admin/units/{id}/parent-nodes/{parentNodeId}` | ✅ 2026-05-29 | 解除單一綁定；找不到視為成功（idempotent） |
 | `admin` | `PUT /api/admin/units/{id}/parent-nodes/reorder` | ✅ 2026-05-29 | 批次重排 `{ parentNodeIds: [...] }`；未列出的維持原相對順序排在後面 |
-| `units` | `GET /api/units` | W4 | 公開讀（任何登入者）：給教師端題組選擇器、學生端首頁分區用 |
+| `units` | `GET /api/units` | W4（2026-06-05 補 `parentNodes`） | 公開讀（任何登入者）：給教師端題組選擇器、學生端首頁分區用。支援 `?type=unit` 只取教學單元。每個 `UnitBrief` 內嵌 `parentNodes`（`unit_parent_nodes` JOIN，與 admin 端一致）——教師端出題選教學單元後靠此反查知識節點（`parentNodeId`），因 `knowledge_nodes.unit_id` 指向次主題而非教學單元 |
 | `admin` | `GET /api/admin/knowledge-nodes` | W5a | 節點列表（依 unitId / unassigned / gradeBand 篩選；含迷思） |
 | `admin` | `GET /api/admin/knowledge-nodes/{id}` | W5a | 單一節點詳情 |
 | `admin` | `POST /api/admin/knowledge-nodes` | W5a | 新增節點 |

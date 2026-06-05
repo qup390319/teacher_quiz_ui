@@ -69,6 +69,12 @@ function MisconceptionItem({ m, onSaved, onDeleted }) {
             <div className="text-sm font-semibold text-[#1F2937]">{m.label}</div>
             <div className="text-xs text-[#6B7280] font-mono mt-0.5">{m.id}</div>
             {m.detail && <div className="text-xs text-[#4B5563] mt-1 line-clamp-2">{m.detail}</div>}
+            {m.source && (
+              <div className="text-[11px] text-[#9CA3AF] mt-1 line-clamp-2" title={m.source}>
+                <span className="material-symbols-rounded text-xs align-middle mr-0.5">menu_book</span>
+                {m.source}
+              </div>
+            )}
           </div>
           <button type="button" onClick={() => setEditing(true)}
                   className="text-xs text-[#1E40AF] hover:underline shrink-0">編輯</button>

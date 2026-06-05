@@ -37,6 +37,7 @@ import ComingSoonPage from './pages/admin/ComingSoonPage';
 import UnitsManagement from './pages/admin/UnitsManagement';
 import SubthemesLibrary from './pages/admin/SubthemesLibrary';
 import KnowledgeNodesAdmin from './pages/admin/KnowledgeNodesAdmin';
+import MisconceptionsManagement from './pages/admin/MisconceptionsManagement';
 import SampleQuizzes from './pages/admin/SampleQuizzes';
 
 const Teacher = ({ children }) => <RequireAuth role="teacher">{children}</RequireAuth>;
@@ -88,6 +89,7 @@ export default function App() {
             <Route path="/admin/units" element={<Admin><UnitsManagement /></Admin>} />
             <Route path="/admin/subthemes" element={<Admin><SubthemesLibrary /></Admin>} />
             <Route path="/admin/knowledge-nodes" element={<Admin><KnowledgeNodesAdmin /></Admin>} />
+            <Route path="/admin/misconceptions" element={<Admin><MisconceptionsManagement /></Admin>} />
             <Route path="/admin/sample-quizzes" element={<Admin><SampleQuizzes /></Admin>} />
 
             {/* 學生端 */}

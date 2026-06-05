@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import TeacherLayout from '../../../components/TeacherLayout';
 import StepIndicator from '../../../components/StepIndicator';
@@ -6,22 +6,36 @@ import { useApp } from '../../../context/AppContext';
 import { useTour } from '../../../context/TourContext';
 import { Icon } from '../../../components/ui/woodKit';
 import { useUnsavedChangesPrompt } from '../../../hooks/useUnsavedChangesPrompt';
+import { useUnits } from '../../../hooks/useAdminUnits';
+import { useAllKnowledgeNodes, nodesForUnit } from '../../../hooks/useKnowledgeNodes';
+import Step0Unit from './Step0Unit';
 import Step1Nodes from './Step1Nodes';
 import Step2Edit from './Step2Edit';
 
-const STEPS = ['決定出題範圍（選擇節點）', '製作題組（編輯題目）'];
+const STEPS = ['選擇單元', '選擇節點', '製作題組'];
+
+function parseStep(raw) {
+  const n = parseInt(raw ?? '', 10);
+  return n >= 1 && n <= 3 ? n : 1;
+}
 
 export default function QuizCreateWizard() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const {
-    selectedNodeIds,
+    selectedUnitId, selectedNodeIds,
     isWizardDirty, setIsWizardDirty,
   } = useApp();
   const { startTour } = useTour();
-  const initialStep = searchParams.get('step') === '2' ? 2 : 1;
+  const initialStep = parseStep(searchParams.get('step'));
   const [currentStep, setCurrentStep] = useState(initialStep);
   const [pendingNavigateTo, setPendingNavigateTo] = useState(null);
+
+  const { data: units = [] } = useUnits({ type: 'unit' });
+  const { data: allNodes = [], isLoading: nodesLoading } = useAllKnowledgeNodes();
+  const selectedUnit = units.find((u) => u.id === selectedUnitId);
+  const unitName = selectedUnit?.name ?? '迷思概念診斷測驗';
+  const unitNodes = useMemo(() => nodesForUnit(selectedUnit, allNodes), [selectedUnit, allNodes]);
 
   // 進入頁面時重置 dirty 旗標（只在 mount 時重置；切換 step 不應重置）
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -36,8 +50,11 @@ export default function QuizCreateWizard() {
     else navigate(to);
   };
 
-  const canGoStep2 = selectedNodeIds.length > 0;
-  const canNavigateTo = (n) => (n === 1 ? true : canGoStep2);
+  const canNavigateTo = (n) => {
+    if (n === 1) return true;
+    if (n === 2) return !!selectedUnitId;
+    return selectedNodeIds.length > 0;  // n === 3
+  };
 
   return (
     <TeacherLayout>
@@ -58,7 +75,7 @@ export default function QuizCreateWizard() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
           <span className="text-[#2D3436] font-semibold">
-            {currentStep === 1 ? '步驟一：決定出題範圍' : '步驟二：製作題組'}
+            {STEPS[currentStep - 1] ? `步驟${['一', '二', '三'][currentStep - 1]}：${STEPS[currentStep - 1]}` : ''}
           </span>
         </nav>
         <div className="mb-5 sm:mb-7 flex items-center gap-3 sm:gap-4">
@@ -77,7 +94,7 @@ export default function QuizCreateWizard() {
               <h1 className="text-xl sm:text-2xl font-bold text-[#2D3436] mb-0.5">建立題組</h1>
               <button
                 type="button"
-                onClick={() => startTour(currentStep === 1 ? 'quiz-step1' : 'quiz-step2')}
+                onClick={() => startTour(currentStep === 3 ? 'quiz-step2' : 'quiz-step1')}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[#C8D6C9] text-[#3D5A3E] text-sm font-semibold hover:bg-[#EEF5E6] transition-colors shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
                 title="瞭解此步驟的功能"
               >
@@ -85,7 +102,7 @@ export default function QuizCreateWizard() {
                 操作導覽
               </button>
             </div>
-            <p className="text-[#636E72] text-sm">水溶液單元 · 迷思概念診斷測驗</p>
+            <p className="text-[#636E72] text-sm">{unitName} · 迷思概念診斷測驗</p>
           </div>
         </div>
 
@@ -102,10 +119,20 @@ export default function QuizCreateWizard() {
         {/* Step Content */}
         <div className="bg-white rounded-[24px] sm:rounded-[32px] border border-[#BDC3C7] p-4 sm:p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
           {currentStep === 1 && (
-            <Step1Nodes onNext={() => setCurrentStep(2)} />
+            <Step0Unit onNext={() => setCurrentStep(2)} />
           )}
-          {currentStep === 2 && (
-            <Step2Edit onBack={() => setCurrentStep(1)} />
+          {currentStep > 1 && nodesLoading && (
+            <div className="py-16 text-center text-sm text-[#636E72]">載入單元節點中…</div>
+          )}
+          {currentStep === 2 && !nodesLoading && (
+            <Step1Nodes
+              nodes={unitNodes}
+              onBack={() => setCurrentStep(1)}
+              onNext={() => setCurrentStep(3)}
+            />
+          )}
+          {currentStep === 3 && !nodesLoading && (
+            <Step2Edit nodes={unitNodes} onBack={() => setCurrentStep(2)} />
           )}
         </div>
       </div>

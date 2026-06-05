@@ -1,59 +1,55 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../../../context/AppContext';
-import { knowledgeNodes } from '../../../data/knowledgeGraph';
+import { SKILL_TREE_PALETTES } from '../../../constants/theme';
+import { shortNodeLabel, groupKeyOf, groupLabelOf } from '../../../utils/skillTreeLayout';
 import KnowledgeSkillTree from '../../../components/teacher/KnowledgeSkillTree';
 
-const SUBTOPIC_A_IDS = ['INe-Ⅱ-3-01', 'INe-Ⅱ-3-02', 'INe-Ⅱ-3-03', 'INe-Ⅱ-3-05', 'INe-Ⅱ-3-04'];
-const SUBTOPIC_B_IDS = ['INe-Ⅲ-5-1', 'INe-Ⅲ-5-2', 'INe-Ⅲ-5-3', 'INe-Ⅲ-5-4', 'INe-Ⅲ-5-5', 'INe-Ⅲ-5-6', 'INe-Ⅲ-5-7'];
-const TOTAL_A = SUBTOPIC_A_IDS.length;
-const TOTAL_B = SUBTOPIC_B_IDS.length;
-
-// 子主題色系（搭配深木紋夜晚地圖 sticky bar）
-const A_COLOR = {
-  fill: '#7DB044', stroke: '#5C8A2E', text: '#FBE9C7',
-  labelColor: '#A7D696',
-  tag: 'A 溶解',
-};
-const B_COLOR = {
-  fill: '#D08B2E', stroke: '#9B5E18', text: '#FBE9C7',
-  labelColor: '#F0B962',
-  tag: 'B 酸鹼',
-};
-
-function shortenId(id) {
-  return (id ?? '').replace(/^INe-/, '');
+/** 依大節點 / 子主題把節點分組（與技能樹同一套分組規則），依首次出現順序。 */
+function groupNodes(nodes) {
+  const order = [];
+  const map = new Map();
+  nodes.forEach((n) => {
+    const key = groupKeyOf(n);
+    if (!map.has(key)) {
+      map.set(key, { key, label: groupLabelOf(n, key), nodes: [] });
+      order.push(key);
+    }
+    map.get(key).nodes.push(n);
+  });
+  return order.map((k) => map.get(k));
 }
 
-/**
- * MiniPath：sticky bar 用的精簡路徑列。
- * 每個子主題一行小六角形 chip，selected = 填滿子主題色，unselected = 灰色虛框。
- * Hover 顯示完整名稱，點擊切換選取。
- */
-function MiniPath({ subjectIds, color, label, selectedNodeIds, onToggle }) {
+function paletteColor(groupIndex) {
+  const pal = SKILL_TREE_PALETTES[groupIndex % SKILL_TREE_PALETTES.length];
+  const mid = Math.min(2, pal.fill.length - 1);
+  return { fill: pal.fill[mid], stroke: pal.stroke[mid], labelColor: pal.fill[Math.min(1, pal.fill.length - 1)] };
+}
+
+/** sticky bar 精簡路徑列：每個群組一行 chip。 */
+function MiniPath({ label, color, groupNodeList, selectedNodeIds, onToggle }) {
   return (
     <div className="flex items-center gap-2">
       <span className="text-[15px] font-bold whitespace-nowrap flex-shrink-0" style={{ color: color.labelColor }}>{label}</span>
       <div className="flex items-center gap-1.5 flex-wrap">
-        {subjectIds.map((id) => {
-          const node = knowledgeNodes.find((n) => n.id === id);
-          const selected = selectedNodeIds.includes(id);
+        {groupNodeList.map((node) => {
+          const selected = selectedNodeIds.includes(node.id);
           return (
             <button
-              key={id}
+              key={node.id}
               type="button"
-              onClick={() => onToggle(id)}
+              onClick={() => onToggle(node.id)}
               className="inline-flex items-center justify-center text-[15px] font-mono font-bold rounded-md border transition-all hover:scale-110"
               style={{
                 backgroundColor: selected ? color.fill : 'rgba(0,0,0,0.25)',
                 borderColor: selected ? color.stroke : '#7A5232',
-                color: selected ? color.text : '#C19A6B',
+                color: selected ? '#1E2420' : '#C19A6B',
                 padding: '3px 8px',
                 minWidth: 72,
                 boxShadow: selected ? `0 0 6px ${color.fill}66` : undefined,
               }}
-              title={node ? `${id} · ${node.name}` : id}
+              title={`${node.id} · ${node.name}`}
             >
-              {shortenId(id)}
+              {shortNodeLabel(node.id)}
             </button>
           );
         })}
@@ -62,10 +58,13 @@ function MiniPath({ subjectIds, color, label, selectedNodeIds, onToggle }) {
   );
 }
 
-export default function Step1Nodes({ onNext }) {
+export default function Step1Nodes({ nodes = [], onBack, onNext }) {
   const { selectedNodeIds, setSelectedNodeIds, setIsWizardDirty } = useApp();
 
-  // 偵測完整技能樹是否在畫面內：在畫面內 → 不重複顯示 MiniPath；滾出視窗 → sticky bar 顯示 MiniPath
+  const groups = useMemo(() => groupNodes(nodes), [nodes]);
+  const getNode = (id) => nodes.find((n) => n.id === id);
+
+  // 偵測完整技能樹是否在畫面內：滾出視窗後才於 sticky bar 顯示 MiniPath
   const treeRef = useRef(null);
   const [treeVisible, setTreeVisible] = useState(true);
   useEffect(() => {
@@ -80,18 +79,18 @@ export default function Step1Nodes({ onNext }) {
 
   const toggleNode = (nodeId) => {
     setSelectedNodeIds((prev) =>
-      prev.includes(nodeId) ? prev.filter((id) => id !== nodeId) : [...prev, nodeId]
+      prev.includes(nodeId) ? prev.filter((id) => id !== nodeId) : [...prev, nodeId],
     );
     setIsWizardDirty(true);
   };
 
   const missingPrereqs = [];
   selectedNodeIds.forEach((nodeId) => {
-    const node = knowledgeNodes.find((n) => n.id === nodeId);
+    const node = getNode(nodeId);
     if (!node) return;
-    node.prerequisites.forEach((prereqId) => {
+    (node.prerequisites || []).forEach((prereqId) => {
       if (!selectedNodeIds.includes(prereqId)) {
-        const prereq = knowledgeNodes.find((n) => n.id === prereqId);
+        const prereq = getNode(prereqId);
         if (prereq && !missingPrereqs.find((m) => m.id === prereqId)) {
           missingPrereqs.push(prereq);
         }
@@ -100,13 +99,14 @@ export default function Step1Nodes({ onNext }) {
   });
 
   const canProceed = selectedNodeIds.length > 0;
-  const totalMisconceptions = knowledgeNodes
+  const totalMisconceptions = nodes
     .filter((n) => selectedNodeIds.includes(n.id))
     .reduce((sum, n) => sum + n.misconceptions.length, 0);
 
+  // 表格：節點 × 迷思概念（每節點 rowSpan）
   const rows = [];
   let nodeGroupIndex = 0;
-  knowledgeNodes.forEach((node) => {
+  nodes.forEach((node) => {
     node.misconceptions.forEach((m, mIdx) => {
       rows.push({
         node,
@@ -122,21 +122,21 @@ export default function Step1Nodes({ onNext }) {
   return (
     <div>
       <div className="mb-6" data-tour="step1-hero">
-        <h2 className="text-xl font-bold text-[#2D3436] mb-1">步驟一：決定出題範圍</h2>
+        <h2 className="text-xl font-bold text-[#2D3436] mb-1">步驟二：選擇節點</h2>
         <p className="text-[#636E72] text-[15px]">點擊下方技能樹節點以勾選要出題的知識範圍；勾選後節點會發亮，未勾選會黯淡。勾選後可在下方表格看到每個節點對應的學生常見迷思。</p>
       </div>
 
-      {/* 完整技能樹 — 頁面頂端、不 sticky；用 IntersectionObserver 追蹤是否在畫面內 */}
+      {/* 完整技能樹 */}
       <div className="mb-6" ref={treeRef} data-tour="knowledge-skill-tree">
         <KnowledgeSkillTree
+          nodes={nodes}
           selectable
           selectedNodeIds={selectedNodeIds}
           onToggle={toggleNode}
         />
       </div>
 
-      {/* Sticky bar — 僅在完整技能樹滾出畫面後才顯示 MiniPath + 摘要 + 下一步。
-          技能樹仍在畫面時，sticky bar 完全隱藏，避免重複資訊與奇怪的浮動條。 */}
+      {/* Sticky bar：技能樹滾出畫面後才顯示 */}
       {!treeVisible && (
         <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 md:-mx-8 px-4 sm:px-6 md:px-8 pt-2 pb-2 mb-5">
           <div
@@ -148,8 +148,16 @@ export default function Step1Nodes({ onNext }) {
             }}
           >
             <div className="space-y-1">
-              <MiniPath subjectIds={SUBTOPIC_A_IDS} color={A_COLOR} label={A_COLOR.tag} selectedNodeIds={selectedNodeIds} onToggle={toggleNode} />
-              <MiniPath subjectIds={SUBTOPIC_B_IDS} color={B_COLOR} label={B_COLOR.tag} selectedNodeIds={selectedNodeIds} onToggle={toggleNode} />
+              {groups.map((g, gi) => (
+                <MiniPath
+                  key={g.key}
+                  label={g.label}
+                  color={paletteColor(gi)}
+                  groupNodeList={g.nodes}
+                  selectedNodeIds={selectedNodeIds}
+                  onToggle={toggleNode}
+                />
+              ))}
             </div>
             <div className="text-[15px] flex-1 min-w-[140px]" style={{ color: '#FBE9C7' }}>
               {selectedNodeIds.length > 0 ? (
@@ -179,7 +187,7 @@ export default function Step1Nodes({ onNext }) {
         </div>
       )}
 
-      {/* Warning Banner */}
+      {/* 先備節點提醒 */}
       {missingPrereqs.length > 0 && (
         <div className="mb-5 bg-[#FCF0C2] border border-[#F5D669] rounded-2xl p-4 flex gap-3 animate-fade-in">
           <svg className="w-5 h-5 text-[#D4AC0D] flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -278,14 +286,29 @@ export default function Step1Nodes({ onNext }) {
                 </tr>
               );
             })}
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan={4} className="px-4 py-12 text-center text-[#95A5A6] text-sm">
+                  此單元尚未建立知識節點
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
        </div>
       </div>
 
-      {/* 頁底 CTA：完成節點選取後的「下一步」 — 取代過去的浮動 bar 配置，避免畫面頂端冗餘。
-          滾動到一半想直接跳下一步時，可用滾動後出現的 sticky MiniPath bar 上的同名按鈕。 */}
-      <div className="mt-6 flex justify-end">
+      {/* 頁底：返回選單元 + 下一步 */}
+      <div className="mt-6 flex items-center justify-between gap-3">
+        <button
+          onClick={onBack}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-2xl font-semibold text-sm text-[#636E72] border border-[#BDC3C7] hover:bg-[#EEF5E6] transition-all"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          返回：選擇單元
+        </button>
         <button
           onClick={onNext}
           disabled={!canProceed}

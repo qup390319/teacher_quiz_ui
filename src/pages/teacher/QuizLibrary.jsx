@@ -7,7 +7,8 @@ import { useClasses } from '../../hooks/useClasses';
 import { useAssignments } from '../../hooks/useAssignments';
 import { useQuizzes, useDeleteQuiz } from '../../hooks/useQuizzes';
 import { api } from '../../lib/api';
-import { knowledgeNodes } from '../../data/knowledgeGraph';
+import { useAllKnowledgeNodes } from '../../hooks/useKnowledgeNodes';
+import { useUnits } from '../../hooks/useAdminUnits';
 import { useTour } from '../../context/TourContext';
 import { useToast } from '../../context/ToastContext';
 import { Icon } from '../../components/ui/woodKit';
@@ -21,12 +22,27 @@ const TABS = [
 export default function QuizLibrary() {
   const navigate = useNavigate();
   const {
-    setQuizQuestions, setSelectedNodeIds,
+    setQuizQuestions, setSelectedNodeIds, setSelectedUnitId,
     setEditingQuizId, setEditingQuizStatus, setEditingQuizTitle,
   } = useApp();
   const { startTour } = useTour();
   const { toast } = useToast();
   const { data: quizzes = [], isLoading } = useQuizzes();
+  const { data: allNodes = [] } = useAllKnowledgeNodes();
+  const { data: teachingUnits = [] } = useUnits({ type: 'unit' });
+
+  /** 從題組的節點反推所屬教學單元（一份題組只綁一個單元）。
+   *  節點 → parentNodeId → 哪個教學單元的 parentNodes 含此大節點。 */
+  const deriveUnitId = (nodeIds = []) => {
+    for (const id of nodeIds) {
+      const node = allNodes.find((n) => n.id === id);
+      if (!node?.parentNodeId) continue;
+      const unit = teachingUnits.find((u) =>
+        (u.parentNodes ?? []).some((p) => p.parentNodeId === node.parentNodeId));
+      if (unit) return unit.id;
+    }
+    return 'unit-water-solution';
+  };
   // 用空 filter（{}）拿全部班級（含已封存 / 其他學年），讓「已派班級」chip
   // 能正確查到歷史派題對象。題組庫是題組資產管理頁、不是儀表板，不適用
   // 「儀表板不跨學年」原則。
@@ -48,12 +64,13 @@ export default function QuizLibrary() {
   const handleEdit = async (quiz) => {
     try {
       const detail = await api.get(`/quizzes/${quiz.id}`);
+      setSelectedUnitId(deriveUnitId(detail.knowledgeNodeIds));
       setQuizQuestions([...detail.questions]);
       setSelectedNodeIds([...detail.knowledgeNodeIds]);
       setEditingQuizId(quiz.id);
       setEditingQuizStatus(detail.status);
       setEditingQuizTitle(detail.title);  // 帶入原 title，避免儲存時被預設值覆蓋
-      navigate('/teacher/quiz/create?step=2');
+      navigate('/teacher/quiz/create?step=3');
     } catch (err) {
       console.error('[QuizLibrary] failed to load quiz', err);
       toast.error('載入題組失敗');
@@ -67,12 +84,13 @@ export default function QuizLibrary() {
         ...JSON.parse(JSON.stringify(q)),
         id: idx + 1,
       }));
+      setSelectedUnitId(deriveUnitId(detail.knowledgeNodeIds));
       setQuizQuestions(cloned);
       setSelectedNodeIds([...detail.knowledgeNodeIds]);
       setEditingQuizId(null);          // 新建模式
       setEditingQuizStatus(null);
       setEditingQuizTitle(`${detail.title} (複製)`);
-      navigate('/teacher/quiz/create?step=2');
+      navigate('/teacher/quiz/create?step=3');
     } catch (err) {
       console.error('[QuizLibrary] failed to clone quiz', err);
       toast.error('複製題組失敗');
@@ -198,7 +216,7 @@ export default function QuizLibrary() {
             {visibleQuizzes.map((quiz, idx) => {
               const assignedClasses = getAssignedClasses(quiz.id);
               const coveredNodes = quiz.knowledgeNodeIds
-                .map(id => knowledgeNodes.find(n => n.id === id))
+                .map(id => allNodes.find(n => n.id === id) || { id, name: '' })
                 .filter(Boolean);
               const isDraft = quiz.status === 'draft';
 

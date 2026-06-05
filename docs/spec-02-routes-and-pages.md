@@ -48,6 +48,7 @@
 | `/admin/units` | `UnitsManagement` | 教學單元管理（`type='unit'`）：依年段分區、CRUD、封存／啟用 | `AdminLayout` |
 | `/admin/subthemes` | `SubthemesLibrary` | 課綱次主題庫（`type='subtheme'`）：瀏覽 + 從 Word 匯入課綱次主題階層；依年段分區、顯示每個次主題的大節點 / 小節點計數 | `AdminLayout` |
 | `/admin/knowledge-nodes` | `KnowledgeNodesAdmin` | 知識節點畫布編輯 + 迷思 CRUD + 未分配池 + 從 Word 匯入次主題 | `AdminLayout` |
+| `/admin/misconceptions` | `MisconceptionsManagement` | 迷思概念管理：雙欄 master-detail，依次主題分組選節點 + 該節點下迷思完整 CRUD | `AdminLayout` |
 | `/admin/sample-quizzes` | `SampleQuizzes` | 範例題庫：跨教師列出題組 + 切換系統範例標記 | `AdminLayout` |
 | `*` | `Navigate to /` | 404 重導向首頁 | — |
 
@@ -310,26 +311,30 @@
 **檔案**: `src/pages/teacher/quiz/QuizCreateWizard.jsx`
 
 **功能描述**:
-- 兩步驟出題精靈容器
-- 管理當前步驟狀態
-- 步驟間資料傳遞
+- **三步驟**出題精靈容器（①選擇單元 ②選擇節點 ③製作題組）
+- 管理當前步驟狀態（`?step=1/2/3`）；編輯既有題組時直接帶入單元 + 節點並跳到 step 3
+- 用 `useAllKnowledgeNodes()` 取全部節點，再以 `nodesForUnit(selectedUnit, allNodes)` 依該教學單元的大節點（`parentNodes`）過濾出單元節點，以 props 串給各步驟（不動全域 `knowledgeGraph.js`）
+- 步驟列 `StepIndicator`：step 2 需先選單元、step 3 需勾至少 1 節點
+- **教學單元↔節點關聯**：靠「單元 → 大節點（`unit_parent_nodes`，公開 `GET /units` 的 `parentNodes`）→ 知識節點（`parentNodeId`）」，**不是** `knowledge_nodes.unit_id`（後者指向次主題）。詳見 `docs/deviations.md`（2026-06-05）
 
 **子元件**:
 
-#### Step 1: Step1Nodes
-**檔案**: `src/pages/teacher/quiz/Step1Nodes.jsx`
-- 互動式知識節點選擇介面
-- 顯示所有 12 個知識節點（兩條子主題路徑）
-- 核取方塊勾選/取消節點 → `selectedNodeIds`
-- **麵包屑導航**：頂部顯示 `出題管理 › 建立題組 › 步驟一/步驟二`，點擊「出題管理」可返回 QuizLibrary
-- **Sticky 技能樹 + 摘要列**（合併 sticky 容器，回應「邊看表格邊看路徑」需求）：
-  - 知識路徑技能樹（KnowledgeSkillTree）置於上方，預設展開、可手動收合以騰出表格空間
-  - 摘要列含「展開/收合技能樹」按鈕 + 「N 節點 · N 題 · N 迷思 | A x/5 · B y/7」一行概要 + 「下一步」按鈕
-  - 整個容器 sticky 在頁面頂端，老師滾動下方常見迷思表格時技能樹仍可參照
-- **已移除「已選節點 chip 列」**（含 +/- stepper）：認知負荷過高、且 chip 列複製了已在技能樹中可見的選取資訊。每節點預設出 1 題；如需多題，請在 Step2 出題編輯器直接新增
-- **子主題計數徽章**：學習路徑圖中每條子主題標題旁顯示 `N/M` 徽章，已選時為綠色、未選時為灰色
+#### Step 1: Step0Unit（選擇單元）
+**檔案**: `src/pages/teacher/quiz/Step0Unit.jsx`
+- 以卡片列出所有「使用中」**教學單元**（`useUnits({ type: 'unit' })`，排除 `type='subtheme'` 次主題），每張顯示單元名稱、簡介、節點數 / 迷思數（用 `nodesForUnit` 依各單元大節點統計）
+- **未建好的單元**（沒節點或沒迷思）標灰色「建置中」徽章、不可點選；點到時顯示提示請聯絡管理員
+- **單選**（一份題組只綁一個單元）；切換單元會清空已勾節點與已編題目（先跳確認）
+- 選定後寫入 `selectedUnitId`（AppContext）
 
-#### Step 2: Step2Edit
+#### Step 2: Step1Nodes（選擇節點）
+**檔案**: `src/pages/teacher/quiz/Step1Nodes.jsx`
+- 互動式知識節點選擇介面，顯示**所選單元**的節點（不再寫死 12 節點）；以 `nodes` prop 傳入
+- 核取方塊 / 技能樹節點勾選/取消 → `selectedNodeIds`
+- **技能樹（KnowledgeSkillTree）資料驅動**：依該單元的先備關係 + 大節點自動排版（見 spec-07）
+- **Sticky 摘要列**：技能樹滾出畫面後顯示，依大節點 / 子主題自動分組的 MiniPath chips + 「N 節點 · N 迷思」概要 + 「下一步」
+- 底部含「返回：選擇單元」與「下一步：製作題組」
+
+#### Step 3: Step2Edit（製作題組）
 **檔案**: `src/pages/teacher/quiz/Step2Edit.jsx`
 - 根據選定的知識節點載入對應題目
 - 可編輯題幹（stem）與選項（options）
@@ -674,7 +679,37 @@
 
 ---
 
-### 3.10 SampleQuizzes (`/admin/sample-quizzes`)
+### 3.10 MisconceptionsManagement (`/admin/misconceptions`)
+**檔案**: `src/pages/admin/MisconceptionsManagement.jsx`
+
+**功能描述**:
+- 管理員以**節點為單位**集中管理每個知識節點下的常見迷思概念（48 條系統預設 + 任意新增）
+- 與 §3.9「知識節點」的編輯面板共用同一組 admin API；此頁提供更聚焦、欄位更完整的迷思 CRUD 入口（§3.9 的迷思編輯較精簡且須先進入「階層結構」視圖）
+- 既有迷思 `is_default=true`（系統預設）可編輯／刪除，卡片上標示「系統預設」徽章
+
+**版面（雙欄 master-detail）**:
+1. **概覽列**：搜尋框（比對節點 id / 名稱 / 大節點，以及其下迷思 label / id）+ 全域統計（共 N 個知識節點 · M 條迷思概念）
+2. **左欄節點清單**：依次主題（`unitId`，無則歸「未分配次主題」）分組，組內依 `learningOrder → id` 排序；每個節點顯示名稱 / id / 迷思數徽章（0 條以黃色提醒）；點選即選取
+3. **右欄迷思卡片**：選中節點標題列（名稱 / id / 所屬次主題 / 迷思數 + 「新增迷思」按鈕）＋ 迷思卡片清單。卡片**統一只顯示** `label` / `id` / `detail`（教師視角）＋ `source`（資料來源，獨立淺灰底方塊 + `menu_book` icon，有填才顯示），含「編輯」「刪除」。`studentDetail`（學生視角）與 `confirmQuestion`（AI 確認問句）**不在卡片顯示**（資料保留於 DB、學生端照常使用，僅於「編輯」modal 內檢視與修改）
+
+**資料來源欄位（`source`）**：迷思新增 `source` 欄（spec-11 §3.19，migration 0028）。用於標註文獻出處（如後設研究引用清單），自建迷思可留空。卡片底部與 §3.9 內嵌編輯器的迷思列皆會顯示。
+
+**UI 元素**（spec-14）:
+- 新增 / 編輯走 `MisconceptionFormModal`（薄荷綠表單 modal）：ID（新增必填、編輯唯讀、前端驗證 `M{XX}-{Y}` 格式與同節點重複）+ 迷思短標 + 三段描述 textarea + 資料來源 textarea
+- 刪除走共用 `AdminConfirmModal`（`variant='danger'`）
+- 左側 sidebar 導覽新增「迷思概念」項（icon `psychology`），位於「知識節點」與「範例題庫」之間
+
+**子元件**（位於 `src/pages/admin/components/`）:
+- `MisconceptionFormModal.jsx` — 新增 / 編輯迷思 modal（共用於 create 與 edit；`isEdit` 切換 ID 唯讀與送出的 mutation）
+
+**狀態依賴**:
+- `useAdminKnowledgeNodes({})`：列出所有節點（含迷思）作為左欄資料源
+- `useAdminUnits({ type: 'subtheme' })`：次主題名稱對照（左欄分組標題）
+- `useCreateMisconception()` / `useUpdateMisconception()` / `useDeleteMisconception()`：迷思 CRUD（成功後 invalidate `['admin-knowledge-nodes']`）
+
+---
+
+### 3.11 SampleQuizzes (`/admin/sample-quizzes`)
 **檔案**: `src/pages/admin/SampleQuizzes.jsx`
 
 **功能描述**:

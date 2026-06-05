@@ -33,9 +33,8 @@
 ```
 步驟一：出題管理
     → 點擊後導航至 /teacher/quizzes（題組庫）
-    → 從題組庫可進入 /teacher/quiz/create（出題精靈）
+    → 從題組庫可進入 /teacher/quiz/create（出題精靈，從步驟一「選擇單元」開始）
     → 也可從主頁 CTA「快速出題」直接進入 /teacher/quiz/create
-    → 或使用「一鍵使用推薦題組」直接跳至 /teacher/quiz/create?step=2
 
 步驟二：派題管理
     → /teacher/assignments
@@ -51,26 +50,31 @@
 ### 1.2 出題流程 (Quiz Creation)
 
 進入點（皆會把 `editingQuizId` 重置為 `null`，除「編輯／繼續編輯」外）：
-- TeacherDashboard 主頁的「快速出題」CTA → `/teacher/quiz/create`
-- TeacherDashboard 主頁的「一鍵使用推薦題組」 → `/teacher/quiz/create?step=2`（預載 defaultQuestions）
+- TeacherDashboard 主頁的「快速出題」CTA → `/teacher/quiz/create`（從步驟一選單元開始）
 - QuizLibrary「新增題組」按鈕 → `/teacher/quiz/create`
-- QuizLibrary「複製為新題組」按鈕 → `/teacher/quiz/create?step=2`，預載複製品
-- QuizLibrary「編輯／繼續編輯」按鈕 → `/teacher/quiz/create?step=2`，**保留** `editingQuizId` + `editingQuizStatus`
+- QuizLibrary「複製為新題組」按鈕 → `/teacher/quiz/create?step=3`，預載複製品（單元由節點反推）
+- QuizLibrary「編輯／繼續編輯」按鈕 → `/teacher/quiz/create?step=3`，**保留** `editingQuizId` + `editingQuizStatus`，單元由題組節點反推帶入
+
+> **一份題組只綁一個教學單元。** 教學單元 ↔ 節點關聯走「單元 → 大節點（`/units` 的 `parentNodes`）→ 知識節點（`parentNodeId`）」，**不是** `knowledge_nodes.unit_id`（指向次主題）。教師端取全部節點（`GET /knowledge-nodes`）後依所選單元的大節點過濾。詳見 `docs/deviations.md`（2026-06-05）。
 
 ```
 教師進入 /teacher/quiz/create
     │
-    ├─ 步驟一：選擇知識節點 (Step1Nodes)
-    │   ├─ 麵包屑導航：出題管理 › 建立題組 › 步驟一：決定出題範圍
-    │   ├─ 瀏覽 12 個知識節點（兩條子主題路徑，各有 N/M 計數徽章）
-    │   ├─ 勾選/取消勾選節點 → selectedNodeIds
-    │   ├─ Sticky 摘要列：已選節點數 + 迷思概念數 + 子主題 A/B 計數
-    │   │   └─ 已選節點 chip 列（可點 × 取消選取，滾動時仍可見）
-    │   ├─ 未選任何節點時顯示任務引導「請從下方勾選至少 1 個知識節點以繼續」
-    │   ├─ 系統提示尚未選的先備節點，可一鍵加入
-    │   └─ 點擊「下一步」
+    ├─ 步驟一：選擇單元 (Step0Unit)
+    │   ├─ 卡片列出所有「使用中」單元（含節點數 / 迷思數）
+    │   ├─ 未建好的單元（沒節點或沒迷思）標「建置中」、不可點，點到時提示聯絡管理員
+    │   ├─ 單選；切換單元會清空已勾節點與已編題目（先確認）
+    │   └─ 點擊「下一步：選擇節點」
     │
-    └─ 步驟二：編輯題目 (Step2Edit)
+    ├─ 步驟二：選擇節點 (Step1Nodes)
+    │   ├─ 顯示「所選單元」的知識節點（技能樹依先備關係 + 大節點自動排版）
+    │   ├─ 勾選/取消勾選節點 → selectedNodeIds
+    │   ├─ Sticky 摘要列：依大節點 / 子主題自動分組的 MiniPath + 已選節點/迷思數
+    │   ├─ 未選任何節點時提示「請從下方勾選至少 1 個知識節點以繼續」
+    │   ├─ 系統提示尚未選的先備節點，可一鍵加入
+    │   └─ 點擊「下一步：製作題組」（或「返回：選擇單元」）
+    │
+    └─ 步驟三：編輯題目 (Step2Edit)
         ├─ CoveragePanel 補洞器
         │   ├─ 顯示每節點迷思覆蓋率（progress bar）
         │   └─ 列出尚未覆蓋的迷思 chips（紅底）

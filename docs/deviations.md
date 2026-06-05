@@ -5,6 +5,26 @@
 
 ---
 
+### [2026-06-05] 出題流程改版：先選單元 → 再選節點（技能樹資料驅動）
+
+- **涉及 Spec**: `docs/spec-02-routes-and-pages.md`（出題精靈步驟）、`docs/spec-05-user-workflows.md`（出題流程）、`docs/spec-04-data-models.md`（題組單元歸屬）、`docs/spec-03-components.md`（KnowledgeSkillTree / Step0Unit）、`docs/spec-07-ui-design-system.md`（技能樹）
+- **背景**: 管理員後台已能管理多個單元（單元 → 大節點 → 知識節點 → 迷思）。教師端出題原本寫死在「水溶液」單元（步驟一直接攤開固定 12 節點）。需求：出題時先選單元，系統只顯示該單元的節點供勾選。一份題組只綁一個單元。
+- **替代方案 / 處置**:
+  1. 出題精靈由兩步驟改為**三步驟**：①選擇單元 ②選擇節點（技能樹）③製作題組。新增 `src/pages/teacher/quiz/Step0Unit.jsx`（單元卡片選擇器，未建好內容的單元標「建置中」、不可點、點到時提示）。
+  2. **教師端節點資料改走公開端點 + 教學單元↔節點關聯修正**：新增 `src/hooks/useKnowledgeNodes.js`（`useAllKnowledgeNodes()` 打 `GET /knowledge-nodes` 取全部節點；`nodesForUnit(unit, allNodes)` 依該教學單元的大節點過濾）。精靈以 props 把「所選單元的節點」串進 Step1Nodes / Step2Edit / CoveragePanel / EditQuestionModal / QuestionImportDrawer，**不動全域 `src/data/knowledgeGraph.js`**（儀表板 / 報告等仍用全域圖，blast radius 最小）。
+  3. **技能樹改為資料驅動**：`KnowledgeSkillTree` 不再寫死 12 節點；改由 `src/utils/skillTreeLayout.js`（`computeSkillTreeLayout`）依「先備關係算階段（欄）+ 大節點分列（列）+ 終點節點標 ★」自動排版，任何單元都能渲染。`KnowledgeMap.jsx` / `CustomKnowledgeMap.jsx` 未傳 nodes，沿用全域圖、改走同一套資料驅動排版（視覺與舊版等價）。
+- **⚠️ 關鍵資料模型修正（雙軸模型）**: 教學單元（`type='unit'`，如 `unit-water-solution`）與知識節點的關聯**不是**靠 `knowledge_nodes.unit_id`（那指向**次主題**，如 `unit-jb`/`unit-jd`；live DB 實測 `unit_id='unit-water-solution'` 命中 0 列），而是靠 **`unit_parent_nodes`（教學單元 ↔ 大節點）→ `knowledge_nodes.parent_node_id`**。
+  - **後端小改（必要）**: 公開 `GET /units` 原本沒填 `parentNodes`；改為與 admin 端一致填入（`unit_parent_nodes` join，`backend/app/routers/units.py` 的 `_parent_nodes_by_unit`）。`UnitBrief.parentNodes` schema 欄位本就存在，只是公開端點先前未填。**需 rebuild backend image** 生效。
+  - 前端據此：某教學單元的節點 = `allNodes.filter(n => unit.parentNodes 含 n.parentNodeId)`；`/units?type=unit` 只取教學單元（排除 39 個 `type='subtheme'` 次主題——這正是使用者一開始看到「很多次主題名稱」的原因）。
+- **與核准計畫的偏離**:
+  - **題組未新增 `unitId` 欄位（不動 DB schema）**：計畫原列「題組 payload 加 unitId」。改為「**從題組節點反推所屬教學單元**」：節點 → `parentNodeId` → 哪個教學單元的 `parentNodes` 含此大節點。`QuizLibrary` 編輯 / 複製時用 `useUnits({type:'unit'})` + `useAllKnowledgeNodes` 推導，避免 Alembic migration。
+  - **水溶液技能樹分組 fallback**：示範水溶液節點的 `parent_code`/`parent_name` 在某些資料狀態下為 null，故技能樹分組用 fallback：`parentCode → parentName → 節點 ID 去末段前綴`（`INe-Ⅱ-3` / `INe-Ⅲ-5`），並對這兩個 legacy 前綴給友善標籤「子主題 A · 溶解 / B · 酸鹼」。實測排版與舊版結構等價（2 列、5/6 階段、5-5/5-6 平行、04 與 5-7 終點）。
+- **下游已知限制（後續再處理）**: 教師端儀表板 / 報告（`getNodeById` 等）仍以全域圖查節點；若教師用非水溶液單元出題並派發，報告頁的節點名稱可能查不到。屬更大範圍（全站多單元化），不在本次範圍。
+- **驗證**: `npm run lint` ✅ / `npm run build` ✅；backend rebuild 後 live API 實測：`/units?type=unit` 回 15 教學單元、水溶液 `parentNodes` = [INe-Ⅱ-3, INe-Ⅲ-5]；`/knowledge-nodes` 404 節點全帶 `parentNodeId`，依水溶液大節點過濾得 12 節點 / 56 迷思；`computeSkillTreeLayout` 以水溶液 12 節點實測 2 群組、終點 04/5-7、平行節點不重疊。
+- **Spec 已更新**: ✅（spec-02 / spec-03 / spec-04 / spec-05 / spec-07 / spec-10；本筆 deviations）
+
+---
+
 ### [2026-06-04] 知識節點完整階層收進版控（migration 0027 快照 upsert）
 
 - **涉及 Spec**: `docs/spec-11-database-schema.md` §3.20（parent_nodes / knowledge_nodes 資料來源）

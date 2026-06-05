@@ -47,7 +47,8 @@ const { currentUser, loading, role, login, logout } = useAuth();
 |------|------|--------|------|
 | ~~`role`~~ | — | — | **P1 移除**：改由 `useAuth().role` 提供 |
 | `quizQuestions` | `Question[]` | `[...defaultQuestions]` | 出題精靈中正在編輯的題目（純 UI 狀態） |
-| `selectedNodeIds` | `string[]` | `['INe-Ⅱ-3-02', 'INe-Ⅱ-3-03', 'INe-Ⅱ-3-05', 'INe-Ⅲ-5-4', 'INe-Ⅲ-5-7']` | 出題精靈中選定的知識節點 |
+| `selectedUnitId` | `string` | `'unit-water-solution'` | 出題精靈當前選定的**教學單元**（一份題組只綁一個單元）。Step0Unit 設定；切換單元會清空 `selectedNodeIds` 與 `quizQuestions`。該單元的節點 = 全部節點依其大節點（`/units` 的 `parentNodes` → `parentNodeId`）過濾，**不是** `knowledge_nodes.unit_id`（指向次主題） |
+| `selectedNodeIds` | `string[]` | `['INe-Ⅱ-3-02', 'INe-Ⅱ-3-03', 'INe-Ⅱ-3-05', 'INe-Ⅲ-5-4', 'INe-Ⅲ-5-7']` | 出題精靈中選定的知識節點（限所選單元內） |
 | `nodeQuestionCounts` | `Record<string, number>` | `{}` | 出題精靈中各節點的預期出題數（key = 節點 ID，value = 題數 1–4，預設 1）；由 Step1Nodes 的 chip stepper 管理，供 Step2Edit 用於 CoveragePanel 顯示「實際 / 目標」 |
 | `editingQuizId` | `string \| null` | `null` | 出題精靈當前正在編輯的 quiz id：`null` = 新建 / 複製模式（儲存走 POST）；有值 = 編輯既有 quiz（儲存走 PUT，含自動暫存覆蓋同一份）。由 QuizLibrary 的「編輯／繼續編輯」設置；「複製為新題組」與 TeacherDashboard 的「新增題組／推薦題組」皆會清空此值 |
 | `editingQuizStatus` | `'draft' \| 'published' \| null` | `null` | 編輯時帶入的原始 status，用於 Step2Edit 判定是否啟用自動暫存（`published` 卷自動暫存停用，避免被降級為 draft） |
@@ -170,11 +171,13 @@ interface Quiz {
   title: string;                 // 題組標題
   status: 'draft' | 'published'; // 狀態
   questionCount: number;         // 題目數量
-  knowledgeNodeIds: string[];    // 涵蓋的知識節點 ID 列表
+  knowledgeNodeIds: string[];    // 涵蓋的知識節點 ID 列表（同屬一個單元）
   questions: Question[];         // 題目陣列
   createdAt: string;             // 建立日期（YYYY-MM-DD）
 }
 ```
+
+> **題組的「所屬單元」不另存欄位**，而是由 `knowledgeNodeIds` 反推（每個節點都帶 `unitId`，且一份題組只綁一個單元）。QuizLibrary 編輯/複製時用 `useAllKnowledgeNodes()` 建 id→unitId 對應推導出 `selectedUnitId`。詳見 `docs/deviations.md`（2026-06-05）。
 
 **預設資料**:
 | ID | 標題 | 題數 | 狀態 | 涵蓋節點 |

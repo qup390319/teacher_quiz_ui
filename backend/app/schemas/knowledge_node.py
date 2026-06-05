@@ -13,6 +13,7 @@ class MisconceptionBrief(BaseModel):
     detail: str | None = None
     student_detail: str | None = Field(default=None, serialization_alias="studentDetail")
     confirm_question: str | None = Field(default=None, serialization_alias="confirmQuestion")
+    source: str | None = None
     is_default: bool = Field(serialization_alias="isDefault")
     owner_id: str | None = Field(default=None, serialization_alias="ownerId")
     display_order: int = Field(serialization_alias="displayOrder")
@@ -183,6 +184,7 @@ class CreateMisconceptionRequest(BaseModel):
         default=None,
         validation_alias="confirmQuestion", serialization_alias="confirmQuestion",
     )
+    source: str | None = None
     display_order: int | None = Field(
         default=None,
         validation_alias="displayOrder", serialization_alias="displayOrder",
@@ -202,6 +204,7 @@ class UpdateMisconceptionRequest(BaseModel):
         default=None,
         validation_alias="confirmQuestion", serialization_alias="confirmQuestion",
     )
+    source: str | None = None
     display_order: int | None = Field(
         default=None,
         validation_alias="displayOrder", serialization_alias="displayOrder",

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuizzes } from '../../../hooks/useQuizzes';
 import { api } from '../../../lib/api';
-import { getNodeById } from '../../../data/knowledgeGraph';
 
 /**
  * 從題庫挑題抽屜（右側 slide-over）。
@@ -10,12 +9,14 @@ import { getNodeById } from '../../../data/knowledgeGraph';
  * - 勾選的題目以 deep clone append 到當前 quizQuestions（呼叫端負責重新編號）
  */
 export default function QuestionImportDrawer({
+  nodes = [],
   selectedNodeIds,
   excludeQuizId,
   onImport,
   onClose,
 }) {
   const { data: quizzes = [], isLoading } = useQuizzes();
+  const getNode = (id) => nodes.find((n) => n.id === id);
   const [showAll, setShowAll] = useState(false);
   const [expandedQuizIds, setExpandedQuizIds] = useState(new Set());
   const [quizDetails, setQuizDetails] = useState({});  // { quizId: detail }
@@ -173,7 +174,7 @@ export default function QuestionImportDrawer({
                         <p className="text-sm text-[#95A5A6] py-2">此題組沒有題目</p>
                       )}
                       {!loading && detail && detail.questions.map((q) => {
-                        const node = getNodeById(q.knowledgeNodeId);
+                        const node = getNode(q.knowledgeNodeId);
                         const isPicked = !!pickedInQuiz[q.id];
                         return (
                           <label
@@ -187,9 +188,9 @@ export default function QuestionImportDrawer({
                               className="mt-0.5 w-4 h-4 accent-[#8FC87A]"
                             />
                             <div className="flex-1 min-w-0">
-                              {node && (
-                                <p className="text-[15px] font-mono text-[#95A5A6] mb-0.5">{node.id} · {node.name}</p>
-                              )}
+                              <p className="text-[15px] font-mono text-[#95A5A6] mb-0.5">
+                                {node ? `${node.id} · ${node.name}` : q.knowledgeNodeId}
+                              </p>
                               <p className="text-sm text-[#2D3436] leading-snug">{q.stem}</p>
                             </div>
                           </label>

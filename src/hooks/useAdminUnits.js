@@ -70,12 +70,14 @@ export function useDeleteUnit() {
   });
 }
 
-/** Public：給未來題組選擇器用（任何登入者可讀）。 */
+/** Public：給題組選擇器等用（任何登入者可讀）。
+ *  type='unit' 只取教學單元（與管理員「單元管理」一致，不含 type='subtheme' 的次主題）。 */
 export function useUnits(params = {}) {
-  const { gradeBand, includeArchived = false } = params;
+  const { gradeBand, includeArchived = false, type } = params;
   const search = new URLSearchParams();
   if (gradeBand) search.set('gradeBand', gradeBand);
   if (includeArchived) search.set('includeArchived', 'true');
+  if (type) search.set('type', type);
   const qs = search.toString();
   return useQuery({
     queryKey: ['units', params],

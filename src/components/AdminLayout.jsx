@@ -28,6 +28,7 @@ const NAV_ITEMS = [
   { to: '/admin/units', label: '單元管理', icon: 'category' },
   { to: '/admin/subthemes', label: '課綱次主題庫', icon: 'menu_book' },
   { to: '/admin/knowledge-nodes', label: '知識節點', icon: 'account_tree' },
+  { to: '/admin/misconceptions', label: '迷思概念', icon: 'psychology' },
   { to: '/admin/sample-quizzes', label: '範例題庫', icon: 'library_books' },
 ];
 

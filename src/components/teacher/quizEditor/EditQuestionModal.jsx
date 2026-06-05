@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { knowledgeNodes, getNodeById } from '../../../data/knowledgeGraph';
 import DistractorSuggestPopover from '../DistractorSuggestPopover';
 import { usePolishStem, useSuggestOptions } from '../../../hooks/useAdaptive';
 
-export default function EditQuestionModal({ question, selectedNodeIds, onSave, onClose }) {
+export default function EditQuestionModal({ nodes = [], question, selectedNodeIds, onSave, onClose }) {
   const [stem, setStem] = useState(question.stem);
   const [nodeId, setNodeId] = useState(question.knowledgeNodeId);
   const [options, setOptions] = useState(question.options.map((o) => ({ ...o })));
@@ -11,7 +10,7 @@ export default function EditQuestionModal({ question, selectedNodeIds, onSave, o
   const polishMut = usePolishStem();
   const suggestOptsMut = useSuggestOptions();
 
-  const currentNode = getNodeById(nodeId);
+  const currentNode = nodes.find((n) => n.id === nodeId);
   const availableMisconceptions = currentNode ? currentNode.misconceptions : [];
   const hasStem = stem.trim().length > 0;
 
@@ -77,7 +76,7 @@ export default function EditQuestionModal({ question, selectedNodeIds, onSave, o
               onChange={(e) => setNodeId(e.target.value)}
               className="w-full border border-[#BDC3C7] rounded-xl px-3 py-2.5 text-sm text-[#2D3436] focus:outline-none focus:ring-2 focus:ring-[#8FC87A]"
             >
-              {knowledgeNodes
+              {nodes
                 .filter((n) => selectedNodeIds.includes(n.id))
                 .map((n) => (
                   <option key={n.id} value={n.id}>{n.id} · {n.name}</option>

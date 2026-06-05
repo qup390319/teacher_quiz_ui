@@ -50,7 +50,7 @@ def _misconception_to_brief(m: Misconception) -> MisconceptionBrief:
     return MisconceptionBrief(
         id=m.id, node_id=m.node_id, label=m.label,
         detail=m.detail, student_detail=m.student_detail,
-        confirm_question=m.confirm_question,
+        confirm_question=m.confirm_question, source=m.source,
         is_default=m.is_default, owner_id=m.owner_id,
         display_order=m.display_order,
     )
@@ -368,6 +368,7 @@ async def create_misconception(
         id=payload.id, node_id=node_id,
         label=payload.label, detail=payload.detail,
         student_detail=payload.student_detail, confirm_question=payload.confirm_question,
+        source=payload.source,
         is_default=True, display_order=display_order,
     )
     db.add(m)

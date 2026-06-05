@@ -319,17 +319,24 @@
 ### 功能
 知識路徑技能樹（深木紋夜晚地圖風 / Mockup J-1）。整合於 KnowledgeMap 頁面 A 區，取代舊版色塊路徑。
 
+> **資料驅動（2026-06-05 起）**：本元件不再寫死 12 節點，改由 `src/utils/skillTreeLayout.js` 的 `computeSkillTreeLayout(nodes)` 依傳入節點自動排版，任何單元都能渲染。
+
 ### 視覺特徵
 - **深木紋背景**：`radial-gradient(ellipse at center, #5A3E22 0%, #2E1F10 100%)` + 木框邊 `#8B5E3C` + inset shadow
-- **六角節點**（flat-top hex, r=34）+ 雙層渲染：背後光暈（blur 5–7px、透明度 0.45–0.55）+ 銳利輪廓（3px stroke）
-- **階段欄位**：6 個垂直欄（階段 1–6），虛線導引 + 標頭文字 + 起點/終點標記
-- **A 子主題（5 階段、線性）**：綠色系階段漸層（`SKILL_TREE_A_GREEN.fill[0..4]` = #C4E5AA → #5C8A2E）
-- **B 子主題（6 階段、含 5-5/5-6 平行）**：暖橘系階段漸層（`SKILL_TREE_B_AMBER.fill[0..5]` = #F8DCAE → #9B5E18）
-- **終點節點**：金色填充 + `★ 終點` 標記 + 強化光暈
-- **連線**：木紋淺色 `#C19A6B`、3px stroke、含 drop-shadow glow
+- **六角節點**（flat-top hex, r=42）+ 雙層渲染：背後光暈（blur 6–8px）+ 銳利輪廓
+- **階段欄位**：依「先備關係最長路徑深度」算欄（階段 1..N），虛線導引 + 標頭
+- **群組（列）**：依大節點（`parentCode`/`parentName`；皆無時退用節點 ID 去末段前綴）分列，每組取一個色盤（`SKILL_TREE_PALETTES`，前兩個沿用 A 綠 / B 橘）；同組內依階段由淺入深
+- **終點節點**（不是任何節點的先備）：金色填充 + `★ 終點` 標記 + 強化光暈
+- **連線**：木紋淺色 `#C19A6B`、依 `prerequisites` 繪製
 
 ### Props
-無 props（節點清單與分階段邏輯內建於元件常數，對應 `data/knowledgeGraph.js` 的 12 個節點 ID）。
+| Prop | 型別 | 說明 |
+|------|------|------|
+| `nodes` | `Node[]` | 要渲染的節點（含 `prerequisites` / `parentCode`）；未給則 fallback 全域 `knowledgeGraph` 水溶液節點 |
+| `selectable` | `boolean` | 勾選模式（未勾黯淡、已勾發光 + ✓） |
+| `selectedNodeIds` | `string[]` | 已勾選節點 ID |
+| `onToggle` | `(id) => void` | 點擊節點切換勾選 |
+| `title` | `string` | 自訂卡片標題 |
 
 ### 狀態
 | 欄位 | 型別 | 說明 |
@@ -338,10 +345,12 @@
 
 ### 色彩來源
 全部色票取自 `src/constants/theme.js`：
-- `SKILL_TREE_A_GREEN`、`SKILL_TREE_B_AMBER`、`SKILL_TREE_DARK`
+- `SKILL_TREE_PALETTES`（多群組色盤陣列，前兩個為 A 綠 / B 橘）、`SKILL_TREE_DARK`
 
 ### 使用場景
-- `KnowledgeMap`（教師端「(預設) 知識節點與迷思概念總覽」頁面 A 區）
+- `Step1Nodes`（出題精靈步驟二，勾選模式，傳入所選單元的節點）
+- `Step2Edit`（出題精靈步驟三，唯讀檢視已選節點）
+- `KnowledgeMap` / `CustomKnowledgeMap`（未傳 nodes，fallback 全域水溶液圖）
 
 ---
 

@@ -18,7 +18,7 @@ def _to_brief(m: Misconception) -> MisconceptionBrief:
     return MisconceptionBrief(
         id=m.id, node_id=m.node_id, label=m.label,
         detail=m.detail, student_detail=m.student_detail,
-        confirm_question=m.confirm_question,
+        confirm_question=m.confirm_question, source=m.source,
         is_default=m.is_default, owner_id=m.owner_id,
         display_order=m.display_order,
     )
@@ -36,7 +36,7 @@ async def update_misconception(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "MISCONCEPTION_NOT_FOUND")
     data = payload.model_dump(exclude_unset=True)
     for key, value in data.items():
-        if value is None and key not in {"detail", "student_detail", "confirm_question"}:
+        if value is None and key not in {"detail", "student_detail", "confirm_question", "source"}:
             continue
         setattr(m, key, value)
     await db.commit()

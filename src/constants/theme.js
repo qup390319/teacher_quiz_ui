@@ -52,8 +52,16 @@ const NODE_ID_TO_GROUP = {
   'INe-Ⅲ-5-5': 10, 'INe-Ⅲ-5-6': 11, 'INe-Ⅲ-5-7': 12,
 };
 
+/** 未知節點 ID（管理員新增單元的節點）→ 以字串雜湊穩定對應到 1~12 群色，避免全部同色。 */
+function hashNodeIdToGroup(nodeId) {
+  let hash = 0;
+  const s = String(nodeId ?? '');
+  for (let i = 0; i < s.length; i += 1) hash = (hash * 31 + s.charCodeAt(i)) >>> 0;
+  return (hash % 12) + 1;
+}
+
 export function getNodeColor(nodeId) {
-  const group = NODE_ID_TO_GROUP[nodeId] ?? 1;
+  const group = NODE_ID_TO_GROUP[nodeId] ?? hashNodeIdToGroup(nodeId);
   return NODE_GROUP_COLORS[group];
 }
 
@@ -73,6 +81,20 @@ export const SKILL_TREE_B_AMBER = {
   fill:   ['#F8DCAE', '#F0B962', '#E8A042', '#D08B2E', '#B9770E', '#9B5E18'],
   stroke: ['#F0B962', '#E8A042', '#D08B2E', '#B9770E', '#9B5E18', '#7A3F0D'],
 };
+
+/**
+ * 多單元技能樹色盤（資料驅動）。
+ * 每個「大節點 / 子主題」群組依出現順序取一個色盤；同群組內依階段（由淺入深）取色。
+ * 前兩個沿用水溶液既有的綠/橘，確保水溶液視覺不退化；其餘為新單元自動配色。
+ */
+export const SKILL_TREE_PALETTES = [
+  SKILL_TREE_A_GREEN,
+  SKILL_TREE_B_AMBER,
+  { fill: ['#D6C9F0', '#B9A3E0', '#9C7FD0', '#7E5CC0', '#603AAF'], stroke: ['#B9A3E0', '#9C7FD0', '#7E5CC0', '#603AAF', '#472A86'] },
+  { fill: ['#AEE3DA', '#7FD0C2', '#4FBDAA', '#2BA192', '#15776B'], stroke: ['#7FD0C2', '#4FBDAA', '#2BA192', '#15776B', '#0E5249'] },
+  { fill: ['#F6C9D6', '#EFA3B8', '#E67D9A', '#D85A7C', '#B83A5E'], stroke: ['#EFA3B8', '#E67D9A', '#D85A7C', '#B83A5E', '#8E2746'] },
+  { fill: ['#9FC9E8', '#73AEDC', '#4A91CE', '#2E74B5', '#1B5489'], stroke: ['#73AEDC', '#4A91CE', '#2E74B5', '#1B5489', '#123c63'] },
+];
 
 export const SKILL_TREE_DARK = {
   bgGradient: 'radial-gradient(ellipse at center, #5A3E22 0%, #2E1F10 100%)',

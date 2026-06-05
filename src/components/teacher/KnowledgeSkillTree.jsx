@@ -1,56 +1,30 @@
-import { useState } from 'react';
-import { knowledgeNodes } from '../../data/knowledgeGraph';
-import {
-  SKILL_TREE_A_GREEN as A_PAL,
-  SKILL_TREE_B_AMBER as B_PAL,
-  SKILL_TREE_DARK as D,
-} from '../../constants/theme';
+import { useMemo, useState } from 'react';
+import { knowledgeNodes as globalNodes } from '../../data/knowledgeGraph';
+import { SKILL_TREE_PALETTES, SKILL_TREE_DARK as D } from '../../constants/theme';
+import { computeSkillTreeLayout, shortNodeLabel, HEX_R } from '../../utils/skillTreeLayout';
 
 /**
- * 知識節點技能樹（Mockup J-1）
- * - 深木紋夜晚地圖風：radial gradient #5A3E22 → #2E1F10
- * - 六角節點 + 階段漸層配色（A 綠系 / B 橘系，由淺入深）
+ * 知識節點技能樹（資料驅動版，Mockup J-1 風格）
+ * - 深木紋夜晚地圖：radial gradient #5A3E22 → #2E1F10
+ * - 六角節點 + 群組色盤（依大節點 / 子主題分列，由淺入深表階段）
  * - 銳利輪廓 + 背後柔和光暈（雙層渲染）
- * - 階段欄位（階段 1–6）+ 起點/終點標籤
- * - Hover 節點顯示完整名稱於頂部
+ * - 任何單元都能渲染：座標由 computeSkillTreeLayout 依先備關係算出
+ *
+ * Props
+ * @param {Array}   [nodes]            — 要渲染的節點（含 prerequisites / parentCode）；未給則 fallback 全域水溶液節點
+ * @param {boolean} [selectable=false] — 勾選模式（未勾選黯淡、已勾選發光）
+ * @param {string[]}[selectedNodeIds]  — 已勾選的節點 ID 清單
+ * @param {Function}[onToggle]         — 點擊節點切換勾選
+ * @param {string}  [title]            — 自訂卡片標題
  */
 
-// 6 個階段欄位 x 座標
-const COL_X = [110, 250, 390, 530, 670, 830];
-// 子主題列標題 Y（位於該列上方，避開 hex）
-const LABEL_Y_A = 105;
-const LABEL_Y_B = 365;
-// 子主題列 hex 中心 Y
-const ROW_Y_A = 210;
-const ROW_Y_B_MAIN = 490;
-const ROW_Y_B_UP = 440;
-const ROW_Y_B_DOWN = 540;
-const HEX_R = 42;
-const SVG_H = 610;
-
-const A_NODES = [
-  { id: 'INe-Ⅱ-3-01', x: COL_X[0], y: ROW_Y_A, stage: 0 },
-  { id: 'INe-Ⅱ-3-02', x: COL_X[1], y: ROW_Y_A, stage: 1 },
-  { id: 'INe-Ⅱ-3-03', x: COL_X[2], y: ROW_Y_A, stage: 2 },
-  { id: 'INe-Ⅱ-3-05', x: COL_X[3], y: ROW_Y_A, stage: 3 },
-  { id: 'INe-Ⅱ-3-04', x: COL_X[4], y: ROW_Y_A, stage: 4, gold: true },
-];
-
-const B_NODES = [
-  { id: 'INe-Ⅲ-5-1', x: COL_X[0], y: ROW_Y_B_MAIN, stage: 0 },
-  { id: 'INe-Ⅲ-5-2', x: COL_X[1], y: ROW_Y_B_MAIN, stage: 1 },
-  { id: 'INe-Ⅲ-5-3', x: COL_X[2], y: ROW_Y_B_MAIN, stage: 2 },
-  { id: 'INe-Ⅲ-5-4', x: COL_X[3], y: ROW_Y_B_MAIN, stage: 3 },
-  { id: 'INe-Ⅲ-5-5', x: COL_X[4], y: ROW_Y_B_UP,   stage: 4 },
-  { id: 'INe-Ⅲ-5-6', x: COL_X[4], y: ROW_Y_B_DOWN, stage: 4 },
-  { id: 'INe-Ⅲ-5-7', x: COL_X[5], y: ROW_Y_B_MAIN, stage: 5, gold: true },
-];
-
-const A_EDGES = [[0, 1], [1, 2], [2, 3], [3, 4]];
-const B_EDGES = [[0, 1], [1, 2], [2, 3], [3, 4], [3, 5], [4, 6], [5, 6]];
+function paletteFor(groupIndex, stage) {
+  const pal = SKILL_TREE_PALETTES[groupIndex % SKILL_TREE_PALETTES.length];
+  const idx = Math.min(stage, pal.fill.length - 1);
+  return { fill: pal.fill[idx], stroke: pal.stroke[idx] };
+}
 
 function hexPoints(cx, cy, r = HEX_R) {
-  // flat-top 六角形
   const hw = r * 0.5;
   const h = r * 0.87;
   return `${cx - hw},${cy - h} ${cx + hw},${cy - h} ${cx + r},${cy} ${cx + hw},${cy + h} ${cx - hw},${cy + h} ${cx - r},${cy}`;
@@ -59,36 +33,27 @@ function hexPoints(cx, cy, r = HEX_R) {
 function edgePoints(from, to, r = HEX_R) {
   const dx = to.x - from.x;
   const dy = to.y - from.y;
-  const len = Math.sqrt(dx * dx + dy * dy);
+  const len = Math.sqrt(dx * dx + dy * dy) || 1;
   const ox = (dx / len) * r;
   const oy = (dy / len) * r;
-  return {
-    x1: from.x + ox, y1: from.y + oy,
-    x2: to.x - ox,   y2: to.y - oy,
-  };
+  return { x1: from.x + ox, y1: from.y + oy, x2: to.x - ox, y2: to.y - oy };
 }
 
 function HexNode({ node, fill, stroke, isGold, label, onHover, selectable, isSelected, onToggle }) {
   const points = hexPoints(node.x, node.y);
-  // 勾選模式：未選 → 黯淡無光；已選 → 完整發光
   const isDimmed = selectable && !isSelected;
   const glowColor = isGold ? D.goldStroke : stroke;
   const finalStroke = isDimmed ? '#6F5B40' : (isGold ? D.goldStroke : stroke);
   const finalFill = isDimmed ? 'rgba(110, 90, 65, 0.35)' : (isGold ? D.gold : fill);
   const idTextColor = isDimmed ? '#8B7A5F' : '#1E2420';
 
-  const handleClick = () => {
-    if (selectable && onToggle) onToggle(node.id);
-  };
-
   return (
     <g
       style={{ cursor: selectable ? 'pointer' : 'default' }}
       onMouseEnter={() => onHover?.(node)}
       onMouseLeave={() => onHover?.(null)}
-      onClick={handleClick}
+      onClick={() => { if (selectable && onToggle) onToggle(node.id); }}
     >
-      {/* 光暈層：模糊放大 stroke 形成 halo（dim 時不顯示） */}
       {!isDimmed && (
         <polygon
           points={points}
@@ -99,7 +64,6 @@ function HexNode({ node, fill, stroke, isGold, label, onHover, selectable, isSel
           style={{ filter: `blur(${isGold ? 8 : 6}px)` }}
         />
       )}
-      {/* 銳利層：完整輪廓 + 填色（dim 時用灰褐色） */}
       <polygon
         points={points}
         fill={finalFill}
@@ -108,21 +72,19 @@ function HexNode({ node, fill, stroke, isGold, label, onHover, selectable, isSel
         strokeLinejoin="round"
         strokeDasharray={isDimmed ? '4 3' : undefined}
       />
-      {/* 短碼（去掉 INe- 前綴），字體 17px 配合 hex r=42 */}
       <text
         x={node.x}
         y={node.y}
         textAnchor="middle"
         dominantBaseline="central"
         fill={idTextColor}
-        fontSize="17"
+        fontSize="16"
         fontWeight="700"
         fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
         style={{ pointerEvents: 'none', userSelect: 'none' }}
       >
         {label}
       </text>
-      {/* 終點 ★ 標記（dim 時不顯示） */}
       {isGold && !isDimmed && (
         <text
           x={node.x}
@@ -136,7 +98,6 @@ function HexNode({ node, fill, stroke, isGold, label, onHover, selectable, isSel
           ★ 終點
         </text>
       )}
-      {/* 勾選模式下，已選節點右上角加綠色 ✓ 徽章 */}
       {selectable && isSelected && (
         <g style={{ pointerEvents: 'none' }}>
           <circle
@@ -162,14 +123,8 @@ function HexNode({ node, fill, stroke, isGold, label, onHover, selectable, isSel
   );
 }
 
-/**
- * Props
- * @param {boolean} [selectable=false] — 啟用勾選模式（未勾選黯淡、已勾選發光）
- * @param {string[]} [selectedNodeIds=[]] — 已勾選的節點 ID 清單（selectable=true 時使用）
- * @param {(nodeId: string) => void} [onToggle] — 點擊節點切換勾選狀態
- * @param {string} [title] — 自訂卡片標題（預設「知識學習路徑（技能樹）」）
- */
 export default function KnowledgeSkillTree({
+  nodes,
   selectable = false,
   selectedNodeIds = [],
   onToggle,
@@ -177,9 +132,17 @@ export default function KnowledgeSkillTree({
 } = {}) {
   const [hovered, setHovered] = useState(null);
   const [showNames, setShowNames] = useState(false);
-  const nodeName = (id) => knowledgeNodes.find((n) => n.id === id)?.name ?? '';
-  const isNodeSelected = (id) => selectedNodeIds.includes(id);
 
+  // 有傳 nodes（即使是空陣列）→ 用該單元節點；完全沒傳（如 KnowledgeMap）→ fallback 全域水溶液圖
+  const data = Array.isArray(nodes) ? nodes : globalNodes;
+  const layout = useMemo(() => computeSkillTreeLayout(data), [data]);
+  const nameById = useMemo(() => {
+    const m = new Map();
+    data.forEach((n) => m.set(n.id, n.name));
+    return m;
+  }, [data]);
+
+  const isNodeSelected = (id) => selectedNodeIds.includes(id);
   const connectorStyle = {
     filter: `drop-shadow(0 0 3px ${D.connector}) drop-shadow(0 0 1.5px ${D.connector})`,
   };
@@ -188,6 +151,9 @@ export default function KnowledgeSkillTree({
     ? '知識學習路徑（技能樹）· 點選節點以勾選'
     : '知識學習路徑（技能樹）');
   const placeholderText = '滑鼠移到節點上可看完整名稱（或開啟右上「顯示節點名稱」）';
+
+  const svgH = Math.max(360, layout.height);
+  const stageCols = Array.from({ length: layout.maxStage + 1 }, (_, i) => i);
 
   return (
     <div
@@ -198,7 +164,7 @@ export default function KnowledgeSkillTree({
         boxShadow: 'inset 0 0 40px rgba(0,0,0,0.55), 0 4px 16px rgba(0,0,0,0.18)',
       }}
     >
-      {/* 頂部標題列：標題 + 切換鈕（不含 hover 內容，避免 layout shift） */}
+      {/* 標題列 + 顯示節點名稱切換 */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
         <p className="text-[15px] font-bold tracking-wider" style={{ color: D.textMuted }}>
           {headerTitle}
@@ -221,7 +187,7 @@ export default function KnowledgeSkillTree({
         </label>
       </div>
 
-      {/* 最小高度的 hover 資訊條 — 永遠存在，長名稱可換行不溢出 */}
+      {/* hover 資訊條 */}
       <div
         className="mb-4 px-4 py-2.5 rounded-xl flex items-center"
         style={{
@@ -233,14 +199,11 @@ export default function KnowledgeSkillTree({
       >
         {hovered ? (
           <div className="flex items-baseline gap-2.5 flex-wrap leading-relaxed">
-            <span
-              className="font-mono text-[15px] font-bold flex-shrink-0"
-              style={{ color: D.goldStroke }}
-            >
+            <span className="font-mono text-[15px] font-bold flex-shrink-0" style={{ color: D.goldStroke }}>
               {hovered.id}
             </span>
             <span className="text-[15px] font-medium" style={{ color: D.text }}>
-              {nodeName(hovered.id)}
+              {nameById.get(hovered.id)}
             </span>
           </div>
         ) : (
@@ -250,255 +213,160 @@ export default function KnowledgeSkillTree({
         )}
       </div>
 
-      <svg
-        viewBox={`0 0 1000 ${SVG_H}`}
-        xmlns="http://www.w3.org/2000/svg"
-        className="w-full h-auto"
-      >
-        {/* 階段欄位垂直導引線 */}
-        <g stroke={D.guide} strokeWidth="1" strokeDasharray="2 5" opacity="0.4">
-          {COL_X.map((x) => (
-            <line key={`guide-${x}`} x1={x} y1={50} x2={x} y2={SVG_H - 20} />
+      {layout.nodes.length === 0 ? (
+        <div className="px-4 py-12 text-center text-[15px]" style={{ color: D.textMuted }}>
+          此單元尚未建立知識節點
+        </div>
+      ) : (
+        <svg viewBox={`0 0 ${layout.width} ${svgH}`} xmlns="http://www.w3.org/2000/svg" className="w-full h-auto">
+          {/* 階段欄位導引線 + 標頭 */}
+          <g stroke={D.guide} strokeWidth="1" strokeDasharray="2 5" opacity="0.4">
+            {stageCols.map((s) => {
+              const x = layout.colX + s * layout.colW;
+              return <line key={`guide-${s}`} x1={x} y1={50} x2={x} y2={svgH - 20} />;
+            })}
+          </g>
+          {stageCols.map((s) => (
+            <text
+              key={`tier-${s}`}
+              x={layout.colX + s * layout.colW}
+              y={32}
+              textAnchor="middle"
+              fontSize="15"
+              fontWeight="700"
+              fill={D.textMuted}
+              style={{ letterSpacing: '1.5px' }}
+            >
+              階段 {s + 1}
+            </text>
           ))}
-        </g>
 
-        {/* 階段標頭（移除「起點/終點」副標，避免暗示階段 6 是兩條路的共同終點） */}
-        {COL_X.map((x, i) => (
-          <text
-            key={`tier-${i}`}
-            x={x}
-            y={32}
-            textAnchor="middle"
-            fontSize="15"
-            fontWeight="700"
-            fill={D.textMuted}
-            style={{ letterSpacing: '1.5px' }}
+          {/* 群組標題列 */}
+          {layout.groups.map((g) => (
+            <text
+              key={`glabel-${g.key}`}
+              x={layout.colX}
+              y={g.labelY}
+              fontSize="17"
+              fontWeight="700"
+              fill={paletteFor(g.groupIndex, 1).fill}
+              textAnchor="start"
+            >
+              {g.label}
+            </text>
+          ))}
+
+          {/* 先備關係連線 */}
+          <g
+            stroke={D.connector}
+            strokeWidth="3"
+            strokeLinecap="round"
+            fill="none"
+            opacity="0.85"
+            style={connectorStyle}
           >
-            階段 {i + 1}
-          </text>
-        ))}
+            {layout.edges.map(([fromId, toId]) => {
+              const from = layout.positions.get(fromId);
+              const to = layout.positions.get(toId);
+              if (!from || !to) return null;
+              const e = edgePoints(from, to);
+              return <line key={`edge-${fromId}-${toId}`} x1={e.x1} y1={e.y1} x2={e.x2} y2={e.y2} />;
+            })}
+          </g>
 
-        {/* === 子主題 A 標題列（位於該列上方，徹底避開 hex） === */}
-        <text x={COL_X[0]} y={LABEL_Y_A} fontSize="17" fontWeight="700" fill={D.labelA} textAnchor="start">
-          子主題 A · 溶解
-        </text>
-        <text x={COL_X[0]} y={LABEL_Y_A + 20} fontSize="15" fill={D.textMuted} textAnchor="start">
-          5 階段（線性）
-        </text>
-
-        {/* A 連線 */}
-        <g
-          stroke={D.connector}
-          strokeWidth="3"
-          strokeLinecap="round"
-          fill="none"
-          opacity="0.85"
-          style={connectorStyle}
-        >
-          {A_EDGES.map(([i, j], idx) => {
-            const e = edgePoints(A_NODES[i], A_NODES[j]);
-            return <line key={`a-edge-${idx}`} x1={e.x1} y1={e.y1} x2={e.x2} y2={e.y2} />;
+          {/* 節點 */}
+          {layout.nodes.map((n) => {
+            const pal = paletteFor(n.groupIndex, n.stage);
+            return (
+              <HexNode
+                key={n.id}
+                node={n}
+                fill={pal.fill}
+                stroke={pal.stroke}
+                isGold={n.gold}
+                label={shortNodeLabel(n.id)}
+                onHover={setHovered}
+                selectable={selectable}
+                isSelected={isNodeSelected(n.id)}
+                onToggle={onToggle}
+              />
+            );
           })}
-        </g>
+        </svg>
+      )}
 
-        {/* A 節點 */}
-        {A_NODES.map((n) => (
-          <HexNode
-            key={n.id}
-            node={n}
-            fill={A_PAL.fill[n.stage]}
-            stroke={A_PAL.stroke[n.stage]}
-            isGold={!!n.gold}
-            label={n.id.replace(/^INe-/, '')}
-            onHover={setHovered}
-            selectable={selectable}
-            isSelected={isNodeSelected(n.id)}
-            onToggle={onToggle}
-          />
-        ))}
-
-        {/* 分隔線（A 區與 B 區之間） */}
-        <line
-          x1={20} y1={325} x2={980} y2={325}
-          stroke={D.connector} strokeWidth="1" strokeDasharray="2 6" opacity="0.5"
-        />
-
-        {/* === 子主題 B 標題列（位於該列上方，徹底避開 hex） === */}
-        <text x={COL_X[0]} y={LABEL_Y_B} fontSize="17" fontWeight="700" fill={D.labelB} textAnchor="start">
-          子主題 B · 酸鹼
-        </text>
-        <text x={COL_X[0]} y={LABEL_Y_B + 20} fontSize="15" fill={D.textMuted} textAnchor="start">
-          6 階段（5-5 / 5-6 平行）
-        </text>
-
-        {/* B 連線（含 5-4 → 5-5/5-6 分岔、5-5/5-6 → 5-7 合流） */}
-        <g
-          stroke={D.connector}
-          strokeWidth="3"
-          strokeLinecap="round"
-          fill="none"
-          opacity="0.85"
-          style={connectorStyle}
-        >
-          {B_EDGES.map(([i, j], idx) => {
-            const e = edgePoints(B_NODES[i], B_NODES[j]);
-            return <line key={`b-edge-${idx}`} x1={e.x1} y1={e.y1} x2={e.x2} y2={e.y2} />;
-          })}
-        </g>
-
-        {/* B 節點 */}
-        {B_NODES.map((n) => (
-          <HexNode
-            key={n.id}
-            node={n}
-            fill={B_PAL.fill[n.stage]}
-            stroke={B_PAL.stroke[n.stage]}
-            isGold={!!n.gold}
-            label={n.id.replace(/^INe-/, '')}
-            onHover={setHovered}
-            selectable={selectable}
-            isSelected={isNodeSelected(n.id)}
-            onToggle={onToggle}
-          />
-        ))}
-      </svg>
-
-      {/* 節點名稱面板（showNames 開啟時顯示 — 兩欄、完整名稱不截斷） */}
-      {showNames && (
+      {/* 節點名稱面板（依群組列出） */}
+      {showNames && layout.groups.length > 0 && (
         <div
           className="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-3 p-4 rounded-2xl"
-          style={{
-            background: 'rgba(0,0,0,0.28)',
-            border: `1px solid ${D.connector}`,
-          }}
+          style={{ background: 'rgba(0,0,0,0.28)', border: `1px solid ${D.connector}` }}
         >
-          {/* 子主題 A */}
-          <div>
-            <h4
-              className="text-base font-bold mb-2.5 pb-1.5 flex items-baseline gap-2"
-              style={{ color: D.labelA, borderBottom: `1px solid ${D.connector}` }}
-            >
-              <span>子主題 A · 溶解</span>
-              <span className="text-[15px] font-normal" style={{ color: D.textMuted }}>
-                （5 階段、線性）
-              </span>
-            </h4>
-            <ol className="space-y-2">
-              {A_NODES.map((n) => (
-                <li key={n.id} className="flex gap-3 items-start">
-                  <span
-                    aria-hidden="true"
-                    className="flex-shrink-0 w-5 h-5 rounded-full mt-1 shadow"
-                    style={{
-                      background: n.gold ? D.gold : A_PAL.fill[n.stage],
-                      border: `2px solid ${n.gold ? D.goldStroke : A_PAL.stroke[n.stage]}`,
-                    }}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline gap-2 flex-wrap">
+          {layout.groups.map((g) => {
+            const groupNodes = layout.nodes
+              .filter((n) => n.groupIndex === g.groupIndex)
+              .sort((a, b) => a.stage - b.stage || a.y - b.y);
+            return (
+              <div key={`names-${g.key}`}>
+                <h4
+                  className="text-base font-bold mb-2.5 pb-1.5 flex items-baseline gap-2"
+                  style={{ color: paletteFor(g.groupIndex, 1).fill, borderBottom: `1px solid ${D.connector}` }}
+                >
+                  <span>{g.label}</span>
+                  <span className="text-[15px] font-normal" style={{ color: D.textMuted }}>
+                    （{g.count} 節點）
+                  </span>
+                </h4>
+                <ol className="space-y-2">
+                  {groupNodes.map((n) => (
+                    <li key={n.id} className="flex gap-3 items-start">
                       <span
-                        className="font-mono text-[15px] font-bold"
-                        style={{ color: D.textMuted }}
-                      >
-                        {n.id.replace(/^INe-/, '')}
-                      </span>
-                      {n.gold && (
-                        <span
-                          className="text-[15px] px-2 py-0.5 rounded font-bold"
-                          style={{
-                            color: '#1E2420',
-                            background: D.gold,
-                          }}
-                        >
-                          ★ 終點
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[15px] leading-relaxed mt-1" style={{ color: D.text }}>
-                      {nodeName(n.id)}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </div>
-          {/* 子主題 B */}
-          <div>
-            <h4
-              className="text-base font-bold mb-2.5 pb-1.5 flex items-baseline gap-2"
-              style={{ color: D.labelB, borderBottom: `1px solid ${D.connector}` }}
-            >
-              <span>子主題 B · 酸鹼</span>
-              <span className="text-[15px] font-normal" style={{ color: D.textMuted }}>
-                （6 階段、5-5 與 5-6 平行）
-              </span>
-            </h4>
-            <ol className="space-y-2">
-              {B_NODES.map((n) => (
-                <li key={n.id} className="flex gap-3 items-start">
-                  <span
-                    aria-hidden="true"
-                    className="flex-shrink-0 w-5 h-5 rounded-full mt-1 shadow"
-                    style={{
-                      background: n.gold ? D.gold : B_PAL.fill[n.stage],
-                      border: `2px solid ${n.gold ? D.goldStroke : B_PAL.stroke[n.stage]}`,
-                    }}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline gap-2 flex-wrap">
-                      <span
-                        className="font-mono text-[15px] font-bold"
-                        style={{ color: D.textMuted }}
-                      >
-                        {n.id.replace(/^INe-/, '')}
-                      </span>
-                      {n.gold && (
-                        <span
-                          className="text-[15px] px-2 py-0.5 rounded font-bold"
-                          style={{
-                            color: '#1E2420',
-                            background: D.gold,
-                          }}
-                        >
-                          ★ 終點
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[15px] leading-relaxed mt-1" style={{ color: D.text }}>
-                      {nodeName(n.id)}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </div>
+                        aria-hidden="true"
+                        className="flex-shrink-0 w-5 h-5 rounded-full mt-1 shadow"
+                        style={{
+                          background: n.gold ? D.gold : paletteFor(n.groupIndex, n.stage).fill,
+                          border: `2px solid ${n.gold ? D.goldStroke : paletteFor(n.groupIndex, n.stage).stroke}`,
+                        }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-baseline gap-2 flex-wrap">
+                          <span className="font-mono text-[15px] font-bold" style={{ color: D.textMuted }}>
+                            {shortNodeLabel(n.id)}
+                          </span>
+                          {n.gold && (
+                            <span className="text-[15px] px-2 py-0.5 rounded font-bold" style={{ color: '#1E2420', background: D.gold }}>
+                              ★ 終點
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[15px] leading-relaxed mt-1" style={{ color: D.text }}>
+                          {nameById.get(n.id)}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            );
+          })}
         </div>
       )}
 
       {/* Legend */}
-      <div
-        className="flex flex-wrap gap-x-5 gap-y-2 mt-4 text-[15px] items-center"
-        style={{ color: D.textMuted }}
-      >
+      <div className="flex flex-wrap gap-x-5 gap-y-2 mt-4 text-[15px] items-center" style={{ color: D.textMuted }}>
+        {layout.groups.map((g) => (
+          <span key={`legend-${g.key}`} className="flex items-center gap-1.5">
+            <span
+              className="inline-block w-3.5 h-3.5 rounded-sm"
+              style={{
+                background: paletteFor(g.groupIndex, 1).fill,
+                boxShadow: `0 0 6px ${paletteFor(g.groupIndex, 1).stroke}`,
+              }}
+            />
+            {g.label}（{g.count} 節點）
+          </span>
+        ))}
         <span className="flex items-center gap-1.5">
-          <span
-            className="inline-block w-3.5 h-3.5 rounded-sm"
-            style={{ background: A_PAL.fill[1], boxShadow: `0 0 6px ${A_PAL.stroke[1]}` }}
-          />
-          子主題 A · 溶解（5 階段）
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span
-            className="inline-block w-3.5 h-3.5 rounded-sm"
-            style={{ background: B_PAL.fill[2], boxShadow: `0 0 6px ${B_PAL.stroke[2]}` }}
-          />
-          子主題 B · 酸鹼（6 階段，5-5/5-6 平行）
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span
-            className="inline-block w-3.5 h-3.5 rounded-sm"
-            style={{ background: D.gold, boxShadow: `0 0 8px ${D.goldStroke}` }}
-          />
+          <span className="inline-block w-3.5 h-3.5 rounded-sm" style={{ background: D.gold, boxShadow: `0 0 8px ${D.goldStroke}` }} />
           ★ 終點節點
         </span>
       </div>

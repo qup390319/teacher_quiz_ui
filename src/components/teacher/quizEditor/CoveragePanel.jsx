@@ -1,8 +1,7 @@
-import { knowledgeNodes } from '../../../data/knowledgeGraph';
 import { getNodeColor } from '../../../constants/theme';
 
-export default function CoveragePanel({ questions, selectedNodeIds, nodeQuestionCounts = {}, onAddForMisconception }) {
-  const nodeCoverage = knowledgeNodes
+export default function CoveragePanel({ nodes = [], questions, selectedNodeIds, nodeQuestionCounts = {}, onAddForMisconception }) {
+  const nodeCoverage = nodes
     .filter((n) => selectedNodeIds.includes(n.id))
     .map((node) => {
       const nodeQuestions = questions.filter((q) => q.knowledgeNodeId === node.id);

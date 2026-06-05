@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../../context/AppContext';
 import { useQuizzes, useSaveQuiz } from '../../../hooks/useQuizzes';
 import { useDebouncedEffect } from '../../../hooks/useDebouncedEffect';
-import { knowledgeNodes, getNodeById } from '../../../data/knowledgeGraph';
 import { getNodeColor } from '../../../constants/theme';
 import EditQuestionModal from '../../../components/teacher/quizEditor/EditQuestionModal';
 import DeleteQuestionModal from '../../../components/teacher/quizEditor/DeleteQuestionModal';
@@ -37,8 +36,8 @@ function renumber(questions) {
  * - 對應節點鎖定為 nodeId
  * - 4 個選項：B 為正解、A 設為使用者點的迷思，C/D 從該節點剩餘且尚未被覆蓋的迷思補滿；不夠則 fallback 該節點任意迷思
  */
-function buildQuestionForMisconception(nodeId, misconceptionId, existingQuestions, nextId) {
-  const node = getNodeById(nodeId);
+function buildQuestionForMisconception(nodes, nodeId, misconceptionId, existingQuestions, nextId) {
+  const node = nodes.find((n) => n.id === nodeId);
   if (!node) return null;
   const coveredIds = new Set();
   existingQuestions
@@ -69,7 +68,7 @@ function formatTime(date) {
   return `${hh}:${mm}`;
 }
 
-export default function Step2Edit({ onBack }) {
+export default function Step2Edit({ nodes = [], onBack }) {
   const {
     quizQuestions, setQuizQuestions, selectedNodeIds, nodeQuestionCounts,
     editingQuizId, setEditingQuizId,
@@ -81,6 +80,8 @@ export default function Step2Edit({ onBack }) {
   const saveQuizMut = useSaveQuiz();
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  const getNode = (id) => nodes.find((n) => n.id === id);
 
   // 編輯既有：用原 title；複製：用「原title (複製)」；新建：用日期預設名。
   // 用 effect 在初次掛載時把預設名寫回 context；之後直接以 editingQuizTitle 為唯一來源，
@@ -108,7 +109,7 @@ export default function Step2Edit({ onBack }) {
 
   const getMisconceptionLabel = (nodeId, diagnosisId) => {
     if (diagnosisId === 'CORRECT') return null;
-    const node = getNodeById(nodeId);
+    const node = getNode(nodeId);
     if (!node) return diagnosisId;
     const m = node.misconceptions.find((m) => m.id === diagnosisId);
     return m ? m.label : diagnosisId;
@@ -128,16 +129,18 @@ export default function Step2Edit({ onBack }) {
 
   const addNewQuestion = () => {
     const nextId = quizQuestions.length + 1;
-    const firstSelectedNode = knowledgeNodes.find((n) => selectedNodeIds.includes(n.id));
+    const firstSelectedNode = nodes.find((n) => selectedNodeIds.includes(n.id)) || nodes[0];
+    if (!firstSelectedNode) return;
+    const m = firstSelectedNode.misconceptions || [];
     const newQ = {
       id: nextId,
       stem: '（請輸入題幹）',
-      knowledgeNodeId: firstSelectedNode?.id || knowledgeNodes[0].id,
+      knowledgeNodeId: firstSelectedNode.id,
       options: [
-        { tag: 'A', content: '（請輸入選項 A）', diagnosis: firstSelectedNode?.misconceptions[0]?.id || 'M01-1' },
+        { tag: 'A', content: '（請輸入選項 A）', diagnosis: m[0]?.id || 'CORRECT' },
         { tag: 'B', content: '（請輸入選項 B）', diagnosis: 'CORRECT' },
-        { tag: 'C', content: '（請輸入選項 C）', diagnosis: firstSelectedNode?.misconceptions[1]?.id || 'M01-2' },
-        { tag: 'D', content: '（請輸入選項 D）', diagnosis: firstSelectedNode?.misconceptions[2]?.id || 'M01-3' },
+        { tag: 'C', content: '（請輸入選項 C）', diagnosis: m[1]?.id || m[0]?.id || 'CORRECT' },
+        { tag: 'D', content: '（請輸入選項 D）', diagnosis: m[2]?.id || m[0]?.id || 'CORRECT' },
       ],
     };
     setQuizQuestions((prev) => [...prev, newQ]);
@@ -147,7 +150,7 @@ export default function Step2Edit({ onBack }) {
 
   const addQuestionForMisconception = (nodeId, misconceptionId) => {
     const nextId = quizQuestions.length + 1;
-    const newQ = buildQuestionForMisconception(nodeId, misconceptionId, quizQuestions, nextId);
+    const newQ = buildQuestionForMisconception(nodes, nodeId, misconceptionId, quizQuestions, nextId);
     if (!newQ) return;
     setQuizQuestions((prev) => [...prev, newQ]);
     setIsWizardDirty(true);
@@ -264,7 +267,7 @@ export default function Step2Edit({ onBack }) {
   return (
     <div>
       <div className="mb-5">
-        <h2 className="text-xl font-bold text-[#2D3436] mb-1">步驟二：製作題組</h2>
+        <h2 className="text-xl font-bold text-[#2D3436] mb-1">步驟三：製作題組</h2>
         <p className="text-[#636E72] text-sm">請確認以下題目內容，可點擊「編輯」修改、「新增題目」加題、或從題庫挑現成題</p>
       </div>
 
@@ -278,12 +281,13 @@ export default function Step2Edit({ onBack }) {
         </summary>
         <div className="mt-3">
           {/* selectable=true + 無 onToggle = 視覺上仍顯示「已勾選/未勾選」差異（已勾發光、未勾黯淡），但點擊無效，純檢視 */}
-          <KnowledgeSkillTree selectable selectedNodeIds={selectedNodeIds} />
+          <KnowledgeSkillTree nodes={nodes} selectable selectedNodeIds={selectedNodeIds} />
         </div>
       </details>
 
       <div data-tour="coverage-panel">
         <CoveragePanel
+          nodes={nodes}
           questions={quizQuestions}
           selectedNodeIds={selectedNodeIds}
           nodeQuestionCounts={nodeQuestionCounts}
@@ -353,7 +357,7 @@ export default function Step2Edit({ onBack }) {
           </thead>
           <tbody className="divide-y divide-[#D5D8DC]">
             {quizQuestions.map((q, qIdx) => {
-              const node = getNodeById(q.knowledgeNodeId);
+              const node = getNode(q.knowledgeNodeId);
               const isDragging = dragIdx === qIdx;
               const isDropTarget = dropIdx === qIdx;
               return (
@@ -515,7 +519,7 @@ export default function Step2Edit({ onBack }) {
       </div>
 
       {editingQuestion && (
-        <EditQuestionModal question={editingQuestion} selectedNodeIds={selectedNodeIds} onSave={handleSaveEdit} onClose={() => setEditingQuestion(null)} />
+        <EditQuestionModal nodes={nodes} question={editingQuestion} selectedNodeIds={selectedNodeIds} onSave={handleSaveEdit} onClose={() => setEditingQuestion(null)} />
       )}
       {deletingQuestion && (
         <DeleteQuestionModal question={deletingQuestion} onConfirm={() => handleDelete(deletingQuestion.id)} onClose={() => setDeletingQuestion(null)} />
@@ -525,6 +529,7 @@ export default function Step2Edit({ onBack }) {
       )}
       {showImport && (
         <QuestionImportDrawer
+          nodes={nodes}
           selectedNodeIds={selectedNodeIds}
           excludeQuizId={editingQuizId}
           onImport={handleImportQuestions}

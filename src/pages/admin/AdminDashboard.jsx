@@ -120,6 +120,12 @@ export default function AdminDashboard() {
             desc="畫布編輯：拖曳節點、連線設定先備、編輯迷思概念"
           />
           <EntryCard
+            to="/admin/misconceptions"
+            icon="psychology"
+            title="迷思概念"
+            desc="依知識節點集中管理常見迷思：短標、教師 / 學生視角、AI 確認問句"
+          />
+          <EntryCard
             to="/admin/sample-quizzes"
             icon="library_books"
             title="範例題庫"

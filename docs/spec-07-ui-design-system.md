@@ -111,11 +111,13 @@
 
 ### 1.5 技能樹色票（深木紋夜晚地圖風 / Mockup J-1）
 
-> 專供「知識路徑技能樹」(`KnowledgeSkillTree`) 使用。常數來自 `src/constants/theme.js`：`SKILL_TREE_A_GREEN`、`SKILL_TREE_B_AMBER`、`SKILL_TREE_DARK`。
+> 專供「知識路徑技能樹」(`KnowledgeSkillTree`) 使用。常數來自 `src/constants/theme.js`：`SKILL_TREE_PALETTES`（多群組色盤陣列，前兩個 = `SKILL_TREE_A_GREEN` / `SKILL_TREE_B_AMBER`）、`SKILL_TREE_DARK`。
+
+> **資料驅動（2026-06-05 起）**：技能樹改由 `src/utils/skillTreeLayout.js` 的 `computeSkillTreeLayout(nodes)` 依傳入單元的節點自動排版——**階段（欄）** = 先備關係最長路徑深度；**群組（列）** = 大節點（`parentCode`/`parentName`，皆無時退用節點 ID 去末段前綴）；每組依出現順序取一個 `SKILL_TREE_PALETTES` 色盤；**終點節點**（不是任何節點的先備）標金色 ★。下方 A 綠 / B 橘色表為前兩個群組（即示範用「水溶液」單元）的對應；新單元會自動套用後續色盤。
 
 **設計原則：**
-- **不同色系 = 子主題區分**（A 綠系 / B 暖橘系）
-- **同色系內由淺入深 = 學習進度感**（階段 1 最淺、階段 5–6 最深）
+- **不同色盤 = 大節點 / 子主題區分**（第 1 組綠系、第 2 組暖橘系、之後依序套色盤）
+- **同色盤內由淺入深 = 學習進度感**（階段越後越深）
 - 在深木紋底色上呈現「夜晚冒險地圖」氛圍
 
 **深木紋容器（卡片風格）：**

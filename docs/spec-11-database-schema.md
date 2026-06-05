@@ -555,6 +555,7 @@ CREATE TABLE misconceptions (
     detail           TEXT,                                       -- 教師視角描述
     student_detail   TEXT,                                       -- 學生視角描述
     confirm_question TEXT,                                       -- AI 二次確認問句
+    source           TEXT,                                       -- 資料來源／出處（文獻引用），自建可留空（migration 0028）
     is_default       BOOLEAN      NOT NULL DEFAULT TRUE,        -- 系統預設 vs 教師自訂
     owner_id         VARCHAR(64)  REFERENCES users(id) ON DELETE SET NULL, -- 自訂時填教師 id
     display_order    INTEGER      NOT NULL DEFAULT 0,
@@ -569,6 +570,7 @@ CREATE INDEX misconceptions_node_idx ON misconceptions(node_id);
 **邏輯**：
 - migration 0014 從 hard-code seed 48 條既有迷思（M01-1 ~ M12-4，每節點 4 條，`is_default=true`）
 - W5b 之後會把既有 `custom_misconceptions` 表（教師自訂）整合進來，用 `is_default=false` + `owner_id` 區分
+- `source`（migration 0028）：標註迷思的文獻出處（如後設研究的引用清單）。從文獻匯入的迷思會填入；教師/管理員自建的可留空
 
 ### 3.20 `parent_nodes`（W7a，migration 0018）
 

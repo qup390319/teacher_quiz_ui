@@ -111,6 +111,8 @@ class Misconception(Base):
     detail: Mapped[str | None] = mapped_column(Text, nullable=True)
     student_detail: Mapped[str | None] = mapped_column(Text, nullable=True)
     confirm_question: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # 資料來源／出處（如後設研究文獻引用）；自建迷思可留空
+    source: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_default: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     owner_id: Mapped[str | None] = mapped_column(
         String(64), ForeignKey("users.id", ondelete="SET NULL"), nullable=True,
