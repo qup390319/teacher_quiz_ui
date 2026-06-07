@@ -1,7 +1,24 @@
 /* 對話氣泡元件（AI = 米紙木邊 / 學生 = 教師綠，spec-07 §12.3）
- * 用於診斷追問對話氣泡列表。 */
+ * 用於診斷追問對話氣泡列表。
+ * variant='question'：題目氣泡，以金色高亮邊框 + 「題目」標籤與前情提要敘述區隔。 */
 
-export function Bubble({ role, text }) {
+export function Bubble({ role, text, variant }) {
+  if (role === 'ai' && variant === 'question') {
+    return (
+      <div className="flex justify-start">
+        <div className="max-w-[88%] sm:max-w-[80%] rounded-2xl rounded-bl-md px-4 py-3
+                        bg-gradient-to-b from-[#FFF6D8] to-[#FCEBB0]
+                        border-2 border-[#E8A042] text-[#5A3E22]
+                        shadow-[0_2px_0_-1px_#B9770E]">
+          <div className="flex items-center gap-1 mb-1.5">
+            <span className="material-symbols-rounded text-base text-[#B9770E]">quiz</span>
+            <span className="text-xs font-black tracking-wide text-[#B9770E]">題目</span>
+          </div>
+          <p className="text-base sm:text-lg leading-relaxed whitespace-pre-line font-medium">{text}</p>
+        </div>
+      </div>
+    );
+  }
   if (role === 'ai') {
     return (
       <div className="flex justify-start">
@@ -17,7 +34,7 @@ export function Bubble({ role, text }) {
   return (
     <div className="flex justify-end">
       <div className="max-w-[88%] sm:max-w-[80%] rounded-2xl rounded-br-md px-4 py-3
-                      bg-gradient-to-b from-[#B8DC83] to-[#7DB044]
+                      bg-white
                       border-2 border-[#5C8A2E] text-[#2F4A1A]
                       shadow-[0_2px_0_-1px_#3D5A1A]">
         <p className="text-base sm:text-lg leading-relaxed whitespace-pre-line">{text}</p>

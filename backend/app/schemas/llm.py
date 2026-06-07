@@ -16,6 +16,10 @@ class ChatRequest(BaseModel):
     max_tokens: int | None = Field(default=None, ge=1, le=8192, alias="maxTokens")
     stop: list[str] | None = None
     model: str | None = None  # 覆寫後端預設 model
+    # "json_object" → 要求上游強制回合法 JSON（追問對話用，降低解析失敗）
+    response_format: Literal["json_object", "text"] | None = Field(
+        default=None, alias="responseFormat",
+    )
 
     model_config = ConfigDict(populate_by_name=True)
 

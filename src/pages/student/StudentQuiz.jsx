@@ -94,7 +94,6 @@ function StudentQuizScreen({ quizId }) {
   const showNextQuestion = useCallback((qIdx) => {
     const q = sortedQuestions[qIdx];
     if (!q) return;
-    const node = knowledgeNodes.find((n) => n.id === q.knowledgeNodeId);
     setIsThinking(true);
     setOptionsEnabled(false);
 
@@ -105,7 +104,8 @@ function StudentQuizScreen({ quizId }) {
         {
           id: `q-${q.id}-node`,
           role: 'ai',
-          text: `接下來我們來看看關於「${node?.name || '科學'}」的問題（第 ${qIdx + 1}/${sortedQuestions.length} 題）`,
+          // 對話進行中不向學生提及知識節點名稱（節點名稱可能是完整課綱描述句）
+          text: `接下來我們來看看第 ${qIdx + 1}/${sortedQuestions.length} 題`,
         },
       ]);
       setTimeout(() => {
@@ -114,7 +114,7 @@ function StudentQuizScreen({ quizId }) {
           setIsThinking(false);
           setMessages((prev) => [
             ...prev,
-            { id: `q-${q.id}-stem`, role: 'ai', text: q.stem },
+            { id: `q-${q.id}-stem`, role: 'ai', text: q.stem, variant: 'question' },
           ]);
           setOptionsEnabled(true);
         }, 1400);
@@ -184,7 +184,6 @@ function StudentQuizScreen({ quizId }) {
     const answer = answersRef.current.find((a) => a.questionId === q.id);
     const selectedOption = q.options.find((o) => o.tag === answer?.selectedTag);
     const isCorrect = answer?.diagnosis === 'CORRECT';
-    const node = knowledgeNodes.find((n) => n.id === q.knowledgeNodeId);
 
     const ctx = {
       round: 1,
@@ -207,7 +206,7 @@ function StudentQuizScreen({ quizId }) {
 
     setTimeout(() => {
       setIsThinking(false);
-      const headerText = `接下來想跟你聊聊第 ${qIdx + 1} 題（${node?.name || '科學'}）。`;
+      const headerText = `接下來想跟你聊聊第 ${qIdx + 1} 題。`;
       const askText = buildRound1Message(selectedOption, isCorrect);
       setMessages((prev) => [
         ...prev,
@@ -386,11 +385,13 @@ function StudentQuizScreen({ quizId }) {
   const isQuestionPhase = phase === 'question';
   const isFollowUpPhase = phase === 'followUp';
 
-  /* 進度條 0~100：分兩段顯示（第一階段 0~50%、第二階段 50~100%） */
+  /* 進度條 0~100：分兩段顯示（第一階段 0~50%、第二階段 50~100%）
+   * 「當前題」算成進行到一半（+0.5），避免在最後一題對話尚未結束時就顯示 100%；
+   * 唯有 phase === 'done' 才會真正到 100%。 */
   const progress = isQuestionPhase
-    ? Math.round(((currentQIndex + 1) / sortedQuestions.length) * 50)
+    ? Math.round(((currentQIndex + 0.5) / sortedQuestions.length) * 50)
     : isFollowUpPhase
-      ? 50 + Math.round(((followUpIndex + 1) / sortedQuestions.length) * 50)
+      ? 50 + Math.round(((followUpIndex + 0.5) / sortedQuestions.length) * 50)
       : phase === 'done' ? 100 : 0;
 
   const stepInfo = isQuestionPhase
@@ -456,7 +457,7 @@ function StudentQuizScreen({ quizId }) {
       <main className="relative z-10 flex-1 min-h-0 flex flex-col px-3 sm:px-5">
         <div className="max-w-3xl mx-auto w-full flex-1 min-h-0 flex flex-col gap-3 pb-4 overflow-y-auto">
           {messages.map((m) => (
-            <Bubble key={m.id} role={m.role} text={m.text} />
+            <Bubble key={m.id} role={m.role} text={m.text} variant={m.variant} />
           ))}
           {isThinking && <ThinkingBubble />}
           <div ref={bottomRef} />

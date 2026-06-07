@@ -14,13 +14,14 @@ import { DEFAULT_GENERATION } from '../config.js';
 const PROVIDER_NAME = 'backend';
 const BASE = '/api/llm';
 
-function buildBody({ messages, temperature, maxTokens, stop, model }) {
+function buildBody({ messages, temperature, maxTokens, stop, model, responseFormat }) {
   return JSON.stringify({
     messages,
     temperature: temperature ?? DEFAULT_GENERATION.temperature,
     maxTokens: maxTokens ?? DEFAULT_GENERATION.maxTokens,
     stop,
     model,
+    responseFormat,
   });
 }
 
@@ -35,12 +36,12 @@ async function readErrorBody(response) {
 
 function createBackendProvider() {
   async function chat(options) {
-    const { messages, temperature, maxTokens, stop, signal, model } = options;
+    const { messages, temperature, maxTokens, stop, signal, model, responseFormat } = options;
     const response = await fetch(`${BASE}/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: buildBody({ messages, temperature, maxTokens, stop, model }),
+      body: buildBody({ messages, temperature, maxTokens, stop, model, responseFormat }),
       signal,
     });
 
@@ -60,12 +61,12 @@ function createBackendProvider() {
   }
 
   async function* chatStream(options) {
-    const { messages, temperature, maxTokens, stop, signal, model } = options;
+    const { messages, temperature, maxTokens, stop, signal, model, responseFormat } = options;
     const response = await fetch(`${BASE}/chat/stream`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: buildBody({ messages, temperature, maxTokens, stop, model }),
+      body: buildBody({ messages, temperature, maxTokens, stop, model, responseFormat }),
       signal,
     });
 

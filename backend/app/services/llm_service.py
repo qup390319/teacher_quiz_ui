@@ -113,6 +113,10 @@ def _build_payload(req: ChatRequest, *, stream: bool, prov: _Provider) -> dict:
             req.max_tokens if req.max_tokens is not None else settings.LLM_DEFAULT_MAX_TOKENS
         )
         payload["stop"] = req.stop
+    # 強制 JSON 輸出（OpenAI / vLLM 皆支援 OpenAI 相容的 response_format）。
+    # 注意：json_object 模式要求 prompt 內含 "json" 字樣（追問 prompt 已含）。
+    if req.response_format == "json_object":
+        payload["response_format"] = {"type": "json_object"}
     return payload
 
 

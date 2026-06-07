@@ -944,9 +944,11 @@ Tailwind v4 把 `.block / .flex / .grid` 等 display utility 排在 `.line-clamp
 | 角色 | 配色 | 結構 |
 |------|------|------|
 | AI（吉祥物） | 米紙底 + 木紋邊 | `bg-gradient-to-b from-[#FFF8E7] to-[#FBE9C7] border-2 border-[#C19A6B] rounded-2xl rounded-bl-md` |
-| 學生 | 學生綠（呼應 spec-07 §1.2 的學生綠/藍系） | `bg-gradient-to-b from-[#B8DC83] to-[#7DB044] border-2 border-[#5C8A2E] text-[#2F4A1A] rounded-2xl rounded-br-md` |
+| AI・題目（`variant="question"`） | 金色高亮米紙底 + 金邊 + 「題目」標籤 | `bg-gradient-to-b from-[#FFF6D8] to-[#FCEBB0] border-2 border-[#E8A042] text-[#5A3E22] rounded-2xl rounded-bl-md`；頂部加 `quiz` 圖示 + 「題目」標籤（`text-[#B9770E]`） |
+| 學生 | 白底 + 學生綠框線/文字（呼應 spec-07 §1.2 學生綠系） | `bg-white border-2 border-[#5C8A2E] text-[#2F4A1A] rounded-2xl rounded-br-md` |
 
 文字大小：`text-sm sm:text-base leading-relaxed`，padding `px-4 py-3`。
+**題目氣泡**：實際題幹（`q-*-stem`）使用 `variant="question"`，以金色高亮（§1.4 黃星 `#F4C545` 家族）與前情提要敘述氣泡明顯區隔，避免學生混淆。
 **禁止**：暗色（eh 風格）`bg-white/15` 半透明氣泡。
 
 ### 12.4 吉祥物提示泡泡（MascotHintBubble）

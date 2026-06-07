@@ -329,9 +329,12 @@
     │   │   ├─ 引擎：`followUpEngine.processStudentReply()`（async dispatcher）
     │   │   │   - LLM 模式（12 個官方節點）：呼叫 `runFollowUpTurnLlm`，POE + 蘇格拉底結構
     │   │   │   - Rule-based fallback（自訂迷思節點 / LLM 失敗）：原 3 輪 keyword/regex 啟發式
-    │   │   ├─ 對每一題執行 1~8 輪對話（LLM 模式硬上限 8 輪；fallback 仍 3 輪）：
-    │   │   │   ├─ Round 1：AI 用比較題 / 二選一探出信念，附 chips 快選
-    │   │   │   │   - buildRound1Message(option, isCorrect) 產生開場文字
+    │   │   ├─ 對每一題執行 1~4 輪對話（LLM 模式硬上限 4 輪；fallback 仍 3 輪）：
+    │   │   │   ├─ Round 1：蘇格拉底式「開場」——先讓學生用自己的話說出推理
+    │   │   │   │   - buildRound1Message(option, isCorrect)：錨定學生所選選項，
+    │   │   │   │     用「你會這樣選，是因為想到了什麼呢？講一句就好」開場
+    │   │   │   │     （帶低壓力鷹架、不洩漏答案、不先給方向；非二選一、不附 chips）
+    │   │   │   │   - 二選一 / 比較題 + chips 由後續 LLM belief 輪次接手（見下方 phase 結構）
     │   │   │   │   - LLM phase = "belief"
     │   │   │   ├─ 學生回覆方式（chips / 打字 / 語音 並存）：
     │   │   │   │   - 點 chip 按鈕（推薦給國小生，無打字壓力）→ 直接送出
@@ -394,14 +397,15 @@
   - **LLM 模式**（12 個官方節點）：呼叫 `runFollowUpTurnLlm` → `/api/llm/chat`
   - **Rule-based fallback**（自訂迷思 / LLM 失敗）：原 3 輪 keyword/regex 啟發式
 - **對所有題目進行追問**（不論答對答錯）
-- LLM 模式對話結構（POE + 蘇格拉底，硬上限 8 輪）：
-  - **belief**（信念探索，1~3 輪）：用比較題、二選一探出學生真正相信什麼
-  - **challenge**（認知挑戰，1~2 輪）：丟變體實驗（POE Observe）測試信念一致性
-  - **cause**（成因追溯，1~2 輪）：場景喚起 / 類比探測 / 詞彙確認 / 來源歸因 / 信心度
-  - **final**（收尾）：輸出 finalDiagnosis JSON
-- 國小生短答友善設計（spec-09 §followup）：
+- LLM 模式對話結構（POE + 蘇格拉底，硬上限 4 輪／題，務必快速收斂）：
+  - **belief**（信念探索，第 1 輪）：以開放式開場（`buildRound1Message`）讓學生說出自己的推理（學生若完全答不出可再留 1 輪）
+  - **challenge**（認知挑戰，第 2 輪）：丟一個變體實驗（POE Observe）測試信念一致性
+  - **cause**（成因追溯，第 3 輪）：**必經階段**——final 前至少問 1 次成因探測（場景喚起 / 類比探測 / 詞彙確認 / 來源歸因 / 信心度），這是教師分析的核心
+  - **final**（收尾，第 4 輪為最遲）：輸出 finalDiagnosis JSON；若第 3 輪已能判定可提早。**causeIds 必填**（迷思/不確定時至少 1 個，資訊不足也要做最佳推測）
+- 國小生短答友善設計（spec-09 §followup）——**手段是鷹架，終極目標是診斷學生真正的科學概念**：
   - **Chip 快速回覆**：LLM 在每輪附 2~4 個選項（chips 欄位），前端渲染為按鈕，學生點擊即送
   - **承擔語言展開**：bot 把學生的單詞翻譯成完整假設讓學生點頭/搖頭，學生不用組句
+  - **漸進釋放（scaffold-and-fade）**：chips/二選一是起手鷹架，當學生暖機、給出有內容的短句後，AI 應撤掉鷹架、邀請他用自己的話「再多講一點」（錨定其說過的詞，非抽象 why）；全程至少引出一次學生自己的完整想法——那是最有診斷價值的線索
   - **禁止抽象 why 提問**：改用具體場景比較題
   - **每輪附「不知道」逃生口**
 - LLM 直接輸出結構化結果（每輪）：

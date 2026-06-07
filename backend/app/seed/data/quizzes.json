@@ -35,8 +35,8 @@
         "options": [
           { "tag": "A", "content": "一杯水能溶的鹽有限，太多就溶不了了。", "diagnosis": "CORRECT" },
           { "tag": "B", "content": "鹽沉到杯底是因為鹽比較重，不是因為溶不下。", "diagnosis": "M05-2" },
-          { "tag": "C", "content": "只要一直加水或加熱，就可以溶掉所有的鹽。", "diagnosis": "M05-3" },
-          { "tag": "D", "content": "鹽很輕會浮起來，看不到就是已經溶完了。", "diagnosis": "M05-4" }
+          { "tag": "C", "content": "不管加多少鹽進去，只要持續加熱或攪拌，水都能把鹽全部溶光，不會有溶不下的問題。", "diagnosis": "M05-3" },
+          { "tag": "D", "content": "就算用加熱讓鹽全部溶開，放一陣子後鹽還是會自己跑回杯底，所以最後一定會有溶不掉的鹽。", "diagnosis": "M05-1" }
         ]
       },
       {
@@ -44,7 +44,7 @@
         "stem": "老師給你一杯透明的水，要你分辨它是酸性、中性還是鹼性。你應該怎麼做？",
         "knowledgeNodeId": "INe-Ⅲ-5-4",
         "options": [
-          { "tag": "A", "content": "用嘴巴嚐嚐看味道。", "diagnosis": "M09-1" },
+          { "tag": "A", "content": "用嘴巴嚐嚐看味道。", "diagnosis": "M09-4" },
           { "tag": "B", "content": "用鼻子聞聞看有沒有味道。", "diagnosis": "M09-2" },
           { "tag": "C", "content": "用石蕊試紙放進去，看顏色怎麼變。", "diagnosis": "CORRECT" },
           { "tag": "D", "content": "看瓶子上的名字有沒有「酸」這個字。", "diagnosis": "M09-3" }

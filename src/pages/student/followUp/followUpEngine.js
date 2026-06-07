@@ -3,7 +3,7 @@
  *
  * 雙模式：
  *  1. LLM 模式（預設）：呼叫 followUpLlm.runFollowUpTurnLlm，採 POE + 蘇格拉底結構，
- *     最多 8 輪，輸出含 chips / causeIds 的結構化結果。
+ *     最多 4 輪（控制施測總時長），輸出含 chips / causeIds 的結構化結果。
  *  2. Rule-based 模式（fallback）：原本的 3 輪 keyword/regex 啟發式，保留作 LLM
  *     失敗或自訂迷思（無 LLM prompt）時的後援。
  *
@@ -146,9 +146,12 @@ const mentionsCorrectConcept = (t, nodeId) => {
  */
 export function buildRound1Message(option, isCorrect) {
   const safe = (option?.content ?? '').replace(/\s+/g, ' ');
+  // 蘇格拉底開場（belief 探索第一步）：先讓學生用自己的話說出推理，AI 不預設方向。
+  // 加上「想到了什麼／講一句就好」的鷹架降低國小生開口門檻，但不洩漏答案。
+  // 後續幾輪再由 LLM 進行思想實驗式探問（challenge / cause）。
   return isCorrect
-    ? `你選了「${safe}」，可以說說為什麼嗎？`
-    : `你選了「${safe}」，你是怎麼想的呢？`;
+    ? `你選了「${safe}」。你會這樣選，是因為想到了什麼呢？講一句你的想法就好～`
+    : `你選了「${safe}」。你會這樣選，是因為想到了什麼呢？講一句就好，沒有標準答案喔～`;
 }
 
 /**

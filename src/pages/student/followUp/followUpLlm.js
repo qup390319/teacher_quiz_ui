@@ -19,7 +19,7 @@ import {
   hasFollowUpPromptFor,
 } from './followUpPrompts.js';
 
-const MAX_ROUNDS = 8;
+const MAX_ROUNDS = 4; // 每題追問硬上限（為控制施測總時長 ~15 分鐘，8→4）。見 spec-05 §2.2
 
 /* ────────────────────────────────────────────────────────────
  *  容錯 JSON 抽取
@@ -71,6 +71,69 @@ function extractJsonObject(text) {
     }
   }
   return null;
+}
+
+/* ────────────────────────────────────────────────────────────
+ *  loose 格式回退解析
+ *  LLM 偶爾不回 JSON，而是「第一行純文字 + key: value 逐行」的鬆散格式：
+ *    你說「…」，會是 ① 還是 ②？
+ *    chips: ["…","…","不知道"]
+ *    feedback: "…"
+ *    finalDiagnosis: null
+ *  這裡把前導文字當 assistantMessage，逐行抽 key: value 重建物件。
+ * ──────────────────────────────────────────────────────────── */
+const LOOSE_KEY_CANON = {
+  phase: 'phase',
+  round: 'round',
+  assistantmessage: 'assistantMessage',
+  chips: 'chips',
+  feedback: 'feedback',
+  finaldiagnosis: 'finalDiagnosis',
+};
+
+function parseLooseValue(raw) {
+  const s = String(raw).trim().replace(/,\s*$/, '').trim();
+  if (s === '') return undefined;
+  try { return JSON.parse(s); } catch { /* fall through */ }
+  if (/^-?\d+$/.test(s)) return Number(s);
+  if (s === 'null') return null;
+  if (s === 'true' || s === 'false') return s === 'true';
+  const quoted = s.match(/^["'“”]([\s\S]*)["'“”]$/);
+  if (quoted) return quoted[1];
+  return s;
+}
+
+function extractLooseObject(text) {
+  if (!text) return null;
+  const cleaned = text.replace(/```[a-z]*/gi, '').replace(/```/g, '').trim();
+  const keyRe = new RegExp(
+    `^\\s*["']?(${Object.keys(LOOSE_KEY_CANON).join('|')})["']?\\s*[:：]\\s*([\\s\\S]*)$`,
+    'i',
+  );
+  const out = {};
+  const leading = [];
+  let curKey = null;
+  let curBuf = [];
+  const flush = () => {
+    if (curKey == null) return;
+    const v = parseLooseValue(curBuf.join('\n'));
+    if (v !== undefined) out[LOOSE_KEY_CANON[curKey.toLowerCase()]] = v;
+    curKey = null;
+    curBuf = [];
+  };
+  for (const line of cleaned.split(/\r?\n/)) {
+    const m = line.match(keyRe);
+    if (m) { flush(); curKey = m[1]; curBuf = [m[2]]; }
+    else if (curKey != null) { curBuf.push(line); }
+    else { leading.push(line); }
+  }
+  flush();
+  if (Object.keys(out).length === 0) return null;
+  if (out.assistantMessage == null) {
+    const lead = leading.join('\n').trim();
+    if (lead) out.assistantMessage = lead;
+  }
+  return out.assistantMessage || out.finalDiagnosis ? out : null;
 }
 
 /* ────────────────────────────────────────────────────────────
@@ -271,11 +334,20 @@ export async function runFollowUpTurnLlm(state, userMessage) {
     messages,
     temperature: 0.4,
     maxTokens: 700,
+    responseFormat: 'json_object', // 強制 OpenAI 回合法 JSON；loose 解析器仍作後備
   });
 
-  const parsed = extractJsonObject(response.content);
   const ctx = { isCorrect: !!state.isCorrect, misconceptionId: state.misconceptionId };
-  const normalized = normalizeLlmResponse(parsed, ctx, prevRound);
+  let parsed = extractJsonObject(response.content);
+  let normalized = normalizeLlmResponse(parsed, ctx, prevRound);
+  if (!normalized) {
+    // JSON 解析失敗 → 試 loose 格式回退（key: value 逐行 + 前導文字當 assistantMessage）
+    parsed = extractLooseObject(response.content);
+    normalized = normalizeLlmResponse(parsed, ctx, prevRound);
+    if (normalized) {
+      console.warn('[followUpLlm] recovered via loose-format parser');
+    }
+  }
   if (!normalized) {
     throw new Error(
       `[followUpLlm] failed to parse LLM JSON: ${response.content?.slice(0, 200)}`,

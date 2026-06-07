@@ -5,6 +5,18 @@
 
 ---
 
+### [2026-06-08] 追問 Round 1 開場改為蘇格拉底式開放問句（非二選一/不附 chips）
+
+- **涉及 Spec**: `docs/spec-05-user-workflows.md` §2.2（followUp Round 1 / belief 階段描述）
+- **背景**: 使用者（研究者）回饋，第二層追問的第一句固定開場「你選了『…』，你是怎麼想的呢？」太開放、學生不知如何回答，未能引導思考。原 spec-05 將 Round 1 描述為「AI 用比較題 / 二選一探出信念，附 chips 快選」，但 `buildRound1Message` 實作其實是開放式提問、且無 chips——spec 與實作本就不一致。
+- **決策（使用者 2026-06-08 選「最接近蘇格拉底式提問」的方向）**: 蘇格拉底式對話的標準順序是「先讓對方說出自己的推理 → 再用問題挑戰」。因此**開場（Round 1）刻意保持開放式 elicitation**（蘇格拉底第一步），二選一 / 比較題 + chips 的「挑戰」交給後續 LLM belief/challenge 輪次。
+- **處置**: `buildRound1Message` 改為錨定學生所選選項、帶低壓力鷹架的開放問句：「你選了『…』。你會這樣選，是因為想到了什麼呢？講一句就好，沒有標準答案喔～」（不洩漏答案、不先給方向；非二選一、不附 chips）。
+- **與 spec-05 §405「禁止抽象 why 提問」的關係**: 該條規範針對 LLM 後續輪次（challenge/cause）；Round 1 開場的「你會這樣選，是因為想到了什麼」錨定在學生的具體選項、帶鷹架，屬 belief 第一步的 elicitation，非抽象 why。
+- **驗證**: preview 實測第一輪開場文字更新；`npm run lint` / `npm run build` 待本輪批次驗證。
+- **Spec 已更新**: ✅（spec-05 §2.2 流程樹 + belief 階段描述；本筆 deviations）
+
+---
+
 ### [2026-06-05] 出題流程改版：先選單元 → 再選節點（技能樹資料驅動）
 
 - **涉及 Spec**: `docs/spec-02-routes-and-pages.md`（出題精靈步驟）、`docs/spec-05-user-workflows.md`（出題流程）、`docs/spec-04-data-models.md`（題組單元歸屬）、`docs/spec-03-components.md`（KnowledgeSkillTree / Step0Unit）、`docs/spec-07-ui-design-system.md`（技能樹）
