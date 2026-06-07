@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useStudentMode } from '../../hooks/useStudentMode';
 import { useQuiz } from '../../hooks/useQuizzes';
-import { useRecordAnswers, useRecordFollowups } from '../../hooks/useAnswers';
+import { useQuizPersistence } from '../../hooks/useQuizPersistence';
 import { knowledgeNodes, getMisconceptionById } from '../../data/knowledgeGraph';
 import { api } from '../../lib/api';
 import { WoodIconButton } from '../../components/ui/woodKit';
@@ -43,13 +43,11 @@ function StudentQuizScreen({ quizId }) {
   const assignmentId = searchParams.get('assignmentId');
   const { setCurrentQuizId, setActiveStudentReport, addToHistory } = useApp();
   const { data: currentQuiz, isLoading: quizLoading, error: quizError } = useQuiz(quizId);
-  const recordAnswersMut = useRecordAnswers();
-  const recordFollowupsMut = useRecordFollowups();
+  const { saveAnswer, saveFollowup, flushAll, saveError, resetPersistence } =
+    useQuizPersistence(assignmentId);
   const bottomRef = useRef(null);
   const answersRef = useRef([]);
   const followUpResultsRef = useRef([]);
-  // P4: keep server-returned answer IDs so we can attach followups
-  const answerIdByQuestionRef = useRef({});
 
   const sortedQuestions = useMemo(
     () => sortQuestionsByNodeOrder(currentQuiz?.questions ?? []),
@@ -79,12 +77,13 @@ function StudentQuizScreen({ quizId }) {
     }
     answersRef.current = [];
     followUpResultsRef.current = [];
-    answerIdByQuestionRef.current = {};
+    resetPersistence();
     setCurrentQuizId(quizId);
     setActiveStudentReport(null);
   }, [
     quizId, currentQuiz, sortedQuestions.length, navigate,
     quizLoading, quizError, setCurrentQuizId, setActiveStudentReport,
+    resetPersistence,
   ]);
 
   useEffect(() => {
@@ -166,44 +165,9 @@ function StudentQuizScreen({ quizId }) {
     ]);
     setPhase('done');
 
-    // P4: persist to backend if assignmentId is known
-    if (assignmentId) {
-      try {
-        // Submit all answers in one batch — server returns rows with IDs
-        const inserted = await recordAnswersMut.mutateAsync(
-          finalAnswers.map((a) => ({
-            assignmentId,
-            questionId: a.questionId,
-            selectedTag: a.selectedTag,
-            diagnosis: a.diagnosis,
-          })),
-        );
-        // Build map: questionId → answerId (for followups)
-        const idMap = {};
-        for (const row of inserted ?? []) idMap[row.questionId] = row.id;
-        answerIdByQuestionRef.current = idMap;
-
-        // Submit followups (if any)
-        const followupPayload = followUpResultsRef.current
-          .map((r) => ({
-            studentAnswerId: idMap[r.questionId],
-            conversationLog: r.conversationLog,
-            finalStatus: r.diagnosis.finalStatus,
-            misconceptionCode: r.diagnosis.misconceptionCode ?? null,
-            reasoningQuality: r.diagnosis.reasoningQuality,
-            statusChange: r.diagnosis.statusChange ?? {},
-            aiSummary: r.diagnosis.aiSummary ?? null,
-            causeIds: r.diagnosis.causeIds ?? null,
-          }))
-          .filter((p) => p.studentAnswerId != null);
-        if (followupPayload.length > 0) {
-          await recordFollowupsMut.mutateAsync(followupPayload);
-        }
-      } catch (err) {
-        console.error('[StudentQuiz] persist failed', err);
-        // continue regardless — user-visible failure handled in report page
-      }
-    }
+    // 結尾保險：即時存若有漏，這裡整批 re-upsert 補齊（冪等）。
+    // 即時存檔已在選項 / 追問結束時逐筆寫入，見 useQuizPersistence。
+    await flushAll(finalAnswers, followUpResultsRef.current);
 
     addToHistory(record);
     setIsThinking(false);
@@ -312,6 +276,8 @@ function StudentQuizScreen({ quizId }) {
     }
 
     followUpResultsRef.current = [...followUpResultsRef.current, result];
+    // 即時存檔：該題追問一結束就背景送出對話紀錄（內部會等該題答案存完拿到 id）
+    saveFollowup(result.questionId, result);
 
     /* 依 statusChange 反向修正 answersRef.current（僅本地，最終 POST 時送修正後值） */
     const change = finalDiagnosis.statusChange?.changeType;
@@ -396,7 +362,8 @@ function StudentQuizScreen({ quizId }) {
       nextAnswer,
     ];
     answersRef.current = updatedAnswers;
-    // P4: no longer call recordAnswer here — answers are POSTed in batch at finishQuiz
+    // 即時存檔：一選答案就背景 upsert 該題（不阻塞 UI；失敗會在 saveError 顯示）
+    saveAnswer(nextAnswer);
 
     setMessages((prev) => [
       ...prev,
@@ -442,6 +409,18 @@ function StudentQuizScreen({ quizId }) {
         backgroundAttachment: 'fixed',
       }}
     >
+      {/* 存檔異常警示：給監考老師看，提示該名學生資料可能未存進伺服器 */}
+      {saveError && (
+        <div
+          role="alert"
+          className="relative z-20 flex items-center justify-center gap-2 px-4 py-2
+                     bg-amber-500 text-white text-sm font-bold shadow-md"
+        >
+          <span className="material-symbols-rounded text-base">warning</span>
+          資料儲存遇到問題，請舉手告知老師（請勿關閉此頁面）
+        </div>
+      )}
+
       {/* HUD：返回 + 進度條 */}
       <header className="relative z-10 flex items-center gap-3 px-3 sm:px-5 pt-3 sm:pt-4 pb-3 animate-fade-up">
         <WoodIconButton

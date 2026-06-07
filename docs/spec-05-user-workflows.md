@@ -382,6 +382,13 @@
 - 此階段**不給予任何對錯回饋**，學生不知道自己答對或答錯
 - 所有題目作答完成後，才進入第二層
 
+**持久化策略（資料保全）**
+- 由 `useQuizPersistence(assignmentId)` 統一管理（前端 `src/hooks/useQuizPersistence.js`）。
+- **即時存**：第一層每選一題答案，立刻背景 `POST /api/answers`（單筆 upsert，失敗自動重試 2 次，不阻塞 UI）；第二層每題追問一結束，立刻背景 `POST /api/answers/followups`（內部會等該題答案存完拿到 id）。目的：避免「全部做完才一次送」造成中途離開即整場資料遺失。
+- **結尾保險**：`finishQuiz` 仍呼叫 `flushAll()` 整批 re-upsert 一次（冪等），補齊任何即時存遺漏。
+- **失敗可見**：任何存檔最終仍失敗 → `saveError` 翻 true，作答畫面頂端顯示警示橫幅提示學生告知監考老師（取代過去靜默吞錯）。
+- `assignmentId` 為 null（demo / 無派題情境）時所有存檔皆 no-op，僅前端 `addToHistory`。
+
 **第二層：AI POE 追問 + 成因追溯（followUp phase）**
 - 由 `followUpEngine.processStudentReply()`（async dispatcher）執行；雙模式：
   - **LLM 模式**（12 個官方節點）：呼叫 `runFollowUpTurnLlm` → `/api/llm/chat`
