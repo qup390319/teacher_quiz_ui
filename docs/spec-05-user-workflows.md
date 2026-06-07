@@ -310,6 +310,10 @@
     │
     ├─ 進入 /student/quiz/:quizId (StudentQuiz)
     │   │
+    │   ├─ 左上角「返回」：測驗進行中（phase ≠ done）按下時跳出 `LeaveConfirmModal`
+    │   │   確認框（提醒中途離開會丟失作答與對話、測驗將為未完成）；
+    │   │   選「繼續作答」留在原頁、選「確定離開」才導回 /student。done 階段直接離開。
+    │   │
     │   ├─ Phase: intro
     │   │   ├─ 逐條顯示 3 則歡迎訊息（科學偵探開場、預告兩階段流程、降低壓力）
     │   │   └─ 完成後自動進入 question phase

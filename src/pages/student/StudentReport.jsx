@@ -39,10 +39,18 @@ export default function StudentReport() {
   const followUpResults = activeStudentReport?.followUpResults || [];
   const hasFullAnswers = answerSource.length > 0;            // in-memory detailed
   const hasAnswers = hasFullAnswers || !!backendRow;         // any source has data
+  // totalQuestions：依序取第一個 > 0 的來源（避免 mock getQuizQuestions 對真實 quiz
+  // 回傳空陣列時 length=0 讓總題數變 0、進而算出負的「待更新」數）。
   const totalQuestions =
-    activeStudentReport?.totalQuestions ?? backendRow?.totalQuestions ?? reportQuestions.length ?? 5;
+    [
+      activeStudentReport?.totalQuestions,
+      backendRow?.totalQuestions,
+      answerSource.length,
+      quizDetail?.questions?.length,
+      reportQuestions.length,
+    ].find((n) => typeof n === 'number' && n > 0) ?? 5;
   const displayCorrect = activeStudentReport?.correctCount ?? backendRow?.correctCount ?? (hasAnswers ? 0 : 2);
-  const displayWrong = totalQuestions - displayCorrect;
+  const displayWrong = Math.max(0, totalQuestions - displayCorrect); // 永不為負
 
   /* 答對但 reasoningQuality 為 WEAK / GUESSING 的題目（spec §3.7 黃色標記） */
   const weakCorrectResults = followUpResults.filter((r) =>
@@ -67,10 +75,14 @@ export default function StudentReport() {
     return [...causeSet].sort((a, b) => a - b);
   };
 
-  /* 取得該迷思的 errorType（取第一筆同迷思的 followUpResult；spec-09 §12.4a） */
+  /* 取得該迷思的 errorType（spec-09 §12.4a）
+   * 優先讀 in-memory 快照；沒有時 fall back 後端 history 聚合的
+   * errorTypeByMisconception（重新登入/重整/切換分頁後仍能還原分類標籤）。 */
   const getErrorType = (misconceptionId) => {
     const hit = followUpResults.find((r) => r.diagnosis?.misconceptionCode === misconceptionId);
-    return hit?.diagnosis?.errorType ?? null;
+    return hit?.diagnosis?.errorType
+      ?? backendRow?.errorTypeByMisconception?.[misconceptionId]
+      ?? null;
   };
 
   /* 取得單一迷思相關的學生對話引用 */
@@ -222,7 +234,7 @@ export default function StudentReport() {
             <div className="text-center border-l-2 border-dashed border-[#E0CFA8]">
               <div className="font-game text-3xl sm:text-4xl font-black text-[#D08B2E] mb-1
                               drop-shadow-[0_2px_0_rgba(255,255,255,0.6)]">{displayWrong}</div>
-              <div className="text-xs sm:text-sm text-[#7A5232] font-bold">待更新的想法</div>
+              <div className="text-xs sm:text-sm text-[#7A5232] font-bold">迷思概念</div>
             </div>
           </div>
         </div>

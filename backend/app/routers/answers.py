@@ -130,6 +130,7 @@ async def record_followups(
                 status_change=f.status_change,
                 ai_summary=f.ai_summary,
                 cause_ids=f.cause_ids,
+                error_type=f.error_type,
             )
             .on_conflict_do_update(
                 index_elements=["student_answer_id"],
@@ -141,6 +142,7 @@ async def record_followups(
                     "status_change": f.status_change,
                     "ai_summary": f.ai_summary,
                     "cause_ids": f.cause_ids,
+                    "error_type": f.error_type,
                 },
             )
         )
@@ -312,11 +314,16 @@ async def get_student_history(
         correct = sum(1 for a in ans_list if a.diagnosis == "CORRECT")
         misc = sorted({a.diagnosis for a in ans_list if a.diagnosis != "CORRECT"})
         cause_map: dict[str, set[int]] = {}
+        error_type_map: dict[str, str] = {}
         for a in ans_list:
             fup = a.followup
-            if not fup or not fup.misconception_code or not fup.cause_ids:
+            if not fup or not fup.misconception_code:
                 continue
-            cause_map.setdefault(fup.misconception_code, set()).update(fup.cause_ids)
+            if fup.cause_ids:
+                cause_map.setdefault(fup.misconception_code, set()).update(fup.cause_ids)
+            # 取第一筆同迷思的 errorType（與前端 getErrorType 一致）
+            if fup.error_type and fup.misconception_code not in error_type_map:
+                error_type_map[fup.misconception_code] = fup.error_type
         cause_ids_by_misconception = {
             code: sorted(ids) for code, ids in cause_map.items()
         }
@@ -328,6 +335,7 @@ async def get_student_history(
             total_questions=len(ans_list),
             misconceptions=misc,
             cause_ids_by_misconception=cause_ids_by_misconception,
+            error_type_by_misconception=error_type_map,
         ))
     rows.sort(key=lambda r: r.answered_at, reverse=True)
     return rows

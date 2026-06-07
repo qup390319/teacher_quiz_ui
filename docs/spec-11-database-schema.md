@@ -345,6 +345,8 @@ CREATE TABLE followup_results (
     reasoning_quality     VARCHAR(16) NOT NULL,                  -- SOLID | PARTIAL | WEAK | GUESSING
     status_change         JSONB       NOT NULL DEFAULT '{}'::jsonb,
     ai_summary            TEXT,
+    cause_ids             JSONB,                                 -- 1~2 個成因 id（migration 0007）
+    error_type            VARCHAR(16),                           -- EXPLANATION|DEFINITION|OBSERVATION|NULL（答錯主導方向，migration 0030）
     created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT followup_status_chk CHECK (final_status IN ('CORRECT', 'MISCONCEPTION', 'UNCERTAIN')),
     CONSTRAINT followup_quality_chk CHECK (reasoning_quality IN ('SOLID', 'PARTIAL', 'WEAK', 'GUESSING'))

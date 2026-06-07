@@ -25,6 +25,7 @@
 | 元件名稱 | 檔案路徑 | 用途 |
 |---------|---------|------|
 | `StudentSettingsDrawer` | `src/components/student/StudentSettingsDrawer.jsx` | 學生端設定抽屜（字體大小、個人資訊、關於系統、登出） |
+| `LeaveConfirmModal` | `src/components/student/LeaveConfirmModal.jsx` | 測驗進行中按返回時的「確定離開」確認框（spec-07 木框風；props：`onConfirm` / `onCancel`）。提醒中途離開會丟失作答與對話、測驗變未完成 |
 
 ---
 

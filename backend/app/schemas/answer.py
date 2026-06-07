@@ -41,6 +41,8 @@ class FollowupInput(BaseModel):
     status_change: dict[str, Any] = Field(default_factory=dict, alias="statusChange")
     ai_summary: str | None = Field(default=None, alias="aiSummary")
     cause_ids: list[int] | None = Field(default=None, alias="causeIds")
+    # 答錯主導方向（spec-09 §12.4a）：EXPLANATION / DEFINITION / OBSERVATION / null
+    error_type: str | None = Field(default=None, alias="errorType")
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -136,6 +138,12 @@ class StudentHistoryRow(BaseModel):
     # the in-memory snapshot is gone (e.g. after re-login).
     cause_ids_by_misconception: dict[str, list[int]] = Field(
         default_factory=dict, serialization_alias="causeIdsByMisconception",
+    )
+    # {misconceptionCode: errorType} aggregated across follow-up results, so the
+    # report can still render 解釋型/定義型/觀察型 after the in-memory snapshot is
+    # gone (e.g. re-login / reload / tab remount). spec-09 §12.4a.
+    error_type_by_misconception: dict[str, str] = Field(
+        default_factory=dict, serialization_alias="errorTypeByMisconception",
     )
 
     model_config = ConfigDict(populate_by_name=True)

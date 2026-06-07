@@ -41,6 +41,7 @@ function toFollowupPayload(studentAnswerId, result) {
     statusChange: result.diagnosis.statusChange ?? {},
     aiSummary: result.diagnosis.aiSummary ?? null,
     causeIds: result.diagnosis.causeIds ?? null,
+    errorType: result.diagnosis.errorType ?? null,
   };
 }
 

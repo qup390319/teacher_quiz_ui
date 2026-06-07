@@ -362,14 +362,14 @@ HTTP status code：
 | `quizzes` | `POST/PUT/DELETE /api/quizzes[/{id}]` | P3 ✅ | 教師專屬（CRUD）；**PUT 採 smart upsert**（match by `order_index` 在原 `quiz_questions.id` 上 UPDATE，避免破壞 `student_answers.question_id` FK）；嘗試刪除有作答的題目會回 409 `QUESTION_HAS_ANSWERS` |
 | `scenarios` | `GET /api/scenarios` / `GET /api/scenarios/{id}` | **已下線（router 註解於 main.py）** | 概念釐清模組已從實驗系統移除；router 實作檔仍保留 |
 | `scenarios` | `POST/PUT/DELETE /api/scenarios[/{id}]` | **已下線（router 註解於 main.py）** | 同上 |
-| `assignments` | `GET /api/assignments` | P3 ✅ | **教師範圍隔離**：教師只看 `class_id` 屬於自己班級的派題；學生隱式過濾為自己班級。回傳含 **`completionRate / submittedCount / totalStudents`** 即時統計；對學生身份額外回傳 **`myDiagnosisCompleted`**（該生於此 assignment 是否已有 ≥1 筆作答），用於學生首頁判斷任務是否做完，跨刷新仍正確 |
+| `assignments` | `GET /api/assignments` | P3 ✅ | **教師範圍隔離**：教師只看 `class_id` 屬於自己班級的派題；學生隱式過濾為自己班級。回傳含 **`completionRate / submittedCount / totalStudents`** 即時統計；對學生身份額外回傳 **`myDiagnosisCompleted`**（該生是否**答完該題組所有題目、且每一題追問對話都已結束**＝該題有對應 `followup_results`；只答一半中途離開 → `false`，視為未完成、留在待完成區），用於學生首頁判斷任務是否做完，跨刷新仍正確 |
 | `assignments` | `POST/PATCH/DELETE /api/assignments[/{id}]` | P3 ✅ | 教師專屬；POST/PATCH 寫入前驗證 `class_id` 屬於自己 |
 | `answers` | `POST /api/answers` | P4 ✅ | 學生作答（接收陣列以批次寫入） |
 | `answers` | `POST /api/answers/{id}/followup` | P4 ✅ | 追問結果回寫（驅動 statusChange） |
 | `answers` | `GET /api/quizzes/{quiz_id}/answers?classId=` | P4 ✅ | 教師查班級作答 |
 | `answers` | `GET /api/quizzes/{quiz_id}/followups?classId=` | P4 ✅ | 教師查該班完整 N3 追問對話紀錄（含 `conversationLog / aiSummary / finalStatus / misconceptionCode / reasoningQuality / statusChange`），給單班報告底部「學生第二層追問對話完整紀錄」區塊使用 |
 | `answers` | `GET /api/quizzes/{quiz_id}/stats?classId=` | P4 ✅ | 取代前端 mock `getNodePassRates / getMisconceptionStudents` |
-| `answers` | `GET /api/students/{id}/history` | P4 ✅ | 學生作答歷史；每筆額外回傳 `causeIdsByMisconception`（`{misconceptionCode: causeIds[]}`），讓「學習體檢表」在 in-memory 快照失效（重新登入）後仍能還原成因徽章 |
+| `answers` | `GET /api/students/{id}/history` | P4 ✅ | 學生作答歷史；每筆額外回傳 `causeIdsByMisconception`（`{misconceptionCode: causeIds[]}`）與 `errorTypeByMisconception`（`{misconceptionCode: errorType}`），讓「學習體檢表」在 in-memory 快照失效（重新登入/重整/切換分頁）後仍能還原成因徽章與解釋型/定義型/觀察型分類標籤 |
 | `treatment` | `POST /api/treatment/sessions/start` | **已下線（router 註解於 main.py）** | 概念釐清模組已從實驗系統移除；router 實作檔仍保留 |
 | `treatment` | `GET /api/treatment/sessions/{id}` | **已下線（router 註解於 main.py）** | 同上 |
 | `treatment` | `GET /api/treatment/sessions/by-key/{scenario_quiz_id}/{student_id}` | **已下線（router 註解於 main.py）** | 同上 |

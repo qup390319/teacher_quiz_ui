@@ -19,6 +19,8 @@ from app.db.models import (
     Assignment,
     AssignmentStudent,
     Class,
+    FollowupResult,
+    QuizQuestion,
     Student,
     StudentAnswer,
     TreatmentSession,
@@ -196,19 +198,38 @@ async def list_assignments(
                 if a.type == "scenario" and a.scenario_quiz_id:
                     my_scenario_map[a.id] = a.scenario_quiz_id in completed_sq_ids
 
-        diag_assign_ids = [a.id for a in assignments if a.type == "diagnosis"]
-        if diag_assign_ids:
-            answered_res = await db.execute(
-                select(distinct(StudentAnswer.assignment_id))
+        diag_assigns = [a for a in assignments if a.type == "diagnosis"]
+        if diag_assigns:
+            # 「完成」= 該題組每一題都答完、且每一題的追問對話也都結束（有 followup
+            # 結果）。只答一半中途離開 → 視為未完成（留在待完成）。see spec-10 §6。
+            quiz_ids = {a.quiz_id for a in diag_assigns if a.quiz_id}
+            qcount_res = await db.execute(
+                select(QuizQuestion.quiz_id, func.count(QuizQuestion.id))
+                .where(QuizQuestion.quiz_id.in_(quiz_ids))
+                .group_by(QuizQuestion.quiz_id)
+            )
+            total_by_quiz = {qid: n for qid, n in qcount_res.all()}
+
+            # 每個 assignment：此學生「已完成追問」的相異題數
+            # （StudentAnswer 有對應的 FollowupResult）
+            done_res = await db.execute(
+                select(
+                    StudentAnswer.assignment_id,
+                    func.count(distinct(StudentAnswer.question_id)),
+                )
+                .join(FollowupResult, FollowupResult.student_answer_id == StudentAnswer.id)
                 .where(
                     StudentAnswer.student_id == user.id,
-                    StudentAnswer.assignment_id.in_(diag_assign_ids),
+                    StudentAnswer.assignment_id.in_([a.id for a in diag_assigns]),
+                    StudentAnswer.question_id.is_not(None),
                 )
+                .group_by(StudentAnswer.assignment_id)
             )
-            answered_ids = {row[0] for row in answered_res.all()}
-            for a in assignments:
-                if a.type == "diagnosis":
-                    my_diagnosis_map[a.id] = a.id in answered_ids
+            done_by_assign = {aid: n for aid, n in done_res.all()}
+            for a in diag_assigns:
+                total = total_by_quiz.get(a.quiz_id, 0)
+                done = done_by_assign.get(a.id, 0)
+                my_diagnosis_map[a.id] = total > 0 and done >= total
 
     return [
         _to_io(

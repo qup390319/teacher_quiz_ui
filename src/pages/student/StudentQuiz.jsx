@@ -9,6 +9,7 @@ import { api } from '../../lib/api';
 import { WoodIconButton } from '../../components/ui/woodKit';
 import WoodenProgressBar from '../../components/student/WoodenProgressBar';
 import { Bubble, ThinkingBubble } from '../../components/student/ChatStream';
+import LeaveConfirmModal from '../../components/student/LeaveConfirmModal';
 import AIFollowUpPanel from './followUp/AIFollowUpPanel';
 import {
   buildRound1Message,
@@ -16,20 +17,9 @@ import {
   FOLLOWUP_MAX_ROUNDS,
 } from './followUp/followUpEngine';
 import { BottomPanel, OptionsPanel, DonePanel } from './studentQuizPanels';
+import { INTRO_MESSAGES, sortQuestionsByNodeOrder } from './studentQuizConfig';
 import bgImg from '../../assets/backgrounds/bg_chiheisen_green.jpg';
 import mascotImg from '../../assets/illustrations/scilens_mascot.png';
-
-const nodeOrder = Object.fromEntries(knowledgeNodes.map((n, i) => [n.id, i]));
-const INTRO_MESSAGES = [
-  { id: 'intro-1', text: '你好！我是「科學偵探」' },
-  { id: 'intro-2', text: '今天我們要一起探索關於「水溶液」的科學思維。整個過程有兩個階段：先回答情境選擇題，然後我會跟你聊聊你的想法。' },
-  { id: 'intro-3', text: '沒有對錯評分，我只是想更深入了解你的思考方式。準備好了嗎？' },
-];
-
-const sortQuestionsByNodeOrder = (questions) =>
-  [...questions].sort(
-    (a, b) => (nodeOrder[a.knowledgeNodeId] ?? 99) - (nodeOrder[b.knowledgeNodeId] ?? 99)
-  );
 
 export default function StudentQuiz() {
   const { quizId } = useParams();
@@ -68,6 +58,9 @@ function StudentQuizScreen({ quizId }) {
   const [followUpInput, setFollowUpInput] = useState('');
   const [followUpEnabled, setFollowUpEnabled] = useState(false);
   const [followUpChips, setFollowUpChips] = useState(null); // string[] | null，由 LLM 提供
+
+  /* 中途離開確認（測驗進行中按返回時提醒，避免誤觸丟失對話；done 直接離開） */
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
   useEffect(() => {
     if (quizLoading) return;
@@ -147,6 +140,7 @@ function StudentQuizScreen({ quizId }) {
       quizId,
       quizTitle: currentQuiz?.title ?? '科學診斷',
       completedAt: new Date().toLocaleString('zh-TW', { hour12: false }),
+      totalQuestions: sortedQuestions.length,
       correctCount: finalAnswers.filter((a) => a.diagnosis === 'CORRECT').length,
       misconceptions: [
         ...new Set(
@@ -427,7 +421,7 @@ function StudentQuizScreen({ quizId }) {
           icon="arrow_back"
           ariaLabel="返回"
           size="sm"
-          onClick={() => navigate('/student')}
+          onClick={() => (phase === 'done' ? navigate('/student') : setShowLeaveConfirm(true))}
         />
         <WoodenProgressBar progress={progress} stepInfo={stepInfo} />
       </header>
@@ -487,6 +481,14 @@ function StudentQuizScreen({ quizId }) {
         )}
         {phase === 'done' && <DonePanel />}
       </BottomPanel>
+
+      {/* 中途離開確認（測驗進行中按返回時提醒；spec-07 木框風，見 LeaveConfirmModal） */}
+      {showLeaveConfirm && (
+        <LeaveConfirmModal
+          onCancel={() => setShowLeaveConfirm(false)}
+          onConfirm={() => { setShowLeaveConfirm(false); navigate('/student'); }}
+        />
+      )}
     </div>
   );
 }

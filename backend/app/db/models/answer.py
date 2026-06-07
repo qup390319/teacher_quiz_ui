@@ -78,6 +78,8 @@ class FollowupResult(Base):
     )
     ai_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     cause_ids: Mapped[list[int] | None] = mapped_column(JSONB, nullable=True)
+    # 答錯主導方向（spec-09 §12.4a）：EXPLANATION / DEFINITION / OBSERVATION / NULL
+    error_type: Mapped[str | None] = mapped_column(String(16), nullable=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
 
     answer: Mapped[StudentAnswer] = relationship(back_populates="followup")
