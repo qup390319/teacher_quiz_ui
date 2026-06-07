@@ -5,7 +5,7 @@
 
 import { formatSchoolYearLabel, formatSemesterLabel } from '../../utils/schoolYear';
 
-const GRADES = ['一年級', '二年級', '三年級', '四年級', '五年級'];
+const GRADES = ['一年級', '二年級', '三年級', '四年級', '五年級', '六年級'];
 
 export default function ClassFormModal({
   form, setForm, error, isEdit, isPending,

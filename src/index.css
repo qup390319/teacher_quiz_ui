@@ -137,7 +137,7 @@ td, th {
     'opsz' 24;
   vertical-align: middle;
   user-select: none;
-  font-size: inherit;
+  /* font-size 預設就會繼承父層；不強制 inherit，讓 Tailwind text-* utility 可以覆寫 icon 大小 */
   line-height: 1;
 }
 .material-symbols-rounded.filled {

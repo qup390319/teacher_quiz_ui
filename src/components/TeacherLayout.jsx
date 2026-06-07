@@ -56,6 +56,14 @@ const ICONS = {
         d="M9 18h6M10 22h4M12 2a7 7 0 00-4 12.7c.6.5 1 1.2 1 2V17h6v-.3c0-.8.4-1.5 1-2A7 7 0 0012 2z" />
     </svg>
   ),
+  tableEdit: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2zM3 9h18M3 14h9" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M17.5 14l1.5 1.5-5 5H12.5v-1.5l5-5z" />
+    </svg>
+  ),
 };
 
 /**
@@ -107,7 +115,7 @@ const navItems = [
   { section: '其他' },
   { to: '/teacher/misconception-causes', label: '迷思概念成因', icon: ICONS.bulb },
   { to: '/teacher/knowledge-map', label: '(預設) 知識節點總覽', icon: ICONS.grid, tour: 'flow-knowledge-default' },
-  { to: '/teacher/custom-knowledge-map', label: '(自定義) 知識節點總覽', icon: ICONS.grid, tour: 'flow-knowledge-custom' },
+  { to: '/teacher/custom-knowledge-map', label: '(自定義) 知識節點總覽', icon: ICONS.tableEdit, tour: 'flow-knowledge-custom' },
 ];
 
 // 教學流程 section 用各自主色；班級/其他為輔助功能，採低調中性灰
@@ -142,6 +150,14 @@ export default function TeacherLayout({ children }) {
   const stageStatus = useTeacherStageStatus();
   const [openOverrides, setOpenOverrides] = useState({});
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // 桌面版 sidebar 折疊：預設在首頁 /teacher 展開、其他頁面收起；使用者手動切換後鎖定使用者選擇直到路由再次改變
+  // 採 React 推薦的 "adjust state during render on derived value change" 模式，避免 effect+setState 觸發 react-hooks/set-state-in-effect。
+  const [collapsed, setCollapsed] = useState(() => location.pathname !== '/teacher');
+  const [lastPath, setLastPath] = useState(location.pathname);
+  if (lastPath !== location.pathname) {
+    setLastPath(location.pathname);
+    setCollapsed(location.pathname !== '/teacher');
+  }
   const { startTour } = useTour();
   const closeDrawer = () => setDrawerOpen(false);
 
@@ -356,6 +372,105 @@ export default function TeacherLayout({ children }) {
     </>
   );
 
+  // 桌面版折疊模式專用：把 navItems 攤平成可點擊的單一 icon 清單
+  const flatItemsForCollapsed = (() => {
+    const out = [];
+    let currentSectionStyle = null;
+    for (const item of navItems) {
+      if (item.divider) {
+        out.push({ divider: true });
+        currentSectionStyle = null;
+      } else if (item.section) {
+        currentSectionStyle = SECTION_STYLES[item.section] || null;
+      } else if (item.group) {
+        // 折疊時 group 顯示為單一 icon，點擊導向第一個子項
+        out.push({ ...item, to: item.children[0]?.to, ss: currentSectionStyle });
+      } else {
+        out.push({ ...item, ss: currentSectionStyle });
+      }
+    }
+    return out;
+  })();
+
+  const renderCollapsedSidebar = () => (
+    <>
+      <div className="px-2 py-4 border-b border-[#D5D8DC] flex flex-col items-center gap-2">
+        <div className="w-9 h-9 bg-[#C8EAAE] border border-[#BDC3C7] rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden">
+          <img src={teacherAvatar} alt="教師" className="w-full h-full object-cover" />
+        </div>
+        <button
+          type="button"
+          onClick={() => setCollapsed(false)}
+          aria-label="展開選單"
+          title="展開選單"
+          className="p-1.5 rounded-lg text-[#636E72] hover:bg-[#EEF5E6] transition-colors"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+      </div>
+      <nav className="flex-1 px-2 py-3 space-y-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+        {flatItemsForCollapsed.map((item, idx) => {
+          if (item.divider) {
+            return <div key={`cdiv-${idx}`} className="my-2 mx-2 border-t border-[#D5D8DC]" />;
+          }
+          const ss = item.ss;
+          const isGroupActive = item.children && item.children.some(c => location.pathname.startsWith(c.to));
+          return (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.to === '/teacher'}
+              title={item.label}
+              aria-label={item.label}
+              className={({ isActive }) => {
+                const active = isActive || isGroupActive;
+                return `flex items-center justify-center w-11 h-11 mx-auto rounded-xl transition-colors [&_svg]:w-5 [&_svg]:h-5 ${
+                  active ? 'text-[#2D3436]' : 'text-[#636E72] hover:bg-[#EEF5E6]'
+                }`;
+              }}
+              style={({ isActive }) => {
+                const active = isActive || isGroupActive;
+                return active && ss
+                  ? { backgroundColor: ss.activeBg, border: `2px solid ${ss.activeBorder}` }
+                  : active
+                    ? { backgroundColor: '#E5E7E8' }
+                    : undefined;
+              }}
+            >
+              <span style={{ color: ss?.color }}>{item.icon}</span>
+            </NavLink>
+          );
+        })}
+      </nav>
+      <div className="px-2 py-3 border-t border-[#D5D8DC] space-y-1 flex flex-col items-center">
+        <button
+          onClick={() => startTour('sidebar')}
+          title="操作導覽"
+          aria-label="操作導覽"
+          className="flex items-center justify-center w-10 h-10 text-[#636E72] hover:text-[#2D3436] hover:bg-[#EEF5E6] rounded-xl transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </button>
+        <button
+          onClick={handleLogout}
+          title="登出"
+          aria-label="登出"
+          className="flex items-center justify-center w-10 h-10 text-[#636E72] hover:text-[#2D3436] hover:bg-[#EEF5E6] rounded-xl transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+        </button>
+      </div>
+    </>
+  );
+
   const sidebar = (
     <>
       {/* Logo */}
@@ -379,6 +494,17 @@ export default function TeacherLayout({ children }) {
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          onClick={() => setCollapsed(true)}
+          aria-label="收起選單"
+          title="收起選單"
+          className="hidden md:inline-flex -mr-1 p-1.5 rounded-lg text-[#636E72] hover:bg-[#EEF5E6]"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7M19 19l-7-7 7-7" />
           </svg>
         </button>
       </div>
@@ -415,8 +541,11 @@ export default function TeacherLayout({ children }) {
   return (
     <div className="flex h-screen bg-[#EEF5E6]">
       <GuidedTour />
-      <aside data-tour="sidebar" className="hidden md:flex w-60 bg-white border-r border-[#D5D8DC] flex-col flex-shrink-0 shadow-[2px_0_8px_rgba(0,0,0,0.02)]">
-        {sidebar}
+      <aside
+        data-tour="sidebar"
+        className={`hidden md:flex ${collapsed ? 'w-16' : 'w-60'} bg-white border-r border-[#D5D8DC] flex-col flex-shrink-0 shadow-[2px_0_8px_rgba(0,0,0,0.02)] transition-[width] duration-200 ease-out`}
+      >
+        {collapsed ? renderCollapsedSidebar() : sidebar}
       </aside>
 
       <div

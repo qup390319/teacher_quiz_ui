@@ -26,7 +26,10 @@ const queryClient = new QueryClient({
 // fetch 失敗時陣列維持空，UI 顯示「無資料」狀態。
 const bootstrap = async () => {
   try {
-    await loadKnowledgeGraph();
+    // 不指定 unitId → 後端回全部節點；前端各 consumer 用 ID 前綴自行過濾。
+    // 原本 default unitId='unit-water-solution' 與後端 seed 的 unit-jb / unit-jd 對不齊，
+    // 導致 knowledgeNodes 永遠是空陣列（2026-06-06 修；詳見 docs/deviations.md）。
+    await loadKnowledgeGraph({ unitId: null });
   } catch (err) {
     console.error('[bootstrap] loadKnowledgeGraph failed:', err);
   }

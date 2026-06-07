@@ -110,13 +110,17 @@ function StudentQuizScreen({ quizId }) {
         },
       ]);
       setTimeout(() => {
-        setMessages((prev) => [
-          ...prev,
-          { id: `q-${q.id}-stem`, role: 'ai', text: q.stem },
-        ]);
-        setOptionsEnabled(true);
-      }, 600);
-    }, 1200);
+        setIsThinking(true);
+        setTimeout(() => {
+          setIsThinking(false);
+          setMessages((prev) => [
+            ...prev,
+            { id: `q-${q.id}-stem`, role: 'ai', text: q.stem },
+          ]);
+          setOptionsEnabled(true);
+        }, 1400);
+      }, 1200);
+    }, 1800);
   }, [sortedQuestions]);
 
   useEffect(() => {
@@ -128,7 +132,7 @@ function StudentQuizScreen({ quizId }) {
       }, 500);
       return () => clearTimeout(timer);
     }
-    const delay = introIdx === 0 ? 300 : 800;
+    const delay = introIdx === 0 ? 600 : 1500;
     const timer = setTimeout(() => {
       setMessages((prev) => [
         ...prev,
@@ -158,7 +162,7 @@ function StudentQuizScreen({ quizId }) {
     setMessages((prev) => [
       ...prev,
       { id: `done-1-${Date.now()}`, role: 'ai', text: leadText },
-      { id: `done-2-${Date.now()}`, role: 'ai', text: '讓我把所有對話整理一下，幫你做一份專屬的「學習體檢表」⋯' },
+      { id: `done-2-${Date.now()}`, role: 'ai', text: '讓我把所有對話整理一下，幫你做一份專屬的「診斷報告」⋯' },
     ]);
     setPhase('done');
 
@@ -244,14 +248,23 @@ function StudentQuizScreen({ quizId }) {
       setMessages((prev) => [
         ...prev,
         { id: `fu-${q.id}-header`, role: 'ai', text: headerText },
-        { id: `fu-${q.id}-r1`, role: 'ai', text: askText },
       ]);
-      setFollowUpCtx((c) => c && {
-        ...c,
-        conversationLog: [{ role: 'ai', content: askText }],
-      });
-      setFollowUpEnabled(true);
-    }, 1100);
+      setTimeout(() => {
+        setIsThinking(true);
+        setTimeout(() => {
+          setIsThinking(false);
+          setMessages((prev) => [
+            ...prev,
+            { id: `fu-${q.id}-r1`, role: 'ai', text: askText },
+          ]);
+          setFollowUpCtx((c) => c && {
+            ...c,
+            conversationLog: [{ role: 'ai', content: askText }],
+          });
+          setFollowUpEnabled(true);
+        }, 1600);
+      }, 1200);
+    }, 1800);
   };
 
   const startFollowUpPhase = (finalAnswers) => {
@@ -320,15 +333,13 @@ function StudentQuizScreen({ quizId }) {
     setFollowUpEnabled(false);
     setTimeout(() => {
       setIsThinking(false);
-      setMessages((prev) => [...prev,
-        { id: `fu-${ctxAtFinal.questionId}-summary`, role: 'ai', text: finalDiagnosis.aiSummary }]);
       if (nextIdx >= sortedQuestions.length) {
-        finishQuiz(answersRef.current, '謝謝你陪我聊完所有題目！');
+        setTimeout(() => finishQuiz(answersRef.current, '謝謝你陪我聊完所有題目！'), 1500);
         return;
       }
       setFollowUpIndex(nextIdx);
-      setTimeout(() => askFollowUpRound1(nextIdx), 700);
-    }, 900);
+      setTimeout(() => askFollowUpRound1(nextIdx), 1500);
+    }, 1500);
   };
 
   const handleFollowUpSend = async (overrideText) => {
@@ -343,6 +354,7 @@ function StudentQuizScreen({ quizId }) {
     const ctxWithReply = { ...followUpCtx,
       conversationLog: [...followUpCtx.conversationLog, { role: 'student', content: reply }] };
     setIsThinking(true);
+    const startedAt = Date.now();
     let result;
     try { result = await processStudentReply(ctxWithReply, reply); }
     catch (err) {
@@ -351,6 +363,11 @@ function StudentQuizScreen({ quizId }) {
       setMessages((prev) => [...prev, { id: `fu-err-${Date.now()}`, role: 'ai', text: '我這邊有點當機，可以再說一次你的想法嗎？' }]);
       setFollowUpEnabled(true);
       return;
+    }
+    const MIN_THINK_MS = 1500;
+    const elapsed = Date.now() - startedAt;
+    if (elapsed < MIN_THINK_MS) {
+      await new Promise((r) => setTimeout(r, MIN_THINK_MS - elapsed));
     }
     setIsThinking(false);
     if (result.kind === 'final') { handleFollowUpFinal(result.finalDiagnosis, ctxWithReply); return; }

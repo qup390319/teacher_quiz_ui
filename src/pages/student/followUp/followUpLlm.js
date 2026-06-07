@@ -13,6 +13,7 @@
  */
 import { chat } from '../../../llm/index.js';
 import { getNodeById } from '../../../data/knowledgeGraph.js';
+import { normalizeErrorType } from '../../../data/errorTypes.js';
 import {
   buildFollowUpSystemPrompt,
   hasFollowUpPromptFor,
@@ -115,6 +116,9 @@ function normalizeFinalDiagnosis(raw, ctx) {
     : null;
   if (finalStatus === 'CORRECT') misconceptionCode = null;
 
+  // errorType：LLM 必須輸出三類之一或 null；CORRECT 強制 null
+  const errorType = finalStatus === 'CORRECT' ? null : normalizeErrorType(raw.errorType);
+
   const causeIds = normalizeCauseIds(raw.causeIds);
   const causeEvidence = typeof raw.causeEvidence === 'string'
     ? raw.causeEvidence.trim().slice(0, 200)
@@ -146,6 +150,7 @@ function normalizeFinalDiagnosis(raw, ctx) {
     finalStatus,
     misconceptionCode,
     reasoningQuality,
+    errorType,
     causeIds,
     causeEvidence,
     aiSummary,

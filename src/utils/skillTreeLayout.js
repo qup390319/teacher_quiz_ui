@@ -142,7 +142,8 @@ export function computeSkillTreeLayout(nodes = []) {
   return { nodes: outNodes, positions, edges, groups, width, height, maxStage, colX: X0, colW: COL_W };
 }
 
-/** 短碼：去掉常見前綴，技能樹六角形內顯示用。 */
+/** 短碼：去掉所有 IN[a-g]- 前綴（INe / INa / INb / INc / INd / INf / INg…），
+ *  只留下「Ⅱ-3-01」/「Ⅲ-7-02」這種短編號，避免六角格內文字爆框。 */
 export function shortNodeLabel(id) {
-  return String(id ?? '').replace(/^INe-/, '');
+  return String(id ?? '').replace(/^IN[a-zA-Z]-/, '');
 }

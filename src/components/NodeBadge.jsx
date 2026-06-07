@@ -44,7 +44,7 @@ const SIZE_STYLES = {
 
 function detectSubject(nodeId) {
   if (!nodeId) return 'unknown';
-  if (nodeId.includes('II-3')) return 'A';
+  if (nodeId.includes('Ⅱ-3')) return 'A';
   if (nodeId.includes('Ⅲ-5')) return 'B';
   return 'unknown';
 }

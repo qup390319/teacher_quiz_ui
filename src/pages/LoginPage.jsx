@@ -23,7 +23,7 @@ const TEACHER_FEATURES = [
 const STUDENT_FEATURES = [
   { icon: 'quiz',          text: '迷思診斷測驗' },
   { icon: 'explore',       text: '循序探索科學概念' },
-  { icon: 'monitor_heart', text: '個人學習體檢表' },
+  { icon: 'monitor_heart', text: '個人診斷報告' },
 ];
 
 /* ── 木框工具 class（雙層邊框 + 木紋陰影 + 圓角） ─────────────── */
@@ -68,7 +68,7 @@ function RoleCard({ variant, open, onToggleInfo, onSelect }) {
   const heading   = isTeacher ? '我是老師' : '我是學生';
   const tagline   = isTeacher
     ? '出題、查看班級迷思、獲得教學建議'
-    : '對話式診斷，獲得個人學習體檢';
+    : '對話式診斷，獲得個人診斷報告';
   const fadeDelay = isTeacher ? 'animate-fade-up-delay-1' : 'animate-fade-up-delay-2';
 
   return (

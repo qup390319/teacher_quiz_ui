@@ -383,6 +383,8 @@ function finalize(ctx, reasoning, override, sourceText) {
       misconceptionCode,
       misconceptionSource: sourceText || null,
       reasoningQuality: reasoning,
+      // Rule-based fallback 不分類；CORRECT 本來就無 errorType，留 null 等教師覆寫
+      errorType: null,
       aiSummary: buildAiSummary(finalStatus, reasoning, isCorrect, ctx),
       statusChange: {
         from: isCorrect ? 'CORRECT' : misconceptionId,

@@ -111,6 +111,7 @@ JSON Schema：
     "finalStatus": "CORRECT" | "MISCONCEPTION" | "UNCERTAIN",
     "misconceptionCode": string | null,    // 例 "M02-1"；CORRECT 時為 null
     "reasoningQuality": "SOLID" | "PARTIAL" | "WEAK" | "GUESSING",
+    "errorType": "EXPLANATION" | "DEFINITION" | "OBSERVATION" | null,  // 答錯的主導方向；CORRECT 必為 null
     "causeIds": number[],              // 1-2 個 (1-8)；CORRECT 時可為 []
     "causeEvidence": string,           // 一句話：學生哪段話顯示了該成因
     "aiSummary": string,               // 給學生的最終回饋，≤ 80 字、不揭露答案
@@ -121,6 +122,20 @@ JSON Schema：
     }
   }
 }
+
+# errorType 三類分類（必填一項，或 null = 無法判讀）
+依學生在對話中**答錯的主導方向**選一類，三類互斥；finalStatus="CORRECT" 時必為 null。
+- "EXPLANATION"（解釋型）：對**因果機制**解釋錯——學生講得出名詞、描述得出現象，但「因為…所以…」的推因偏掉
+   範例：「攪拌能溶更多糖 → 因為攪拌把糖打碎了」（把溶解當成破壞）
+- "DEFINITION"（定義型）：對**科學名詞 / 概念分類 / 判準**理解錯——用字面或日常語意詮釋名詞、混淆相近詞
+   範例：「飽和＝很濃」、「酸性＝嚐起來酸」、「溶化 = 融化」
+- "OBSERVATION"（觀察型）：對**觀察到的現象 / 實驗結果**描述或判讀失準——用單一感官（眼/舌/鼻）下結論、看到/沒看到判斷錯
+   範例：「攪拌後看不到糖＝糖消失」、「試紙沒變色＝中性」
+
+判讀優先序（兼有多類訊號時）：
+- OBSERVATION 優先於 EXPLANATION（觀察錯，後續解釋都建立在錯誤事實上）
+- DEFINITION 優先於 EXPLANATION（名詞理解錯時，無論怎麼解釋都偏）
+- 都無法判讀（學生整段「不知道」、對話過短）→ null
 
 # statusChange 規則
 - isCorrect=true 且最終仍 CORRECT → CONFIRMED

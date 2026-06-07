@@ -37,9 +37,9 @@
 | `/teacher/custom-knowledge-map` | `CustomKnowledgeMap` | (自定義) 知識節點總覽：檢視預設＋自訂迷思概念，支援新增/刪除自訂迷思 | `TeacherLayout` |
 | `/teacher/misconception-causes` | `MisconceptionCauses` | 迷思概念成因：列出診斷對話中分類迷思成因的 8 種類別（特徵 + 常見樣態） | `TeacherLayout` |
 | `/teacher/report` | `TeacherReport` | 舊版診斷報告（保留向後相容） | `TeacherLayout` |
-| `/student` | `StudentHome` | 學生首頁：瀏覽可作答題組 | 簡易 Header |
+| `/student` | `StudentHome` | 學生首頁：頂部兩個 Tab 切換「任務看板」(待挑戰任務) / 「診斷報告」(歷次診斷報告) | 簡易 Header |
 | `/student/quiz/:quizId` | `StudentQuiz` | 對話式診斷測驗介面 | 簡易 Header |
-| `/student/report` | `StudentReport` | 個人學習健康報告 | 簡易 Header |
+| `/student/report` | `StudentReport` | 個人學習健康報告（頁面標題即「診斷報告」） | 簡易 Header |
 | `/admin/login` | `AdminLogin` | 管理員獨立登入頁（不在首頁角色卡露出） | 無（全螢幕） |
 | `/admin` | `AdminDashboard` | 後台首頁：統計 donut + 6 個功能入口卡 | `AdminLayout` |
 | `/admin/users` | `UsersManagement` | 帳號管理：教師/學生列表 + 新增/停用/重設密碼 | `AdminLayout` |
@@ -99,7 +99,7 @@
     - 學生：藍底 (`from-[#86CEF5] to-[#4A9FD8]`) + 字「我是學生」
   - **角色頭像方框**：128×128 米色漸層 + 白邊 3px + 內陰影 + 4 角木紋小釘；內嵌 irasutoya 插圖（教師：`irasutoya_teacher.png`；學生：`irasutoya_student_boy.png` + `_girl.png` 並排）；hover 時方框微旋轉 -2deg、角色 scale 110%
   - **三星評等 StarRating**：⭐⭐⭐（`star` filled icon，黃 `#F4C545` + 底部投影模擬立體）
-  - **副標**：簡短一句話（教師「出題、查看班級迷思、獲得教學建議」；學生「對話式診斷，獲得個人學習體檢」）
+  - **副標**：簡短一句話（教師「出題、查看班級迷思、獲得教學建議」；學生「對話式診斷，獲得個人診斷報告」）
   - **CTA 按鈕**：肥大圓角膠囊 + 漸層底 + 木紋色邊框 + 立體陰影 + 大字「GO」+ `play_arrow` icon；hover 時陰影縮短 + 按下沉 0.5
     - 教師：橙木漸層 (`from-[#F0B962] to-[#D08B2E]`)
     - 學生：藍漸層 (`from-[#5DADE2] to-[#2E86C1]`)

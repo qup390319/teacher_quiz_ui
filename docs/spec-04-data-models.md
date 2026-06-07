@@ -391,6 +391,10 @@ interface FollowUpDiagnosis {
   misconceptionCode: string | null;        // 確認的迷思 ID（如 'M02-1'）
   misconceptionSource: string | null;      // 學生在 R3 source 策略中陳述的來源
   reasoningQuality: 'SOLID' | 'PARTIAL' | 'WEAK' | 'GUESSING';
+  errorType: 'EXPLANATION' | 'DEFINITION' | 'OBSERVATION' | null;
+  // ↑ 學生答錯的主導方向（spec-09 §12.4）。LLM 在追問結束時依對話判斷；
+  //   無法判讀回 null（教師可在報告手動覆寫）。常數 / labels / themes 定義
+  //   於 src/data/errorTypes.js。
   aiSummary: string;                       // AI 對該題的摘要說明
   statusChange: {
     from: string;                          // 第一層判定（'CORRECT' 或迷思 ID）

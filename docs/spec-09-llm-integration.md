@@ -241,6 +241,7 @@ per-node injection（NODE_CONTEXT[nodeId]，12 份）：
     "finalStatus": "CORRECT" | "MISCONCEPTION" | "UNCERTAIN",
     "misconceptionCode": "M02-1" | null,
     "reasoningQuality": "SOLID" | "PARTIAL" | "WEAK" | "GUESSING",
+    "errorType": "EXPLANATION" | "DEFINITION" | "OBSERVATION" | null,
     "causeIds": [1-8],
     "causeEvidence": "string，學生哪段話顯示了該成因",
     "aiSummary": "string，給學生的最終回饋",
@@ -249,6 +250,26 @@ per-node injection（NODE_CONTEXT[nodeId]，12 份）：
   }
 }
 ```
+
+### 12.4a errorType 三類分類規則（2026-06-06 新增）
+
+LLM 在 `phase=final` 輸出 `finalDiagnosis.errorType`，依學生在追問對話中**答錯的主導方向**選一類；無法判讀回 `null`（前端顯示「未分類」，教師可手動覆寫）。三類互斥，請只選一個主導。
+
+| errorType | 學生錯在哪 | 對話辨識訊號（節錄） | 範例（水溶液） |
+|---|---|---|---|
+| `EXPLANATION` 解釋型 | 對**現象的因果機制**解釋錯誤；不是不知道名詞，而是把「為什麼會這樣」想偏 | 學生講得出名詞、也描述得出現象，但**「因為…所以…」推因錯**；連續問「為什麼」會出現邏輯瑕疵 | 「攪拌能溶更多糖 → 因為攪拌把糖打碎了」（把溶解誤解為破壞） |
+| `DEFINITION` 定義型 | 對**科學名詞、概念分類、判準**理解錯；卡在名詞定義或界線 | 學生用**字面意義 / 日常語意**詮釋科學名詞；混淆相近詞（溶化 vs 融化、酸 vs 酸味） | 「飽和溶液＝很濃」、「酸性＝嚐起來酸」、「水溶液一定要透明」 |
+| `OBSERVATION` 觀察型 | 對**觀察到的現象、實驗結果**描述或判讀失準 | 學生對「看到了什麼 / 沒看到什麼」**描述錯**；用單一感官（眼/舌/鼻）下結論 | 「攪拌後看不到糖＝糖消失」、「試紙沒變色＝中性」、「沒味道＝中性」 |
+
+判讀優先序（同題若兼有多類訊號時）：
+1. **OBSERVATION** 優先於 EXPLANATION——觀察錯了，後面的解釋都建立在錯誤事實上，矯正觀察是上游。
+2. **DEFINITION** 優先於 EXPLANATION——名詞理解錯時，無論怎麼解釋都偏；先校正定義。
+3. 兩個都不明顯，但因果推論明顯偏 → **EXPLANATION**。
+4. 都無法判讀（例如學生整段「不知道」、對話過短）→ `null`。
+
+注意：
+- `finalStatus = "CORRECT"` 時 `errorType` 必為 `null`（沒有「答錯方向」可言）。
+- 自訂迷思（無 LLM prompt）走 rule-based fallback → `errorType` 一律 `null`，由教師端覆寫。
 
 ### 12.5 Chip 渲染協定（前後端約定）
 

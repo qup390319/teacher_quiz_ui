@@ -57,9 +57,11 @@ function apiToOldShape(apiNode) {
  * 由 src/main.jsx 在 ReactDOM.render() 之前 await 呼叫一次。
  * 也允許重複呼叫（例如手動 refresh）；同時併發呼叫會共用同一個 promise。
  */
-export async function loadKnowledgeGraph({ unitId = 'unit-water-solution' } = {}) {
+export async function loadKnowledgeGraph({ unitId } = {}) {
   if (loadPromise) return loadPromise;
   loadPromise = (async () => {
+    // unitId 省略時拉全部節點（後端 demo seed 把水溶液節點放在 unit-jb / unit-jd，
+    // 與舊前端 hard-code 的 'unit-water-solution' 對不上；2026-06-06 改）。
     const qs = unitId ? `?unitId=${encodeURIComponent(unitId)}` : '';
     const res = await fetch(`/api/knowledge-nodes${qs}`, { credentials: 'include' });
     if (!res.ok) {

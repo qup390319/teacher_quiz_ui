@@ -364,6 +364,7 @@
 - 題目回顧（摺疊 details，顯示題幹與學生先前的選項）
 - 輪次標示（「對話 X/3・說說你的想法」）
 - 多行 textarea 輸入框（Enter 送出、Shift+Enter 換行）
+- **語音輸入按鈕**（麥克風）：使用瀏覽器原生 Web Speech API（`zh-TW`），辨識結果以 append 方式加入 textarea；錄音中按鈕切換為紅色脈動 + `stop_circle` 圖示；不支援的瀏覽器（如 Firefox Desktop）按鈕不顯示，學生仍可打字
 - 送出按鈕（內容為空或 disabled 時禁用）
 
 ### Props
@@ -376,6 +377,9 @@
 | `round` | `number` | 當前輪次（1-3） |
 | `totalRounds` | `number` | 總輪次（預設 3） |
 | `questionRecap` | `{stem, selectedContent} \| null` | 題目回顧內容；null 不顯示 |
+
+### 配套 Hook
+`src/pages/student/followUp/useSpeechRecognition.js` — 包裝 `window.SpeechRecognition / webkitSpeechRecognition`；對外回傳 `{ supported, listening, interim, error, start, stop, toggle }`。預設 `zh-TW`、`continuous=false`、`interimResults=true`。
 
 ### 配套引擎
 `src/pages/student/followUp/followUpEngine.js`

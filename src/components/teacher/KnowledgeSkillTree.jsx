@@ -129,6 +129,7 @@ export default function KnowledgeSkillTree({
   selectedNodeIds = [],
   onToggle,
   title,
+  topBar,
 } = {}) {
   const [hovered, setHovered] = useState(null);
   const [showNames, setShowNames] = useState(false);
@@ -164,6 +165,13 @@ export default function KnowledgeSkillTree({
         boxShadow: 'inset 0 0 40px rgba(0,0,0,0.55), 0 4px 16px rgba(0,0,0,0.18)',
       }}
     >
+      {/* 上方 slot（例如單元選擇器） */}
+      {topBar && (
+        <div className="mb-3 pb-3 border-b" style={{ borderColor: 'rgba(193,154,107,0.3)' }}>
+          {topBar}
+        </div>
+      )}
+
       {/* 標題列 + 顯示節點名稱切換 */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
         <p className="text-[15px] font-bold tracking-wider" style={{ color: D.textMuted }}>

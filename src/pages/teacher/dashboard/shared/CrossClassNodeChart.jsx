@@ -43,7 +43,7 @@ function CardHoverTip({ text }) {
 // 子主題色（與 NodeBadge 一致）
 function subjectColor(nodeId) {
   if (!nodeId) return { bg: '#F0F1F2', text: '#2D3436', border: '#95A5A6' };
-  if (nodeId.includes('II-3')) return { bg: '#E6F2FB', text: '#0E3A5C', border: '#3B8BC2' };
+  if (nodeId.includes('Ⅱ-3')) return { bg: '#E6F2FB', text: '#0E3A5C', border: '#3B8BC2' };
   if (nodeId.includes('Ⅲ-5')) return { bg: '#FBEFE0', text: '#7A4A18', border: '#D4843C' };
   return { bg: '#F0F1F2', text: '#2D3436', border: '#95A5A6' };
 }

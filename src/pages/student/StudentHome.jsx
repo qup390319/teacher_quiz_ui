@@ -52,8 +52,8 @@ export default function StudentHome() {
   const { data: assignments = [] } = useAssignments();
   const { data: quizzes = [] } = useQuizzes();
 
-  const [diagnosisHistoryOpen, setDiagnosisHistoryOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('tasks'); // 'tasks' | 'checkups'
 
   /* 將派題 enriched 為任務卡資料 */
   const diagnosisTasks = useMemo(() => {
@@ -235,52 +235,68 @@ export default function StudentHome() {
             }}
           />
 
-          <div className="relative max-w-2xl mx-auto px-4 sm:px-6 pt-6 pb-10">
-            {hasTasks ? (
-              <>
-                {diagnosisTasks.pending.length > 0 && (
-                  <Section
-                    title="迷思診斷"
-                    subtitle="先測驗找出你對科學概念的迷思"
-                    accentColor="#D08B2E"
-                    icon="quiz"
-                  >
-                    <div className="space-y-3 sm:space-y-4">
-                      {diagnosisTasks.pending.map((task) => (
-                        <TaskCard
-                          key={task.assignmentId}
-                          {...task}
-                          onStart={() => handleStartQuiz(task)}
-                        />
-                      ))}
-                    </div>
-                  </Section>
-                )}
+          <div className="relative max-w-2xl mx-auto px-4 sm:px-6 pt-5 pb-10">
+            <TabSwitcher
+              activeTab={activeTab}
+              onChange={setActiveTab}
+              taskCount={diagnosisTasks.pending.length}
+              checkupCount={diagnosisTasks.completed.length}
+            />
 
-                {diagnosisTasks.completed.length > 0 && (
-                  <Section
-                    title="已完成的診斷"
-                    count={diagnosisTasks.completed.length}
-                    collapsible
-                    open={diagnosisHistoryOpen}
-                    onToggle={() => setDiagnosisHistoryOpen((v) => !v)}
-                    className="mt-4"
-                  >
-                    <div className="space-y-3 sm:space-y-4">
-                      {diagnosisTasks.completed.map((task) => (
-                        <TaskCard
-                          key={task.assignmentId}
-                          {...task}
-                          onStart={() => handleStartQuiz(task)}
-                          onViewReport={() => handleViewTaskReport(task)}
-                        />
-                      ))}
-                    </div>
-                  </Section>
-                )}
-              </>
-            ) : (
-              <EmptyBoard />
+            {activeTab === 'tasks' && (
+              diagnosisTasks.pending.length > 0 ? (
+                <Section
+                  title="待挑戰任務"
+                  subtitle="完成這些題組，老師才能看到你的想法"
+                  accentColor="#D08B2E"
+                  icon="quiz"
+                >
+                  <div className="space-y-3 sm:space-y-4">
+                    {diagnosisTasks.pending.map((task) => (
+                      <TaskCard
+                        key={task.assignmentId}
+                        {...task}
+                        onStart={() => handleStartQuiz(task)}
+                      />
+                    ))}
+                  </div>
+                </Section>
+              ) : (
+                <EmptyState
+                  icon="inventory_2"
+                  title={hasTasks ? '目前沒有待挑戰任務' : '看板還是空的'}
+                  hint={hasTasks ? '你做得很棒！可切到「診斷報告」看歷次紀錄' : '老師還沒派任務給你 · 等老師派題後就會出現在這裡'}
+                />
+              )
+            )}
+
+            {activeTab === 'checkups' && (
+              diagnosisTasks.completed.length > 0 ? (
+                <Section
+                  title="歷次診斷報告"
+                  subtitle="點「查看」可開啟該次診斷報告"
+                  count={diagnosisTasks.completed.length}
+                  accentColor="#5C8A2E"
+                  icon="assignment_turned_in"
+                >
+                  <div className="space-y-3 sm:space-y-4">
+                    {diagnosisTasks.completed.map((task) => (
+                      <TaskCard
+                        key={task.assignmentId}
+                        {...task}
+                        onStart={() => handleStartQuiz(task)}
+                        onViewReport={() => handleViewTaskReport(task)}
+                      />
+                    ))}
+                  </div>
+                </Section>
+              ) : (
+                <EmptyState
+                  icon="folder_open"
+                  title="還沒有完成的診斷報告"
+                  hint="完成任務看板上的題組後，這裡會出現你的診斷報告"
+                />
+              )
             )}
           </div>
         </div>
@@ -328,12 +344,55 @@ function CombinedStats({ stats }) {
   );
 }
 
-function EmptyBoard() {
+function EmptyState({ icon, title, hint }) {
   return (
     <div className="flex flex-col items-center text-center py-10">
-      <Icon name="inventory_2" filled className="text-6xl text-[#C19A6B]" />
-      <p className="font-game text-xl font-black text-[#5A3E22] mt-3 mb-1">看板還是空的</p>
-      <p className="text-base text-[#7A5232]">老師還沒派任務給你 · 等老師派題後就會出現在這裡</p>
+      <Icon name={icon} filled className="text-6xl text-[#C19A6B]" />
+      <p className="font-game text-xl font-black text-[#5A3E22] mt-3 mb-1">{title}</p>
+      <p className="text-base text-[#7A5232]">{hint}</p>
+    </div>
+  );
+}
+
+/* 任務看板 / 診斷報告 兩個 Tab 切換 */
+function TabSwitcher({ activeTab, onChange, taskCount, checkupCount }) {
+  const tabs = [
+    { key: 'tasks',    label: '任務看板',   icon: 'dashboard',           count: taskCount },
+    { key: 'checkups', label: '診斷報告', icon: 'assignment_turned_in', count: checkupCount },
+  ];
+  return (
+    <div className="flex gap-2 mb-4">
+      {tabs.map((t) => {
+        const active = activeTab === t.key;
+        return (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => onChange(t.key)}
+            aria-pressed={active}
+            className={[
+              'flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-2xl',
+              'border-[3px] font-game font-black text-sm sm:text-base transition-all duration-150',
+              active
+                ? 'bg-gradient-to-b from-[#F4D58A] to-[#F0B962] border-[#9B5E18] text-[#5A3E22] shadow-[0_4px_0_-1px_#7A4A18,0_6px_10px_-3px_rgba(91,66,38,0.3)]'
+                : 'bg-white border-[#C19A6B] text-[#8B6B43] hover:bg-[#FFF8E7] hover:text-[#5A3E22] shadow-[0_2px_0_-1px_#C19A6B]',
+            ].join(' ')}
+          >
+            <Icon name={t.icon} filled className="text-lg sm:text-xl" />
+            <span>{t.label}</span>
+            {t.count > 0 && (
+              <span className={[
+                'inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-xs font-bold leading-none border-2',
+                active
+                  ? 'bg-white border-[#9B5E18] text-[#7A4A18]'
+                  : 'bg-[#FFF4E0] border-[#C19A6B] text-[#7A4A18]',
+              ].join(' ')}>
+                {t.count}
+              </span>
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }

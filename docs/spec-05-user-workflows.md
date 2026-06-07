@@ -333,9 +333,10 @@
     │   │   │   ├─ Round 1：AI 用比較題 / 二選一探出信念，附 chips 快選
     │   │   │   │   - buildRound1Message(option, isCorrect) 產生開場文字
     │   │   │   │   - LLM phase = "belief"
-    │   │   │   ├─ 學生回覆方式（chips 與打字並存）：
+    │   │   │   ├─ 學生回覆方式（chips / 打字 / 語音 並存）：
     │   │   │   │   - 點 chip 按鈕（推薦給國小生，無打字壓力）→ 直接送出
     │   │   │   │   - 自由打字 → textarea 送出（含 chip 都不對時）
+    │   │   │   │   - 語音輸入 → 點麥克風按鈕（Web Speech API, zh-TW），辨識文字 append 到 textarea，再按送出
     │   │   │   ├─ LLM 模式四階段對話結構（POE + 蘇格拉底）：
     │   │   │   │   - belief（信念探索，1~3 輪）：用比較題挖出學生真正相信什麼
     │   │   │   │   - challenge（認知挑戰，1~2 輪）：丟變體實驗（POE Observe），測試一致性
@@ -366,7 +367,7 @@
         │   ├─ **「你在對話中提到」引用**（取自 followUpResults.conversationLog 的第一則學生回覆）
         │   └─ 學習提示 (studentHint)
         ├─ **「答對了，但可以更深入理解」黃色區塊**（reasoningQuality 為 WEAK / GUESSING 的題目）
-        ├─ 下一步學習建議
+        ├─ 下一步的指引
         └─ 返回首頁按鈕
 ```
 

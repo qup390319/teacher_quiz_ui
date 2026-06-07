@@ -1,4 +1,6 @@
+import { useCallback } from 'react';
 import { Icon } from '../../../components/ui/woodKit';
+import useSpeechRecognition from './useSpeechRecognition';
 
 /**
  * 第二層 AI 追問底部面板：題目回顧 + 輪次標示 + chip 快選 + 文字輸入框 + 送出鍵。
@@ -7,6 +9,11 @@ import { Icon } from '../../../components/ui/woodKit';
  *  - 由 LLM 在回應中附 chips 字串陣列
  *  - 點擊 chip = 直接以該文字呼叫 onSendText（學生不用打字）
  *  - 同時保留 textarea，學生想自由表達也可以
+ *
+ * 語音輸入（spec-05 §2.2）：
+ *  - textarea 旁附麥克風按鈕，使用瀏覽器原生 Web Speech API（zh-TW）
+ *  - 辨識結果以 append 方式加入 inputValue，不覆寫已打文字
+ *  - 不支援的瀏覽器（如 Firefox）麥克風按鈕不顯示，學生仍可打字
  *
  * 規格：spec-05 §2.2 第二階段、spec-07 §卡片/按鈕
  */
@@ -21,6 +28,37 @@ export default function AIFollowUpPanel({
   questionRecap = null,
   chips = null,         // string[] | null
 }) {
+  const handleVoiceFinal = useCallback(
+    (text) => {
+      const clean = (text || '').trim();
+      if (!clean) return;
+      const base = inputValue || '';
+      const joiner = base && !/\s$/.test(base) ? ' ' : '';
+      onChange(base + joiner + clean);
+    },
+    [inputValue, onChange]
+  );
+
+  const {
+    supported: voiceSupported,
+    listening,
+    interim,
+    error: voiceError,
+    toggle: toggleVoice,
+  } = useSpeechRecognition(handleVoiceFinal, 'zh-TW');
+
+  const voiceHint = listening && interim
+    ? `辨識中：${interim}`
+    : voiceError === 'not-allowed' || voiceError === 'service-not-allowed'
+      ? '麥克風權限被拒絕，請改用打字'
+      : voiceError === 'no-speech'
+        ? '沒聽到聲音，再試一次'
+        : voiceError === 'audio-capture'
+          ? '找不到麥克風裝置'
+          : voiceError
+            ? '語音輸入暫時無法使用，請改用打字'
+            : null;
+
   const handleKey = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -85,20 +123,52 @@ export default function AIFollowUpPanel({
       )}
 
       <div className="flex gap-2 items-stretch">
-        <textarea
-          value={inputValue}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={handleKey}
-          placeholder={safeChips.length > 0 ? '或者自己打字告訴我⋯' : '輸入你的想法⋯'}
-          rows={2}
-          disabled={disabled}
-          className="flex-1 min-w-0 resize-none rounded-2xl bg-white border-2 border-[#C19A6B]
-                     px-4 py-3 text-[#5A3E22] leading-6 placeholder-[#B5A57F]
-                     shadow-[inset_0_2px_0_rgba(193,154,107,0.15)]
-                     focus:outline-none focus:ring-2 focus:ring-[#5C8A2E]/50
-                     disabled:opacity-60 disabled:cursor-not-allowed"
-          aria-label="輸入訊息"
-        />
+        <div className="flex-1 min-w-0 relative">
+          <textarea
+            value={inputValue}
+            onChange={(e) => onChange(e.target.value)}
+            onKeyDown={handleKey}
+            placeholder={safeChips.length > 0 ? '或者自己打字告訴我⋯' : '輸入你的想法⋯'}
+            rows={2}
+            disabled={disabled}
+            className="w-full resize-none rounded-2xl bg-white border-2 border-[#C19A6B]
+                       px-4 py-3 text-[#5A3E22] leading-6 placeholder-[#B5A57F]
+                       shadow-[inset_0_2px_0_rgba(193,154,107,0.15)]
+                       focus:outline-none focus:ring-2 focus:ring-[#5C8A2E]/50
+                       disabled:opacity-60 disabled:cursor-not-allowed"
+            aria-label="輸入訊息"
+          />
+          {voiceHint && (
+            <p
+              className={
+                'absolute -top-5 left-2 text-xs truncate max-w-[90%] ' +
+                (voiceError && !listening ? 'text-[#B33A3A] font-bold' : 'text-[#7A4A18] italic')
+              }
+            >
+              {voiceHint}
+            </p>
+          )}
+        </div>
+        {voiceSupported && (
+          <button
+            type="button"
+            onClick={toggleVoice}
+            disabled={disabled}
+            className={
+              'shrink-0 self-stretch inline-flex items-center justify-center rounded-2xl border-2 px-3 ' +
+              'transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ' +
+              (listening
+                ? 'bg-gradient-to-b from-[#FF8A8A] to-[#D14848] border-[#8A2828] text-white ' +
+                  'shadow-[0_4px_0_#8A2828] animate-pulse'
+                : 'bg-white border-[#C19A6B] text-[#7A4A18] ' +
+                  'shadow-[0_4px_0_#C19A6B] hover:translate-y-0.5 hover:shadow-[0_2px_0_#C19A6B]')
+            }
+            aria-label={listening ? '停止語音輸入' : '開始語音輸入'}
+            aria-pressed={listening}
+          >
+            <Icon name={listening ? 'stop_circle' : 'mic'} filled className="text-2xl" />
+          </button>
+        )}
         <button
           type="button"
           onClick={onSend}

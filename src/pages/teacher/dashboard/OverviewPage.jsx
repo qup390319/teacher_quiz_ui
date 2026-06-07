@@ -2,6 +2,12 @@ import { useState } from 'react';
 import { Link, useOutletContext, useSearchParams } from 'react-router-dom';
 import { knowledgeNodes } from '../../../data/knowledgeGraph';
 import { useAnswerDistribution } from '../../../hooks/useAnswerDistribution';
+import {
+  ERROR_TYPES,
+  ERROR_TYPE_LABELS,
+  ERROR_TYPE_DESCRIPTIONS,
+  ERROR_TYPE_THEMES,
+} from '../../../data/errorTypes';
 import NodeBadge from '../../../components/NodeBadge';
 import RagflowSummaryPanel from '../../../components/teacher/RagflowSummaryPanel';
 import { buildGradeSummaryPayload } from './shared/summaryPayload';
@@ -111,6 +117,9 @@ export default function OverviewPage() {
           })} />
       </div>
 
+      {/* ─── 答錯類型分布（spec-09 §12.4a） ─── */}
+      <ErrorTypeDistributionCard distribution={overviewData.errorTypeDistribution} />
+
       {/* ─── AI 摘要：預設折疊 ─── */}
       <div className="bg-white rounded-[32px] border border-[#BDC3C7] shadow-[0_2px_12px_rgba(0,0,0,0.06)] overflow-hidden">
         <button
@@ -218,6 +227,80 @@ function DistributionRow({ label, count, pct, color }) {
         <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
       </div>
       <span className="w-16 text-right font-bold text-[#2D3436] font-mono tabular-nums">{count} 人</span>
+    </div>
+  );
+}
+
+function ErrorTypeDistributionCard({ distribution }) {
+  // distribution 形狀：{ EXPLANATION: n, DEFINITION: n, OBSERVATION: n, unclassified: n }
+  // 後端統計尚未注入此欄位時 fall back 為全 0；前端 prototype 階段顯示空狀態。
+  const safe = distribution ?? {};
+  const counts = {
+    EXPLANATION: Number(safe.EXPLANATION) || 0,
+    DEFINITION: Number(safe.DEFINITION) || 0,
+    OBSERVATION: Number(safe.OBSERVATION) || 0,
+    unclassified: Number(safe.unclassified) || 0,
+  };
+  const total = counts.EXPLANATION + counts.DEFINITION + counts.OBSERVATION + counts.unclassified;
+
+  return (
+    <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-5 sm:p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+      <div className="mb-4 flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <p className="text-lg font-bold text-[#2D3436]">答錯類型分布</p>
+          <p className="text-[15px] text-[#95A5A6] mt-1">
+            LLM 依學生追問對話判斷答錯方向（spec-09 §12.4a）
+          </p>
+        </div>
+        {total > 0 && (
+          <span className="text-sm font-semibold text-[#636E72] bg-[#EEF5E6] border border-[#D5D8DC] px-2.5 py-1 rounded-full">
+            共 {total} 題迷思
+          </span>
+        )}
+      </div>
+
+      {total === 0 ? (
+        <div className="bg-[#F9FBF7] border border-dashed border-[#D5D8DC] rounded-2xl p-6 text-center">
+          <p className="text-sm text-[#636E72] font-medium">尚未蒐集到分類資料</p>
+          <p className="text-sm text-[#95A5A6] mt-1">學生完成追問對話後，這裡會顯示各類型的分布</p>
+        </div>
+      ) : (
+        <div className="space-y-2.5">
+          {ERROR_TYPES.map((type) => {
+            const n = counts[type];
+            const pct = total > 0 ? Math.round((n / total) * 100) : 0;
+            const theme = ERROR_TYPE_THEMES[type];
+            return (
+              <div key={type} className="flex items-center gap-3">
+                <div className="w-20 sm:w-24 flex-shrink-0">
+                  <p className={`text-sm font-bold ${theme.text}`}>{ERROR_TYPE_LABELS[type]}</p>
+                  <p className="text-[11px] text-[#95A5A6] leading-tight mt-0.5">{ERROR_TYPE_DESCRIPTIONS[type]}</p>
+                </div>
+                <div className="flex-1 h-4 bg-[#EEF5E6] rounded-full border border-[#D5D8DC] overflow-hidden">
+                  <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: theme.bar }} />
+                </div>
+                <span className="w-20 text-right text-sm font-bold text-[#2D3436] font-mono tabular-nums">
+                  {n} 題 · {pct}%
+                </span>
+              </div>
+            );
+          })}
+          {counts.unclassified > 0 && (
+            <div className="flex items-center gap-3 pt-1 border-t border-dashed border-[#D5D8DC]">
+              <div className="w-20 sm:w-24 flex-shrink-0">
+                <p className="text-sm font-bold text-[#95A5A6]">未分類</p>
+                <p className="text-[11px] text-[#95A5A6] leading-tight mt-0.5">LLM 無法判讀或待教師覆寫</p>
+              </div>
+              <div className="flex-1 h-4 bg-[#EEF5E6] rounded-full border border-[#D5D8DC] overflow-hidden">
+                <div className="h-full rounded-full bg-[#BDC3C7]" style={{ width: `${total > 0 ? Math.round((counts.unclassified / total) * 100) : 0}%` }} />
+              </div>
+              <span className="w-20 text-right text-sm font-bold text-[#95A5A6] font-mono tabular-nums">
+                {counts.unclassified} 題
+              </span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

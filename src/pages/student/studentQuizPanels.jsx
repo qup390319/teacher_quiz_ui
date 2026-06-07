@@ -53,7 +53,7 @@ export function DonePanel() {
   return (
     <div className="text-center py-3">
       <p className="text-sm font-bold text-[#5A3E22]">
-        正在前往你的學習體檢表⋯
+        正在前往你的診斷報告⋯
       </p>
       <div className="mt-2 flex justify-center">
         <Icon

@@ -88,27 +88,27 @@
 **功能描述**:
 - **唯讀頁面**，僅展示系統預設迷思概念，不提供新增/編輯/刪除功能
 - 頁面標題為「(預設) 知識節點與迷思概念總覽」
-- 以層級結構展示所有知識節點
-- 顯示各節點的迷思概念列表
-- 顯示先備知識關聯（知識學習路徑視覺化）
+- **支援動態切換教學單元**（2026-06-07 起），不再寫死水溶液
+- 顯示所選單元的所有節點、迷思概念、與知識學習路徑視覺化
 
 **UI 元素**:
+- **單元選擇器（dropdown）** — 嵌入 `KnowledgeSkillTree` 深木紋區塊頂部（透過 `topBar` prop），與技能樹視覺綁定。列出所有「ready」教學單元（節點數 > 0 且迷思數 > 0），依 `displayOrder` 排序。option label 包含節點數與迷思數，便於教師選擇。預設選第一個 ready 單元。切換單元會把節點選擇重置為新單元的第一個節點。右側並排顯示目前單元的節點數與迷思總數。
 - **`KnowledgeSkillTree`** 知識路徑技能樹（深木紋夜晚地圖風 / Mockup J-1）：
-  - 六角節點 + 階段欄位（1–6）
-  - A 綠系階段漸層（5 階段、線性）／ B 暖橘系階段漸層（6 階段、5-5/5-6 平行）
+  - 六角節點 + 階段欄位（依所選單元的最大階段數自動）
+  - 傳入 `nodes={unitNodes}`（**必須傳，不可 fallback 到全域節點**，否則會把全部單元節點塞進同一張圖，SVG 高度爆量到 26000+px）
   - 銳利輪廓 + 背後柔光暈
   - hover 節點 → 固定資訊條顯示完整名稱（避免 layout shift）
   - 「顯示節點名稱」開關 → 展開下方雙欄詳細清單
   - 詳見 spec-03 §6
-- 迷思概念表格（3 欄）：
-  | 欄位 | 說明 |
-  |------|------|
-  | 知識節點 | 節點名稱 |
-  | 迷思概念 | 迷思概念 label |
-  | 學生常見想法 | 迷思概念 studentDetail |
-- **無「操作」欄位**（唯讀，不可編輯或刪除）
+- 迷思概念瀏覽器（**兩欄收集冊式版面**，2026-06-07 由原本長表格改為此版面）：
+  - **左欄（sticky）**: 節點清單，依該單元的 `parentNodes`（次主題）動態分組，每組依 learningOrder 排序；每列為 `NodeBadge` + 節點名稱 + 迷思條數。被選中的節點以淡綠底 + 深綠邊框高亮。次主題標籤色彩交替（藍 / 橘）。
+  - **右欄**: 被選中節點的詳情卡 — 節點 badge + 名稱 + description + 迷思概念卡（編號、label、detail、「學生視角」綠底框顯示 studentDetail、底部 mono 顯示 misconception id）。節點無迷思時顯示空狀態。
+- **無編輯/刪除按鈕**（唯讀）
 
-**資料來源**: `knowledgeNodes` (from knowledgeGraph.js)
+**資料來源**:
+- `useUnits({ type: 'unit' })` — 教學單元清單
+- `useAllKnowledgeNodes()` + `nodesForUnit(unit, allNodes)` — 該單元的節點（依 `parentNodeId` 過濾）
+- 不再使用 `knowledgeGraph.js` 全域 `knowledgeNodes` 陣列（避免拉到全部單元的節點）
 
 ---
 
@@ -183,11 +183,14 @@
 **檔案**: `src/pages/student/StudentHome.jsx`
 
 **功能描述**:
-- 學生端首頁，呈現「我的任務看板」
+- 學生端首頁，米紙 panel 頂部以**兩個 Tab** 分隔兩個區塊：
+  - **Tab 1「任務看板」**：列出待挑戰任務（含未過期 / 已過期）
+  - **Tab 2「診斷報告」**：列出歷次診斷報告（已完成的派題），點「查看」進入該次的詳細**診斷報告**（`/student/report`）
 - 動態列出**老師指派給該生班級**的派題；不顯示全部題組庫
-- 派題視為平行任務（沒有先後順序），分為「待挑戰」與「已完成」兩個分區
-- 點擊任務卡的「開始挑戰」 → 進入作答；點擊「查看報告」 → 進入學習報告
+- 派題視為平行任務（沒有先後順序）
+- 點擊任務卡的「開始挑戰」 → 進入作答；點擊「查看」 → 進入該次診斷報告
 - 派題類型僅有「📝 診斷測驗」（`Assignment.type='diagnosis'`）一種
+- **命名約定**：完成清單稱「歷次診斷報告」（Tab 2 內 Section title），單次詳細報告頁 (`StudentReport`) 稱「診斷報告」
 
 **視覺風格**: 沿用 spec-07 木框收集冊風 + **手遊養成系任務畫面**佈局（參考 Pokemon Trainer Rank 升級畫面：HUD + 米紙 panel + 白底厚棕邊任務卡）。
 
@@ -238,11 +241,13 @@
   - 無派題：「老師還沒派任務給你～」
 - 文字加 `drop-shadow-[0_2px_0_rgba(255,255,255,0.6)]` 在天空底圖上保持可讀
 
-**4. Section 標題（橘色豎條 tab marker）**：
-- 左側 1.5px 寬橘色 (`#D08B2E`) 圓角豎條
-- 右側標題 + 副標（細灰）+（折疊區才有）數量徽章 + `expand_more` 箭頭
-- **「目前你被指派的任務」**（永遠展開，附副標「老師指派的任務都會出現在這裡，點任務卡開始挑戰」）
-- **「已完成的任務」**（預設折疊，標題列即 toggle）
+**4. Tab 切換 + Section 標題**：
+- **頂部 Tab 列**（米紙 panel 內最上方）：兩顆等寬按鈕，活躍者為金色漸層厚棕邊立體鈕（與 `ChunkyButton primary` 同色系），非活躍者為白底棕邊扁鈕；右側以小徽章顯示數量
+  - Tab 1：`dashboard` icon + 「任務看板」+ 待挑戰數量徽章
+  - Tab 2：`assignment_turned_in` icon + 「診斷報告」+ 已完成數量徽章
+- **Section 標題（橘色豎條 tab marker）**：左側 1.5px 寬豎條（Tab 1 用 `#D08B2E` 橘、Tab 2 用 `#5C8A2E` 綠）+ 標題 + 副標 + 數量徽章
+  - Tab 1 Section：**「待挑戰任務」**，副標「完成這些題組，老師才能看到你的想法」
+  - Tab 2 Section：**「歷次診斷報告」**，副標「點『查看』可開啟該次診斷報告」
 
 **5. 任務卡（`TaskCard` v2.4 - 寶可夢手遊風）**：白底 + 厚棕邊 + 綠 band
 - **卡片殼**：`bg-white border-[3px] border-[#8B5E3C] rounded-[20px]` + `shadow-[0_4px_0_-1px_#5A3E22,0_8px_14px_-4px_rgba(91,66,38,0.35)]` + `overflow-hidden`
@@ -263,7 +268,10 @@
   - `completed`：綠底白邊「完成」
   - `expired`：灰底白邊「已過期」
 
-**6. 空狀態**：米紙 panel 內顯示 `inventory_2` 大 icon + 「看板還是空的 / 老師還沒派任務給你 · 等老師派題後就會出現在這裡」
+**6. 空狀態**（依 Tab 與資料狀態分支）：
+- Tab 1（任務看板）無待挑戰且**完全沒派題** → `inventory_2` + 「看板還是空的 / 老師還沒派任務給你 · 等老師派題後就會出現在這裡」
+- Tab 1（任務看板）無待挑戰但有完成紀錄 → `inventory_2` + 「目前沒有待挑戰任務 / 你做得很棒！可切到『診斷報告』看歷次紀錄」
+- Tab 2（診斷報告）無已完成紀錄 → `folder_open` + 「還沒有完成的診斷報告 / 完成任務看板上的題組後，這裡會出現你的診斷報告」
 
 **已刪除元素**（v2.3 → v2.4）：
 - 任務卡上的「派發日」、緊急 inline pill（改用左上貼紙）
@@ -274,7 +282,7 @@
 - 共用：`Icon`, `WOOD_OUTER`, `WOOD_INNER_CREAM`, `WoodIconButton`, `StarRating`（from `src/components/ui/woodKit.jsx`）
 - 學生專用：`TaskCard`（from `src/components/student/TaskCard.jsx`），內含 `Sticker`、`ChunkyButton` 子元件
 - 學生專用：`StudentSettingsDrawer`（from `src/components/student/StudentSettingsDrawer.jsx`），右側滑入設定抽屜，包含字體大小調整、個人資訊（唯讀）、關於系統/使用說明、登出按鈕
-- 內部 sub-component：`AvatarPill`（含學習進度條）、`CombinedStats`、`Section`（含折疊行為）、`EmptyBoard`
+- 內部 sub-component：`AvatarPill`（含學習進度條）、`CombinedStats`、`Section`、`TabSwitcher`（任務看板 / 診斷報告）、`EmptyState`
 
 **素材依賴**:
 - 背景：`bg_chiheisen_green.jpg`（sky+grass，固定 + cover；2026-04-29 v2.4 重新採用）
@@ -310,15 +318,46 @@
 **檔案**: `src/pages/student/StudentReport.jsx`
 
 **功能描述**:
-- 個人學習健康報告
-- 顯示被診斷出的迷思概念
-- 提供學生端的提示與建議
+- 個人學習健康報告 — 頁面自稱「**診斷報告**」
+- 顯示被診斷出的迷思概念與學習建議
 - 顯示正確率統計
+- 內容分為**兩個 step**（同一路由內 step 切換、不切頁），由頂部 step 切換器或底部「下一頁／上一頁」按鈕在兩步間移動：
+  - **Step 1「我的科學小迷思」**：迷思卡片清單（含學生想法、可能原因、對話引用、相關情境、科學上的正解） + 「答對了，但可以更深入理解」分區
+  - **Step 2「下一步的指引」**：（必要時）先備概念提醒 + 推薦補救節點清單（含教學影片連結）
+
+**視覺風格**: 沿用 spec-07 木框收集冊風（與 `StudentHome`、`StudentQuiz` 對齊）— sky+grass 全頁背景 + 米紙圓角 panel + 木框按鈕 + 厚棕邊白底卡片 + Fredoka 字體。
 
 **UI 元素**:
-- 正確率圓餅圖/統計
-- 迷思概念列表（含 studentDetail 說明）
-- 學習建議（studentHint）
-- 返回首頁按鈕
+- **HUD 列**：`WoodIconButton` 返回（`arrow_back`）+ 綠色 `SignBoard`「📋 診斷報告」
+- **吉祥物 + 標題列**：`scilens_mascot.png` (`animate-breath`) + 浮空文字「你的科學思維診斷結果」/「了解自己目前的想法是進步的第一步！」（白色 drop-shadow 確保在天空底圖上可讀）
+- **米紙 panel**：`rounded-t-[32px]` + `border-t-[3px] border-[#C19A6B]` + 漸層米紙 (`from-[#FFF8E7] to-[#FBE9C7]`) + 淡斜紋 overlay（同 StudentHome）
+- **統計卡**：白底厚棕邊 (`border-[3px] border-[#8B5E3C]`) + chunky 立體陰影 (`shadow-[0_4px_0_-1px_#5A3E22,...]`)，左格綠色「已掌握的概念」、右格橘色「待更新的想法」，用虛線分隔
+- **Step 切換器**（兩個等寬按鈕，同 `TabSwitcher` 木框風）：
+  - active：金色漸層 + 厚棕邊 + chunky 立體陰影（`from-[#F4D58A] to-[#F0B962] border-[#9B5E18]`）
+  - inactive：白底 + 棕邊扁鈕（`bg-white border-[#C19A6B]`）
+  - 內含：數字徽章圓圈 + Material icon + 標題
+- **Step 1 內容**：
+  - Section header：彩色豎條 (`#D08B2E` 橘) + Material icon + Fredoka 大字
+  - 迷思卡片：白底厚棕邊 (`border-[3px] border-[#8B5E3C]`) + chunky 陰影 + 頂部彩虹漸層裝飾條 (`from-[#F5B8BA] via-[#F4D58A] to-[#BADDF4]`)
+  - 卡內彩色資訊區塊（每塊都改用 `border-2 + rounded-2xl + 漸層底色 + Material icon header`）：
+    - 你目前的想法 — 粉紅 (`from-[#FCE5E7] to-[#F8D2D5]`) + `lightbulb` icon
+    - 可能的原因 — 米色 (`#FBF5E4`) + `search` icon + 圓角徽章標籤
+    - 你在對話中提到 — 暖黃 (`from-[#FFF6E0] to-[#FFEDC2]`) + `chat_bubble` icon
+    - 這個想法出現在以下情境 — 淺綠 (`#F1F7E5`) + `science` icon
+    - 科學上是這樣的 — 淺藍 (`from-[#D6ECFA] to-[#BADDF4]`) + `auto_stories` icon
+  - 全對時：白底綠厚邊 + `celebration` icon + 「你答對了所有題目！」
+  - 答對但弱推理分區：黃色漸層厚邊卡 (`from-[#FFFBF0] to-[#FFF4D6] border-[#F5D669]`)
+- **Step 2 內容**：
+  - Section header：藍色豎條 (`#2E86C1`) + `lightbulb` icon
+  - 先備提醒：黃色漸層厚邊警示條 + `info` icon
+  - 補救節點卡：白底厚棕邊 + 藍色 icon box（`menu_book`）+ 節點 ID/名稱/描述；底部「教學影片」鈕 = 金色 chunky 按鈕（`from-[#F4D58A] to-[#F0B962] border-[#9B5E18]`）+ `play_circle` + `open_in_new`
+- **底部 Pager / Actions**（依 step 不同，全部改用木框風按鈕）：
+  - Step 1：全寬金色 chunky 鈕「下一頁：下一步的指引 →」(`arrow_forward` icon)
+  - Step 2：全寬白底木邊鈕「← 上一頁：我的科學小迷思」+ 「重新作答」(白底木邊) / 「回到首頁」(綠色 chunky `from-[#B8DC83] to-[#7DB044]`) 雙按鈕列
 
-**狀態依賴**: `activeStudentReport`, `studentMisconceptions`
+**素材依賴**:
+- 背景：`bg_chiheisen_green.jpg`（與 `StudentHome`、`StudentQuiz` 共用）
+- 吉祥物：`scilens_mascot.png`
+- 共用元件：`Icon`、`WoodIconButton`、`SignBoard`（from `src/components/ui/woodKit.jsx`）
+
+**狀態依賴**: `activeStudentReport`（in-memory 快照，剛完成的測驗用）, `studentHistory`（DB 摘要，重登入後 fallback）, 本地 `step` state（1 | 2，預設 1）
