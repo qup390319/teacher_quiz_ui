@@ -116,24 +116,35 @@ async def record_followups(
     inserted = 0
     for f in payload.followups:
         sa = sa_map[f.student_answer_id]
-        # delete existing followup if any (re-attempt)
-        existing = await db.execute(
-            select(FollowupResult).where(FollowupResult.student_answer_id == f.student_answer_id),
-        )
-        old = existing.scalar_one_or_none()
-        if old:
-            await db.delete(old)
 
-        db.add(FollowupResult(
-            student_answer_id=f.student_answer_id,
-            conversation_log=f.conversation_log,
-            final_status=f.final_status,
-            misconception_code=f.misconception_code,
-            reasoning_quality=f.reasoning_quality,
-            status_change=f.status_change,
-            ai_summary=f.ai_summary,
-            cause_ids=f.cause_ids,
-        ))
+        # Upsert followup — atomic on_conflict_do_update avoids the
+        # non-atomic delete+insert race when a student re-submits.
+        stmt = (
+            pg_insert(FollowupResult.__table__)
+            .values(
+                student_answer_id=f.student_answer_id,
+                conversation_log=f.conversation_log,
+                final_status=f.final_status,
+                misconception_code=f.misconception_code,
+                reasoning_quality=f.reasoning_quality,
+                status_change=f.status_change,
+                ai_summary=f.ai_summary,
+                cause_ids=f.cause_ids,
+            )
+            .on_conflict_do_update(
+                index_elements=["student_answer_id"],
+                set_={
+                    "conversation_log": f.conversation_log,
+                    "final_status": f.final_status,
+                    "misconception_code": f.misconception_code,
+                    "reasoning_quality": f.reasoning_quality,
+                    "status_change": f.status_change,
+                    "ai_summary": f.ai_summary,
+                    "cause_ids": f.cause_ids,
+                },
+            )
+        )
+        await db.execute(stmt)
 
         # Apply statusChange to base answer (UPGRADED/DOWNGRADED)
         change_type = (f.status_change or {}).get("changeType")
