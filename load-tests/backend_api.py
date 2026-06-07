@@ -90,12 +90,6 @@ class TeacherUser(HttpUser):
         )
 
     @task(1)
-    def list_scenarios(self) -> None:
-        if not self.logged_in:
-            return
-        self.client.get("/api/scenarios", name="/api/scenarios")
-
-    @task(1)
     def diagnosis_logs(self) -> None:
         if not self.logged_in:
             return

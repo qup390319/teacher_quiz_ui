@@ -62,3 +62,6 @@ load-tests/reports/
 backups/
 *.dump
 *.sql.gz
+
+# Secrets (docker secret files — e.g. OpenAI API key). NEVER commit.
+secrets/

@@ -145,7 +145,16 @@ backend/
 | `COOKIE_SECURE` | 否 | `false`（dev）/ `true`（prod） | HttpOnly cookie 是否要求 HTTPS |
 | `COOKIE_SAMESITE` | 否 | `lax`（dev）/ `strict`（prod） | SameSite 政策 |
 | `CORS_ORIGINS` | 否 | `http://localhost:3000` | 逗號分隔；prod 經 nginx 反代可留空 |
-| `VLLM_BASE_URL` | P2 起 | `https://vllm-193.hsueh.tw/v1` | 後端呼叫 vLLM |
+| `LLM_PRIMARY` | 否 | `openai` | LLM 主供應商（`openai`\|`vllm`） |
+| `LLM_FALLBACK_ENABLED` | 否 | `true` | 主供應商失敗時自動改用另一個 |
+| `OPENAI_BASE_URL` | 否 | `https://api.openai.com/v1` | OpenAI 相容根 URL |
+| `OPENAI_MODEL_NAME` | 否 | `gpt-5-mini` | 主模型名 |
+| `OPENAI_API_KEY_FILE` | 否 | `/run/secrets/openai_api_key` | **機密檔路徑**；key 不走 env（見下） |
+| `OPENAI_API_KEY` | 否 | `（空）` | 僅本機非 docker 開發退路；正式環境用機密檔 |
+| `OPENAI_PARAM_STYLE` | 否 | `reasoning` | `reasoning`(gpt-5*)\|`legacy`(gpt-4o 等) |
+| `OPENAI_REASONING_EFFORT` | 否 | `minimal` | minimal\|low\|medium\|high |
+| `OPENAI_MIN_COMPLETION_TOKENS` | 否 | `1024` | reasoning 模型輸出 token 下限 |
+| `VLLM_BASE_URL` | P2 起 | `https://vllm-193.hsueh.tw/v1` | 備援：後端呼叫 vLLM |
 | `VLLM_MODEL_NAME` | P2 起 | `/models/gemma-4-26B-A4B-it` | 模型名 |
 | `VLLM_API_KEY` | P2 起 | `dummy` | vLLM key |
 | `RAGFLOW_ENDPOINT` | P2 起 | `https://ragflow-thesisflow.hsueh.tw` | RAGFlow 根 URL |
@@ -153,6 +162,8 @@ backend/
 | `RAGFLOW_API_KEY` | P2 起 | `ragflow-...` | API key（不加 VITE_ 前綴） |
 
 > **安全性**：所有後端變數**不得**冠上 `VITE_` 前綴。前端只透過後端 API 取得這些服務的回應，原始 endpoint 與 key 永不暴露於瀏覽器。
+>
+> **OpenAI key 不走環境變數**：key 以 docker secret 檔案掛載到 `/run/secrets/openai_api_key`，由 `OPENAI_API_KEY_FILE` 指向；`settings.openai_api_key` 優先讀檔。避免 token 經 env（`/proc`、log、錯誤堆疊）外洩。建立方式見 spec-09 §7.3。
 
 ---
 

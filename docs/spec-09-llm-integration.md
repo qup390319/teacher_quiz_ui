@@ -117,14 +117,42 @@ for await (const chunk of chatStream({ messages })) {
 | `POST /api/llm/chat` | 一次回覆 | N3 對話的單次模式（診斷追問） |
 | `POST /api/llm/chat/stream` | SSE 串流 | N3 對話的打字機模式（診斷追問） |
 
-後端 service：`backend/app/services/llm_service.py` 用 `httpx.AsyncClient` 包 vLLM `/chat/completions`。
+後端 service：`backend/app/services/llm_service.py` 用 `httpx.AsyncClient` 包 OpenAI 相容的 `/chat/completions`。
+
+### 7.1 供應商選擇與 fallback（OpenAI 主、vLLM 備援）
+
+`llm_service` 維護一條供應商鏈，由設定決定順序：
+
+- `LLM_PRIMARY`（`openai` | `vllm`，預設 `openai`）決定先試誰。
+- `LLM_FALLBACK_ENABLED`（預設 `true`）開啟時，主供應商失敗（連線錯誤 / 4xx / 5xx）會自動改用另一個。
+- `chat()`：逐一嘗試，全失敗才拋 `LlmServiceError`（router → 502）。
+- `chat_stream()`：僅在**尚未送出任何 chunk 前**失敗才 fallback；已開始串流後中途失敗無法乾淨切換，直接結束。
+- 每次 fallback 都 `logger.warning` 記錄，避免「主供應商一直失敗卻被默默蓋掉」。
+
+### 7.2 依供應商分別組 payload
+
+| style | 適用 | token 參數 | temperature | 其他 |
+|---|---|---|---|---|
+| `reasoning` | gpt-5*（推理模型） | `max_completion_tokens`（取 `max(請求值, OPENAI_MIN_COMPLETION_TOKENS)`） | **不送**（推理模型不支援，送了會 400） | 可帶 `reasoning_effort`（預設 `minimal`） |
+| `legacy` | vLLM / gpt-4o 等 | `max_tokens` | 照常送 | 照常送 `stop` |
+
+> 推理模型的 reasoning tokens 與輸出共用 `max_completion_tokens`，故設下限（預設 1024）避免推理吃光額度回空字串；`reasoning_effort=minimal` 進一步壓低延遲與推理用量，適合本系統的短輸出 / 結構化 JSON 任務。
+
+### 7.3 API key 機密處理（不明文落地）
+
+OpenAI key **不**走環境變數（env 可能經 `/proc`、錯誤堆疊、log 外洩），改用 docker secret 檔案：
+
+1. 專案根目錄建立 `secrets/openai_api_key.txt`（內容只放 key；已被 `.gitignore` 排除）。
+2. `docker-compose.yml` 以 `secrets:` 掛到 backend 的 `/run/secrets/openai_api_key`。
+3. 後端設 `OPENAI_API_KEY_FILE=/run/secrets/openai_api_key`；`settings.openai_api_key` 優先讀此檔，讀不到才退回 `OPENAI_API_KEY` 環境變數（僅供本機非 docker 開發）。
 
 ## 8. 擴充新後端 LLM 服務
 
 P2 起前端不再需要為了換 LLM 而改 code。換 LLM 只需動後端：
 
-1. 後端 `llm_service.py` 改成呼叫新服務（OpenAI / Anthropic / Ollama 等）
-2. 前端零變動
+1. 在 `llm_service._make_provider()` 加一個供應商分支（或調整既有 style）
+2. 用 `LLM_PRIMARY` / `LLM_FALLBACK_ENABLED` 設定呼叫順序
+3. 前端零變動
 
 ## 9. 禁止事項
 
@@ -382,11 +410,13 @@ StudentQuiz 偵測 `causeIds.length > 0` 時，**直接寫 DB**，不再呼叫 `
 
 | 路徑 | Router | 用途 | 底層服務 |
 |------|--------|------|---------|
-| `/api/llm/chat` | llm | N3/N4/N5 對話 | `llm_service.chat()` → vLLM |
-| `/api/llm/analyze-cause` | llm | 迷思成因分析 | `cause_analysis_service` → vLLM |
+| `/api/llm/chat` | llm | N3/N4/N5 對話 | `llm_service.chat()` → LLM 鏈 |
+| `/api/llm/analyze-cause` | llm | 迷思成因分析 | `cause_analysis_service` → LLM 鏈 |
 | `/api/ai/distractor-suggest` | ai | N6 RAGFlow 出題輔助 | `ragflow_service` → RAGFlow |
-| `/api/adaptive/polish-stem` | adaptive | AI 潤飾題幹 | `llm_service.chat()` → vLLM |
-| `/api/adaptive/suggest-options` | adaptive | AI 產生選項 | `llm_service.chat()` → vLLM |
+| `/api/adaptive/polish-stem` | adaptive | AI 潤飾題幹 | `llm_service.chat()` → LLM 鏈 |
+| `/api/adaptive/suggest-options` | adaptive | AI 產生選項 | `llm_service.chat()` → LLM 鏈 |
+
+> 「LLM 鏈」= OpenAI 主、vLLM 備援的供應商鏈，見 §7.1（早期段落中的「vLLM」字樣現一律指此鏈）。
 
 `polish-stem` 與 `suggest-options` 複用既有的 `llm_service.chat()`，不引入新的外部依賴。與 RAGFlow 的 `distractor-suggest`（N6）互補：N6 從文獻檢索產生干擾選項建議，adaptive 端點則由 LLM 直接根據迷思概念生成完整選項組。
 

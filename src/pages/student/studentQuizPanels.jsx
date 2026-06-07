@@ -4,7 +4,7 @@ import { Icon, WOOD_OUTER, WOOD_INNER_CREAM } from '../../components/ui/woodKit'
 export function BottomPanel({ children }) {
   if (!children) return null;
   return (
-    <div className="relative z-10 px-3 sm:px-5 pb-4 sm:pb-6 animate-fade-up">
+    <div className="relative z-10 shrink-0 px-3 sm:px-5 pb-4 sm:pb-6 animate-fade-up">
       <div className="max-w-3xl mx-auto">
         <div className={WOOD_OUTER}>
           <div className={WOOD_INNER_CREAM + ' p-3 sm:p-4'}>{children}</div>

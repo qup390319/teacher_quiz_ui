@@ -7,20 +7,64 @@ Simulates the complete student journey end-to-end:
         → /api/llm/analyze-cause for misconception questions
         → POST /api/answers/followups (persist results)
 
+Token usage is tracked from the `usage` field in each /api/llm/chat response
+(promptTokens + completionTokens). /api/llm/analyze-cause does not expose
+usage in its response, so an estimate of 800 tokens/call is used for that
+endpoint (based on conversation log + system prompt size).
+
 vLLM is the upstream, so there is no per-call cost. DB contains test
 data, so writes are safe.
 
 Usage:
     python -m locust -f load-tests/student_dialogue.py \\
         --host https://teacher-quiz.hsueh.tw \\
-        --users 20 --spawn-rate 3 --run-time 5m --headless \\
-        --csv load-tests/reports/dialogue-2026-06-07
+        --users 40 --spawn-rate 5 --run-time 5m --headless \\
+        --csv load-tests/reports/dialogue-2026-06-07-v3
 """
 import itertools
+import json
 import random
 import threading
+from pathlib import Path
 
 from locust import HttpUser, between, events, task
+
+# ── Token counter (thread-safe) ───────────────────────────────────────────────
+class _TokenCounter:
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self.prompt = 0
+        self.completion = 0
+        # analyze-cause doesn't expose usage; use a fixed estimate per call
+        self.analyze_cause_calls = 0
+        self.ANALYZE_CAUSE_EST = 800  # tokens/call (conservative estimate)
+
+    def add_chat(self, usage: dict | None) -> None:
+        if not usage:
+            return
+        with self._lock:
+            self.prompt += usage.get("promptTokens", 0)
+            self.completion += usage.get("completionTokens", 0)
+
+    def add_analyze_cause(self) -> None:
+        with self._lock:
+            self.analyze_cause_calls += 1
+
+    @property
+    def total(self) -> int:
+        return self.prompt + self.completion + self.analyze_cause_calls * self.ANALYZE_CAUSE_EST
+
+    def summary(self) -> str:
+        est = self.analyze_cause_calls * self.ANALYZE_CAUSE_EST
+        return (
+            f"  chat prompt tokens    : {self.prompt:,}\n"
+            f"  chat completion tokens: {self.completion:,}\n"
+            f"  analyze-cause (est.)  : {est:,}  ({self.analyze_cause_calls} calls × {self.ANALYZE_CAUSE_EST} est.)\n"
+            f"  TOTAL tokens          : {self.total:,}"
+        )
+
+
+TOKENS = _TokenCounter()
 
 # ── Seed accounts (matches backend/app/seed/seed.py) ────────────────────────
 STUDENT_ACCOUNTS: list[str] = (
@@ -221,7 +265,9 @@ class StudentDialogueUser(HttpUser):
             )
             if r1.status_code != 200:
                 continue
-            ai_r1: str = r1.json().get("content", "你為什麼會選這個答案？")
+            r1_data = r1.json()
+            TOKENS.add_chat(r1_data.get("usage"))
+            ai_r1: str = r1_data.get("content", "你為什麼會選這個答案？")
             conversation_log.append({"role": "assistant", "content": ai_r1})
 
             student_r1 = random.choice(_REPLIES_R1)
@@ -239,7 +285,9 @@ class StudentDialogueUser(HttpUser):
                 timeout=30,
             )
             if r2.status_code == 200:
-                ai_r2: str = r2.json().get("content", "那你覺得呢？")
+                r2_data = r2.json()
+                TOKENS.add_chat(r2_data.get("usage"))
+                ai_r2: str = r2_data.get("content", "那你覺得呢？")
                 conversation_log.append({"role": "assistant", "content": ai_r2})
                 conversation_log.append(
                     {"role": "user", "content": random.choice(_REPLIES_R2)}
@@ -261,6 +309,7 @@ class StudentDialogueUser(HttpUser):
                 )
                 if ca.status_code == 200:
                     cause_ids = ca.json().get("causeIds")
+                    TOKENS.add_analyze_cause()
 
             # Determine outcome ────────────────────────────────────────────────
             if not misconception_id:
@@ -316,6 +365,8 @@ def _check_thresholds(environment, **_kw) -> None:
     print(f"  p95            : {p95:.0f} ms   (threshold {threshold_p95} ms)")
     print(f"  p99            : {stats.get_response_time_percentile(0.99):.0f} ms")
     print(f"  error rate     : {error_rate * 100:.2f} %   (threshold {threshold_err * 100:.2f} %)")
+    print(f"\n── Token 使用量 ─────────────────────────────────")
+    print(TOKENS.summary())
 
     breached = []
     if p95 > threshold_p95:
@@ -323,6 +374,20 @@ def _check_thresholds(environment, **_kw) -> None:
     if error_rate > threshold_err:
         breached.append(f"errors {error_rate * 100:.2f}% > {threshold_err * 100:.2f}%")
 
+    # Write token summary to JSON for easy post-processing
+    token_out = Path(__file__).parent / "reports" / "tokens_latest.json"
+    token_data = {
+        "chat_prompt_tokens": TOKENS.prompt,
+        "chat_completion_tokens": TOKENS.completion,
+        "analyze_cause_calls": TOKENS.analyze_cause_calls,
+        "analyze_cause_est_per_call": TOKENS.ANALYZE_CAUSE_EST,
+        "analyze_cause_est_total": TOKENS.analyze_cause_calls * TOKENS.ANALYZE_CAUSE_EST,
+        "total_tokens": TOKENS.total,
+    }
+    token_out.write_text(json.dumps(token_data, indent=2, ensure_ascii=False))
+    print(f"  (token detail saved → {token_out})")
+
+    print(f"\n── 結論 ─────────────────────────────────────────")
     if breached:
         print(f"  RESULT: FAIL — {', '.join(breached)}")
         environment.process_exit_code = 1

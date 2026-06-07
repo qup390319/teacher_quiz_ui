@@ -401,12 +401,11 @@ function StudentQuizScreen({ quizId }) {
 
   return (
     <div
-      className="relative min-h-screen flex flex-col"
+      className="relative h-[100dvh] flex flex-col overflow-hidden"
       style={{
         backgroundImage: `url(${bgImg})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center top',
-        backgroundAttachment: 'fixed',
       }}
     >
       {/* 存檔異常警示：給監考老師看，提示該名學生資料可能未存進伺服器 */}
@@ -422,7 +421,7 @@ function StudentQuizScreen({ quizId }) {
       )}
 
       {/* HUD：返回 + 進度條 */}
-      <header className="relative z-10 flex items-center gap-3 px-3 sm:px-5 pt-3 sm:pt-4 pb-3 animate-fade-up">
+      <header className="relative z-10 shrink-0 flex items-center gap-3 px-3 sm:px-5 pt-3 sm:pt-4 pb-3 animate-fade-up">
         <WoodIconButton
           icon="arrow_back"
           ariaLabel="返回"
@@ -433,7 +432,7 @@ function StudentQuizScreen({ quizId }) {
       </header>
 
       {/* 標題列 */}
-      <div className="relative z-10 px-3 sm:px-5 pb-2 animate-fade-up">
+      <div className="relative z-10 shrink-0 px-3 sm:px-5 pb-2 animate-fade-up">
         <div className="max-w-3xl mx-auto flex items-center gap-2">
           <img
             src={mascotImg}
@@ -454,8 +453,8 @@ function StudentQuizScreen({ quizId }) {
       </div>
 
       {/* 對話氣泡列表 */}
-      <main className="relative z-10 flex-1 flex flex-col px-3 sm:px-5">
-        <div className="max-w-3xl mx-auto w-full flex-1 flex flex-col gap-3 pb-4 overflow-y-auto">
+      <main className="relative z-10 flex-1 min-h-0 flex flex-col px-3 sm:px-5">
+        <div className="max-w-3xl mx-auto w-full flex-1 min-h-0 flex flex-col gap-3 pb-4 overflow-y-auto">
           {messages.map((m) => (
             <Bubble key={m.id} role={m.role} text={m.text} />
           ))}
