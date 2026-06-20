@@ -8,7 +8,8 @@ import { useQuiz } from '../../hooks/useQuizzes';
 import { getQuizQuestions } from '../../data/quizData';
 import { knowledgeNodes } from '../../data/knowledgeGraph';
 import { Icon } from '../../components/ui/woodKit';
-import { MisconceptionCard, RemedialNodeCard } from './reportCards';
+import { MisconceptionCard, RemedialNodeCard, QuestionResultCard } from './reportCards';
+import { buildQuestionResults } from './reportData';
 import bgImg from '../../assets/backgrounds/bg_chiheisen_green.jpg';
 import mascotImg from '../../assets/illustrations/scilens_mascot.png';
 
@@ -23,10 +24,17 @@ export default function StudentReport() {
   // 走 in-memory 暫存路徑（activeStudentReport），避免 race condition + 不必要
   // 的 server 來回。重新登入後沒有 in-memory 快照時 fall back 撈 DB 摘要。
   const queryQuizId = searchParams.get('quizId');
-  const reportQuizId = activeStudentReport?.quizId || queryQuizId || currentQuizId || 'quiz-001';
+  // 請求的 quiz：in-memory 快照 > 網址參數 > 全域 currentQuizId > 預設。
+  const requestedQuizId = activeStudentReport?.quizId || queryQuizId || currentQuizId || 'quiz-001';
   const needBackend = !activeStudentReport;
   const { data: history = [] } = useStudentHistory(currentUser?.id, { enabled: needBackend });
-  const backendRow = needBackend ? history.find((h) => h.quizId === reportQuizId) : null;
+  // 找請求的 quiz；**找不到就退回該生最近一次有資料的紀錄**（history 已依時間 desc），
+  // 避免 currentQuizId/網址指到該生沒做過的 quiz 時，明明有資料卻顯示「尚無作答資料」。
+  const backendRow = needBackend
+    ? (history.find((h) => h.quizId === requestedQuizId) || history[0] || null)
+    : null;
+  // 實際顯示用的 quizId 以 backendRow 為準，確保題目/標題與資料一致。
+  const reportQuizId = activeStudentReport?.quizId || backendRow?.quizId || requestedQuizId;
 
   const reportQuestions = getQuizQuestions(reportQuizId);
   // 題組名稱：優先 in-memory 快照；其次 DB；最後現抓 quiz 詳情
@@ -58,9 +66,7 @@ export default function StudentReport() {
     && (r.diagnosis?.reasoningQuality === 'WEAK' || r.diagnosis?.reasoningQuality === 'GUESSING')
   );
 
-  /* 取得迷思成因 IDs（來自 LLM 分析）
-   * 優先讀 in-memory 快照；沒有的話 fall back 用後端 history 聚合好的
-   * causeIdsByMisconception（重新登入後仍能還原成因徽章）。 */
+  /* 成因 IDs：優先 in-memory 快照，否則 fall back backendRow.causeIdsByMisconception。 */
   const getCauseIds = (misconceptionId) => {
     const causeSet = new Set();
     followUpResults.forEach((r) => {
@@ -75,9 +81,7 @@ export default function StudentReport() {
     return [...causeSet].sort((a, b) => a - b);
   };
 
-  /* 取得該迷思的 errorType（spec-09 §12.4a）
-   * 優先讀 in-memory 快照；沒有時 fall back 後端 history 聚合的
-   * errorTypeByMisconception（重新登入/重整/切換分頁後仍能還原分類標籤）。 */
+  /* errorType（spec-09 §12.4a）：優先 in-memory，否則 fall back backendRow.errorTypeByMisconception。 */
   const getErrorType = (misconceptionId) => {
     const hit = followUpResults.find((r) => r.diagnosis?.misconceptionCode === misconceptionId);
     return hit?.diagnosis?.errorType
@@ -85,30 +89,52 @@ export default function StudentReport() {
       ?? null;
   };
 
-  /* 取得單一迷思相關的學生對話引用 */
+  /* aiSummary / statusChange：優先 in-memory，否則 fall back backendRow 的同名 *ByMisconception。 */
+  const getAiSummary = (misconceptionId) =>
+    followUpResults.find((r) => r.diagnosis?.misconceptionCode === misconceptionId)?.diagnosis?.aiSummary
+    ?? backendRow?.aiSummaryByMisconception?.[misconceptionId]
+    ?? null;
+  const getStatusChange = (misconceptionId) =>
+    followUpResults.find((r) => r.diagnosis?.misconceptionCode === misconceptionId)?.diagnosis?.statusChange
+    ?? backendRow?.statusChangeByMisconception?.[misconceptionId]
+    ?? null;
+  /* reasoningQuality（低信心委婉呈現用）：優先 in-memory，否則 fall back backendRow；
+     歷史無此對應時回 null → 卡片視為一般信心、不軟化。 */
+  const getReasoningQuality = (misconceptionId) =>
+    followUpResults.find((r) => r.diagnosis?.misconceptionCode === misconceptionId)?.diagnosis?.reasoningQuality
+    ?? backendRow?.reasoningQualityByMisconception?.[misconceptionId]
+    ?? null;
+  /* 引用：in-memory 走 getStudentQuote，否則 fall back backendRow.quoteByMisconception。 */
+  const getQuote = (misconceptionId, questionId) =>
+    (questionId ? getStudentQuote(questionId) : null)
+    ?? backendRow?.quoteByMisconception?.[misconceptionId]
+    ?? null;
+
+  /* 最具診斷性引用：優先 misconceptionSource，否則濾掉模糊/空話取最長一句，挑不到回 null。 */
+  const FUZZY_QUOTE_WORDS = ['不知道', '我不會', '忘記', '猜的', '沒想法', '不確定', '亂選', '隨便',
+    '不一定', '看情況', '都可以', '還好', '沒差'];
   const getStudentQuote = (questionId) => {
     const result = followUpResults.find((r) => r.questionId === questionId);
+    const source = result?.diagnosis?.misconceptionSource;
+    if (typeof source === 'string' && source.trim().length >= 4) return source.trim();
     if (!result?.conversationLog) return null;
     const studentMsgs = result.conversationLog.filter((m) => m.role === 'student');
     if (studentMsgs.length === 0) return null;
-    return studentMsgs[0].content; // 第一則學生回覆，最能代表初始想法
+    const meaningful = studentMsgs.filter(
+      (m) => m.content.trim().length >= 8 && !FUZZY_QUOTE_WORDS.some((w) => m.content.includes(w)),
+    );
+    // 寧缺勿濫：挑不到能反映想法的句子就不顯示引用，不秀空話
+    if (meaningful.length === 0) return null;
+    return meaningful.reduce((a, b) => (b.content.length > a.content.length ? b : a)).content;
   };
 
-  const misconDetails = (hasAnswers ? misconceptionSource : ['M02-2', 'M03-1', 'M09-1'])
-    .map((mId) => {
-      const node = knowledgeNodes.find((n) => n.misconceptions.find((m) => m.id === mId));
-      const miscon = node?.misconceptions.find((m) => m.id === mId);
-      if (!node || !miscon) return null;
-      // 有完整作答快照（剛做完那次）→ 對到該題；只有 DB 摘要 → 列出該迷思可能對應的題目。
-      const relatedQs = hasFullAnswers
-        ? answerSource
-            .filter((a) => a.diagnosis === mId)
-            .map((a) => reportQuestions.find((q) => q.id === a.questionId))
-            .filter(Boolean)
-        : reportQuestions.filter((q) => q.options.find((o) => o.diagnosis === mId));
-      return { node, miscon, relatedQs };
-    })
-    .filter(Boolean);
+  // 「每一題的結果」逐題資料（in-memory 走 answerSource；歷史走 backendRow.questionResults）
+  const questionResults = buildQuestionResults({
+    answerSource,
+    backendRow,
+    reportQuestions,
+    knowledgeNodes,
+  });
 
   // 從迷思清單反查涉及的知識節點（in-memory 快照可從 answerSource 直接拿，
   // DB 摘要則靠迷思 → 節點對應）。
@@ -123,15 +149,25 @@ export default function StudentReport() {
 
   const uniqueWrongNodes = [...new Set(wrongNodeIds)];
 
-  const wrongNodesWithPrereqs = uniqueWrongNodes
+  // 補救路徑由「實際答錯的節點 + 其前置節點」推導（取代過去寫死的三個 ID，
+  // 那會讓所有學生看到同一份與自己答錯無關的建議）。
+  const wrongNodeObjs = uniqueWrongNodes
     .map((id) => knowledgeNodes.find((n) => n.id === id))
-    .filter((n) => n && n.prerequisites.length > 0);
+    .filter(Boolean);
 
-  const needsPrereqReview = wrongNodesWithPrereqs.length > 0;
+  // 答錯節點的前置概念中，「學生自己沒答錯、需先回頭打底」的那些。
+  const prereqIds = [
+    ...new Set(wrongNodeObjs.flatMap((n) => n.prerequisites || [])),
+  ].filter((id) => !uniqueWrongNodes.includes(id));
 
-  const remedialNodeIds = needsPrereqReview
-    ? ['INe-Ⅱ-3-01', 'INe-Ⅱ-3-02', 'INe-Ⅲ-5-1']
-    : uniqueWrongNodes;
+  const needsPrereqReview = prereqIds.length > 0;
+
+  const prereqNodeNames = prereqIds
+    .map((id) => knowledgeNodes.find((n) => n.id === id)?.name)
+    .filter(Boolean);
+
+  // 先列前置（打底），再列答錯本身的節點；去重後對應到節點物件。
+  const remedialNodeIds = [...new Set([...prereqIds, ...uniqueWrongNodes])];
 
   const remedialNodes = remedialNodeIds
     .map((id) => knowledgeNodes.find((n) => n.id === id))
@@ -139,6 +175,12 @@ export default function StudentReport() {
 
   const handleRetry = () => {
     navigate(`/student/quiz/${reportQuizId}`);
+  };
+
+  /* 誤判補救：學生覺得某題判斷不是他的想法 → 只重新問那一題（作答頁單題模式），
+     聊完把該題新結果併回報告。導頁帶 ?retry=questionId。 */
+  const handleDispute = (questionId) => {
+    navigate(`/student/quiz/${reportQuizId}?retry=${questionId}`);
   };
 
   const [step, setStep] = useState(1); // 1 = 我的科學小迷思, 2 = 下一步的指引
@@ -205,7 +247,7 @@ export default function StudentReport() {
             }}
           />
 
-          <div className="relative max-w-2xl mx-auto px-4 sm:px-6 pt-6 pb-10 space-y-5">
+          <div className="relative max-w-3xl lg:max-w-5xl mx-auto px-4 sm:px-6 pt-6 pb-10 space-y-5">
 
         {/* 報告主標題 */}
         <div className="flex flex-col items-center gap-2 pb-3 border-b-2 border-dashed border-[#C19A6B]/50">
@@ -229,12 +271,18 @@ export default function StudentReport() {
             <div className="text-center">
               <div className="font-game text-3xl sm:text-4xl font-black text-[#5C8A2E] mb-1
                               drop-shadow-[0_2px_0_rgba(255,255,255,0.6)]">{displayCorrect}</div>
-              <div className="text-xs sm:text-sm text-[#7A5232] font-bold">已掌握的概念</div>
+              <div className="text-xs sm:text-sm text-[#7A5232] font-bold">
+                答對題數
+                <span className="block text-[10px] sm:text-xs font-normal text-[#A38A5A]">（已掌握的概念）</span>
+              </div>
             </div>
             <div className="text-center border-l-2 border-dashed border-[#E0CFA8]">
               <div className="font-game text-3xl sm:text-4xl font-black text-[#D08B2E] mb-1
                               drop-shadow-[0_2px_0_rgba(255,255,255,0.6)]">{displayWrong}</div>
-              <div className="text-xs sm:text-sm text-[#7A5232] font-bold">迷思概念</div>
+              <div className="text-xs sm:text-sm text-[#7A5232] font-bold">
+                答錯題數
+                <span className="block text-[10px] sm:text-xs font-normal text-[#A38A5A]">迷思概念（錯誤的概念）</span>
+              </div>
             </div>
           </div>
         </div>
@@ -273,33 +321,52 @@ export default function StudentReport() {
 
         {step === 1 && (
           <>
-        {/* Section 1: My Misconceptions */}
+        {/* 每一題的結果：題目與迷思合為一張卡——答對＝簡卡；答錯＝該題下方直接接完整迷思診斷 */}
         <div>
           <h2 className="font-game text-lg font-black text-[#5A3E22] mb-3 flex items-center gap-2 pl-2 border-l-[5px] border-[#D08B2E] rounded-l">
-            <Icon name="psychology_alt" filled className="text-2xl text-[#D08B2E]" />
-            我的科學小迷思
+            <Icon name="fact_check" filled className="text-2xl text-[#D08B2E]" />
+            每一題的結果
           </h2>
 
-          {misconDetails.length > 0 ? (
-            <div className="space-y-4">
-              {misconDetails.map(({ node, miscon, relatedQs }) => (
-                <MisconceptionCard
-                  key={miscon.id}
-                  node={node}
-                  miscon={miscon}
-                  relatedQs={relatedQs}
-                  quote={relatedQs.length > 0 ? getStudentQuote(relatedQs[0].id) : null}
-                  causeIds={getCauseIds(miscon.id)}
-                  errorType={getErrorType(miscon.id)}
-                />
-              ))}
-            </div>
+          {questionResults.length > 0 ? (
+            <>
+              {questionResults.every((it) => it.correct) && (
+                <div className="bg-white border-[3px] border-[#5C8A2E] rounded-[24px] p-5 text-center mb-4
+                                shadow-[0_4px_0_-1px_#3D5A3E,0_6px_10px_-3px_rgba(60,90,46,0.3)]">
+                  <Icon name="celebration" filled className="text-4xl text-[#7DB044]" />
+                  <p className="font-game font-black text-lg text-[#3D5A3E] mt-1">你答對了所有題目！</p>
+                </div>
+              )}
+              <div className="space-y-4">
+                {questionResults.map((it) => {
+                  if (it.correct) return <QuestionResultCard key={it.questionId} {...it} />;
+                  const node = knowledgeNodes.find((n) => n.id === it.nodeId);
+                  const miscon = node?.misconceptions.find((m) => m.id === it.misconId);
+                  if (!node || !miscon) return <QuestionResultCard key={it.questionId} {...it} />;
+                  return (
+                    <MisconceptionCard
+                      key={it.questionId}
+                      node={node}
+                      miscon={miscon}
+                      relatedQs={[]}
+                      questionContext={{ questionId: it.questionId, stem: it.stem, pickedContent: it.pickedContent }}
+                      quote={getQuote(miscon.id, it.questionId)}
+                      causeIds={getCauseIds(miscon.id)}
+                      errorType={getErrorType(miscon.id)}
+                      aiSummary={getAiSummary(miscon.id)}
+                      statusChange={getStatusChange(miscon.id)}
+                      reasoningQuality={getReasoningQuality(miscon.id)}
+                      onDispute={handleDispute}
+                    />
+                  );
+                })}
+              </div>
+            </>
           ) : (
-            <div className="bg-white border-[3px] border-[#5C8A2E] rounded-[24px] p-6 text-center
-                            shadow-[0_4px_0_-1px_#3D5A3E,0_6px_10px_-3px_rgba(60,90,46,0.3)]">
-              <Icon name="celebration" filled className="text-5xl text-[#7DB044]" />
-              <p className="font-game font-black text-lg text-[#3D5A3E] mt-2">你答對了所有題目！</p>
-              <p className="text-sm text-[#5A8A5C] mt-1 font-bold">你對這些科學概念有很好的理解！</p>
+            <div className="bg-white border-[3px] border-[#C19A6B] rounded-[24px] p-6 text-center
+                            shadow-[0_4px_0_-1px_#8B6B43,0_6px_10px_-3px_rgba(91,66,38,0.2)]">
+              <Icon name="hourglass_empty" filled className="text-5xl text-[#C19A6B]" />
+              <p className="font-game font-black text-base text-[#7A5232] mt-2">尚無作答資料</p>
             </div>
           )}
         </div>
@@ -356,7 +423,11 @@ export default function StudentReport() {
                             shadow-[0_3px_0_-1px_#3A7FA8,0_5px_8px_-2px_rgba(58,127,168,0.3)]">
               <Icon name="info" filled className="text-2xl text-[#1F6B9C] flex-shrink-0" />
               <p className="text-sm text-[#7A5232] font-bold leading-relaxed">
-                你在較後段的概念有些疑惑，建議先回頭複習基礎的「溶解現象」與「水溶液組成」概念，打穩基礎後再往後學習會更有效喔！
+                你在較後段的概念有些疑惑，建議先回頭複習基礎的
+                {prereqNodeNames.length > 0
+                  ? `「${prereqNodeNames.join('」、「')}」`
+                  : '前置'}
+                概念，打穩基礎後再往後學習會更有效喔！
               </p>
             </div>
           )}

@@ -1,17 +1,39 @@
 import { useState } from 'react';
+import { getQuestionMode, getAnswerOptions, getReasonOptions } from '../../../data/twoTier';
 
 export default function PreviewQuizModal({ questions, onClose }) {
   const [previewStep, setPreviewStep] = useState(0);
   const [selected, setSelected] = useState(null);
+  // two-tier 子階段：'answer' → 'reason'
+  const [stage, setStage] = useState('answer');
   const currentQ = questions[previewStep];
+  const isTwoTier = currentQ && getQuestionMode(currentQ) === 'two-tier';
+
+  const goNext = () => {
+    setSelected(null);
+    setStage('answer');
+    if (previewStep < questions.length - 1) setPreviewStep((p) => p + 1);
+    else setPreviewStep(questions.length);
+  };
 
   const handleSelect = (opt) => {
     setSelected(opt);
     setTimeout(() => {
-      setSelected(null);
-      if (previewStep < questions.length - 1) setPreviewStep((p) => p + 1);
+      if (isTwoTier && stage === 'answer') {
+        setSelected(null);
+        setStage('reason');
+      } else {
+        goNext();
+      }
     }, 800);
   };
+
+  // 是否「選對」——答案層看 correct；理由層 / single 看 diagnosis==='CORRECT'。
+  const isOptCorrect = (opt) =>
+    (isTwoTier && stage === 'answer') ? !!opt.correct : opt.diagnosis === 'CORRECT';
+  const layerOptions = isTwoTier
+    ? (stage === 'answer' ? getAnswerOptions(currentQ) : getReasonOptions(currentQ))
+    : (currentQ?.options ?? []);
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
@@ -29,7 +51,7 @@ export default function PreviewQuizModal({ questions, onClose }) {
         </div>
         <div className="p-5 bg-[#EEF5E6] min-h-[400px] rounded-b-[32px]">
           <div className="flex items-center gap-2 mb-4">
-            <span className="text-sm text-[#95A5A6]">題目 {previewStep + 1}/{questions.length}</span>
+            <span className="text-sm text-[#95A5A6]">題目 {Math.min(previewStep + 1, questions.length)}/{questions.length}</span>
             <div className="flex-1 bg-[#D5D8DC] rounded-full h-1.5">
               <div className="bg-[#8FC87A] h-1.5 rounded-full transition-all" style={{ width: `${((previewStep) / questions.length) * 100}%` }}></div>
             </div>
@@ -40,19 +62,24 @@ export default function PreviewQuizModal({ questions, onClose }) {
                 <p className="text-sm text-[#636E72] mb-1">🤖 科學偵探系統</p>
                 <p className="text-sm text-[#2D3436] leading-relaxed">{currentQ.stem}</p>
               </div>
+              {isTwoTier && (
+                <p className={`text-sm font-semibold mb-2 ${stage === 'answer' ? 'text-[#5C8A2E]' : 'text-[#2E6FA6]'}`}>
+                  {stage === 'answer' ? '第一層 · 選答案' : '第二層 · 選理由（你為什麼這樣選？）'}
+                </p>
+              )}
               <div className="space-y-2">
-                {currentQ.options.map((opt) => (
+                {layerOptions.map((opt) => (
                   <button
                     key={opt.tag}
                     onClick={() => !selected && handleSelect(opt)}
                     className={`w-full text-left p-3 rounded-2xl text-sm transition-all border ${selected?.tag === opt.tag
-                        ? opt.diagnosis === 'CORRECT'
+                        ? isOptCorrect(opt)
                           ? 'bg-[#C8EAAE] border-[#8FC87A] text-[#3D5A3E]'
                           : 'bg-[#FAC8CC] border-[#F28B95] text-[#E74C5E]'
                         : 'bg-white border-[#BDC3C7] hover:bg-[#EEF5E6] text-[#2D3436]'
                       }`}
                   >
-                    {opt.content}
+                    <span className="font-bold mr-1.5">{opt.tag}</span>{opt.content}
                   </button>
                 ))}
               </div>

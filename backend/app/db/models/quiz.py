@@ -10,7 +10,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -21,6 +21,7 @@ class Quiz(Base):
     __tablename__ = "quizzes"
     __table_args__ = (
         CheckConstraint("status IN ('draft','published')", name="quizzes_status_chk"),
+        CheckConstraint("mode IN ('single','two-tier')", name="quizzes_mode_chk"),
         Index("quizzes_status_idx", "status"),
         Index("quizzes_created_by_idx", "created_by"),
     )
@@ -28,6 +29,8 @@ class Quiz(Base):
     id: Mapped[str] = mapped_column(String(32), primary_key=True)
     title: Mapped[str] = mapped_column(String(128), nullable=False)
     status: Mapped[str] = mapped_column(String(16), default="draft", nullable=False)
+    # 題型：single（單層迷思診斷）/ two-tier（雙層次：答案層 + 理由層）。spec-04、spec-11。
+    mode: Mapped[str] = mapped_column(String(16), default="single", server_default="single", nullable=False)
     knowledge_node_ids: Mapped[list[str]] = mapped_column(
         ARRAY(String(32)), default=list, nullable=False, server_default="{}",
     )
@@ -60,6 +63,9 @@ class QuizQuestion(Base):
     order_index: Mapped[int] = mapped_column(nullable=False)
     stem: Mapped[str] = mapped_column(Text, nullable=False)
     knowledge_node_id: Mapped[str] = mapped_column(String(32), nullable=False)
+    # two-tier 第二層理由選項：[{tag, content, diagnosis}]；single 題為 NULL。
+    # 第一層答案選項沿用正規化的 quiz_options 表（two-tier 時 diagnosis 為 'CORRECT'/'WRONG'）。
+    reason_options: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
 
     quiz: Mapped[Quiz] = relationship(back_populates="questions")

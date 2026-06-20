@@ -77,8 +77,10 @@ async def get_class_answers(db: AsyncSession, quiz_id: str, class_id: str) -> di
             "seat": stu.seat,
             "answers": [
                 {
-                    "question_id": q.id,
-                    "selected_tag": answer_lookup.get((stu.user_id, q.id)),
+                    # student_answers.question_id 存的是「卷內題序 order_index」(1..N)，
+                    # 非 quiz_questions 全域 PK，故以 order_index 對位。詳見 spec-11 §3.11。
+                    "question_id": q.order_index,
+                    "selected_tag": answer_lookup.get((stu.user_id, q.order_index)),
                 }
                 for q in questions
             ],
@@ -112,7 +114,11 @@ async def get_class_stats(db: AsyncSession, quiz_id: str, class_id: str) -> dict
     node_total: dict[str, int] = defaultdict(int)
     question_stats: dict[int, dict[str, int]] = {}
     misconception_students: dict[str, set[str]] = defaultdict(set)
+    # 四象限分佈（two-tier）：{order_index: {TT, TF, FT, FF}}。single 題以 TT/FF 映射。
+    quadrant_stats: dict[int, dict[str, int]] = {}
 
+    # student_answers.question_id 存的是卷內題序 order_index (1..N)，非全域 PK，
+    # 故以 order_index 為鍵對位。answers 已依 assignment（單一題組）篩選，題序唯一。
     answer_by_qid: dict[int, list[StudentAnswer]] = defaultdict(list)
     for a in answers:
         answer_by_qid[a.question_id].append(a)
@@ -120,14 +126,23 @@ async def get_class_stats(db: AsyncSession, quiz_id: str, class_id: str) -> dict
     for q in questions:
         # tally per option
         counts = {"A": 0, "B": 0, "C": 0, "D": 0}
-        for a in answer_by_qid.get(q.id, []):
+        quad = {"TT": 0, "TF": 0, "FT": 0, "FF": 0}
+        for a in answer_by_qid.get(q.order_index, []):
             counts[a.selected_tag] = counts.get(a.selected_tag, 0) + 1
             node_total[q.knowledge_node_id] += 1
-            if a.diagnosis == "CORRECT":
+            # 節點「通過」＝真理解：two-tier 看 quadrant=='TT'；single（無 quadrant）看 diagnosis。
+            is_pass = (a.quadrant == "TT") if a.quadrant else (a.diagnosis == "CORRECT")
+            if is_pass:
                 node_correct[q.knowledge_node_id] += 1
-            else:
+            # 迷思碼一律來自 diagnosis（TF/FF 帶 M-code；TT/FT 為 CORRECT 不計）。
+            if a.diagnosis != "CORRECT":
                 misconception_students[a.diagnosis].add(a.student_id)
-        question_stats[q.id] = counts
+            # 四象限：無 quadrant 的舊資料以 diagnosis 映射為 TT/FF。
+            qd = a.quadrant or ("TT" if a.diagnosis == "CORRECT" else "FF")
+            if qd in quad:
+                quad[qd] += 1
+        question_stats[q.order_index] = counts
+        quadrant_stats[q.order_index] = quad
 
     node_pass_rates: dict[str, int] = {}
     for node_id in {q.knowledge_node_id for q in questions}:
@@ -170,6 +185,8 @@ async def get_class_stats(db: AsyncSession, quiz_id: str, class_id: str) -> dict
         "node_pass_rates": node_pass_rates,
         "top_misconceptions": top_misconceptions,
         "question_stats": question_stats,
+        "quadrant_stats": quadrant_stats,
+        "mode": quiz.mode or "single",
     }
 
 
@@ -251,6 +268,8 @@ async def get_grade_stats(
         "node_pass_rates": node_pass_rates,
         "top_misconceptions": top_misconceptions,
         "question_stats": {},
+        "quadrant_stats": {},
+        "mode": quiz.mode or "single",
         "per_class": per_class,
     }
 
@@ -266,4 +285,6 @@ def _empty_stats(quiz_id: str, class_id: str | None) -> dict[str, Any]:
         "node_pass_rates": {},
         "top_misconceptions": [],
         "question_stats": {},
+        "quadrant_stats": {},
+        "mode": "single",
     }

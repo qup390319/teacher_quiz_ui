@@ -84,6 +84,8 @@ class SuggestOptionsRequest(BaseModel):
     node_id: str = Field(alias="nodeId", min_length=1, max_length=32)
     node_name: str = Field(alias="nodeName", min_length=1, max_length=128)
     misconceptions: list[dict] = Field(default_factory=list)
+    # 'single'：一組 4 選項；'two-tier'：答案層 + 理由層各 3。
+    mode: Literal["single", "two-tier"] = "single"
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -96,7 +98,21 @@ class SuggestedOption(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class SuggestedReasonOption(BaseModel):
+    # 理由層 tag 用 甲/乙/丙，故不設 Literal。
+    tag: str
+    content: str
+    diagnosis: str  # 'CORRECT' 或 M-code
+    answer_tag: str | None = Field(default=None, serialization_alias="answerTag")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
 class SuggestOptionsResponse(BaseModel):
+    # single：options 為 4 選項；two-tier：options 為答案層(3)、reasonOptions 為理由層(3)。
     options: list[SuggestedOption]
+    reason_options: list[SuggestedReasonOption] | None = Field(
+        default=None, serialization_alias="reasonOptions",
+    )
 
     model_config = ConfigDict(populate_by_name=True)

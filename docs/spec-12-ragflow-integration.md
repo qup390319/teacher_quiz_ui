@@ -250,13 +250,21 @@ Response 403:
 
 ### 7.4 前端互動
 
-- 教師在出題精靈步驟二的「編輯題目 modal」中，每個非正解選項旁顯示「✨ 建議」icon button
+- 教師在出題精靈步驟二的「編輯題目 modal」中，N6「建議」按鈕出現位置依 mode 決定：
+  - **single 模式**：每個非正解**選項**旁顯示「✨ 建議」icon button
+  - **two-tier 模式**：每個非正解**理由**旁顯示「✨ 建議」icon button（答案層不顯示，因答案層不掛迷思）
 - **題幹未填寫時按鈕禁用**（hover tooltip 顯示「請先填寫題幹，建議才能與題幹內容相關」），避免後端產出與題幹無關的選項
 - 點擊 → 開啟 `<DistractorSuggestPopover>`
 - Popover 自動帶當前 `nodeId / misconceptionId / currentText / stem`，呼叫後端
-- 顯示 3 條候選；點任一條「採用」會把該文字填回該選項 content
+- 顯示 3 條候選；點任一條「採用」會把該文字填回該理由 content
 - 提供「再來 3 條」（重新呼叫，帶上 `ragflowSessionId`）
 - 失敗時顯示「目前無法取得建議，請手動輸入」+ 重試按鈕
+
+> **bulk「AI 建議選項」依 mode 分流**：`POST /api/adaptive/suggest-options` 接受 `mode` 欄位。
+> - **single**（預設）：回傳一組 4 選項 `options`（1 正解 + 3 干擾，diagnosis 為 CORRECT / M-code）。按鈕標籤「AI 建議選項」，放在選項層 header。
+> - **two-tier**：回傳答案層 `options`（3，tag A/B/C，diagnosis 為 CORRECT/WRONG）+ 理由層 `reasonOptions`（3，tag 甲/乙/丙，1 正確理由 + 2 迷思理由，每個並帶 `answerTag` 對應第一層答案——正確理由→正解、錯誤理由→錯誤答案輪流）。按鈕標籤「AI 建議雙層選項」，放在第一層（答案）header；後端 `_suggest_two_tier` 以 JSON 物件 prompt 產出、tag 與 answerTag 由後端依序指派（不信任 LLM 的 tag）。
+>
+> 回應 schema：`SuggestOptionsResponse { options, reasonOptions? }`（`reasonOptions` 僅 two-tier 有值）。
 
 ---
 

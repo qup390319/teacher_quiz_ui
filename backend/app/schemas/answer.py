@@ -9,6 +9,10 @@ class AnswerInput(BaseModel):
     assignment_id: str = Field(alias="assignmentId")
     question_id: int = Field(alias="questionId")
     selected_tag: Literal["A", "B", "C", "D"] = Field(alias="selectedTag")
+    # two-tier 第二層理由 tag；single 題傳 None。
+    reason_tag: str | None = Field(default=None, alias="reasonTag")
+    # 四象限 TT/TF/FT/FF；single 題傳 None（後端不強制，向下相容）。
+    quadrant: Literal["TT", "TF", "FT", "FF"] | None = Field(default=None)
     diagnosis: str  # 'CORRECT' or M-code
 
     model_config = ConfigDict(populate_by_name=True)
@@ -25,6 +29,8 @@ class AnswerOut(BaseModel):
     student_id: str = Field(serialization_alias="studentId")
     question_id: int | None = Field(serialization_alias="questionId")
     selected_tag: str = Field(serialization_alias="selectedTag")
+    reason_tag: str | None = Field(default=None, serialization_alias="reasonTag")
+    quadrant: str | None = None
     diagnosis: str
     answered_at: datetime = Field(serialization_alias="answeredAt")
 
@@ -97,6 +103,7 @@ class PerClassStatsRow(BaseModel):
     average_mastery: int = Field(serialization_alias="averageMastery")
     node_pass_rates: dict[str, int] = Field(serialization_alias="nodePassRates")
     top_misconceptions: list[MisconceptionTopRow] = Field(serialization_alias="topMisconceptions")
+    mode: str = "single"
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -119,9 +126,34 @@ class QuizStatsResponse(BaseModel):
     question_stats: dict[int, dict[str, int]] = Field(
         default_factory=dict, serialization_alias="questionStats",
     )  # {questionId: {A: n, B: n, C: n, D: n}}
+    # two-tier 四象限分佈 {questionId: {TT, TF, FT, FF}}；single 卷以 TT/FF 映射。
+    quadrant_stats: dict[int, dict[str, int]] = Field(
+        default_factory=dict, serialization_alias="quadrantStats",
+    )
+    mode: str = "single"
     per_class: list[PerClassStatsRow] = Field(
         default_factory=list, serialization_alias="perClass",
     )
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class StudentQuestionResult(BaseModel):
+    """單一題目的對錯結果，供學生報告「每一題的結果」逐題呈現。
+
+    自帶題幹與所選選項內容，讓前端**不依賴 mock getQuizQuestions** 即可渲染任何題組
+    （真實教師題組的 quizId / 題目 id 前端 mock 並不認得）。`question_id` 為卷內題序。
+    """
+    question_id: int = Field(serialization_alias="questionId")
+    node_id: str | None = Field(default=None, serialization_alias="nodeId")
+    stem: str | None = Field(default=None)
+    selected_option_content: str | None = Field(default=None, serialization_alias="selectedOptionContent")
+    selected_tag: str | None = Field(serialization_alias="selectedTag")
+    # two-tier：學生所選理由內容與四象限；single 題為 None。
+    selected_reason_content: str | None = Field(default=None, serialization_alias="selectedReasonContent")
+    quadrant: str | None = None
+    diagnosis: str  # 'CORRECT' 或 M-code（已含 followup statusChange 調整後的值）
+    is_correct: bool = Field(serialization_alias="isCorrect")
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -144,6 +176,25 @@ class StudentHistoryRow(BaseModel):
     # gone (e.g. re-login / reload / tab remount). spec-09 §12.4a.
     error_type_by_misconception: dict[str, str] = Field(
         default_factory=dict, serialization_alias="errorTypeByMisconception",
+    )
+    # {misconceptionCode: aiSummary} —— 追問對話針對該迷思產出的個人化回饋
+    # （「給你的話」）。in-memory 快照消失後（re-login / reload）報告仍能還原此區塊。
+    ai_summary_by_misconception: dict[str, str] = Field(
+        default_factory=dict, serialization_alias="aiSummaryByMisconception",
+    )
+    # {misconceptionCode: statusChange dict} —— 想法轉變（CONFIRMED/UPGRADED/DOWNGRADED），
+    # 讓報告在歷史檢視時仍能標示「作答選對、深談後確認迷思」等情境。
+    status_change_by_misconception: dict[str, dict[str, Any]] = Field(
+        default_factory=dict, serialization_alias="statusChangeByMisconception",
+    )
+    # {misconceptionCode: 最具診斷性的學生原話} —— 由後端從 conversation_log 依
+    # 與前端 getStudentQuote 相同規則挑出，供歷史檢視時還原「你在對話中提到」引用。
+    quote_by_misconception: dict[str, str] = Field(
+        default_factory=dict, serialization_alias="quoteByMisconception",
+    )
+    # 逐題對錯結果，供學生報告「每一題的結果」區塊（in-memory 快照失效後仍能還原）。
+    question_results: list[StudentQuestionResult] = Field(
+        default_factory=list, serialization_alias="questionResults",
     )
 
     model_config = ConfigDict(populate_by_name=True)

@@ -1,5 +1,5 @@
 // ─── 派題管理共用統計工具 ─────────────────────────────────────────────────────
-// 對應 spec-02 §2.6 雙視角設計，不再使用矩陣。
+// 對應 spec-02 §2.6「題組摘要卡 + 管理派發抽屜」設計。
 
 /**
  * 取得單一 assignment 的完成資料
@@ -28,77 +28,34 @@ export function getAssignmentProgress(assignment, cls) {
 }
 
 /**
- * 取得某個 quiz 的整體統計（跨所有已派班級）
+ * 給「題組摘要卡」用的彙總（以 assignment.completionRate 為準）。
+ * @returns {{ assignedCount, total, unassignedCount, done, inProgress, waiting, avgPercent }}
  */
-export function getQuizSummary(quiz, classes, assignments) {
-  const quizAssignments = assignments.filter(
+export function getQuizCardStats(quiz, classes, assignments) {
+  const list = assignments.filter(
     (a) => (a.type ?? 'diagnosis') === 'diagnosis' && a.quizId === quiz.id,
   );
-  const assignedClassIds = new Set(quizAssignments.map((a) => a.classId));
-  const assignedClasses = classes.filter((c) => assignedClassIds.has(c.id));
-  const unassignedClasses = classes.filter((c) => !assignedClassIds.has(c.id));
-
-  let totalStudents = 0;
-  let totalCompleted = 0;
-  let inProgressCount = 0;
-  let doneCount = 0;
-  let waitingCount = 0;
-
-  for (const a of quizAssignments) {
-    const cls = classes.find((c) => c.id === a.classId);
-    if (!cls) continue;
-    const p = getAssignmentProgress(a, cls);
-    totalStudents += p.total;
-    totalCompleted += p.completed;
-    if (p.status === 'done') doneCount++;
-    else if (p.status === 'inProgress') inProgressCount++;
-    else waitingCount++;
+  let done = 0;
+  let inProgress = 0;
+  let waiting = 0;
+  let sumPct = 0;
+  for (const a of list) {
+    const pct = a.completionRate ?? 0;
+    sumPct += pct;
+    if (pct >= 100) done += 1;
+    else if (pct > 0) inProgress += 1;
+    else waiting += 1;
   }
-
-  const overallPercent = totalStudents > 0 ? Math.round((totalCompleted / totalStudents) * 100) : 0;
-
+  const assignedCount = list.length;
+  const total = classes.length;
   return {
-    assignments: quizAssignments,
-    assignedClasses,
-    unassignedClasses,
-    totalStudents,
-    totalCompleted,
-    overallPercent,
-    inProgressCount,
-    doneCount,
-    waitingCount,
-  };
-}
-
-/**
- * 取得某個 class 的整體統計（跨所有已派題組）
- */
-export function getClassSummary(cls, quizzes, assignments) {
-  const classAssignments = assignments.filter(
-    (a) => (a.type ?? 'diagnosis') === 'diagnosis' && a.classId === cls.id,
-  );
-  const assignedQuizIds = new Set(classAssignments.map((a) => a.quizId));
-  const assignedQuizzes = quizzes.filter((q) => assignedQuizIds.has(q.id));
-  const unassignedQuizzes = quizzes.filter((q) => !assignedQuizIds.has(q.id));
-
-  let inProgressCount = 0;
-  let doneCount = 0;
-  let waitingCount = 0;
-
-  for (const a of classAssignments) {
-    const p = getAssignmentProgress(a, cls);
-    if (p.status === 'done') doneCount++;
-    else if (p.status === 'inProgress') inProgressCount++;
-    else waitingCount++;
-  }
-
-  return {
-    assignments: classAssignments,
-    assignedQuizzes,
-    unassignedQuizzes,
-    inProgressCount,
-    doneCount,
-    waitingCount,
+    assignedCount,
+    total,
+    unassignedCount: total - assignedCount,
+    done,
+    inProgress,
+    waiting,
+    avgPercent: assignedCount > 0 ? Math.round(sumPct / assignedCount) : 0,
   };
 }
 
@@ -130,26 +87,4 @@ export function getGlobalSummary(quizzes, classes, assignments) {
     doneCount,
     waitingCount,
   };
-}
-
-/**
- * 狀態 → 顏色對照（spec-07 既有色票）
- */
-export const STATUS_COLORS = {
-  empty:      { bg: 'bg-white',       border: 'border-dashed border-[#D5D8DC]', text: 'text-[#95A5A6]', label: '未派發' },
-  waiting:    { bg: 'bg-[#EEF5E6]',   border: 'border-[#D5D8DC]',               text: 'text-[#95A5A6]', label: '待作答' },
-  inProgress: { bg: 'bg-[#FCF0C2]',   border: 'border-[#F5D669]',               text: 'text-[#B7950B]', label: '進行中' },
-  done:       { bg: 'bg-[#C8EAAE]',   border: 'border-[#8FC87A]',               text: 'text-[#3D5A3E]', label: '已完成' },
-};
-
-/**
- * 進度條顏色（隨 status）
- */
-export function getProgressBarColor(status) {
-  switch (status) {
-    case 'done':       return '#8FC87A';
-    case 'inProgress': return '#F5D669';
-    case 'waiting':    return '#BDC3C7';
-    default:           return '#D5D8DC';
-  }
 }

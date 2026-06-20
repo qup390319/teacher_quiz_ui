@@ -19,6 +19,7 @@ import MisconceptionDistribution from './MisconceptionDistribution';
 import HeatmapView from './HeatmapView';
 import QuestionErrorRateChart from './QuestionErrorRateChart';
 import ReasoningQualityBars from './ReasoningQualityBars';
+import QuadrantSummary from './QuadrantSummary';
 
 export default function SingleClassReport({ cls, assignments, quizzes, quizId }) {
   const classId = cls.id;
@@ -129,6 +130,11 @@ export default function SingleClassReport({ cls, assignments, quizzes, quizId })
       <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
         <BreakdownChart quizId={quizId} classId={classId} />
       </div>
+      {stats?.mode === 'two-tier' && (
+        <div className="bg-white rounded-[32px] border border-[#BDC3C7] p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+          <QuadrantSummary stats={stats} />
+        </div>
+      )}
 
       {/* ─── 進階分析（預設摺疊，減少首屏捲動量） ─── */}
       <AdvancedSection title="迷思概念詳細分析" subtitle="迷思分布 · 題目錯誤率 · 選項明細矩陣">

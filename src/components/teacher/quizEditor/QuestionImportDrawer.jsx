@@ -12,6 +12,7 @@ export default function QuestionImportDrawer({
   nodes = [],
   selectedNodeIds,
   excludeQuizId,
+  mode = 'single',
   onImport,
   onClose,
 }) {
@@ -27,6 +28,8 @@ export default function QuestionImportDrawer({
   const filteredQuizzes = useMemo(() => {
     return quizzes
       .filter((q) => q.id !== excludeQuizId)
+      // 題型必須一致：two-tier 卷只挑 two-tier 題，single 卷只挑 single 題（避免混型）
+      .filter((q) => (q.mode ?? 'single') === mode)
       .filter((q) => {
         if (showAll) return true;
         if (!selectedNodeIds || selectedNodeIds.length === 0) return true;
@@ -34,7 +37,7 @@ export default function QuestionImportDrawer({
       })
       // W6：系統範例排在最上面，方便老師優先參考
       .sort((a, b) => (b.isSample ? 1 : 0) - (a.isSample ? 1 : 0));
-  }, [quizzes, excludeQuizId, showAll, selectedNodeIds]);
+  }, [quizzes, excludeQuizId, mode, showAll, selectedNodeIds]);
 
   const toggleExpand = async (quizId) => {
     setExpandedQuizIds((prev) => {

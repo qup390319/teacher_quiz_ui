@@ -52,6 +52,7 @@ const { currentUser, loading, role, login, logout } = useAuth();
 | `nodeQuestionCounts` | `Record<string, number>` | `{}` | 出題精靈中各節點的預期出題數（key = 節點 ID，value = 題數 1–4，預設 1）；由 Step1Nodes 的 chip stepper 管理，供 Step2Edit 用於 CoveragePanel 顯示「實際 / 目標」 |
 | `editingQuizId` | `string \| null` | `null` | 出題精靈當前正在編輯的 quiz id：`null` = 新建 / 複製模式（儲存走 POST）；有值 = 編輯既有 quiz（儲存走 PUT，含自動暫存覆蓋同一份）。由 QuizLibrary 的「編輯／繼續編輯」設置；「複製為新題組」與 TeacherDashboard 的「新增題組／推薦題組」皆會清空此值 |
 | `editingQuizStatus` | `'draft' \| 'published' \| null` | `null` | 編輯時帶入的原始 status，用於 Step2Edit 判定是否啟用自動暫存（`published` 卷自動暫存停用，避免被降級為 draft） |
+| `editingQuizMode` | `'single' \| 'two-tier'` | `'single'` | 出題精靈 Step0 選擇的題型：`single` = 傳統單層迷思選擇題（舊行為）；`two-tier` = 雙層次診斷題（第一層選答案 + 第二層選理由，Treagust 1988）。存入此值後傳遞給 Step2Edit / EditQuestionModal，決定編輯器呈現雙層或單層介面。儲存時寫入 quiz.mode 欄位 |
 | ~~`classes`~~ | — | — | **P3 移除**：改用 `useClasses()` |
 | `currentClassId` | `string \| null` | `null` | 當前篩選的班級 ID（純 UI 狀態，配合 dashboard URL query 同步） |
 | `currentSchoolYear` | `number` | `getCurrentSchoolYear()` | 目前 dashboard 篩選的學年度（西元年）；變更時 persist 到 `localStorage.sciLens.schoolYear` |
@@ -88,6 +89,7 @@ const { currentUser, loading, role, login, logout } = useAuth();
 | `setCurrentSemester(sem)` | `'first' \| 'second'` | 切換學期篩選 |
 | `setIncludeArchivedClasses(flag)` | `boolean` | 切換是否顯示已封存班級 |
 | `recordAnswer` / `removeMisconception` / `resetStudentAnswers` / `addToHistory` / `setActiveStudentReport` | — | 學生作答相關（P4 才搬 DB） |
+| `mergeRetryIntoReport(questionId, { answer, followUpResult })` | `(number, { answer, followUpResult })` | **誤判補救「重新問這一題」用**（spec-05 §2.1.1）：替換 `activeStudentReport` 中同題的 `answer` 與 `followUpResult`，重算 `correctCount` 與 `misconceptions`。不建立新報告、不影響其他題；`activeStudentReport` 為空（如從歷史頁進來）時不動，重做資料已逐題存進 DB，由後端來源呈現 |
 
 **P3 移除的 AppContext 函式（請改用 hooks）**：
 - `updateClassStudents` → `useUpdateClassStudents().mutate({ classId, students })`
@@ -135,9 +137,9 @@ export function useClasses(filter) {
 | **P4** ↓ | | | |
 | `useClassAnswers(quizId, classId)` | `GET /api/quizzes/{id}/answers?classId=` | `['answers', quizId, classId]` | 教師端查班級作答 |
 | `useClassFollowups(quizId, classId)` | `GET /api/quizzes/{id}/followups?classId=` | `['followups', quizId, classId]` | 教師端查該班完整 N3 追問對話（含 `conversationLog / aiSummary / finalStatus / misconceptionCode / reasoningQuality / statusChange`）；用於 SingleClassReport 底部的對話檢視 |
-| `useQuizStats(quizId, classId?)` | `GET /api/quizzes/{id}/stats?classId=` | `['quiz-stats', quizId, classId]` | 取代 mock `getNodePassRates / getMisconceptionStudents` |
-| `useStudentHistory(studentId)` | `GET /api/students/{id}/history` | `['student-history', studentId]` | 學生個人作答歷史；每筆含 `causeIdsByMisconception`（`{misconceptionCode: number[]}`），用於 in-memory 快照失效時還原成因徽章 |
-| `useRecordAnswer()` | `POST /api/answers` | invalidate stats / answers / history | 一次接受陣列 |
+| `useQuizStats(quizId, classId?)` | `GET /api/quizzes/{id}/stats?classId=` | `['quiz-stats', quizId, classId]` | 取代 mock `getNodePassRates / getMisconceptionStudents`；two-tier 模式額外回傳 `quadrantStats`（`{ [questionId]: { TT, TF, FT, FF } }`）與 `mode`；節點通過率計算：two-tier 以 `quadrant==='TT'` 計算（無 quadrant 的舊資料 fallback `diagnosis`）|
+| `useStudentHistory(studentId)` | `GET /api/students/{id}/history` | `['student-history', studentId]` | 學生個人作答歷史；每筆含 `causeIdsByMisconception`、`errorTypeByMisconception`、`aiSummaryByMisconception`、`statusChangeByMisconception`、`quoteByMisconception`（皆 `{misconceptionCode: ...}`）與 `questionResults`（`{questionId, nodeId, stem, selectedOptionContent, selectedTag, diagnosis, isCorrect}[]`，逐題對錯＋題幹＋所選選項，供報告「每一題的結果」**不依賴前端 mock 即可渲染任何真實題組**），用於 in-memory 快照失效（重新登入/重整）時還原成因徽章、錯誤類別、「給你的話」、想法轉變、引用與逐題結果。**同一題多筆作答（同一份題組重複施測）只取最新一筆**，題數與對錯數以唯一題目計 |
+| `useRecordAnswer()` | `POST /api/answers` | invalidate stats / answers / history | 一次接受陣列；two-tier 作答時每筆需含 `reasonTag` 與 `quadrant` |
 | `useRecordFollowups()` | `POST /api/answers/{id}/followup` 一次多筆 | invalidate stats / answers / history | |
 
 ---
@@ -145,11 +147,14 @@ export function useClasses(filter) {
 ## 2. 資料型別定義
 
 ### 2.1 Question（題目）
-**來源**: `src/data/quizData.js`
+**來源**: `src/data/quizData.js`（前端編輯器 / mock 內部 shape；helper 定義於 `src/data/twoTier.js`）
+
+題目依 `mode` 欄位分為兩種形態，由 `src/data/twoTier.js` 的 helper 函式統一處理 runtime 邏輯：
 
 ```typescript
-interface Question {
-  id: number;                    // 題號（1-based）
+// single 題（舊行為，mode 欄位省略或為 'single'）
+interface SingleQuestion {
+  id: number;                    // 題號（1-based，即 order_index）
   stem: string;                  // 題幹文字
   knowledgeNodeId: string;       // 對應知識節點 ID（如 'INe-Ⅱ-3-02'）
   options: Option[];             // 選項陣列（固定 4 個：A/B/C/D）
@@ -160,7 +165,47 @@ interface Option {
   content: string;               // 選項內容文字
   diagnosis: string;             // 'CORRECT' 或迷思概念 ID（如 'M02-1'）
 }
+
+// two-tier 題（雙層次診斷，Treagust 1988）
+interface TwoTierQuestion {
+  id: number;
+  stem: string;
+  knowledgeNodeId: string;
+  mode: 'two-tier';
+  // 第一層：選答案
+  answerOptions: AnswerOption[];  // 標籤 A/B/C
+  // 第二層：選理由
+  reasonOptions: ReasonOption[];  // 標籤 甲/乙/丙（Unicode，避免與答案層混淆）
+}
+
+interface AnswerOption {
+  tag: 'A' | 'B' | 'C';         // 答案層標籤（三選項）
+  content: string;
+  correct: boolean;              // true = 正解；DB 端存 diagnosis='CORRECT'|'WRONG' 哨兵
+}
+
+interface ReasonOption {
+  tag: '甲' | '乙' | '丙';       // 理由層標籤（Unicode 中文，避免與答案層混淆）
+  content: string;
+  diagnosis: string;             // 'CORRECT' 或迷思 ID（如 'M02-1'）
+  answerTag?: 'A' | 'B' | 'C';   // 此理由對應第一層哪個答案（出題結構標註）
+}
+// 出題規範：每個第一層答案（A/B/C）都需有 ≥1 個理由以 answerTag 對應。
+// answerTag 僅為出題端結構標註與驗證之用；**學生作答時第二層仍顯示全部理由**，
+// 不據 answerTag 過濾，四象限判定也不受其影響。
 ```
+
+#### 四象限定義（two-tier 專用）
+
+| 象限代碼 | 答案 | 理由 | 含義 | 迷思碼 |
+|---------|------|------|------|--------|
+| `TT` | 對 | 對 | 真理解 | 無（CORRECT） |
+| `TF` | 對 | 錯 | 假陽性（答對但理由是迷思） | 理由選項的 diagnosis |
+| `FT` | 錯 | 對 | 假陰性（答錯但理由正確，可能運氣） | 無（CORRECT） |
+| `FF` | 錯 | 錯 | 真迷思 | 理由選項的 diagnosis |
+
+**迷思碼歸屬原則**：迷思碼一律取自「錯誤理由」（TF/FF 帶 M-code；TT/FT 為 CORRECT 不掛迷思）。
+**節點通過標準**：two-tier 模式下，節點「通過」＝ `quadrant === 'TT'`（不是只看 `diagnosis === 'CORRECT'`）。
 
 ### 2.2 Quiz（題組）
 **來源**: `src/data/quizData.js` (`QUIZZES_DATA`)
@@ -169,10 +214,11 @@ interface Option {
 interface Quiz {
   id: string;                    // 題組 ID（如 'quiz-001'）
   title: string;                 // 題組標題
+  mode: 'single' | 'two-tier';  // 題型模式（省略視為 'single'，向下相容）
   status: 'draft' | 'published'; // 狀態
   questionCount: number;         // 題目數量
   knowledgeNodeIds: string[];    // 涵蓋的知識節點 ID 列表（同屬一個單元）
-  questions: Question[];         // 題目陣列
+  questions: Question[];         // 題目陣列（依 mode 可為 SingleQuestion | TwoTierQuestion）
   createdAt: string;             // 建立日期（YYYY-MM-DD）
 }
 ```
@@ -180,10 +226,12 @@ interface Quiz {
 > **題組的「所屬單元」不另存欄位**，而是由 `knowledgeNodeIds` 反推（每個節點都帶 `unitId`，且一份題組只綁一個單元）。QuizLibrary 編輯/複製時用 `useAllKnowledgeNodes()` 建 id→unitId 對應推導出 `selectedUnitId`。詳見 `docs/deviations.md`（2026-06-05）。
 
 **預設資料**:
-| ID | 標題 | 題數 | 狀態 | 涵蓋節點 |
-|----|------|------|------|----------|
-| `quiz-001` | 水溶液 · 迷思診斷（第一次） | 5 | published | INe-Ⅱ-3-02, INe-Ⅱ-3-03, INe-Ⅱ-3-05, INe-Ⅲ-5-4, INe-Ⅲ-5-7 |
-| `quiz-002` | 水溶液 · 迷思診斷（第二次） | 5 | published | INe-Ⅱ-3-02, INe-Ⅱ-3-03, INe-Ⅱ-3-05, INe-Ⅲ-5-4, INe-Ⅲ-5-7 |
+| ID | 標題 | mode | 題數 | 狀態 | 涵蓋節點 |
+|----|------|------|------|------|----------|
+| `quiz-001` | 水溶液 · 迷思診斷（第一次） | single | 5 | published | INe-Ⅱ-3-02, INe-Ⅱ-3-03, INe-Ⅱ-3-05, INe-Ⅲ-5-4, INe-Ⅲ-5-7 |
+| `quiz-002` | 水溶液 · 迷思診斷（第二次） | single | 5 | published | INe-Ⅱ-3-02, INe-Ⅱ-3-03, INe-Ⅱ-3-05, INe-Ⅲ-5-4, INe-Ⅲ-5-7 |
+| `quiz-003` | 水溶液 · 雙層次診斷（第一次） | two-tier | 5 | published | INe-Ⅱ-3-02, INe-Ⅱ-3-03, INe-Ⅱ-3-05, INe-Ⅲ-5-4, INe-Ⅲ-5-7 |
+| `quiz-004` | 水溶液 · 雙層次診斷（第二次） | two-tier | 5 | published | INe-Ⅱ-3-02, INe-Ⅱ-3-03, INe-Ⅱ-3-05, INe-Ⅲ-5-4, INe-Ⅲ-5-7 |
 
 ### 2.3 Class（班級）
 **來源**: `src/data/classData.js`
@@ -349,11 +397,21 @@ interface CustomMisconception {
 ### 2.6 StudentAnswer（學生作答記錄）
 ```typescript
 interface StudentAnswer {
-  questionId: number;     // 題號
-  selectedTag: string;    // 選擇的選項標籤（A/B/C/D）
-  diagnosis: string;      // 診斷結果（'CORRECT' 或迷思概念 ID）
+  questionId: number;     // 題號（即 order_index，1-based）
+  selectedTag: string;    // 選擇的選項標籤（答案層：A/B/C；single 模式：A/B/C/D）
+  reasonTag: string | null; // 理由層標籤（two-tier：甲/乙/丙；single 模式為 null）
+  diagnosis: string;      // 診斷結果（'CORRECT' 或迷思概念 ID；two-tier 取自理由層）
+  quadrant: 'TT' | 'TF' | 'FT' | 'FF' | null;
+  // quadrant 說明：
+  //   two-tier 題：TT / TF / FT / FF 四象限之一
+  //   single 題：以答案對錯映射為 'TT'（答對）或 'FF'（答錯）；不會出現 TF / FT
+  //   null：僅舊版資料（migration 0032 之前寫入，尚未補值）
 }
 ```
+
+**診斷碼來源說明**：
+- `single` 模式：`diagnosis` 取自答案選項的 `diagnosis` 欄位（與舊版相同）
+- `two-tier` 模式：`diagnosis` 取自**理由層**選項的 `diagnosis`，答案層僅貢獻 `quadrant` 計算，不決定迷思碼
 
 ### 2.7 HistoryRecord（學生歷史記錄）
 ```typescript
@@ -391,10 +449,15 @@ interface FollowUpDiagnosis {
   misconceptionCode: string | null;        // 確認的迷思 ID（如 'M02-1'）
   misconceptionSource: string | null;      // 學生在 R3 source 策略中陳述的來源
   reasoningQuality: 'SOLID' | 'PARTIAL' | 'WEAK' | 'GUESSING';
+  // ↑ 'GUESSING'（AI 資訊不足硬給判斷）驅動學生報告 MisconceptionCard 低信心
+  //   委婉呈現（粉框標題改「你這題可能有的想法」、label 前加「可能是」；
+  //   純文案，不改判定資料）。詳見 spec-09 §12.4c。
   errorType: 'EXPLANATION' | 'DEFINITION' | 'OBSERVATION' | null;
-  // ↑ 學生答錯的主導方向（spec-09 §12.4）。LLM 在追問結束時依對話判斷；
+  // ↑ 學生答錯的主導方向（spec-09 §12.4 / §12.4b）。第 1 輪 belief 先用此三類分類
+  //   決定追問路徑（解釋型深追、定義/觀察型先引導再判斷），收尾時輸出同一型態。
   //   無法判讀回 null（教師可在報告手動覆寫）。常數 / labels / themes 定義
-  //   於 src/data/errorTypes.js。
+  //   於 src/data/errorTypes.js。學生報告依此型差異化回饋（ERROR_TYPE_FEEDBACK）
+  //   與點擊徽章白話解釋（ERROR_TYPE_STUDENT_EXPLAIN）；詳見 spec-09 §12.4c、spec-03 §10。
   aiSummary: string;                       // AI 對該題的摘要說明
   statusChange: {
     from: string;                          // 第一層判定（'CORRECT' 或迷思 ID）

@@ -60,6 +60,9 @@ export function AppProvider({ children }) {
   const [editingQuizStatus, setEditingQuizStatus] = useState(null);
   // 出題精靈正在編輯的 quiz 原始 title（編輯既有：載入時帶入；新建：留空，由 Step2Edit 產生預設）
   const [editingQuizTitle, setEditingQuizTitle] = useState('');
+  // 出題精靈的題型：'single'（單層迷思診斷）/ 'two-tier'（雙層次）。spec-04、spec-11。
+  // 預設 two-tier：教師端新建一律出雙層次題；single 僅保留供既有單層卷編輯。
+  const [editingQuizMode, setEditingQuizMode] = useState('two-tier');
   // 出題精靈是否有「尚未儲存的變更」（dirty）→ 用於離開時提示
   const [isWizardDirty, setIsWizardDirty] = useState(false);
 
@@ -96,6 +99,28 @@ export function AppProvider({ children }) {
     setActiveStudentReport(record);
   }, []);
 
+  /* 誤判補救「重新問這一題」用：把單題重做的新結果併回現有報告（替換同題舊項），
+     並重算答對數與迷思清單。不建立新報告、不影響其他題。activeStudentReport 為空
+     （例如從歷史頁進來）時不動，重做的資料已逐題存進 DB，回報告頁時由後端來源呈現。 */
+  const mergeRetryIntoReport = useCallback((questionId, { answer, followUpResult }) => {
+    setActiveStudentReport((prev) => {
+      if (!prev) return prev;
+      const answers = (prev.answers || []).map((a) =>
+        a.questionId === questionId ? { ...a, ...answer } : a,
+      );
+      if (answer && !answers.some((a) => a.questionId === questionId)) answers.push(answer);
+      const followUpResults = [
+        ...(prev.followUpResults || []).filter((r) => r.questionId !== questionId),
+        ...(followUpResult ? [followUpResult] : []),
+      ];
+      const correctCount = answers.filter((a) => a.diagnosis === 'CORRECT').length;
+      const misconceptions = [
+        ...new Set(answers.filter((a) => a.diagnosis !== 'CORRECT').map((a) => a.diagnosis)),
+      ];
+      return { ...prev, answers, followUpResults, correctCount, misconceptions };
+    });
+  }, []);
+
   return (
     <AppContext.Provider value={{
       // 出題精靈
@@ -106,6 +131,7 @@ export function AppProvider({ children }) {
       editingQuizId, setEditingQuizId,
       editingQuizStatus, setEditingQuizStatus,
       editingQuizTitle, setEditingQuizTitle,
+      editingQuizMode, setEditingQuizMode,
       isWizardDirty, setIsWizardDirty,
       // 當前選中的 quiz / class（UI 狀態）
       currentClassId, setCurrentClassId,
@@ -115,7 +141,7 @@ export function AppProvider({ children }) {
       currentSemester, setCurrentSemester,
       includeArchivedClasses, setIncludeArchivedClasses,
       // 學生報告暫存
-      studentName, studentHistory, addToHistory,
+      studentName, studentHistory, addToHistory, mergeRetryIntoReport,
       activeStudentReport, setActiveStudentReport,
     }}>
       {children}

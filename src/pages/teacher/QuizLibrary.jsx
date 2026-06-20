@@ -12,6 +12,7 @@ import { useUnits } from '../../hooks/useAdminUnits';
 import { useTour } from '../../context/TourContext';
 import { useToast } from '../../context/ToastContext';
 import { Icon } from '../../components/ui/woodKit';
+import { normalizeQuestionForEditor } from '../../data/twoTierAuthoring';
 
 const TABS = [
   { key: 'all', label: '全部' },
@@ -23,7 +24,7 @@ export default function QuizLibrary() {
   const navigate = useNavigate();
   const {
     setQuizQuestions, setSelectedNodeIds, setSelectedUnitId,
-    setEditingQuizId, setEditingQuizStatus, setEditingQuizTitle,
+    setEditingQuizId, setEditingQuizStatus, setEditingQuizTitle, setEditingQuizMode,
   } = useApp();
   const { startTour } = useTour();
   const { toast } = useToast();
@@ -65,10 +66,11 @@ export default function QuizLibrary() {
     try {
       const detail = await api.get(`/quizzes/${quiz.id}`);
       setSelectedUnitId(deriveUnitId(detail.knowledgeNodeIds));
-      setQuizQuestions([...detail.questions]);
+      setQuizQuestions(detail.questions.map(normalizeQuestionForEditor));
       setSelectedNodeIds([...detail.knowledgeNodeIds]);
       setEditingQuizId(quiz.id);
       setEditingQuizStatus(detail.status);
+      setEditingQuizMode(detail.mode ?? 'single');
       setEditingQuizTitle(detail.title);  // 帶入原 title，避免儲存時被預設值覆蓋
       navigate('/teacher/quiz/create?step=3');
     } catch (err) {
@@ -81,7 +83,7 @@ export default function QuizLibrary() {
     try {
       const detail = await api.get(`/quizzes/${quiz.id}`);
       const cloned = detail.questions.map((q, idx) => ({
-        ...JSON.parse(JSON.stringify(q)),
+        ...normalizeQuestionForEditor(q),
         id: idx + 1,
       }));
       setSelectedUnitId(deriveUnitId(detail.knowledgeNodeIds));
@@ -89,6 +91,7 @@ export default function QuizLibrary() {
       setSelectedNodeIds([...detail.knowledgeNodeIds]);
       setEditingQuizId(null);          // 新建模式
       setEditingQuizStatus(null);
+      setEditingQuizMode(detail.mode ?? 'single');
       setEditingQuizTitle(`${detail.title} (複製)`);
       navigate('/teacher/quiz/create?step=3');
     } catch (err) {
@@ -113,6 +116,7 @@ export default function QuizLibrary() {
     setSelectedNodeIds([]);             // 清空殘留節點
     setEditingQuizId(null);
     setEditingQuizStatus(null);
+    setEditingQuizMode('two-tier');     // 教師端新建一律出雙層次題
     setEditingQuizTitle('');
     navigate('/teacher/quiz/create');
   };

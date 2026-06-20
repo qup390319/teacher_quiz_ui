@@ -109,6 +109,25 @@ export default function Step0Unit({ onNext }) {
         </div>
       )}
 
+      {/* 題型：固定雙層次（two-tier）。本系統教師端只出雙層次題。spec-04、spec-11。 */}
+      <div className="mb-6">
+        <p className="text-sm font-bold text-[#2D3436] mb-2">題型</p>
+        <div className="rounded-2xl border border-[#8FC87A] bg-[#EEF5E6] p-4">
+          <span className="flex items-center gap-2 mb-1">
+            <span className="material-symbols-rounded text-base text-[#5C8A2E]">stacked_bar_chart</span>
+            <span className="text-sm font-bold text-[#2D3436]">雙層次（two-tier）</span>
+            <span className="ml-auto inline-flex items-center gap-0.5 text-xs font-semibold text-[#3D5A3E] bg-[#C8EAAE] border border-[#8FC87A] px-2 py-0.5 rounded-full">
+              <span className="material-symbols-rounded text-sm">check</span>本系統題型
+            </span>
+          </span>
+          <p className="text-sm text-[#636E72] leading-relaxed">先選答案、再選理由，四象限判定。</p>
+        </div>
+      </div>
+
+      {/* 分隔線 + 單元區塊標題 */}
+      <div className="border-t border-[#E5E7EB] mb-4" />
+      <p className="text-sm font-bold text-[#2D3436] mb-2">單元</p>
+
       {loading && <div className="text-sm text-[#636E72] py-12 text-center">載入單元中…</div>}
       {unitsError && <div className="text-sm text-[#E74C5E] py-12 text-center">載入單元失敗，請稍後再試。</div>}
 
@@ -120,7 +139,7 @@ export default function Step0Unit({ onNext }) {
       )}
 
       {!loading && !unitsError && sortedUnits.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {sortedUnits.map((unit) => {
             const ready = isReady(unit);
             const stats = statsByUnit[unit.id] ?? { nodes: 0, misconceptions: 0 };
@@ -131,7 +150,7 @@ export default function Step0Unit({ onNext }) {
                 type="button"
                 onClick={() => handleSelect(unit)}
                 aria-disabled={!ready}
-                className={`text-left rounded-[24px] border p-5 transition-all shadow-[0_2px_12px_rgba(0,0,0,0.06)] ${
+                className={`text-left rounded-2xl border px-4 py-3 transition-all shadow-[0_2px_12px_rgba(0,0,0,0.06)] ${
                   isSelected
                     ? 'border-[#8FC87A] bg-[#EEF5E6] ring-2 ring-[#8FC87A]'
                     : ready
@@ -139,7 +158,7 @@ export default function Step0Unit({ onNext }) {
                       : 'border-[#E5E7EB] bg-[#F7F8F9] opacity-80 cursor-not-allowed'
                 }`}
               >
-                <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="flex items-start justify-between gap-2 mb-1.5">
                   <h3 className={`text-base font-bold ${ready ? 'text-[#2D3436]' : 'text-[#95A5A6]'}`}>
                     {unit.name}
                   </h3>
@@ -158,7 +177,7 @@ export default function Step0Unit({ onNext }) {
                   )}
                 </div>
                 {unit.description && (
-                  <p className={`text-sm leading-relaxed mb-3 line-clamp-2 ${ready ? 'text-[#636E72]' : 'text-[#A0A6AB]'}`}>
+                  <p className={`text-sm leading-snug mb-2 line-clamp-1 ${ready ? 'text-[#636E72]' : 'text-[#A0A6AB]'}`}>
                     {unit.description}
                   </p>
                 )}

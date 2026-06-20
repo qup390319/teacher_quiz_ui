@@ -21,6 +21,7 @@ from app.schemas.quiz import (
     QuizDetail,
     QuizOptionIO,
     QuizQuestionIO,
+    QuizReasonOptionIO,
     QuizSaveRequest,
 )
 
@@ -32,6 +33,7 @@ def _to_brief(q: Quiz) -> QuizBrief:
         id=q.id,
         title=q.title,
         status=q.status,
+        mode=q.mode or "single",
         knowledge_node_ids=q.knowledge_node_ids or [],
         question_count=len(q.questions),
         is_sample=q.is_sample,
@@ -45,6 +47,7 @@ def _to_detail(q: Quiz) -> QuizDetail:
         id=q.id,
         title=q.title,
         status=q.status,
+        mode=q.mode or "single",
         knowledge_node_ids=q.knowledge_node_ids or [],
         question_count=len(q.questions),
         created_at=q.created_at.date().isoformat() if q.created_at else "",
@@ -53,10 +56,18 @@ def _to_detail(q: Quiz) -> QuizDetail:
                 id=qq.order_index,
                 stem=qq.stem,
                 knowledge_node_id=qq.knowledge_node_id,
+                mode="two-tier" if qq.reason_options else (q.mode or "single"),
                 options=[
                     QuizOptionIO(tag=opt.tag, content=opt.content, diagnosis=opt.diagnosis)
                     for opt in sorted(qq.options, key=lambda o: o.tag)
                 ],
+                reason_options=[
+                    QuizReasonOptionIO(
+                        tag=r["tag"], content=r["content"],
+                        diagnosis=r["diagnosis"], answer_tag=r.get("answerTag"),
+                    )
+                    for r in qq.reason_options
+                ] if qq.reason_options else None,
             )
             for qq in sorted(q.questions, key=lambda x: x.order_index)
         ],
@@ -119,12 +130,13 @@ async def _upsert_questions_options(
     """Smart diff: UPDATE existing questions in-place (matched by order_index),
     INSERT new ones, DELETE removed ones (only if they have no student answers).
 
-    Why not wipe-and-recreate? `student_answers.question_id` FKs to `quiz_questions.id`
-    with ON DELETE RESTRICT. Once any student has answered a question, deleting it
-    raises ForeignKeyViolationError → save 500. So we update in place and preserve
-    the existing question rows whenever possible.
+    Why match/update by order_index instead of wipe-and-recreate? Students reference
+    questions by 卷內題序 `order_index` (student_answers.question_id 存 order_index，
+    見 spec-11 §3.11)。In-place update keeps each question's order_index stable, so
+    existing answers stay correctly aligned; and we refuse to delete a question that
+    already has answers (QUESTION_HAS_ANSWERS, 409) to avoid orphaning them.
 
-    Options have no inbound FK references, so they are still wipe-and-recreate per
+    Options have no inbound references, so they are still wipe-and-recreate per
     question (simpler than diffing tag-by-tag).
     """
     # Load existing questions (already populated via lazy="selectin" on Quiz.questions
@@ -136,13 +148,20 @@ async def _upsert_questions_options(
     existing_by_order = {q.order_index: q for q in existing}
     payload_orders = {q_in.id for q_in in payload_questions}
 
-    # 1) Detect removed questions and ensure none have student answers
+    # 1) Detect removed questions and ensure none have student answers.
+    # student_answers.question_id 存的是卷內題序 order_index（非 quiz_questions PK，
+    # 且無外鍵），故以「本題組的 assignment × order_index」反查是否已有人作答。
+    # spec-11 §3.11。
     removed = [q for q in existing if q.order_index not in payload_orders]
     if removed:
-        removed_ids = [q.id for q in removed]
+        removed_orders = [q.order_index for q in removed]
         ans_res = await db.execute(
-            select(StudentAnswer.question_id)
-            .where(StudentAnswer.question_id.in_(removed_ids))
+            select(StudentAnswer.id)
+            .join(Assignment, Assignment.id == StudentAnswer.assignment_id)
+            .where(
+                Assignment.quiz_id == quiz.id,
+                StudentAnswer.question_id.in_(removed_orders),
+            )
             .limit(1),
         )
         if ans_res.scalar_one_or_none() is not None:
@@ -154,10 +173,16 @@ async def _upsert_questions_options(
 
     # 2) UPDATE existing or INSERT new for each payload question
     for q_in in payload_questions:
+        # two-tier 理由選項存成 JSONB（list[dict]）；single 題為 None。
+        reason_json = (
+            [r.model_dump(by_alias=True) for r in q_in.reason_options]
+            if q_in.reason_options else None
+        )
         existing_q = existing_by_order.get(q_in.id)
         if existing_q is not None:
             existing_q.stem = q_in.stem
             existing_q.knowledge_node_id = q_in.knowledge_node_id
+            existing_q.reason_options = reason_json
             await db.execute(
                 delete(QuizOption).where(QuizOption.question_id == existing_q.id),
             )
@@ -173,6 +198,7 @@ async def _upsert_questions_options(
                 order_index=q_in.id,
                 stem=q_in.stem,
                 knowledge_node_id=q_in.knowledge_node_id,
+                reason_options=reason_json,
             )
             db.add(qq)
             await db.flush()
@@ -201,6 +227,7 @@ async def create_quiz(
         id=quiz_id,
         title=payload.title,
         status=payload.status,
+        mode=payload.mode,
         knowledge_node_ids=payload.knowledge_node_ids,
         created_by=teacher.id,
     )
@@ -224,6 +251,7 @@ async def update_quiz(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "QUIZ_NOT_FOUND")
     quiz.title = payload.title
     quiz.status = payload.status
+    quiz.mode = payload.mode
     quiz.knowledge_node_ids = payload.knowledge_node_ids
     await _upsert_questions_options(db, quiz, payload.questions)
     await db.commit()

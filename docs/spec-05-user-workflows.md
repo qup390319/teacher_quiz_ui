@@ -60,10 +60,14 @@
 ```
 教師進入 /teacher/quiz/create
     │
-    ├─ 步驟一：選擇單元 (Step0Unit)
+    ├─ 步驟一：選擇單元與題型 (Step0Unit)
     │   ├─ 卡片列出所有「使用中」單元（含節點數 / 迷思數）
     │   ├─ 未建好的單元（沒節點或沒迷思）標「建置中」、不可點，點到時提示聯絡管理員
     │   ├─ 單選；切換單元會清空已勾節點與已編題目（先確認）
+    │   ├─ **題型選擇**（兩個 toggle 按鈕）：
+    │   │   ├─ 「單層診斷」(single)：傳統單選題，選項直接帶迷思碼（預設）
+    │   │   └─ 「雙層次診斷」(two-tier)：第一層選答案 + 第二層選理由（Treagust 1988）
+    │   ├─ 選定後存入 AppContext `editingQuizMode`，整個精靈共用此模式
     │   └─ 點擊「下一步：選擇節點」
     │
     ├─ 步驟二：選擇節點 (Step1Nodes)
@@ -116,30 +120,45 @@
 
 ### 1.3 派題流程 (Assignment)
 
+> 2026-06-20 重構：主清單從「題組×班級矩陣」改為「**題組摘要卡 + 管理派發抽屜**」。
+> 主清單只放每份題組的派發摘要（不逐班列出），逐班派發/管理收進右側抽屜，
+> 因應班級數量多時矩陣會橫向爆走。詳見 spec-02 §2.6。
+
 ```
 教師進入 /teacher/assignments
     │
-    ├─ 以矩陣/網格 UI 呈現（題組為列 × 班級為欄）
-    │   ├─ 每格顯示：完成率%、submittedCount/totalStudents、截止日期
-    │   ├─ 已派發格子依完成率顯示不同顏色：
-    │   │   ├─ 100% → 綠色 (#C8EAAE)，狀態文字「已完成」
-    │   │   ├─ 1~99% → 黃色 (#FCF0C2)，狀態文字「進行中」
-    │   │   └─ 0% → 淺綠 (#EEF5E6)，狀態文字「待作答」
-    │   └─ 未派發格子顯示虛線框 + 「派發」按鈕
+    ├─ 全頁概覽列（OverviewBar）：題組數 / 班級數 / 派發數 / 進行中 / 已完成 / 待作答
     │
-    ├─ 點擊未派發格子 → AssignPopover（小型 popover）
-    │   ├─ 設定截止日期
-    │   ├─ 選擇派發模式（toggle 按鈕）：
-    │   │   ├─ 「診斷模式」— 首次診斷學生是否持有迷思概念（預設）
-    │   │   └─ 「複習模式」— 已完成診斷後的再次練習
-    │   ├─ 確認派發 → addAssignment({ targetType:'class', studentIds:[], dispatchMode, ... })
-    │   └─ 自動生成 ID: assign-{timestamp}
+    ├─ 題組排序下拉（預設 / 名稱 / 已派班數 / 建立時間）
     │
-    └─ 點擊已派發格子 → ManagePopover
-        ├─ 可修改截止日期 → updateAssignment()
-        ├─ 可查看診斷報告（若有作答資料）
-        └─ 可取消派題 → removeAssignment()
+    ├─ 主清單：每份 published 題組一張「題組摘要卡」(QuizSummaryCard)
+    │   ├─ 題組名稱（two-tier 題組加「雙層次」藍標）+ 題數 · 節點數
+    │   ├─ 堆疊進度條（完成綠 / 作答中黃 / 待作答淺 / 未派空白）
+    │   ├─ 「已派 X/Y 班 · 平均 ○○%」+ 未派 / 待作答 / 作答中 / 完成 小計
+    │   └─ 「管理派發」按鈕 → 設定 activeQuizId，開啟右側抽屜
+    │
+    └─ 點「管理派發」→ 右側滑出抽屜 (AssignmentDrawer，管理「此題組 × 所有班級」)
+        ├─ 截止日（選填，套用到下方派發；批次與單筆共用）
+        ├─ 搜尋班級框 + 狀態篩選鈕（全部 / 未派發 / 作答中 / 已完成，各帶即時數量）
+        │
+        ├─ 未派發班級：勾選 +「全選未派發」→「批次派發」
+        │   └─ onBatchAssign([classIds], dueDate) → 對每班 addAssignment
+        │
+        └─ 班級列表（可捲動，依搜尋/篩選）
+            ├─ 未派發列：checkbox + 班色點 + 班名/人數 + 「派發」鈕
+            │   └─ onAssign(classId, dueDate) → addAssignment({ type:'diagnosis',
+            │       targetType:'class', studentIds:[], status:'active', ... })
+            └─ 已派發列：班名 + 狀態 badge（已完成綠 / 進行中黃 / 待作答淺）
+                + 進度條 + submittedCount/totalStudents（%）+ 截止日
+                └─ 點擊展開：
+                    ├─ 改截止日 →「儲存」→ updateAssignment()
+                    ├─ 「查看診斷報告」（completionRate > 0 才可點）
+                    │   → 設 currentClassId/currentQuizId 後導向 /teacher/dashboard
+                    └─ 「取消派發」→ 二次確認 → removeAssignment()
 ```
+
+> **派題模式（診斷/複習）**：後端尚未支援 `dispatch_mode`，現行抽屜固定以 `type:'diagnosis'` 派發，
+> 模式選擇 UI 暫不提供（待後端補上 `dispatch_mode` 再接）。
 
 ### 1.4 診斷結果查看流程
 
@@ -176,8 +195,9 @@
             ├─ 4 個指標卡（參與學生 / 完成率 / 平均掌握率 / 最高風險迷思）
             ├─ 班級 AI 診斷摘要 + 本週行動清單
             ├─ 各概念掌握程度長條圖
+            ├─ **[two-tier 題組專屬] QuadrantSummary**：四象限分佈矩陣（TT/TF/FT/FF 各人次與百分比），呈現全班「真理解 vs. 假陽性 vs. 假陰性 vs. 真迷思」分佈；僅在 `quiz.mode === 'two-tier'` 時顯示
             ├─ 迷思概念分佈（可展開學生名單）
-            └─ 題目明細矩陣（每題 A/B/C/D 選答分佈 + 對應迷思）
+            └─ 題目明細矩陣（每題 A/B/C/D 選答分佈 + 對應迷思；two-tier 另顯示理由層甲/乙/丙分佈）
 ```
 
 **URL query 規則**:
@@ -321,10 +341,23 @@
     │   ├─ Phase: question（第一階段：逐題作答，無即時對錯回饋）
     │   │   ├─ SystemBubble 顯示知識節點名稱 + 題號
     │   │   ├─ SystemBubble 顯示題幹
-    │   │   ├─ 學生選擇選項（底部面板顯示 4 個選項按鈕）
-    │   │   ├─ StudentBubble 顯示學生選擇的選項內容
-    │   │   ├─ 呼叫 recordAnswer(q.id, opt.tag, opt.diagnosis)
-    │   │   ├─ **不顯示對錯回饋**，直接進入下一題
+    │   │   │
+    │   │   ├─ [single 模式] 學生選擇選項（OptionsPanel：A/B/C/D 四個按鈕）
+    │   │   │   ├─ StudentBubble 顯示學生選擇的選項內容
+    │   │   │   ├─ 呼叫 recordAnswer(q.id, opt.tag, opt.diagnosis, null, null)
+    │   │   │   └─ 直接進入下一題（無對錯回饋）
+    │   │   │
+    │   │   ├─ [two-tier 模式] 雙層作答子流程
+    │   │   │   ├─ 子階段 1：選答案（OptionsPanel：A/B/C 三個按鈕）
+    │   │   │   │   ├─ StudentBubble 顯示「你選了：{選項內容}」
+    │   │   │   │   └─ 暫存 selectedAnswerTag，進入子階段 2
+    │   │   │   ├─ 子階段 2：選理由（ReasonOptionsPanel：甲/乙/丙 藍系按鈕）
+    │   │   │   │   ├─ SystemBubble 詢問「你選這個答案，是因為...？」
+    │   │   │   │   ├─ StudentBubble 顯示「我覺得：{理由內容}」
+    │   │   │   │   ├─ 計算四象限：answerCorrect × reasonCorrect → TT/TF/FT/FF
+    │   │   │   │   └─ 呼叫 recordAnswer(q.id, selectedAnswerTag, reasonTag, diagnosis, quadrant)
+    │   │   │   └─ 進入下一題（無對錯回饋）
+    │   │   │
     │   │   └─ 最後一題完成後 → 進入 followUp phase
     │   │
     │   ├─ Phase: followUp（第二階段：AI POE 追問 + 成因追溯）
@@ -346,7 +379,7 @@
     │   │   │   │   - 語音輸入 → 點麥克風按鈕（Web Speech API, zh-TW），辨識文字 append 到 textarea，再按送出
     │   │   │   ├─ LLM 模式四階段對話結構（POE + 蘇格拉底）：
     │   │   │   │   - belief（信念探索，1~3 輪）：用比較題挖出學生真正相信什麼
-    │   │   │   │   - challenge（認知挑戰，1~2 輪）：丟變體實驗（POE Observe），測試一致性
+    │   │   │   │   - challenge（認知挑戰，第 2 輪）：丟變體實驗請學生預測（POE 的 Predict），測試一致性
     │   │   │   │   - cause（成因追溯，1~2 輪）：場景喚起 / 類比探測 / 詞彙確認 / 來源歸因 / 信心度
     │   │   │   │   - final（收尾）：輸出 finalDiagnosis JSON
     │   │   │   ├─ Rule-based fallback 策略（沿用既有）：
@@ -367,27 +400,77 @@
     │       └─ 自動導航至 /student/report（延遲 1800ms）
     │
     └─ 進入 /student/report (StudentReport)
-        ├─ 顯示掌握 / 待更新概念數
-        ├─ 列出被確認的迷思概念
-        │   ├─ 迷思標籤 (label)
-        │   ├─ 學生端說明 (studentDetail)
-        │   ├─ **「你在對話中提到」引用**（取自 followUpResults.conversationLog 的第一則學生回覆）
-        │   └─ 學習提示 (studentHint)
+        ├─ **quiz 解析**：請求 quizId＝in-memory 快照 > 網址 `?quizId=` > 全域 `currentQuizId` > 預設 `'quiz-001'`；
+        │   **若該生 history 找不到請求的 quiz，退回其最近一次有資料的紀錄（history 依時間 desc，取 `[0]`），題目/標題以 backendRow 為準**——避免 currentQuizId/網址指到該生沒做過的 quiz 時，明明有資料卻顯示「尚無作答資料」。僅 history 為空（從未作答）才顯示「尚無作答資料」。
+        ├─ 統計卡：左「答對題數（已掌握的概念）」/ 右「答錯題數（迷思概念（錯誤的概念））」——以**題數**語意呈現，直接回答學生「我對幾題錯幾題」；「迷思概念」研究正式用詞保留
+        ├─ **「每一題的結果」（單欄、逐題依序全展開，不分欄、不摺疊）**：每題一張卡、由上而下依題號排列，國小生照順序往下讀即可——**不需點擊展開**（曾試過兩欄＝一次資訊太多、accordion＝點太多次，皆退回此版）。答錯用 `MisconceptionCard`，資訊順序＝題目脈絡 → **核心對比「你目前的想法」(粉) ↔「科學上是這樣的」(藍)**（橫式平板 `lg:grid-cols-2` 並排，一眼看出落差；正確答案緊鄰你的想法，不再被成因擋住）→ 可能的原因/下一步 → 給你的話。答對用 `QuestionResultCard`。資料來源 `buildQuestionResults`（reportData.js，以 nodeId 對題）：in-memory 走 answerSource、歷史走 backendRow.questionResults；同題多筆只取最新。容器單欄 `max-w-3xl`，橫式（習慣閱讀尺寸 1180×820）放寬到 `lg:max-w-5xl` 以善用寬度
+        ├─ 列出被確認的迷思概念（MisconceptionCard）
+        │   ├─ 迷思標籤 (label) + 學生端說明 (studentDetail)
+        │   │   └─ **低信心委婉呈現**：當該題 reasoningQuality === 'GUESSING'（AI 資訊不足硬給判斷）時，
+        │   │       粉框標題由「你目前的想法」改為「你這題可能有的想法」、label 前加「可能是」（純文案，不改判定資料）
+        │   ├─ 可能的原因（成因標籤 + studentMeaning + 「下一步可以這樣做」行動框；見 §3 報告顯示）
+        │   ├─ 錯誤類別徽章（errorType；**為 null 時不渲染**，不再顯示灰「未分類」）
+        │   │   └─ **可點擊**（平板友善、不靠 hover）：點擊跳出 `ErrorTypeInfoModal` 白話解釋彈窗
+        │   │       （ERROR_TYPE_STUDENT_EXPLAIN）；正確說法/建議/原理仍直接顯示在卡片上、不放彈窗
+        │   ├─ **錯誤類型差異化回饋**：右側藍框標題/圖示隨 errorType 取自 ERROR_TYPE_FEEDBACK，
+        │   │   並在正確說法（studentHint）後追加該類型專屬提醒（guidance）；errorType 為 null 時沿用「科學上是這樣的」
+        │   ├─ DOWNGRADED 情境標記（作答時選對、深談後確認迷思 → 一句誠實但不打擊的提醒）
+        │   ├─ **「這不是我的想法，重新問我這一題」按鈕**（誤判補救）→ 導向單題重做迴圈（見下方）
+        │   ├─ **「你在對話中提到」引用**（取最具診斷性的回覆：優先 diagnosis.misconceptionSource，
+        │   │   否則濾掉模糊/亂答/模稜兩可空話取最有內容者；**挑不到就不顯示**，寧缺勿濫）
+        │   ├─ 學習提示 (studentHint)＝「科學上是這樣的」
+        │   └─ **「給你的話」(aiSummary)**：追問針對該題的個人化回饋，連結「你的想法」與「科學解釋」。
+        │       **過品質閘才顯示**——含節點/迷思代碼或第三人稱「學生…」旁白的舊摘要不顯示，
+        │       改由「可能的原因 → 下一步」承擔回饋（isStudentFacingSummary）
+        │   ※ errorType / 引用 / aiSummary / statusChange 四者：剛做完那次走 in-memory 快照；
+        │     歷史檢視（重新登入/重整）則 fall back 後端 history 的
+        │     errorTypeByMisconception / quoteByMisconception / aiSummaryByMisconception /
+        │     statusChangeByMisconception，故還原資料／歷史報告同樣能完整呈現新版卡片
         ├─ **「答對了，但可以更深入理解」黃色區塊**（reasoningQuality 為 WEAK / GUESSING 的題目）
-        ├─ 下一步的指引
+        ├─ 下一步的指引（補救節點由**實際答錯節點 + 其 prerequisites** 推導；有前置需打底時 banner 帶出真實前置節點名）
         └─ 返回首頁按鈕
 ```
 
+#### 2.1.1 單題重做迴圈（誤判補救「重新問這一題」）
+
+學生看報告時若覺得某張答錯迷思卡「這不是我的想法」，可在卡片底按「這不是我的想法，重新問我這一題」**只重做該題**（選擇題 + 追問），結束後新結果**併回現有報告**。這是「重做該題」而非申訴記錄——讓被誤判的學生有機會表達真正的想法，不另存申訴資料。
+
+```
+StudentReport 答錯迷思卡 → 按「重新問我這一題」
+  └─ handleDispute(questionId) → navigate(/student/quiz/{quizId}?retry={questionId})
+       └─ StudentQuiz 進入「單題重做模式」（讀網址參數 ?retry=questionId）
+            ├─ 只跑該題（過濾 sortedQuestions，僅留 id === retryQuestionId）
+            ├─ 跳過開場 intro
+            ├─ 保留現有報告（不清空 activeStudentReport）
+            └─ 收尾走 finishRetry（不建立新報告、不 addToHistory）
+                 ├─ 取該題新作答 + 追問結果
+                 ├─ mergeRetryIntoReport(questionId, { answer, followUpResult })
+                 │    （替換 activeStudentReport 中同題的 answer 與 followUpResult，
+                 │     重算 correctCount 與 misconceptions；報告為空時不動）
+                 └─ 導回 /student/report
+```
+
+- **後端零改動**：沿用既有逐題 upsert 的 `saveAnswer` / `saveFollowup`（spec-09 / spec-11 既有端點），不新增欄位或端點。重做的資料逐題存進 DB，從歷史頁進來（`activeStudentReport` 為空）時由後端來源呈現。
+- 相關函式：`AppContext.mergeRetryIntoReport`（spec-04 §1.3）、`StudentQuiz.finishRetry`、`StudentReport.handleDispute`。
+
 ### 2.2 迷思概念診斷機制
 
-診斷流程為兩層次制：
+診斷流程依題組 `mode` 分為 **single（傳統單層）** 與 **two-tier（雙層次，Treagust 1988）** 兩種，兩者並存靠 `mode` 旗標分流，之後皆接同一套批次 AI 蘇格拉底追問：
 
-**第一層：作答自動診斷（question phase 中）**
+**single 模式 — 第一層：作答自動診斷（question phase 中）**
 - 每題作答時，根據選項的 `diagnosis` 欄位即時記錄：
   - `'CORRECT'` → 記錄為正確
   - 迷思概念 ID（如 `'M02-1'`）→ 記錄為該迷思概念
 - 此階段**不給予任何對錯回饋**，學生不知道自己答對或答錯
 - 所有題目作答完成後，才進入第二層
+
+**two-tier 模式 — 第一層：雙層作答（question phase 中）**
+- 每題分兩個子步驟：① 選答案（A/B/C）→ ② 選理由（甲/乙/丙）
+- 系統依「答案對錯 × 理由對錯」計算**四象限**（`TT / TF / FT / FF`，詳見 spec-04 §2.1）
+- 迷思碼取自錯誤理由（TF/FF 帶 M-code；TT/FT 為 CORRECT）
+- 節點通過＝ `TT`；此階段**不給任何對錯回饋**
+- 作答結果除含 `selectedTag / diagnosis` 外，另多帶 `reasonTag / quadrant`
+- 所有題目完成後，進入同一套 AI 追問（followUp phase）
 
 **持久化策略（資料保全）**
 - 由 `useQuizPersistence(assignmentId)` 統一管理（前端 `src/hooks/useQuizPersistence.js`）。
@@ -401,16 +484,17 @@
   - **LLM 模式**（12 個官方節點）：呼叫 `runFollowUpTurnLlm` → `/api/llm/chat`
   - **Rule-based fallback**（自訂迷思 / LLM 失敗）：原 3 輪 keyword/regex 啟發式
 - **對所有題目進行追問**（不論答對答錯）
+- **答案分類分流（先引導再判斷，spec-09 §12.4b）**：第 1 輪 belief 先把學生回答分為 解釋型/定義型/觀察型（即 `errorType` 三類，不另立欄位）。解釋型 → 照常深入追問；定義型/觀察型 → 先用**一次錨定式 why** 引導向因果，引出因果才接 cause→final、引不出即溫和收尾。第 1 輪所判型態即為收尾的 `errorType`。
 - LLM 模式對話結構（POE + 蘇格拉底，硬上限 4 輪／題，務必快速收斂）：
-  - **belief**（信念探索，第 1 輪）：以開放式開場（`buildRound1Message`）讓學生說出自己的推理（學生若完全答不出可再留 1 輪）
-  - **challenge**（認知挑戰，第 2 輪）：丟一個變體實驗（POE Observe）測試信念一致性
+  - **belief**（信念探索，第 1 輪）：以開放式開場（`buildRound1Message`）讓學生說出自己的推理（學生若完全答不出可再留 1 輪）；並把回答分為三類作為分流依據
+  - **challenge**（認知挑戰，第 2 輪）：丟一個變體實驗、請學生**預測**結果（POE 的 **Predict**——以預測與原信念的落差製造認知衝突；本系統純文字、無實體演示，僅取 POE 預測環節，不含真實 Observe / Explain）
   - **cause**（成因追溯，第 3 輪）：**必經階段**——final 前至少問 1 次成因探測（場景喚起 / 類比探測 / 詞彙確認 / 來源歸因 / 信心度），這是教師分析的核心
-  - **final**（收尾，第 4 輪為最遲）：輸出 finalDiagnosis JSON；若第 3 輪已能判定可提早。**causeIds 必填**（迷思/不確定時至少 1 個，資訊不足也要做最佳推測）
+  - **final**（收尾，第 4 輪為最遲）：輸出 finalDiagnosis JSON；若第 3 輪已能判定可提早。**進 final 硬前提**：除非第 4 輪或觸發逃生例外（已展現正確理解／明確 2 次要結束／連 2 次說不出來），否則「未引出學生一次完整自述」前不得進 final。**causeIds 必填**（迷思/不確定時至少 1 個，資訊不足也要做最佳推測）
 - 國小生短答友善設計（spec-09 §followup）——**手段是鷹架，終極目標是診斷學生真正的科學概念**：
   - **Chip 快速回覆**：LLM 在每輪附 2~4 個選項（chips 欄位），前端渲染為按鈕，學生點擊即送
   - **承擔語言展開**：bot 把學生的單詞翻譯成完整假設讓學生點頭/搖頭，學生不用組句
-  - **漸進釋放（scaffold-and-fade）**：chips/二選一是起手鷹架，當學生暖機、給出有內容的短句後，AI 應撤掉鷹架、邀請他用自己的話「再多講一點」（錨定其說過的詞，非抽象 why）；全程至少引出一次學生自己的完整想法——那是最有診斷價值的線索
-  - **禁止抽象 why 提問**：改用具體場景比較題
+  - **漸進釋放（scaffold-and-fade）**：chips/二選一是起手鷹架，當學生暖機、給出有內容的短句後，AI 應撤掉鷹架、邀請他用自己的話「再多講一點」；**全程必須至少引出一次學生自己的完整想法（為進 final 之硬前提）**——那是最有診斷價值的線索
+  - **分級提問（why 的條件解禁）**：學生只給單詞/「不知道」→ 維持具體場景二選一、**禁任何 why**；學生已給出有內容短句 → 可用**一次「錨定式 why」**（錨定其說過的詞/情境，例「你說『太燙會壞掉』，怎麼會這樣想呢？」），且 **cause 階段已給長句時優先用此「推理歸因」招式取代場景二選一**；**仍嚴禁抽象、懸空的「你為什麼這樣覺得」**
   - **每輪附「不知道」逃生口**
 - LLM 直接輸出結構化結果（每輪）：
   - `{ phase, round, assistantMessage, chips, feedback, finalDiagnosis }`
@@ -447,8 +531,12 @@
 - 成因 ID 以 `C{1-8}` 標記，存儲於 `followup_results.cause_ids`（JSONB array，最多 2 個）
 - **LLM 不可用時的降級**：若呼叫失敗，系統不阻擋流程（不拋錯），`cause_ids` 為空陣列 `[]`；前端會延後顯示成因徽章或不顯示
 - **報告顯示**：
-  - StudentReport（學生完成後看到的報告頁）：確認迷思旁顯示成因徽章 / tag（如「日常經驗泛化」）
-  - StudentDiagnosisReport（教師檢視的學生報告）：同樣顯示成因徽章，幫助教師設計針對性教學
+  - StudentReport（學生完成後看到的報告頁）：確認迷思的「可能的原因」區塊不只顯示成因標籤，還附：
+    ① 一句理由副標（向孩子說明「知道為什麼會這樣想，下次就能改進」，避免被當成指責）；
+    ② 每個成因的兒童語意義 `studentMeaning`（第二人稱、不指責）；
+    ③ 綠色「下一步可以這樣做」框，彙整各成因的 `studentTip` 行動建議——把成因從冷標籤變成有回饋的學習引導。
+    成因文案見 `src/data/misconceptionCauses.js` 的 `studentMeaning` / `studentTip`。
+  - StudentDiagnosisReport（教師檢視的學生報告）：僅顯示成因標籤（`name`），幫助教師設計針對性教學
 
 ---
 

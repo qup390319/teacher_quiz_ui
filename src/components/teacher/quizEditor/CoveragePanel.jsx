@@ -1,4 +1,5 @@
 import { getNodeColor } from '../../../constants/theme';
+import { getCoveredMisconceptionIds } from '../../../data/twoTier';
 
 export default function CoveragePanel({ nodes = [], questions, selectedNodeIds, nodeQuestionCounts = {}, onAddForMisconception }) {
   const nodeCoverage = nodes
@@ -7,9 +8,8 @@ export default function CoveragePanel({ nodes = [], questions, selectedNodeIds, 
       const nodeQuestions = questions.filter((q) => q.knowledgeNodeId === node.id);
       const coveredMisconceptionIds = new Set();
       nodeQuestions.forEach((q) => {
-        q.options.forEach((o) => {
-          if (o.diagnosis !== 'CORRECT') coveredMisconceptionIds.add(o.diagnosis);
-        });
+        // 迷思住在 single 的答案層 / two-tier 的理由層；用共用 helper 取，避免 q.options 為空崩潰。
+        getCoveredMisconceptionIds(q).forEach((id) => coveredMisconceptionIds.add(id));
       });
       const uncovered = node.misconceptions.filter((m) => !coveredMisconceptionIds.has(m.id));
       return {

@@ -72,6 +72,8 @@ export function useQuizPersistence(assignmentId) {
           assignmentId,
           questionId: answer.questionId,
           selectedTag: answer.selectedTag,
+          reasonTag: answer.reasonTag ?? null,
+          quadrant: answer.quadrant ?? null,
           diagnosis: answer.diagnosis,
         }]));
         const row = (inserted ?? [])[0];
@@ -117,6 +119,8 @@ export function useQuizPersistence(assignmentId) {
           assignmentId,
           questionId: a.questionId,
           selectedTag: a.selectedTag,
+          reasonTag: a.reasonTag ?? null,
+          quadrant: a.quadrant ?? null,
           diagnosis: a.diagnosis,
         })),
       ));

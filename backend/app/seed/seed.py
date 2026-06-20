@@ -168,6 +168,8 @@ async def seed_quizzes(db: AsyncSession) -> int:
             id=q["id"],
             title=q["title"],
             status=q.get("status", "draft"),
+            mode=q.get("mode", "single"),
+            is_sample=q.get("isSample", False),
             knowledge_node_ids=q.get("knowledgeNodeIds", []),
             created_by=TEACHER_ACCOUNT,
         ))
@@ -178,6 +180,8 @@ async def seed_quizzes(db: AsyncSession) -> int:
                 order_index=question["id"],
                 stem=question["stem"],
                 knowledge_node_id=question["knowledgeNodeId"],
+                # two-tier 第二層理由選項（JSONB）；single 題無此欄。
+                reason_options=question.get("reasonOptions"),
             )
             db.add(qq)
             await db.flush()

@@ -319,12 +319,15 @@
 
 **子元件**:
 
-#### Step 1: Step0Unit（選擇單元）
+#### Step 1: Step0Unit（選擇單元與題型）
 **檔案**: `src/pages/teacher/quiz/Step0Unit.jsx`
 - 以卡片列出所有「使用中」**教學單元**（`useUnits({ type: 'unit' })`，排除 `type='subtheme'` 次主題），每張顯示單元名稱、簡介、節點數 / 迷思數（用 `nodesForUnit` 依各單元大節點統計）
 - **未建好的單元**（沒節點或沒迷思）標灰色「建置中」徽章、不可點選；點到時顯示提示請聯絡管理員
 - **單選**（一份題組只綁一個單元）；切換單元會清空已勾節點與已編題目（先跳確認）
 - 選定後寫入 `selectedUnitId`（AppContext）
+- **題型選擇**（兩個 toggle 按鈕，選定後寫入 `editingQuizMode`）：
+  - 「單層診斷」(`single`)：傳統單選題，選項直接帶迷思碼（預設）
+  - 「雙層次診斷」(`two-tier`)：第一層選答案 + 第二層選理由，對應 Treagust（1988）兩層次評量設計
 
 #### Step 2: Step1Nodes（選擇節點）
 **檔案**: `src/pages/teacher/quiz/Step1Nodes.jsx`
@@ -350,7 +353,7 @@
   - 「儲存草稿」按鈕：以 `status: 'draft'` 立即上傳；首次儲存後將回傳的 quiz id 寫入 `editingQuizId`，後續儲存改走 PUT
   - 自動暫存：30 秒 debounce，依賴 `quizTitle / quizQuestions / selectedNodeIds / nodeQuestionCounts`；底部 status pill 顯示「已自動儲存於 HH:mm」
   - 編輯既有 `published` 卷時自動暫存停用，避免降級為草稿（顯示「此卷已發布，自動暫存停用」）
-- 「儲存並發布」按鈕：以 `status: 'published'` 儲存後跳回 `/teacher/quizzes`，並清空 `editingQuizId`
+- 「儲存並發布」按鈕：先做**發布前整卷檢查**（逐題跑 `validateQuestion()`，見 spec-03 §8）——若有題目不符雙層次方法論（題幹/選項留白、第一層非恰一正解、第二層非恰一正確理由、錯誤理由迷思重複），跳出 `PublishValidationModal` 列出「第 N 題：問題」並擋下發布；全部通過才以 `status: 'published'` 儲存、跳回 `/teacher/quizzes` 並清空 `editingQuizId`
 
 **子元件**（皆位於 `src/components/teacher/quizEditor/`）:
 - `EditQuestionModal` — 單題編輯 modal，整合 N6 干擾選項建議
@@ -359,7 +362,7 @@
 - `CoveragePanel` — 涵蓋率 + 補洞 chips
 - `QuestionImportDrawer` — 題庫挑題抽屜
 
-**狀態依賴**: `selectedNodeIds`, `setSelectedNodeIds`, `quizQuestions`, `setQuizQuestions`, `nodeQuestionCounts`, `setNodeQuestionCounts`, `editingQuizId`, `setEditingQuizId`, `editingQuizStatus`, `setEditingQuizStatus`, `useSaveQuiz`
+**狀態依賴**: `selectedNodeIds`, `setSelectedNodeIds`, `quizQuestions`, `setQuizQuestions`, `nodeQuestionCounts`, `setNodeQuestionCounts`, `editingQuizId`, `setEditingQuizId`, `editingQuizStatus`, `setEditingQuizStatus`, `editingQuizMode`, `useSaveQuiz`
 
 ---
 
@@ -392,33 +395,33 @@
 - 檢視已派題記錄及完成狀態
 - 可刪除或更新派題
 
-**設計（2026-05-28 重構，從矩陣改為雙視角卡片列表）**:
+**設計（2026-06-20 重構，從矩陣改為「題組摘要卡 + 管理派發抽屜」）**:
 
-> **歷史**：原為 N×M 矩陣（題組為列、班級為欄），在 10+ 個班級或多份題組時水平/垂直滾動爆炸、認知負擔過高。新設計以**雙視角卡片**取代，兩個視角都是垂直列表，自然支援大量班級或題組。
+> **理由**：原為 N×M 矩陣（題組為列、班級為欄），班級一多就水平爆走、狀態格擠到看不清。新設計把「逐班」這個會隨班級數爆炸的維度收進可搜尋/篩選/批次的右側抽屜，主清單只放每題組的派發摘要——**題組多往下捲、班級多在抽屜搜尋**，兩個維度都不撐爆。
 
 #### 結構（由上到下）
 1. **頁首**：`派題管理` h1 + 操作導覽鈕 + 副說明
 2. **全頁概覽列 `OverviewBar`**：題組總數、班級數、進行中筆數、已完成筆數、總派發紀錄數
-3. **視角切換 `ViewTabs`**（題組視角 / 班級視角，預設題組視角，存 `localStorage.scilens.assignmentViewMode`）+ 右側排序選單
-4. **內容區**：依當前視角渲染 `QuizCardView` 或 `ClassCardView`
+3. **排序選單**：名稱 / 已派班數 / 建立時間
+4. **題組摘要卡清單**：每份已發佈題組一張 `QuizSummaryCard`
 
-#### 題組視角 `QuizCardView`
-每份已發佈題組一張卡：
-- **Header**：`已發佈` badge、題組標題、`X 題 · Y 個知識節點`、右側 summary（已派 M/N 班、整體完成率 Z%）
-- **已派發班級列表**：每列班色點 + 班名 + 完成率進度條 + `X/Y 人完成` + 截止日 + `⋮` 管理鈕（開啟 `ManagePopover`）
-- **派發給其他班級 pill 群**：未派發班級以虛線 pill 呈現，點 pill 開啟 `AssignPopover` 派發
-- 空狀態（尚未派任何班）：顯示 info 提示 + pill 引導
+#### 題組摘要卡 `QuizSummaryCard`（`assignment/QuizSummaryCard.jsx`）
+- **Header**：題組標題 +（two-tier 時）`雙層次` badge + `X 題 · Y 節點` + 右側「管理派發」鈕
+- **堆疊進度條**：完成（綠）/ 作答中（黃）/ 待作答（淺）三段，依各班 `completionRate` 統計；右側「已派 M/N 班 · 平均 Z%」
+- **小計**：未派 / 待作答 / 作答中 / 完成 四色點計數
+- 統計來源：`assignmentStats.getQuizCardStats(quiz, classes, assignments)`（以 `completionRate` 判定）
 
-#### 班級視角 `ClassCardView`
-每個班級一張卡：
-- **Header**：班色點 + 班名 + N 人 + 右側 summary（已派 N/M 份題組、進行中/已完成筆數）
-- **已派題組列表**：每列題組標題 + meta + 完成率進度條 + 截止日 + `⋮` 管理鈕
-- **派發其他題組 pill 群**：未派題組以虛線 pill 呈現，點 pill 開啟 `AssignPopover` 派發
+#### 管理派發抽屜 `AssignmentDrawer`（`assignment/AssignmentDrawer.jsx`）
+點某卡「管理派發」開啟右側 slide-over（ESC / 點遮罩關閉），管理「單一題組對所有班級」的派發：
+- **派發設定**（批次與單筆共用）：截止日（**必填**，套用到下方派發）。後端 `assignments.due_date` 為 `NOT NULL`，故截止日為空時以「必填」星號 + 琥珀提示「請先填寫截止日，才能派發」標示，並**禁用**批次派發與逐班派發鈕，在送出前就攔下避免 422
+- **搜尋班級**：依班名即時過濾
+- **狀態篩選 tab**：全部 / 未派發 / 作答中 / 已完成（各帶即時數量）
+- **全選未派發 + 批次派發**：勾選後一次派給多班（`onBatchAssign` → 對每班 `addAssignment`）
+- **班級列表**（可捲動）：
+  - 未派發列：checkbox + 班色點 + 班名/人數 + 「派發」鈕（套用上方派發設定）
+  - 已派發列：班名 + 狀態 badge + 進度條 + `X/Y 人（Z%）` + 截止日；點擊展開管理（改截止日 / 查看診斷報告 / 取消派發）
 
-#### 共用元件複用
-- `AssignmentMatrixParts.jsx` 內的 `AssignPopover` / `ManagePopover` 不變（採 `position: fixed` + bounding rect 定位）
-- `AssignPopover` 含**派發模式選擇器**：toggle「診斷模式 / 複習模式」；`onConfirm(dueDate, dispatchMode)`
-- 兩個視角的 popover 都靠 trigger element 的 parent `<div className="relative">` + `querySelector('button')` 自動定位
+> **註**：原舊版 popover 的「派題模式（診斷/複習）」toggle 已移除——後端從未支援 `dispatch_mode`、兩模式行為完全相同，屬無作用的 placeholder UI（2026-06-20）。日後若後端接上 `dispatch_mode` 再行加回。
 
 #### 排序選項
 - 預設順序
@@ -430,7 +433,7 @@
 - ~~派題矩陣 N×M table~~（廢棄）
 - ~~圖例列（未派發／待作答／進行中／已完成）~~（廢棄，進度條本身用顏色傳達狀態）
 
-**狀態依賴**: `assignments`, `addAssignment`, `updateAssignment`, `removeAssignment`, `quizzes`, `classes`, `viewMode (localStorage)`
+**狀態依賴**: `assignments`, `addAssignment`, `updateAssignment`, `removeAssignment`, `quizzes`, `classes`, `activeQuizId (抽屜開關)`, `sortBy`
 
 ---
 

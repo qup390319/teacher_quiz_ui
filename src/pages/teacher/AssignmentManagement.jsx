@@ -15,7 +15,8 @@ import { useToast } from '../../context/ToastContext';
 import { Icon } from '../../components/ui/woodKit';
 
 import OverviewBar from './assignment/OverviewBar';
-import MatrixView from './assignment/MatrixView';
+import QuizSummaryCard from './assignment/QuizSummaryCard';
+import AssignmentDrawer from './assignment/AssignmentDrawer';
 import { getGlobalSummary } from './assignment/assignmentStats';
 
 // ─── 主頁面 ───────────────────────────────────────────────────────────────────
@@ -31,8 +32,8 @@ export default function AssignmentManagement() {
   const updateAssignmentMut = useUpdateAssignment();
   const removeAssignmentMut = useRemoveAssignment();
 
-  const [popover, setPopover] = useState(null);
-  const [managePopover, setManagePopover] = useState(null);
+  // 開啟「管理派發」抽屜的題組 id（null = 未開）
+  const [activeQuizId, setActiveQuizId] = useState(null);
   const [sortBy, setSortBy] = useState('default');
 
   /* published 診斷題組 */
@@ -57,27 +58,41 @@ export default function AssignmentManagement() {
 
 
   // ── Assignment 操作 ──────────────────────────────────────────────────────
-  // eslint-disable-next-line no-unused-vars -- mode will be used when backend supports dispatch_mode
-  const handleConfirmDiagnosis = async (quizId, classId, dueDate, _mode) => {
+  const assignOne = (quizId, classId, dueDate) => addAssignmentMut.mutateAsync({
+    type: 'diagnosis',
+    quizId,
+    classId,
+    targetType: 'class',
+    studentIds: [],
+    dueDate: dueDate || null,
+    status: 'active',
+  });
+
+  const handleAssign = async (quizId, classId, dueDate) => {
     if (!dueDate) {
-      toast.error('請選擇截止日期');
+      toast.error('請先填寫截止日，才能派發');
       return;
     }
     try {
-      await addAssignmentMut.mutateAsync({
-        type: 'diagnosis',
-        quizId,
-        classId,
-        targetType: 'class',
-        studentIds: [],
-        dueDate,
-        status: 'active',
-      });
-      setPopover(null);
-      toast.success('題組已成功派發給班級！');
+      await assignOne(quizId, classId, dueDate);
+      toast.success('已派發');
     } catch (err) {
       console.error('[AssignmentManagement] add failed', err);
       toast.error('派發失敗：' + (err?.message ?? '未知錯誤'));
+    }
+  };
+
+  const handleBatchAssign = async (quizId, classIds, dueDate) => {
+    if (!dueDate) {
+      toast.error('請先填寫截止日，才能派發');
+      return;
+    }
+    try {
+      await Promise.all(classIds.map((cid) => assignOne(quizId, cid, dueDate)));
+      toast.success(`已派發給 ${classIds.length} 班`);
+    } catch (err) {
+      console.error('[AssignmentManagement] batch add failed', err);
+      toast.error('批次派發失敗：' + (err?.message ?? '未知錯誤'));
     }
   };
 
@@ -90,6 +105,7 @@ export default function AssignmentManagement() {
   const handleUpdateDueDate = async (assignmentId, dueDate) => {
     try {
       await updateAssignmentMut.mutateAsync({ id: assignmentId, dueDate });
+      toast.success('截止日已更新');
     } catch (err) {
       toast.error('更新失敗：' + (err?.message ?? '未知錯誤'));
     }
@@ -98,25 +114,15 @@ export default function AssignmentManagement() {
   const handleRemove = async (assignmentId) => {
     try {
       await removeAssignmentMut.mutateAsync(assignmentId);
-      setManagePopover(null);
       toast.success('已取消派發');
     } catch (err) {
       toast.error('刪除失敗：' + (err?.message ?? '未知錯誤'));
     }
   };
 
-  // Popover state handlers（共用給兩個 view）
-  const handleOpenAssign = ({ quizId, classId }) => {
-    setManagePopover(null);
-    setPopover({ quizId, classId });
-  };
-  const handleOpenManage = ({ assignmentId, quizId, classId }) => {
-    setPopover(null);
-    setManagePopover({ assignmentId, quizId, classId });
-  };
-
   // ── 全頁概覽 ────────────────────────────────────────────────────────────
   const globalSummary = getGlobalSummary(publishedQuizzes, classes, assignments);
+  const activeQuiz = publishedQuizzes.find((q) => q.id === activeQuizId) ?? null;
 
   return (
     <TeacherLayout>
@@ -136,7 +142,7 @@ export default function AssignmentManagement() {
             </button>
           </div>
           <p className="text-[#636E72] mt-1 text-sm">
-            每格代表一份題組對一個班級的派發狀態。空格點擊即可派發，已派格點擊可管理。
+            每張卡是一份題組的派發概況。點「管理派發」開啟側欄，可搜尋班級、依狀態篩選、批次派發或逐班管理。
           </p>
         </div>
 
@@ -167,29 +173,40 @@ export default function AssignmentManagement() {
           </div>
         )}
 
-        {/* ── 矩陣視圖 ── */}
+        {/* ── 題組摘要卡清單 ── */}
         {publishedQuizzes.length === 0 ? (
           <EmptyState onGoToQuizzes={() => navigate('/teacher/quizzes')} />
         ) : classes.length === 0 ? (
           <NoClassesEmptyState onGoToClasses={() => navigate('/teacher/classes')} />
         ) : (
-          <MatrixView
-            quizzes={publishedQuizzes}
-            classes={classes}
-            assignments={assignments}
-            popover={popover}
-            managePopover={managePopover}
-            onOpenAssign={handleOpenAssign}
-            onOpenManage={handleOpenManage}
-            onAssignConfirm={handleConfirmDiagnosis}
-            onAssignClose={() => setPopover(null)}
-            onManageClose={() => setManagePopover(null)}
-            onUpdateDueDate={handleUpdateDueDate}
-            onRemove={handleRemove}
-            onViewReport={handleViewReport}
-          />
+          <div className="space-y-3">
+            {publishedQuizzes.map((quiz) => (
+              <QuizSummaryCard
+                key={quiz.id}
+                quiz={quiz}
+                classes={classes}
+                assignments={assignments}
+                onManage={setActiveQuizId}
+              />
+            ))}
+          </div>
         )}
       </div>
+
+      {/* ── 管理派發抽屜 ── */}
+      {activeQuiz && (
+        <AssignmentDrawer
+          quiz={activeQuiz}
+          classes={classes}
+          assignments={assignments}
+          onAssign={(classId, dueDate) => handleAssign(activeQuiz.id, classId, dueDate)}
+          onBatchAssign={(classIds, dueDate) => handleBatchAssign(activeQuiz.id, classIds, dueDate)}
+          onUpdateDueDate={handleUpdateDueDate}
+          onRemove={handleRemove}
+          onViewReport={handleViewReport}
+          onClose={() => setActiveQuizId(null)}
+        />
+      )}
     </TeacherLayout>
   );
 }

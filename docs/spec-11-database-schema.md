@@ -47,6 +47,8 @@
 | 21 | `unit_parent_nodes` | 教學單元 ↔ 大節點 M:N 綁定 | 2026-05-29 (0021) |
 | — | （seed） | 14 個高年級教學單元（type='unit'）+ 對應 parent_node M:N | 2026-05-29 (0022) |
 
+> **Migration 0032（2026-06-20）**：`quizzes` 加 `mode VARCHAR(16) DEFAULT 'single' CHECK IN ('single','two-tier')`；`quiz_questions` 加 `reason_options JSONB`（nullable）；`student_answers` 加 `reason_tag VARCHAR(8)` nullable 與 `quadrant VARCHAR(2)` nullable（CheckConstraint TT/TF/FT/FF）。全部欄位 nullable / 有 default，向下相容；down_revision = `0031_drop_sa_question_fk`。
+
 > 註：原本說 11 張表，實際拆細為 16 張（user / teacher / student 拆 3 張、ai cache 算 1 張、新增 assignment_students）。spec-10 §6 表格中的「11 張表」描述以本文件為準。
 
 ---
@@ -180,18 +182,22 @@ CREATE INDEX students_class_idx ON students(class_id);
 CREATE TABLE quizzes (
     id                  VARCHAR(32)   PRIMARY KEY,            -- 'quiz-001'
     title               VARCHAR(128)  NOT NULL,
+    mode                VARCHAR(16)   NOT NULL DEFAULT 'single', -- 0032 migration: 'single' | 'two-tier'
     status              VARCHAR(16)   NOT NULL DEFAULT 'draft',
     knowledge_node_ids  TEXT[]        NOT NULL DEFAULT '{}',  -- ['INe-Ⅱ-3-02', ...]
     created_by          VARCHAR(64)   REFERENCES users(id),   -- teacher user_id；nullable for seed
     is_sample           BOOLEAN       NOT NULL DEFAULT FALSE, -- W6 migration 0016：admin 標記為系統範例
     created_at          TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
     updated_at          TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
-    CONSTRAINT quizzes_status_chk CHECK (status IN ('draft', 'published'))
+    CONSTRAINT quizzes_status_chk CHECK (status IN ('draft', 'published')),
+    CONSTRAINT quizzes_mode_chk   CHECK (mode IN ('single', 'two-tier'))  -- 0032 migration
 );
 
 CREATE INDEX quizzes_status_idx ON quizzes(status);
 CREATE INDEX quizzes_created_by_idx ON quizzes(created_by);
 ```
+
+> **`mode` 欄位（migration 0032）**：預設 `'single'`，向下相容既有題組（quiz-001/002 標 single）。新增示範題組 quiz-003/004 為 `'two-tier'`。
 
 ### 3.6 `quiz_questions`
 
@@ -202,11 +208,23 @@ CREATE TABLE quiz_questions (
     order_index         INTEGER      NOT NULL,                  -- 1-based
     stem                TEXT         NOT NULL,
     knowledge_node_id   VARCHAR(32)  NOT NULL,
+    reason_options      JSONB,                                 -- 0032 migration: two-tier 理由層選項（nullable；single 為 NULL）
     created_at          TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
 CREATE UNIQUE INDEX quiz_questions_order_idx ON quiz_questions(quiz_id, order_index);
 ```
+
+> **`reason_options`（migration 0032）**：nullable JSONB，僅 two-tier 題填入。格式（`answerTag` 標註此理由對應第一層哪個答案，camelCase 鍵）：
+> ```json
+> [
+>   { "tag": "甲", "content": "理由文字", "diagnosis": "CORRECT", "answerTag": "B" },
+>   { "tag": "乙", "content": "理由文字", "diagnosis": "M02-1", "answerTag": "A" },
+>   { "tag": "丙", "content": "理由文字", "diagnosis": "M02-2", "answerTag": "C" }
+> ]
+> ```
+> `answerTag` 為出題端結構標註（每個第一層答案需有 ≥1 個理由對應）；**學生端不據此過濾、四象限判定不受影響**。
+> single 題此欄為 NULL。第一層答案選項仍存正規化的 `quiz_options` 表；two-tier 時答案層 diagnosis 用哨兵值 `'CORRECT'`（正解）/`'WRONG'`（其餘），不掛迷思碼（迷思碼由理由層決定）。
 
 ### 3.7 `quiz_options`
 
@@ -216,7 +234,7 @@ CREATE TABLE quiz_options (
     question_id  BIGINT       NOT NULL REFERENCES quiz_questions(id) ON DELETE CASCADE,
     tag          CHAR(1)      NOT NULL,                  -- 'A' | 'B' | 'C' | 'D'
     content      TEXT         NOT NULL,
-    diagnosis    VARCHAR(16)  NOT NULL,                  -- 'CORRECT' or 'M02-1' etc.
+    diagnosis    VARCHAR(16)  NOT NULL,                  -- 'CORRECT' or 'M02-1' etc.；two-tier 答案層用哨兵 'CORRECT'/'WRONG'
     CONSTRAINT quiz_options_tag_chk CHECK (tag IN ('A', 'B', 'C', 'D'))
 );
 
@@ -321,17 +339,27 @@ CREATE INDEX assignment_students_student_idx ON assignment_students(student_id);
 CREATE TABLE student_answers (
     id              BIGSERIAL    PRIMARY KEY,
     assignment_id   VARCHAR(64)  NOT NULL REFERENCES assignments(id) ON DELETE CASCADE,
-    student_id      VARCHAR(64)  NOT NULL REFERENCES users(id),
-    question_id     BIGINT       NOT NULL REFERENCES quiz_questions(id),
-    selected_tag    CHAR(1)      NOT NULL,
-    diagnosis       VARCHAR(16)  NOT NULL,                       -- 'CORRECT' or M-code
+    student_id      VARCHAR(64)  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    question_id     BIGINT,                                     -- 卷內題序 order_index (1..N)，非 FK；見下方註
+    selected_tag    VARCHAR(8)   NOT NULL,                      -- 答案層標籤（A/B/C/D）
+    reason_tag      VARCHAR(8),                                 -- 0032 migration: 理由層標籤（甲/乙/丙）；single 為 NULL
+    diagnosis       VARCHAR(16)  NOT NULL,                       -- 'CORRECT' or M-code；two-tier 取自理由層
+    quadrant        VARCHAR(2),                                  -- 0032 migration: TT/TF/FT/FF or NULL（single 為 NULL）
     answered_at     TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    CONSTRAINT student_answers_tag_chk CHECK (selected_tag IN ('A', 'B', 'C', 'D'))
+    CONSTRAINT student_answers_tag_chk CHECK (selected_tag IN ('A', 'B', 'C', 'D')),
+    CONSTRAINT student_answers_quadrant_chk CHECK (quadrant IS NULL OR quadrant IN ('TT', 'TF', 'FT', 'FF'))  -- 0032
 );
 
 CREATE UNIQUE INDEX student_answers_unique_idx ON student_answers(assignment_id, student_id, question_id);
 CREATE INDEX student_answers_student_idx ON student_answers(student_id);
 ```
+
+> **`reason_tag` / `quadrant` 欄位（migration 0032）**：均為 nullable，向下相容舊作答資料（舊資料兩欄皆 NULL）。two-tier 題寫入時填入；single 題保持 NULL。`quadrant` 加 CheckConstraint，合法值 `TT/TF/FT/FF` 或 NULL。
+
+> ⚠️ **`question_id` 存的是「卷內題序 `order_index`」(1..N)，不是 `quiz_questions.id` 全域 PK，且不設外鍵**（migration `0031`）。
+> 原因：前端 / quiz API 對外只暴露 `question.id = order_index`（`quizzes.py` 序列化、`StudentQuiz` 顯示「第 N 題」皆依此），學生作答即以該題序寫入。
+> 早期誤把它設成 `REFERENCES quiz_questions(id)`，只有種子卷 `quiz-001`（PK 剛好＝1..5）能對上；其餘題組 PK≠order_index，教師端統計／追問用 PK 對位時全部對不到 → **儀表板空白**（2026-06-18 修正）。
+> **要還原題目／題組，須先經 `assignment.quiz_id`，再以 `(quiz_id, order_index)` 反查 `quiz_questions`。** 詳見 `docs/deviations.md`。
 
 ### 3.12 `followup_results`
 
@@ -346,7 +374,7 @@ CREATE TABLE followup_results (
     status_change         JSONB       NOT NULL DEFAULT '{}'::jsonb,
     ai_summary            TEXT,
     cause_ids             JSONB,                                 -- 1~2 個成因 id（migration 0007）
-    error_type            VARCHAR(16),                           -- EXPLANATION|DEFINITION|OBSERVATION|NULL（答錯主導方向，migration 0030）
+    error_type            VARCHAR(16),                           -- EXPLANATION|DEFINITION|OBSERVATION|NULL（答錯主導方向，migration 0030；第 1 輪 belief 即據此分流，見 spec-09 §12.4b）
     created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT followup_status_chk CHECK (final_status IN ('CORRECT', 'MISCONCEPTION', 'UNCERTAIN')),
     CONSTRAINT followup_quality_chk CHECK (reasoning_quality IN ('SOLID', 'PARTIAL', 'WEAK', 'GUESSING'))

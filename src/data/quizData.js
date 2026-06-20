@@ -1,3 +1,5 @@
+import { quiz003Questions, quiz004Questions } from './quizDataTwoTier';
+
 // ═══ 題組一：水溶液 · 迷思診斷（第一次）═══════════════════════════════════
 export const defaultQuestions = [
   {
@@ -120,6 +122,8 @@ export const quiz002Questions = [
 const QUIZ_QUESTIONS = {
   'quiz-001': defaultQuestions,
   'quiz-002': quiz002Questions,
+  'quiz-003': quiz003Questions,
+  'quiz-004': quiz004Questions,
 };
 
 export const getQuizQuestions = (quizId) => QUIZ_QUESTIONS[quizId] || [];
@@ -279,6 +283,7 @@ export const QUIZZES_DATA = [
     id: 'quiz-001',
     title: '水溶液 · 迷思診斷（第一次）',
     status: 'published',
+    mode: 'single',
     questionCount: 5,
     knowledgeNodeIds: ['INe-Ⅱ-3-02', 'INe-Ⅱ-3-03', 'INe-Ⅱ-3-05', 'INe-Ⅲ-5-4', 'INe-Ⅲ-5-7'],
     questions: defaultQuestions,
@@ -288,9 +293,30 @@ export const QUIZZES_DATA = [
     id: 'quiz-002',
     title: '水溶液 · 迷思診斷（第二次）',
     status: 'published',
+    mode: 'single',
     questionCount: 5,
     knowledgeNodeIds: ['INe-Ⅱ-3-02', 'INe-Ⅱ-3-03', 'INe-Ⅱ-3-05', 'INe-Ⅲ-5-4', 'INe-Ⅲ-5-7'],
     questions: quiz002Questions,
     createdAt: '2024-03-20',
+  },
+  {
+    id: 'quiz-003',
+    title: '水溶液 · 雙層次診斷（示範）',
+    status: 'published',
+    mode: 'two-tier',
+    questionCount: 5,
+    knowledgeNodeIds: ['INe-Ⅱ-3-02', 'INe-Ⅱ-3-03', 'INe-Ⅱ-3-05', 'INe-Ⅲ-5-4', 'INe-Ⅲ-5-7'],
+    questions: quiz003Questions,
+    createdAt: '2026-06-20',
+  },
+  {
+    id: 'quiz-004',
+    title: '水溶液 · 雙層次診斷（示範·第二份）',
+    status: 'published',
+    mode: 'two-tier',
+    questionCount: 5,
+    knowledgeNodeIds: ['INe-Ⅱ-3-02', 'INe-Ⅱ-3-03', 'INe-Ⅱ-3-05', 'INe-Ⅲ-5-4', 'INe-Ⅲ-5-7'],
+    questions: quiz004Questions,
+    createdAt: '2026-06-20',
   },
 ];

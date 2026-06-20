@@ -132,11 +132,17 @@ export default function TaskCard({
             <span className="text-sm sm:text-base font-bold text-[#5A3E22] flex-shrink-0">
               {questionCount} 題
             </span>
-            <div className="flex-1 h-2.5 sm:h-3 bg-[#E0D5BC] rounded-full overflow-hidden border border-[#8B5E3C]/40">
+            <div className="flex-1 h-2.5 sm:h-3 bg-[#E0D5BC] rounded-full overflow-hidden border border-[#8B5E3C]/40 flex">
               <div
                 className={`h-full ${cfg.progressFill} transition-all duration-500`}
                 style={{ width: `${progressPct}%` }}
               />
+              {isCompleted && progressPct < 100 && (
+                <div
+                  className="h-full bg-gradient-to-b from-[#EC7063] to-[#C0392B] transition-all duration-500"
+                  style={{ width: `${100 - progressPct}%` }}
+                />
+              )}
             </div>
             {isCompleted && stars > 0 && (
               <div className="flex-shrink-0">

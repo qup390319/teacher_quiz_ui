@@ -12,6 +12,15 @@ import QuestionImportDrawer from '../../../components/teacher/quizEditor/Questio
 import { sortQuestionsByNodeOrder } from '../../../utils/topoSortNodes';
 import KnowledgeSkillTree from '../../../components/teacher/KnowledgeSkillTree';
 import { useToast } from '../../../context/ToastContext';
+import QuestionOptionsCell from '../../../components/teacher/quizEditor/QuestionOptionsCell';
+import PublishValidationModal from '../../../components/teacher/quizEditor/PublishValidationModal';
+import {
+  buildQuestionForMisconception as buildQForMisconception,
+  buildBlankQuestion,
+  questionToApi,
+  normalizeQuestionForEditor,
+  validateQuestion,
+} from '../../../data/twoTierAuthoring';
 
 const AUTO_SAVE_DELAY_MS = 30000;
 
@@ -31,36 +40,6 @@ function renumber(questions) {
   return questions.map((q, idx) => ({ ...q, id: idx + 1 }));
 }
 
-/**
- * 為某個節點 + 某條迷思，建立預填的新題目骨架。
- * - 對應節點鎖定為 nodeId
- * - 4 個選項：B 為正解、A 設為使用者點的迷思，C/D 從該節點剩餘且尚未被覆蓋的迷思補滿；不夠則 fallback 該節點任意迷思
- */
-function buildQuestionForMisconception(nodes, nodeId, misconceptionId, existingQuestions, nextId) {
-  const node = nodes.find((n) => n.id === nodeId);
-  if (!node) return null;
-  const coveredIds = new Set();
-  existingQuestions
-    .filter((q) => q.knowledgeNodeId === nodeId)
-    .forEach((q) => q.options.forEach((o) => {
-      if (o.diagnosis !== 'CORRECT') coveredIds.add(o.diagnosis);
-    }));
-  const remaining = node.misconceptions.filter((m) => m.id !== misconceptionId && !coveredIds.has(m.id));
-  const fallback = node.misconceptions.filter((m) => m.id !== misconceptionId);
-  const pickRemaining = (i) => (remaining[i] || fallback[i % fallback.length] || node.misconceptions[0]).id;
-  return {
-    id: nextId,
-    stem: '（請輸入題幹）',
-    knowledgeNodeId: nodeId,
-    options: [
-      { tag: 'A', content: '（請輸入選項 A）', diagnosis: misconceptionId },
-      { tag: 'B', content: '（請輸入選項 B，此為正確答案）', diagnosis: 'CORRECT' },
-      { tag: 'C', content: '（請輸入選項 C）', diagnosis: pickRemaining(0) },
-      { tag: 'D', content: '（請輸入選項 D）', diagnosis: pickRemaining(1) },
-    ],
-  };
-}
-
 function formatTime(date) {
   if (!date) return '';
   const hh = String(date.getHours()).padStart(2, '0');
@@ -74,6 +53,7 @@ export default function Step2Edit({ nodes = [], onBack }) {
     editingQuizId, setEditingQuizId,
     editingQuizStatus, setEditingQuizStatus,
     editingQuizTitle, setEditingQuizTitle,
+    editingQuizMode, setEditingQuizMode,
     setIsWizardDirty,
   } = useApp();
   const { data: quizzes = [] } = useQuizzes();
@@ -96,6 +76,7 @@ export default function Step2Edit({ nodes = [], onBack }) {
   const [deletingQuestion, setDeletingQuestion] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [publishProblems, setPublishProblems] = useState(null); // 發布前檢查未過的題目清單
   const [dragIdx, setDragIdx] = useState(null);
   const [dropIdx, setDropIdx] = useState(null);
 
@@ -131,18 +112,7 @@ export default function Step2Edit({ nodes = [], onBack }) {
     const nextId = quizQuestions.length + 1;
     const firstSelectedNode = nodes.find((n) => selectedNodeIds.includes(n.id)) || nodes[0];
     if (!firstSelectedNode) return;
-    const m = firstSelectedNode.misconceptions || [];
-    const newQ = {
-      id: nextId,
-      stem: '（請輸入題幹）',
-      knowledgeNodeId: firstSelectedNode.id,
-      options: [
-        { tag: 'A', content: '（請輸入選項 A）', diagnosis: m[0]?.id || 'CORRECT' },
-        { tag: 'B', content: '（請輸入選項 B）', diagnosis: 'CORRECT' },
-        { tag: 'C', content: '（請輸入選項 C）', diagnosis: m[1]?.id || m[0]?.id || 'CORRECT' },
-        { tag: 'D', content: '（請輸入選項 D）', diagnosis: m[2]?.id || m[0]?.id || 'CORRECT' },
-      ],
-    };
+    const newQ = buildBlankQuestion(editingQuizMode, firstSelectedNode, nextId);
     setQuizQuestions((prev) => [...prev, newQ]);
     setIsWizardDirty(true);
     setEditingQuestion(newQ);
@@ -150,7 +120,8 @@ export default function Step2Edit({ nodes = [], onBack }) {
 
   const addQuestionForMisconception = (nodeId, misconceptionId) => {
     const nextId = quizQuestions.length + 1;
-    const newQ = buildQuestionForMisconception(nodes, nodeId, misconceptionId, quizQuestions, nextId);
+    const node = nodes.find((n) => n.id === nodeId);
+    const newQ = buildQForMisconception(editingQuizMode, node, misconceptionId, quizQuestions, nextId);
     if (!newQ) return;
     setQuizQuestions((prev) => [...prev, newQ]);
     setIsWizardDirty(true);
@@ -160,7 +131,8 @@ export default function Step2Edit({ nodes = [], onBack }) {
   const handleImportQuestions = (questionsToImport) => {
     setQuizQuestions((prev) => renumber([
       ...prev,
-      ...questionsToImport.map((q) => ({ ...q, id: 0 })),  // id 由 renumber 重排
+      // 匯入題目可能是 API shape，先正規化成編輯器內部 shape；id 由 renumber 重排
+      ...questionsToImport.map((q) => ({ ...normalizeQuestionForEditor(q), id: 0 })),
     ]));
     setIsWizardDirty(true);
     setShowImport(false);
@@ -190,8 +162,9 @@ export default function Step2Edit({ nodes = [], onBack }) {
     id: editingQuizId || undefined,
     title: quizTitle || generateDefaultTitle(quizzes),
     status,
+    mode: editingQuizMode,
     knowledgeNodeIds: selectedNodeIds,
-    questions: quizQuestions,
+    questions: quizQuestions.map(questionToApi),
   });
 
   const performSave = async (status, { silent = false } = {}) => {
@@ -244,12 +217,23 @@ export default function Step2Edit({ nodes = [], onBack }) {
   };
 
   const handlePublish = async () => {
+    // 發布前整卷檢查：逐題驗證雙層次方法論，未過則擋下並指出第幾題。
+    const problems = [];
+    quizQuestions.forEach((q, idx) => {
+      const errs = validateQuestion(q);
+      if (errs.length > 0) problems.push({ no: idx + 1, errors: errs });
+    });
+    if (problems.length > 0) {
+      setPublishProblems(problems);
+      return;
+    }
     try {
       await performSave('published');
       toast.success('題組已發佈');
       setEditingQuizId(null);
       setEditingQuizStatus(null);
       setEditingQuizTitle('');
+      setEditingQuizMode('two-tier');
       navigate('/teacher/quizzes');
     } catch (err) {
       toast.error('儲存題組失敗：' + (err?.message ?? '未知錯誤'));
@@ -403,33 +387,7 @@ export default function Step2Edit({ nodes = [], onBack }) {
                     <p className="text-sm text-[#2D3436] leading-relaxed">{q.stem}</p>
                   </td>
                   <td className="px-4 py-5 align-top">
-                    <div className="space-y-2">
-                      {q.options.map((opt) => {
-                        const isCorrect = opt.diagnosis === 'CORRECT';
-                        const misconLabel = getMisconceptionLabel(q.knowledgeNodeId, opt.diagnosis);
-                        return (
-                          <div key={opt.tag} className="flex items-start gap-2">
-                            <span className={`flex-shrink-0 w-6 h-6 rounded-full text-sm font-bold flex items-center justify-center border ${isCorrect ? 'bg-[#C8EAAE] border-[#BDC3C7] text-[#3D5A3E]' : 'bg-[#EEF5E6] border-[#D5D8DC] text-[#636E72]'}`}>
-                              {opt.tag}
-                            </span>
-                            <div className="flex-1">
-                              <span className="text-sm text-[#2D3436]">{opt.content}</span>
-                              <div className="mt-0.5">
-                                {isCorrect ? (
-                                  <span className="inline-block text-sm font-semibold text-[#3D5A3E] bg-[#C8EAAE] border border-[#BDC3C7] px-2 py-0.5 rounded-full">
-                                    ✓ 正確答案
-                                  </span>
-                                ) : (
-                                  <span className="inline-block text-sm font-semibold text-[#E74C5E] bg-[#FAC8CC] border border-[#F5B8BA] px-2 py-0.5 rounded-full">
-                                    迷思：{misconLabel}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                    <QuestionOptionsCell question={q} getMisconceptionLabel={getMisconceptionLabel} />
                   </td>
                   <td className="px-4 py-5 align-middle">
                     <div className="flex flex-col gap-2 items-center">
@@ -532,9 +490,13 @@ export default function Step2Edit({ nodes = [], onBack }) {
           nodes={nodes}
           selectedNodeIds={selectedNodeIds}
           excludeQuizId={editingQuizId}
+          mode={editingQuizMode}
           onImport={handleImportQuestions}
           onClose={() => setShowImport(false)}
         />
+      )}
+      {publishProblems && (
+        <PublishValidationModal problems={publishProblems} onClose={() => setPublishProblems(null)} />
       )}
     </div>
   );

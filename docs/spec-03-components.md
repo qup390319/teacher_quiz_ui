@@ -11,14 +11,17 @@
 | `InfoDrawer` | `src/components/InfoDrawer.jsx` | 側邊滑出面板，顯示資料計算說明 |
 | `DistractorSuggestPopover` | `src/components/teacher/DistractorSuggestPopover.jsx` | **N6** 干擾選項建議彈窗（出題精靈用，spec-12，P2） |
 | `EditQuestionModal` | `src/components/teacher/quizEditor/EditQuestionModal.jsx` | 出題精靈步驟二的單題編輯 modal（題幹 / 節點 / 選項 / N6 整合 / AI 潤飾題幹 / AI 建議選項） |
-| `AssignPopover` | `src/pages/teacher/AssignmentMatrixParts.jsx` | 派題確認 popover（截止日期 + 派發模式選擇：診斷模式 / 複習模式） |
 | `DeleteQuestionModal` | `src/components/teacher/quizEditor/DeleteQuestionModal.jsx` | 出題精靈刪除題目確認 modal |
-| `PreviewQuizModal` | `src/components/teacher/quizEditor/PreviewQuizModal.jsx` | 出題精靈步驟二的學生端預覽 modal |
-| `CoveragePanel` | `src/components/teacher/quizEditor/CoveragePanel.jsx` | 出題精靈步驟二的迷思涵蓋率 + 「補洞」chips；點擊未覆蓋的迷思 chip 觸發 `onAddForMisconception(nodeId, misconceptionId)` 建立預填新題 |
-| `QuestionImportDrawer` | `src/components/teacher/quizEditor/QuestionImportDrawer.jsx` | 出題精靈步驟二的「從題庫挑題」右側抽屜；展開既有題組後勾選題目，匯入時 deep clone 並 append 到當前 `quizQuestions` |
+| `QuestionOptionsCell` | `src/components/teacher/quizEditor/QuestionOptionsCell.jsx` | 出題表格的選項儲存格；single 顯示一組選項、two-tier 分「第一層答案 / 第二層理由」兩區（自 Step2Edit 抽出以控行數） |
+| `PublishValidationModal` | `src/components/teacher/quizEditor/PublishValidationModal.jsx` | 「儲存並發布」前整卷檢查未通過時的提示 modal，逐題列出「第 N 題：問題」 |
+| `CoveragePanel` | `src/components/teacher/quizEditor/CoveragePanel.jsx` | 出題精靈步驟二的迷思涵蓋率 + 「補洞」chips；點擊未覆蓋的迷思 chip 觸發 `onAddForMisconception(nodeId, misconceptionId)` 建立預填新題。**覆蓋率計算**：single 模式數「選項層」承載的迷思；two-tier 模式數「理由層」承載的迷思 |
+| `QuestionImportDrawer` | `src/components/teacher/quizEditor/QuestionImportDrawer.jsx` | 出題精靈步驟二的「從題庫挑題」右側抽屜；展開既有題組後勾選題目，匯入時 deep clone 並 append 到當前 `quizQuestions`。依來源題目的 `mode` 正確 clone 雙層或單層結構 |
+| `PreviewQuizModal` | `src/components/teacher/quizEditor/PreviewQuizModal.jsx` | 出題精靈步驟二的學生端預覽 modal；依題目 `mode` 分流：single 題呈現 A/B/C/D 選項預覽，two-tier 題依序呈現答案層（A/B/C）→ 理由層（甲/乙/丙）預覽 |
 | `KnowledgeSkillTree` | `src/components/teacher/KnowledgeSkillTree.jsx` | 知識路徑技能樹（深木紋夜晚地圖風 / Mockup J-1）— SVG 六角節點 + 階段欄位（1–6）+ A 綠系/B 橘系階段漸層 + 銳利輪廓 + 背後柔光暈；支援 `selectable` 模式（未勾選黯淡灰褐 + 虛線；已勾選明亮發光 + 綠 ✓ 徽章）。整合於 `KnowledgeMap`（純展示）、`CustomKnowledgeMap`（純展示）、`Step1Nodes`（勾選模式） |
 | `AIFollowUpPanel` | `src/pages/student/followUp/AIFollowUpPanel.jsx` | 第二層 AI 追問底部面板（題目回顧 + 輪次 + 文字輸入框） |
 | `BottomPanel` / `OptionsPanel` / `DonePanel` | `src/pages/student/studentQuizPanels.jsx` | StudentQuiz 第一層選項面板與完成 loading |
+| `ReasonOptionsPanel` | `src/pages/student/studentQuizPanels.jsx` | **two-tier 專用**：第二層理由選項面板（甲/乙/丙 三個藍系按鈕），在學生選完答案層後顯示；詢問「你這樣選，是因為…？」，點擊即送出 |
+| `QuadrantSummary` | `src/pages/teacher/dashboard/shared/QuadrantSummary.jsx` | **two-tier 教師報告專用**：四象限分佈矩陣元件（TT/TF/FT/FF 各人次與百分比）；僅在 `quiz.mode === 'two-tier'` 時由 `SingleClassReport` 渲染 |
 
 ### 1.1 學生端共用元件
 
@@ -26,6 +29,8 @@
 |---------|---------|------|
 | `StudentSettingsDrawer` | `src/components/student/StudentSettingsDrawer.jsx` | 學生端設定抽屜（字體大小、個人資訊、關於系統、登出） |
 | `LeaveConfirmModal` | `src/components/student/LeaveConfirmModal.jsx` | 測驗進行中按返回時的「確定離開」確認框（spec-07 木框風；props：`onConfirm` / `onCancel`）。提醒中途離開會丟失作答與對話、測驗變未完成 |
+| `MisconceptionCard` | `src/pages/student/reportCards.jsx` | StudentReport 中「答錯」題目的迷思診斷卡（spec-07 木框風）。題目脈絡 → 核心對比（你的想法 ↔ 依錯誤類型差異化回饋）→ 可能的原因 → 給你的話 → 「重新問這一題」按鈕。詳見 §11 |
+| `ErrorTypeInfoModal` | `src/pages/student/reportCards.jsx`（`MisconceptionCard` 內部子元件） | 點擊迷思卡的錯誤類別徽章後跳出的白話解釋小彈窗（平板友善，不靠 hover；spec-07 木框風，參考 `LeaveConfirmModal`）。詳見 §11.1 |
 
 ---
 
@@ -405,10 +410,12 @@
 
 ### 功能
 - 出題精靈步驟二的單題編輯 modal
-- 編輯題幹（stem）、知識節點、4 個選項的 content 與 diagnosis
-- 整合 N6 干擾選項建議（`DistractorSuggestPopover`，spec-12 §7）
+- 依 `mode`（`'single'` | `'two-tier'`）切換雙層或單層編輯介面：
+  - **single 模式**：題幹 + 節點 + 4 個選項（A/B/C/D），各選項 content + diagnosis 下拉；非正解選項旁顯示「✨ 建議」按鈕（N6 DistractorSuggestPopover，spec-12 §7）
+  - **two-tier 模式**：題幹 + 節點 + 第一層「內容（What）」答案層（A/B/C，radio 標正解）+ 第二層「理由（Why）」理由層（甲/乙/丙，各配**迷思下拉**＋**「對應第一層答案」下拉**（選 A/B/C，標註此理由對應哪個答案））；modal 頂端有方法論說明條（What/Why + 「兩層全對才算精熟（TT）」計分原則）；N6「建議」在**理由層**每個非正解理由旁顯示
+- **雙層次方法論驗證（two-tier）**：底部即時列出不合規項目並**禁用「儲存變更」**，直到符合 Treagust 設計：①第一層恰一個正解 ②第二層恰一個「正確理由」 ③各錯誤理由對應**不同**迷思 ④**每個第一層答案都有 ≥1 個理由以 `answerTag` 對應** ⑤選項不留白 ⑥題幹不為空。single 模式則要求恰一個正確答案。（驗證邏輯集中於 `twoTierAuthoring.validateQuestion()`，與發布前整卷檢查共用。）
 - **AI 潤飾題幹**：題幹標籤旁的「AI 潤飾題幹」按鈕，呼叫 `usePolishStem()` mutation（`POST /api/adaptive/polish-stem`），將 LLM 潤飾後的題幹回填至 textarea；題幹為空或 mutation pending 時 disabled
-- **AI 建議選項**：選項區段標籤旁的「AI 建議選項」按鈕，呼叫 `useSuggestOptions()` mutation（`POST /api/adaptive/suggest-options`），將 LLM 建議的選項回填至各選項欄位；題幹為空或 mutation pending 時 disabled
+- **AI 建議選項（bulk）**：呼叫 `useSuggestOptions()` mutation（`POST /api/adaptive/suggest-options`，帶 `mode`）。single 模式按鈕「AI 建議選項」回填 4 選項；two-tier 模式按鈕「AI 建議雙層選項」（在第一層 header）一次回填答案層 + 理由層（後端 `_suggest_two_tier`，見 spec-12）。題幹為空或 pending 時 disabled
 
 ### 使用場景
 - `Step2Edit`（出題精靈步驟二）
@@ -418,25 +425,7 @@
 
 ---
 
-## 9. AssignPopover
-
-### 檔案
-`src/pages/teacher/AssignmentMatrixParts.jsx`（`AssignPopover` 子元件）
-
-### 功能
-- 點擊派題矩陣未派發格子時顯示的確認 popover
-- 設定截止日期
-- **派發模式選擇器**：兩個 toggle 按鈕——「診斷模式」與「複習模式」，各附簡短說明文字
-  - 診斷模式：用於首次診斷學生是否持有迷思概念
-  - 複習模式：用於已完成診斷後的再次練習
-- `onConfirm` 回傳 `(dueDate, dispatchMode)`，其中 `dispatchMode` 為 `'diagnosis' | 'review'`
-
-### 使用場景
-- `AssignmentManagement`（§2.6 診斷派題）
-
----
-
-## 10. QuestionErrorRateChart
+## 9. QuestionErrorRateChart
 
 ### 檔案
 `src/pages/teacher/dashboard/shared/QuestionErrorRateChart.jsx`
@@ -474,5 +463,58 @@
 
 ### 使用場景
 - `SingleClassReport`（診斷報告中的一部分，位於 `HeatmapView` 之前）
+
+---
+
+## 10. MisconceptionCard（學生報告·答錯題目卡）
+
+### 檔案
+`src/pages/student/reportCards.jsx`
+
+### 功能
+學生報告（StudentReport）「每一題的結果」區塊中，**答錯**題目的迷思診斷卡（答對題目用同檔的 `QuestionResultCard`）。spec-07 木框風。資訊由上而下：
+1. **題目脈絡**（`questionContext`）：第幾題 / 答錯徽章 / 題幹 / 你選的。
+2. **核心對比**（`lg:grid-cols-2` 並排）：左「你目前的想法」（粉框）↔ 右依錯誤類型差異化的回饋（藍框）。
+3. **可能的原因 → 下一步**（成因標籤 + `studentMeaning` + `studentTip` 行動框）。
+4. **給你的話**（`aiSummary`，過 `isStudentFacingSummary` 品質閘才顯示）。
+5. **誤判補救按鈕**「這不是我的想法，重新問我這一題」。
+
+### Props
+| Prop | 型別 | 必填 | 說明 |
+|------|------|------|------|
+| `node` | `Node` | 是 | 知識節點（名稱、`studentHint`、`teachingStrategy`） |
+| `miscon` | `Misconception` | 是 | 迷思物件（`label` / `studentDetail` / `detail`） |
+| `relatedQs` | `Question[]` | 是 | 此想法出現的相關情境題 |
+| `quote` | `string \| null` | 是 | 學生在對話中最具診斷性的引用；null 不顯示 |
+| `causeIds` | `number[]` | 是 | 成因 ID（對 `CAUSE_CATEGORIES`） |
+| `errorType` | `'EXPLANATION' \| 'DEFINITION' \| 'OBSERVATION' \| null` | 是 | 錯誤類別；**null 時不渲染徽章、回饋藍框沿用「科學上是這樣的」** |
+| `aiSummary` | `string` | 是 | 個人化回饋，過品質閘才顯示 |
+| `statusChange` | `object \| null` | 是 | `changeType === 'DOWNGRADED'` 時加「選對了，但想法還可以更清楚」標記 |
+| `reasoningQuality` | `'SOLID' \| 'PARTIAL' \| 'WEAK' \| 'GUESSING' \| null` | 否 | **新增（低信心委婉呈現）**：為 `'GUESSING'`（AI 資訊不足硬給判斷）時，粉框標題由「你目前的想法」改為「你這題可能有的想法」，且迷思 `label` 前加「可能是」。純文案，不改判定資料 |
+| `onDispute` | `(questionId) => void` | 否 | **新增（誤判補救）**：注入後於卡片底渲染「這不是我的想法，重新問我這一題」按鈕；點擊以 `questionContext.questionId` 呼叫。未注入或無題目脈絡時不顯示 |
+| `questionContext` | `{ questionId, stem, pickedContent } \| null` | 否 | 題目脈絡區塊資料 |
+
+### 錯誤類型差異化回饋（變更 1）
+回饋藍框的標題、圖示、追加提醒依 `errorType` 取自 `src/data/errorTypes.js` 的 **`ERROR_TYPE_FEEDBACK[errorType]`**（`{ heading, icon, guidance }`）：
+- `heading` 取代固定的「科學上是這樣的」標題。
+- `icon` 為 Material Symbols 名稱。
+- `guidance` 為該類型專屬一句提醒，接在節點正確說法（`node.studentHint`）之後。
+- `errorType` 為 `null` 時退回固定標題「科學上是這樣的」+ `auto_stories` 圖示、不加 guidance。
+
+> 此兩常數（`ERROR_TYPE_FEEDBACK` / `ERROR_TYPE_STUDENT_EXPLAIN`）為**學生端專用**，與教師端報告沿用的 `ERROR_TYPE_DESCRIPTIONS` 並存不衝突（教師端 `StudentDiagnosisReport` / `dashboard/OverviewPage` 維持不變）。
+
+### 11.1 ErrorTypeInfoModal（錯誤類別徽章點擊彈窗）
+
+#### 檔案
+`src/pages/student/reportCards.jsx`（`MisconceptionCard` 內部子元件）
+
+#### 功能（變更 1）
+迷思卡的錯誤類別徽章從純標籤改為**可點擊按鈕**（平板友善，不靠 hover；徽章帶 `help` 圖示）。點擊跳出此小彈窗，**只**顯示該分類詞的兒童白話解釋（取自 `ERROR_TYPE_STUDENT_EXPLAIN[errorType]`）。正確說法 / 建議 / 原理仍直接顯示在卡片上，不放彈窗。spec-07 木框風，參考 `LeaveConfirmModal`（半透明遮罩 + 點遮罩或「我知道了！」關閉）。
+
+#### Props
+| Prop | 型別 | 說明 |
+|------|------|------|
+| `errorType` | `'EXPLANATION' \| 'DEFINITION' \| 'OBSERVATION'` | 要解釋的分類；falsy 時不渲染 |
+| `onClose` | `() => void` | 關閉回呼 |
 
 ---

@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useStudentMode } from '../../hooks/useStudentMode';
 import { useAssignments } from '../../hooks/useAssignments';
 import { useQuizzes } from '../../hooks/useQuizzes';
+import { useStudentHistory } from '../../hooks/useStudents';
 import { getQuizQuestions } from '../../data/quizData';
 import {
   Icon,
@@ -51,6 +52,11 @@ export default function StudentHome() {
   // 後端會自動把學生過濾到自己的 classId
   const { data: assignments = [] } = useAssignments();
   const { data: quizzes = [] } = useQuizzes();
+  // 後端持久化的作答摘要：用來算「答對幾題/進度/星等」，避免只靠本地 session 快取
+  // （重新登入/還原資料時本地快取為空，導致進度條 0%）。
+  const { data: backendHistory = [] } = useStudentHistory(currentUser?.id, {
+    enabled: !!currentUser?.id,
+  });
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('tasks'); // 'tasks' | 'checkups'
@@ -68,17 +74,24 @@ export default function StudentHome() {
 
       const quiz = quizzes.find((q) => q.id === assignment.quizId);
       const totalQuestions = quiz?.questionCount ?? getQuizQuestions(assignment.quizId).length;
-      // Local studentHistory 只是當前 session 的快取；真正的「是否做過」由後端
-      // assignment.myDiagnosisCompleted 決定（持久化、跨刷新依然正確）。
-      const myRecords = studentHistory.filter((h) => h.quizId === assignment.quizId);
-      const bestRecord = myRecords.reduce(
-        (best, cur) => (best == null || cur.correctCount > best.correctCount ? cur : best),
-        null,
-      );
+      // 本地 studentHistory 只是當前 session 的「完整快照」（含 answers/followUpResults），
+      // 供剛做完那次直接看報告。answerData / 進度則優先用後端持久化摘要。
+      const localBest = studentHistory
+        .filter((h) => h.quizId === assignment.quizId)
+        .reduce((best, cur) => (best == null || cur.correctCount > best.correctCount ? cur : best), null);
+      // 後端摘要（重新登入/還原資料也有）→ 正規化出 correctCount + completedAt 供卡片顯示。
+      const backendBest = backendHistory
+        .filter((h) => h.quizId === assignment.quizId)
+        .reduce((best, cur) => (best == null || cur.correctCount > best.correctCount ? cur : best), null);
+      // 卡片顯示用（答對題數/進度/星等）：本地優先，否則後端摘要。
+      const displayBest = localBest ?? (backendBest && {
+        ...backendBest,
+        completedAt: backendBest.answeredAt ?? backendBest.completedAt ?? null,
+      });
       const completedFromBackend = assignment.myDiagnosisCompleted === true;
 
       let status;
-      if (bestRecord || completedFromBackend) status = 'completed';
+      if (displayBest || completedFromBackend) status = 'completed';
       else if (assignment.dueDate < today) status = 'expired';
       else status = 'next';
 
@@ -91,9 +104,11 @@ export default function StudentHome() {
         dueDate: assignment.dueDate,
         assignedAt: assignment.assignedAt,
         status,
-        stars: bestRecord ? calcStars(bestRecord.correctCount, totalQuestions) : 0,
-        completedAt: bestRecord?.completedAt?.split(' ')[0] ?? null,
-        bestRecord,
+        stars: displayBest ? calcStars(displayBest.correctCount, totalQuestions) : 0,
+        completedAt: (displayBest?.completedAt ?? '').replace('T', ' ').split(' ')[0] || null,
+        bestRecord: displayBest,
+        // 只有「本地完整快照」才走 in-memory 看報告；否則走 ?quizId 由後端 history 撈。
+        localSnapshot: localBest,
       });
     });
 
@@ -107,7 +122,7 @@ export default function StudentHome() {
       .filter((t) => t.status === 'completed')
       .sort((a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? ''));
     return { pending: [...pending, ...expired], completed };
-  }, [assignments, quizzes, studentHistory, STUDENT_CLASS_ID]);
+  }, [assignments, quizzes, studentHistory, backendHistory, STUDENT_CLASS_ID]);
 
   const stats = useMemo(() => {
     const allPending = diagnosisTasks.pending.length;
@@ -137,8 +152,8 @@ export default function StudentHome() {
     // 在記憶體中有剛剛完成的快照 → 直接用，最完整（含 conversationLog 等）。
     // 否則（先前 session 完成、或才剛重新登入）→ 改由 StudentReport 透過
     // /api/students/{id}/history 撈摘要顯示。
-    if (task.bestRecord) {
-      handleViewReport(task.bestRecord);
+    if (task.localSnapshot) {
+      handleViewReport(task.localSnapshot);
     } else {
       setActiveStudentReport(null);
       setCurrentQuizId(task.quizId);

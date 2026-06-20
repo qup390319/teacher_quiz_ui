@@ -190,10 +190,37 @@ export async function processStudentReply(ctx, reply) {
   return processStudentReplyMock(ctx, reply);
 }
 
+// 明確「說不出來」訊號（給收尾守門用；不含「短即模糊」那種，避免誤殺短的真實回答）
+const STUCK_WORDS = ['不知道', '不會', '忘記', '忘了', '想不到', '沒想法', '不確定', '沒有想法'];
+const cantAnswer = (t) => STUCK_WORDS.some((k) => (t || '').includes(k));
+
 /**
  * Rule-based fallback。同步、不依賴 LLM。
+ *
+ * 兩道收尾守門（修正學生問卷反映的「AI 逃避/一直重複問」）：
+ *  1. 連 2 次（含本輪）明確說不出來 → 直接溫和收尾，不再換角度逼問。
+ *  2. 將要重發與「上一則 AI 訊息」一模一樣的話 → 改為收尾，避免鸚鵡式重複、像沒讀學生的話。
  */
 export function processStudentReplyMock(ctx, reply) {
+  const log = ctx.conversationLog || [];
+  const priorStudent = log.filter((m) => m.role === 'student').map((m) => m.content);
+  const recent = [...priorStudent, reply];
+  let stuck = 0;
+  for (let i = recent.length - 1; i >= 0; i--) {
+    if (cantAnswer(recent[i])) stuck++; else break;
+  }
+  if (stuck >= 2) return finalize(ctx, 'GUESSING');
+
+  const result = computeMockResult(ctx, reply);
+
+  if (result.kind === 'next') {
+    const prevAi = [...log].reverse().find((m) => m.role === 'ai')?.content || null;
+    if (prevAi && result.aiMessage === prevAi) return finalize(ctx, 'GUESSING');
+  }
+  return result;
+}
+
+function computeMockResult(ctx, reply) {
   const fuzzy = isFuzzyReply(reply);
   const nonsense = isNonsenseReply(reply);
   const brief = !fuzzy && isBriefReply(reply);

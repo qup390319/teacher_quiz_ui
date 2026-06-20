@@ -12,6 +12,7 @@ from app.schemas.adaptive import (
     PolishStemRequest,
     PolishStemResponse,
     SuggestedOption,
+    SuggestedReasonOption,
     SuggestOptionsRequest,
     SuggestOptionsResponse,
 )
@@ -136,7 +137,10 @@ async def suggest_options(
     payload: SuggestOptionsRequest,
     _teacher: User = Depends(require_teacher),
 ) -> SuggestOptionsResponse:
-    """AI-generate a full set of 4 options (1 correct + 3 distractors)."""
+    """AI-generate options. single：一組 4 選項；two-tier：答案層 + 理由層各 3。"""
+    if payload.mode == "two-tier":
+        return await _suggest_two_tier(payload)
+
     misconceptions_text = "\n".join(
         f"- {m.get('id', '?')}: {m.get('label', '')}（{m.get('detail', '')}）"
         for m in payload.misconceptions[:4]
@@ -195,3 +199,93 @@ async def suggest_options(
             diagnosis=item.get("diagnosis", "CORRECT"),
         ))
     return SuggestOptionsResponse(options=options)
+
+
+_ANSWER_TAGS = ["A", "B", "C"]
+_REASON_TAGS = ["甲", "乙", "丙"]
+
+
+async def _suggest_two_tier(payload: SuggestOptionsRequest) -> SuggestOptionsResponse:
+    """two-tier：產生答案層（3，標一個正解）+ 理由層（3，1 正確理由 + 2 迷思理由）。
+
+    答案層 tag 由後端依序指派 A/B/C、理由層指派 甲/乙/丙（不信任 LLM 的 tag）。
+    """
+    import json
+    import re
+
+    misconceptions_text = "\n".join(
+        f"- {m.get('id', '?')}: {m.get('label', '')}（{m.get('detail', '')}）"
+        for m in payload.misconceptions[:4]
+    )
+    system_prompt = (
+        "你是國小自然科學教師的出題助手，正在設計「雙層次診斷題」。\n"
+        "第一層問『是什麼／會怎樣』（答案），第二層問『為什麼這樣選』（理由）。\n\n"
+        "請產生：\n"
+        "1. 答案層 answerOptions：3 個，恰一個 correct=true（科學正確），其餘 false。\n"
+        "2. 理由層 reasonOptions：3 個，恰一個 diagnosis='CORRECT'（正確理由），"
+        "另兩個各對應一條提供的迷思概念（diagnosis 填該迷思編號）。\n\n"
+        "要求：\n"
+        "- 用國小五年級學生能懂的用詞，每項 15-35 字。\n"
+        "- 理由要貼近學生真實想法；錯誤理由要能反映該迷思的因果推理。\n"
+        "- 只以 JSON 物件回傳，格式：\n"
+        '{"answerOptions":[{"content":"...","correct":true},{"content":"...","correct":false},'
+        '{"content":"...","correct":false}],'
+        '"reasonOptions":[{"content":"...","diagnosis":"CORRECT"},'
+        '{"content":"...","diagnosis":"M02-1"},{"content":"...","diagnosis":"M02-2"}]}'
+    )
+    user_prompt = (
+        f"知識節點：{payload.node_id}（{payload.node_name}）\n\n"
+        f"該節點的迷思概念：\n{misconceptions_text}\n\n"
+        f"題幹：\n{payload.stem}\n\n"
+        "請產生答案層與理由層（JSON 物件）。"
+    )
+    try:
+        resp: ChatResponse = await chat(ChatRequest(
+            messages=[
+                ChatMessage(role="system", content=system_prompt),
+                ChatMessage(role="user", content=user_prompt),
+            ],
+            temperature=0.8,
+            max_tokens=1200,
+        ))
+    except LlmServiceError as exc:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "LLM_UPSTREAM_ERROR") from exc
+
+    obj_match = re.search(r"\{.*\}", resp.content.strip(), re.DOTALL)
+    if not obj_match:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "LLM_PARSE_ERROR")
+    try:
+        raw = json.loads(obj_match.group())
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "LLM_PARSE_ERROR") from exc
+
+    answers = []
+    for i, item in enumerate((raw.get("answerOptions") or [])[:3]):
+        answers.append(SuggestedOption(
+            tag=_ANSWER_TAGS[i],
+            content=item.get("content", ""),
+            diagnosis="CORRECT" if item.get("correct") else "WRONG",
+        ))
+    # 指派每個理由「對應第一層哪個答案」：正確理由→正解答案；錯誤理由→錯誤答案（輪流）。
+    correct_answer_tag = next((a.tag for a in answers if a.diagnosis == "CORRECT"), "A")
+    wrong_answer_tags = [a.tag for a in answers if a.diagnosis != "CORRECT"]
+    reasons = []
+    wi = 0
+    for i, item in enumerate((raw.get("reasonOptions") or [])[:3]):
+        diag = item.get("diagnosis", "CORRECT")
+        if diag == "CORRECT":
+            answer_tag = correct_answer_tag
+        elif wrong_answer_tags:
+            answer_tag = wrong_answer_tags[wi % len(wrong_answer_tags)]
+            wi += 1
+        else:
+            answer_tag = correct_answer_tag
+        reasons.append(SuggestedReasonOption(
+            tag=_REASON_TAGS[i],
+            content=item.get("content", ""),
+            diagnosis=diag,
+            answer_tag=answer_tag,
+        ))
+    if not answers or not reasons:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "LLM_PARSE_ERROR")
+    return SuggestOptionsResponse(options=answers, reason_options=reasons)

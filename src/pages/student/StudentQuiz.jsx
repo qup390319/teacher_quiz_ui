@@ -16,8 +16,11 @@ import {
   processStudentReply,
   FOLLOWUP_MAX_ROUNDS,
 } from './followUp/followUpEngine';
-import { BottomPanel, OptionsPanel, DonePanel } from './studentQuizPanels';
+import { BottomPanel, OptionsPanel, ReasonOptionsPanel, DonePanel } from './studentQuizPanels';
 import { INTRO_MESSAGES, sortQuestionsByNodeOrder } from './studentQuizConfig';
+import {
+  getQuestionMode, getAnswerOptions, getReasonOptions, diagnoseQuestion,
+} from '../../data/twoTier';
 import bgImg from '../../assets/backgrounds/bg_chiheisen_green.jpg';
 import mascotImg from '../../assets/illustrations/scilens_mascot.png';
 
@@ -31,7 +34,11 @@ function StudentQuizScreen({ quizId }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const assignmentId = searchParams.get('assignmentId');
-  const { setCurrentQuizId, setActiveStudentReport, addToHistory } = useApp();
+  // 誤判補救單題重做模式：?retry=questionId。只跑該題、跳過開場，結束時把新結果併回報告。
+  const retryParam = searchParams.get('retry');
+  const retryQuestionId = retryParam != null ? Number(retryParam) : null;
+  const isRetryMode = Number.isFinite(retryQuestionId);
+  const { setCurrentQuizId, setActiveStudentReport, addToHistory, mergeRetryIntoReport } = useApp();
   const { data: currentQuiz, isLoading: quizLoading, error: quizError } = useQuiz(quizId);
   const { saveAnswer, saveFollowup, flushAll, saveError, resetPersistence } =
     useQuizPersistence(assignmentId);
@@ -39,10 +46,10 @@ function StudentQuizScreen({ quizId }) {
   const answersRef = useRef([]);
   const followUpResultsRef = useRef([]);
 
-  const sortedQuestions = useMemo(
-    () => sortQuestionsByNodeOrder(currentQuiz?.questions ?? []),
-    [currentQuiz]
-  );
+  const sortedQuestions = useMemo(() => {
+    const all = sortQuestionsByNodeOrder(currentQuiz?.questions ?? []);
+    return isRetryMode ? all.filter((q) => q.id === retryQuestionId) : all;
+  }, [currentQuiz, isRetryMode, retryQuestionId]);
 
   /* phase: intro → question → followUp → done */
   const [phase, setPhase] = useState('intro');
@@ -51,6 +58,10 @@ function StudentQuizScreen({ quizId }) {
   const [isThinking, setIsThinking] = useState(false);
   const [optionsEnabled, setOptionsEnabled] = useState(false);
   const [introIdx, setIntroIdx] = useState(0);
+
+  /* two-tier 第一層內的子階段：'answer'（選答案）→ 'reason'（選理由）。single 題恆為 'answer'。 */
+  const [answerStage, setAnswerStage] = useState('answer');
+  const [pendingAnswer, setPendingAnswer] = useState(null); // { tag, content } | null
 
   /* 第二層追問狀態 */
   const [followUpIndex, setFollowUpIndex] = useState(0); // 第幾題的追問
@@ -65,16 +76,18 @@ function StudentQuizScreen({ quizId }) {
   useEffect(() => {
     if (quizLoading) return;
     if (quizError || !currentQuiz || sortedQuestions.length === 0) {
-      navigate('/student', { replace: true });
+      // 重做模式找不到該題 → 回報告（保留原報告）；一般模式回首頁。
+      navigate(isRetryMode ? '/student/report' : '/student', { replace: true });
       return;
     }
     answersRef.current = [];
     followUpResultsRef.current = [];
     resetPersistence();
     setCurrentQuizId(quizId);
-    setActiveStudentReport(null);
+    // 重做模式必須保留現有報告（待結束後併入該題新結果）；一般模式才清空重來。
+    if (!isRetryMode) setActiveStudentReport(null);
   }, [
-    quizId, currentQuiz, sortedQuestions.length, navigate,
+    quizId, currentQuiz, sortedQuestions.length, navigate, isRetryMode,
     quizLoading, quizError, setCurrentQuizId, setActiveStudentReport,
     resetPersistence,
   ]);
@@ -89,6 +102,8 @@ function StudentQuizScreen({ quizId }) {
     if (!q) return;
     setIsThinking(true);
     setOptionsEnabled(false);
+    setAnswerStage('answer');
+    setPendingAnswer(null);
 
     setTimeout(() => {
       setIsThinking(false);
@@ -98,7 +113,9 @@ function StudentQuizScreen({ quizId }) {
           id: `q-${q.id}-node`,
           role: 'ai',
           // 對話進行中不向學生提及知識節點名稱（節點名稱可能是完整課綱描述句）
-          text: `接下來我們來看看第 ${qIdx + 1}/${sortedQuestions.length} 題`,
+          text: isRetryMode
+            ? '好的，我們再一起看一次這一題～'
+            : `接下來我們來看看第 ${qIdx + 1}/${sortedQuestions.length} 題`,
         },
       ]);
       setTimeout(() => {
@@ -113,10 +130,15 @@ function StudentQuizScreen({ quizId }) {
         }, 1400);
       }, 1200);
     }, 1800);
-  }, [sortedQuestions]);
+  }, [sortedQuestions, isRetryMode]);
 
   useEffect(() => {
     if (phase !== 'intro') return;
+    // 重做模式：跳過冗長開場，直接進這一題。
+    if (isRetryMode) {
+      const t = setTimeout(() => { setPhase('question'); showNextQuestion(0); }, 400);
+      return () => clearTimeout(t);
+    }
     if (introIdx >= INTRO_MESSAGES.length) {
       const timer = setTimeout(() => {
         setPhase('question');
@@ -133,7 +155,7 @@ function StudentQuizScreen({ quizId }) {
       setIntroIdx((i) => i + 1);
     }, delay);
     return () => clearTimeout(timer);
-  }, [phase, introIdx, showNextQuestion]);
+  }, [phase, introIdx, showNextQuestion, isRetryMode]);
 
   const finishQuiz = async (finalAnswers, leadText) => {
     const record = {
@@ -168,6 +190,26 @@ function StudentQuizScreen({ quizId }) {
     setTimeout(() => navigate('/student/report'), 1200);
   };
 
+  /* 單題重做收尾：把這一題的新作答＋追問結果併回現有報告（不建立新報告），回報告頁。 */
+  const finishRetry = async (finalAnswers) => {
+    const answer = finalAnswers.find((a) => a.questionId === retryQuestionId)
+      ?? finalAnswers[0] ?? null;
+    const followUpResult = followUpResultsRef.current.find((r) => r.questionId === retryQuestionId)
+      ?? followUpResultsRef.current[0] ?? null;
+
+    setIsThinking(true);
+    setMessages((prev) => [
+      ...prev,
+      { id: `retry-done-${Date.now()}`, role: 'ai', text: '好，我把這一題重新整理進你的報告囉⋯' },
+    ]);
+    setPhase('done');
+
+    await flushAll(finalAnswers, followUpResultsRef.current);
+    mergeRetryIntoReport(retryQuestionId, { answer, followUpResult });
+    setIsThinking(false);
+    setTimeout(() => navigate('/student/report'), 1000);
+  };
+
   /* ── 第二層：AI 追問 ─────────────────────────────── */
   const askFollowUpRound1 = (qIdx) => {
     const q = sortedQuestions[qIdx];
@@ -176,8 +218,13 @@ function StudentQuizScreen({ quizId }) {
       return;
     }
     const answer = answersRef.current.find((a) => a.questionId === q.id);
-    const selectedOption = q.options.find((o) => o.tag === answer?.selectedTag);
+    const selectedOption = getAnswerOptions(q).find((o) => o.tag === answer?.selectedTag);
+    const reasonOption = getReasonOptions(q).find((o) => o.tag === answer?.reasonTag);
     const isCorrect = answer?.diagnosis === 'CORRECT';
+    // two-tier：把學生選的「理由」併進 selectedOptionContent，讓追問 prompt 能引用其真實理由
+    const selectedOptionContent = reasonOption
+      ? `${selectedOption?.content ?? ''}（理由：${reasonOption.content}）`
+      : (selectedOption?.content ?? '');
 
     const ctx = {
       round: 1,
@@ -190,7 +237,9 @@ function StudentQuizScreen({ quizId }) {
       questionId: q.id,
       questionStem: q.stem,
       selectedOption,
-      selectedOptionContent: selectedOption?.content ?? '',
+      selectedOptionContent,
+      selectedReasonContent: reasonOption?.content ?? '',
+      quadrant: answer?.quadrant ?? null,
     };
     setFollowUpCtx(ctx);
     setFollowUpEnabled(false);
@@ -293,7 +342,9 @@ function StudentQuizScreen({ quizId }) {
     setTimeout(() => {
       setIsThinking(false);
       if (nextIdx >= sortedQuestions.length) {
-        setTimeout(() => finishQuiz(answersRef.current, '謝謝你陪我聊完所有題目！'), 1500);
+        setTimeout(() => (isRetryMode
+          ? finishRetry(answersRef.current)
+          : finishQuiz(answersRef.current, '謝謝你陪我聊完所有題目！')), 1500);
         return;
       }
       setFollowUpIndex(nextIdx);
@@ -345,24 +396,27 @@ function StudentQuizScreen({ quizId }) {
   };
 
   /* ── 第一層選項處理 ───────────────────────────────── */
-  const handleSelectOption = (opt) => {
-    if (!optionsEnabled) return;
-    setOptionsEnabled(false);
-    const q = sortedQuestions[currentQIndex];
-    const nextAnswer = { questionId: q.id, selectedTag: opt.tag, diagnosis: opt.diagnosis };
+  // 判定 + 記錄 + 即時存檔，回傳更新後的 answers。two-tier 傳 reasonTag，single 傳 null。
+  const commitAnswer = (q, answerTag, reasonTag) => {
+    const { quadrant, diagnosis } = diagnoseQuestion(q, answerTag, reasonTag);
+    const nextAnswer = {
+      questionId: q.id,
+      selectedTag: answerTag,
+      reasonTag: reasonTag ?? null,
+      diagnosis,
+      quadrant,
+    };
     const updatedAnswers = [
       ...answersRef.current.filter((a) => a.questionId !== q.id),
       nextAnswer,
     ];
     answersRef.current = updatedAnswers;
-    // 即時存檔：一選答案就背景 upsert 該題（不阻塞 UI；失敗會在 saveError 顯示）
+    // 即時存檔：一判定就背景 upsert 該題（不阻塞 UI；失敗會在 saveError 顯示）
     saveAnswer(nextAnswer);
+    return updatedAnswers;
+  };
 
-    setMessages((prev) => [
-      ...prev,
-      { id: `ans-${q.id}`, role: 'student', text: opt.content },
-    ]);
-
+  const advanceAfterAnswer = (updatedAnswers) => {
     const nextIdx = currentQIndex + 1;
     if (nextIdx >= sortedQuestions.length) {
       startFollowUpPhase(updatedAnswers);
@@ -370,6 +424,41 @@ function StudentQuizScreen({ quizId }) {
       setCurrentQIndex(nextIdx);
       showNextQuestion(nextIdx);
     }
+  };
+
+  const handleSelectOption = (opt) => {
+    if (!optionsEnabled) return;
+    const q = sortedQuestions[currentQIndex];
+    setMessages((prev) => [
+      ...prev,
+      { id: `ans-${q.id}`, role: 'student', text: opt.content },
+    ]);
+
+    // two-tier：選完答案先進「選理由」子階段，尚未判定
+    if (getQuestionMode(q) === 'two-tier') {
+      setPendingAnswer({ tag: opt.tag, content: opt.content });
+      setAnswerStage('reason');
+      return;
+    }
+
+    // single：直接判定並前進
+    setOptionsEnabled(false);
+    advanceAfterAnswer(commitAnswer(q, opt.tag, null));
+  };
+
+  // two-tier 第二層：選完理由 → 判定四象限 → 前進
+  const handleSelectReason = (reasonOpt) => {
+    if (!optionsEnabled || !pendingAnswer) return;
+    setOptionsEnabled(false);
+    const q = sortedQuestions[currentQIndex];
+    setMessages((prev) => [
+      ...prev,
+      { id: `reason-${q.id}`, role: 'student', text: reasonOpt.content },
+    ]);
+    const updatedAnswers = commitAnswer(q, pendingAnswer.tag, reasonOpt.tag);
+    setPendingAnswer(null);
+    setAnswerStage('answer');
+    advanceAfterAnswer(updatedAnswers);
   };
 
   const currentQ = phase === 'question' ? sortedQuestions[currentQIndex] : null;
@@ -388,11 +477,13 @@ function StudentQuizScreen({ quizId }) {
       ? 50 + Math.round(((followUpIndex + 0.5) / sortedQuestions.length) * 50)
       : phase === 'done' ? 100 : 0;
 
-  const stepInfo = isQuestionPhase
-    ? `第一階段・第 ${currentQIndex + 1}/${sortedQuestions.length} 題`
-    : isFollowUpPhase
-      ? `第二階段・想法探索 ${followUpIndex + 1}/${sortedQuestions.length}`
-      : phase === 'done' ? '整理結果中⋯' : null;
+  const stepInfo = isRetryMode
+    ? (isQuestionPhase ? '重新作答這一題' : isFollowUpPhase ? '重新聊聊這一題' : phase === 'done' ? '整理結果中⋯' : null)
+    : isQuestionPhase
+      ? `第一階段・第 ${currentQIndex + 1}/${sortedQuestions.length} 題`
+      : isFollowUpPhase
+        ? `第二階段・想法探索 ${followUpIndex + 1}/${sortedQuestions.length}`
+        : phase === 'done' ? '整理結果中⋯' : null;
 
   return (
     <div
@@ -460,8 +551,15 @@ function StudentQuizScreen({ quizId }) {
 
       {/* 底部 panel */}
       <BottomPanel>
-        {isQuestionPhase && optionsEnabled && currentQ && (
-          <OptionsPanel options={currentQ.options} onSelect={handleSelectOption} />
+        {isQuestionPhase && optionsEnabled && currentQ && answerStage === 'answer' && (
+          <OptionsPanel options={getAnswerOptions(currentQ)} onSelect={handleSelectOption} />
+        )}
+        {isQuestionPhase && currentQ && answerStage === 'reason' && pendingAnswer && (
+          <ReasonOptionsPanel
+            options={getReasonOptions(currentQ)}
+            answerContent={pendingAnswer.content}
+            onSelect={handleSelectReason}
+          />
         )}
         {isFollowUpPhase && followUpCtx && followUpQuestion && (
           <AIFollowUpPanel

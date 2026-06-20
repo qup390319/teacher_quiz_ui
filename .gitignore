@@ -17,6 +17,9 @@ dist-ssr
 screenshot*/
 coverage/
 
+# Windows Explorer / OneDrive folder metadata
+desktop.ini
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

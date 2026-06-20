@@ -123,6 +123,7 @@ backend/
 | `llm_service.py` | P2 ✅ | 統一 vLLM proxy 接口；內部轉換 prompt 格式、呼叫 vLLM、解析回應 |
 | `ragflow_service.py` | P2 ✅ | 統一 RAGFlow proxy 接口；呼叫出題輔助（N6）與摘要（N1/N2）端點 |
 | `diagnosis_service.py` | P4 ✅ | 驅動兩階段診斷流程（自動診斷 + 迷思確認）；計算節點通過率、迷思命中學生清單 |
+| `stats_service.py` | P4 ✅ | 計算班級統計（節點通過率 / 迷思分佈 / 追問品質）；two-tier 題組的節點通過率以 `quadrant==='TT'` 計算（無 quadrant 的舊資料 fallback `diagnosis`）；額外聚合 `quadrant_stats`（`{ question_id → { TT/TF/FT/FF: count } }`） |
 | `summary_service.py` | P3 ✅ | 彙整學生作答 → 生成摘要（呼叫 RAGFlow N1/N2）；快取到 `AiSummaryCache` 表 |
 | `cause_analysis_service.py` | P4 ✅ | 分析學生迷思成因（透過 LLM）；接收追問對話日誌、迷思資訊與 8 個成因分類，產生 structured prompt，呼叫 LLM 取得分析，解析 JSON 回應提取成因 ID；LLM 不可用時優雅回傳空清單 |
 | `adaptive_service.py` | ✅ | 適性派題服務；根據學生歷史作答計算各節點精熟度，結合知識圖譜先備關係產生先備狀態報告與適性推薦（詳見 §10） |
@@ -359,17 +360,17 @@ HTTP status code：
 | `classes` | `GET /api/classes/{class_id}` | P3 ✅ | 班級詳情含學生（非自己班級回 404） |
 | `classes` | `PUT /api/classes/{class_id}/students` | P3 ✅ | 整批替換學生名冊（非自己班級回 404） |
 | `quizzes` | `GET /api/quizzes` / `GET /api/quizzes/{id}` | P3 ✅ | 教師看全部；**學生只看自己班級已被派發的**（透過 Assignment 表過濾） |
-| `quizzes` | `POST/PUT/DELETE /api/quizzes[/{id}]` | P3 ✅ | 教師專屬（CRUD）；**PUT 採 smart upsert**（match by `order_index` 在原 `quiz_questions.id` 上 UPDATE，避免破壞 `student_answers.question_id` FK）；嘗試刪除有作答的題目會回 409 `QUESTION_HAS_ANSWERS` |
+| `quizzes` | `POST/PUT/DELETE /api/quizzes[/{id}]` | P3 ✅ | 教師專屬（CRUD）；**PUT 採 smart upsert**（match by `order_index` 在原 `quiz_questions.id` 上 in-place UPDATE，保持題序穩定讓既有作答對齊）；刪除題目前以 `(assignment.quiz_id, order_index)` 反查、有作答則回 409 `QUESTION_HAS_ANSWERS`（`student_answers.question_id` 存題序 order_index、非 FK；spec-11 §3.11） |
 | `scenarios` | `GET /api/scenarios` / `GET /api/scenarios/{id}` | **已下線（router 註解於 main.py）** | 概念釐清模組已從實驗系統移除；router 實作檔仍保留 |
 | `scenarios` | `POST/PUT/DELETE /api/scenarios[/{id}]` | **已下線（router 註解於 main.py）** | 同上 |
 | `assignments` | `GET /api/assignments` | P3 ✅ | **教師範圍隔離**：教師只看 `class_id` 屬於自己班級的派題；學生隱式過濾為自己班級。回傳含 **`completionRate / submittedCount / totalStudents`** 即時統計；對學生身份額外回傳 **`myDiagnosisCompleted`**（該生是否**答完該題組所有題目、且每一題追問對話都已結束**＝該題有對應 `followup_results`；只答一半中途離開 → `false`，視為未完成、留在待完成區），用於學生首頁判斷任務是否做完，跨刷新仍正確 |
 | `assignments` | `POST/PATCH/DELETE /api/assignments[/{id}]` | P3 ✅ | 教師專屬；POST/PATCH 寫入前驗證 `class_id` 屬於自己 |
-| `answers` | `POST /api/answers` | P4 ✅ | 學生作答（接收陣列以批次寫入） |
+| `answers` | `POST /api/answers` | P4 ✅ | 學生作答（接收陣列以批次寫入）；two-tier 題每筆含 `reason_tag` + `quadrant` |
 | `answers` | `POST /api/answers/{id}/followup` | P4 ✅ | 追問結果回寫（驅動 statusChange） |
-| `answers` | `GET /api/quizzes/{quiz_id}/answers?classId=` | P4 ✅ | 教師查班級作答 |
+| `answers` | `GET /api/quizzes/{quiz_id}/answers?classId=` | P4 ✅ | 教師查班級作答；two-tier 額外回傳每筆的 `reasonTag` + `quadrant`（含於 `StudentQuestionResult.selectedReasonContent` / `quadrant`） |
 | `answers` | `GET /api/quizzes/{quiz_id}/followups?classId=` | P4 ✅ | 教師查該班完整 N3 追問對話紀錄（含 `conversationLog / aiSummary / finalStatus / misconceptionCode / reasoningQuality / statusChange`），給單班報告底部「學生第二層追問對話完整紀錄」區塊使用 |
-| `answers` | `GET /api/quizzes/{quiz_id}/stats?classId=` | P4 ✅ | 取代前端 mock `getNodePassRates / getMisconceptionStudents` |
-| `answers` | `GET /api/students/{id}/history` | P4 ✅ | 學生作答歷史；每筆額外回傳 `causeIdsByMisconception`（`{misconceptionCode: causeIds[]}`）與 `errorTypeByMisconception`（`{misconceptionCode: errorType}`），讓「學習體檢表」在 in-memory 快照失效（重新登入/重整/切換分頁）後仍能還原成因徽章與解釋型/定義型/觀察型分類標籤 |
+| `answers` | `GET /api/quizzes/{quiz_id}/stats?classId=` | P4 ✅ | 取代前端 mock `getNodePassRates / getMisconceptionStudents`；two-tier 額外回傳 `quadrantStats`（`{ [questionId]: { TT, TF, FT, FF } }`）與 `mode`；節點通過率改用 `quadrant==='TT'`（無 quadrant 的舊資料 fallback `diagnosis`） |
+| `answers` | `GET /api/students/{id}/history` | P4 ✅ | 學生作答歷史；每筆額外回傳 `causeIdsByMisconception`、`errorTypeByMisconception`、`aiSummaryByMisconception`、`statusChangeByMisconception`、`quoteByMisconception`（皆 `{misconceptionCode: ...}`），讓學生診斷報告在 in-memory 快照失效（重新登入/重整/切換分頁）後仍能還原成因徽章、錯誤類別、「給你的話」(aiSummary)、想法轉變標記與「你在對話中提到」引用。`quoteByMisconception` 由後端從 `conversation_log` 依與前端 `getStudentQuote` 相同規則挑出（學生發言 role 同時支援 `student`/`user`）。**所有 `*ByMisconception` map 一律以該題 `answer.diagnosis`（報告迷思卡使用的碼）為 key，掛上該題自己 followup 的產出**——不以 `followup.misconception_code`（LLM 結論碼）為 key，因兩者在部分資料不一致會導致卡片查不到。另回傳 `questionResults`（`{questionId, nodeId, stem, selectedOptionContent, selectedTag, diagnosis, isCorrect}[]`）供報告「每一題的結果」逐題呈現。**`questionId` 為卷內題序（order_index），題組由 assignment 判定**（`StudentAnswer.question_id` 是卷序非全域 PK，見 spec-11 §3.11）；builder 以 `order_index → 該題組 QuizQuestion` 補上 `nodeId / stem / selectedOptionContent`，讓**前端不依賴 mock `getQuizQuestions` 即可渲染任何真實教師題組**（節點由全域 `/api/knowledge-nodes` 以 nodeId 查 studentHint/迷思）。同題多筆作答取 `answered_at` 最新一筆。**同一題若有多筆作答（同份題組重複施測，如同一學生在 assign-001 與 assign-004 各做一次 quiz-001），builder 以 `answered_at` 取每題最新一筆**，避免題數/對錯數被重複列灌水 |
 | `treatment` | `POST /api/treatment/sessions/start` | **已下線（router 註解於 main.py）** | 概念釐清模組已從實驗系統移除；router 實作檔仍保留 |
 | `treatment` | `GET /api/treatment/sessions/{id}` | **已下線（router 註解於 main.py）** | 同上 |
 | `treatment` | `GET /api/treatment/sessions/by-key/{scenario_quiz_id}/{student_id}` | **已下線（router 註解於 main.py）** | 同上 |

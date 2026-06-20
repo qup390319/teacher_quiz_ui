@@ -5,6 +5,43 @@
 
 ---
 
+### [2026-06-20] 診斷題型擴充：單層（single）與雙層次（two-tier）並存（mode 旗標，migration 0032）
+
+- **涉及 Spec**: `docs/spec-04-data-models.md`（題目資料結構、作答記錄、AppContext）、`docs/spec-05-user-workflows.md`（學生作答流程、診斷機制）、`docs/spec-03-components.md`（ReasonOptionsPanel、QuadrantSummary、EditQuestionModal、CoveragePanel）、`docs/spec-09-llm-integration.md`（追問接在 two-tier 之後）、`docs/spec-10-backend-architecture.md`（answers/stats 欄位）、`docs/spec-11-database-schema.md`（quizzes.mode、quiz_questions.reason_options、student_answers.reason_tag/quadrant）、`docs/spec-12-ragflow-integration.md`（N6 在 two-tier 理由層）
+- **背景**: 研究端需同時支援「傳統單層迷思選擇題」（舊有 quiz-001/002）與「雙層次診斷題」（Treagust 1988：第一層選答案、第二層選理由），以比較兩種診斷方式的效果。原系統僅支援 single 模式。
+- **決策（使用者 2026-06-20 選「旗標並存而非拆系統」）**：
+  1. **旗標並存**：以 `mode: 'single' | 'two-tier'` 欄位在同一套題組系統中並存兩種題型，避免維護兩套 UI / 兩條資料流；舊題組 (quiz-001/002) 標 `single`（向下相容，既有資料無需 migration）；新增示範題組 quiz-003/004 標 `two-tier`。
+  2. **two-tier 第二層為固定理由選項**（甲/乙/丙），非 AI 動態生成，降低複雜度與出題門檻；答案層用哨兵值 `CORRECT`/`WRONG`，迷思碼由理由層決定。理由層選項參考**鄭一亭（2003）《國小學童對水溶液的迷思概念類型與成因之研究》**（碩士論文，臺北市立師範學院）所整理之水溶液迷思概念類型編製。
+  3. **四象限判定**：答案對錯 × 理由對錯 → TT/TF/FT/FF。節點通過＝TT（不是只看 `diagnosis==='CORRECT'`）；`stats_service` 通過率計算改以 `quadrant` 為優先，舊資料（`quadrant IS NULL`）fallback `diagnosis`。
+  4. **AI 追問接在四象限之後**：two-tier 完成雙層作答後，再接同一套批次 AI 蘇格拉底追問（followUp phase）；追問 ctx 帶 `selectedReasonContent` 與 `quadrant` 供 LLM 錨定學生陳述的理由。
+  5. **兩層建議的 bulk 功能暫不實作**：N6「AI 建議選項」（`POST /api/adaptive/suggest-options`）在 two-tier 模式下僅對理由層提供逐條 `DistractorSuggestPopover`，bulk 建議兩層為未來增強（已於 spec-12 §7.4 標記）。
+- **DB Migration 0032**（`backend/alembic/versions/20260620_0032_two_tier_diagnostic.py`，down_revision `0031`）：
+  - `quizzes.mode VARCHAR(16) DEFAULT 'single' CHECK IN ('single','two-tier')`
+  - `quiz_questions.reason_options JSONB NULL`
+  - `student_answers.reason_tag VARCHAR(8) NULL`、`student_answers.quadrant VARCHAR(2) NULL CHECK IN ('TT','TF','FT','FF') OR NULL`
+  - 全部欄位 nullable / 有 default，向下相容；舊有 880 筆作答資料保全（reason_tag / quadrant 為 NULL）。
+- **Helper 模組**：`src/data/twoTier.js` — 前端統一處理 two-tier 判斷邏輯（四象限計算、診斷碼解析、runtime/報告/統計消費端共用）。
+- **Spec 已更新**: ✅（spec-04/05/03/09/10/11/12/02 + CLAUDE.md 領域知識速查；本筆 deviations）
+
+---
+
+### [2026-06-18] 教師端儀表板空白修正：`student_answers.question_id` 是「題序」非 PK（migration 0031）
+
+- **涉及 Spec**: `docs/spec-11-database-schema.md` §3.11（student_answers）、`docs/spec-10-backend-architecture.md`（quizzes PUT / answers 統計端點）
+- **症狀（使用者回報）**: `user001` 三班（601 / 605 / 606）學生都有作答紀錄，但教師端診斷結果儀表板全空白。
+- **重現**: `GET /api/quizzes/quiz-1780855259641/stats` 的 `submittedCount` 正確（78/88），但 `nodePassRates` 全 0、`topMisconceptions` / `questionStats` 全空、`averageMastery` 0。
+- **根因**: `student_answers.question_id` 實際存的是**卷內題序 `order_index`（1..N）**——因為 quiz API 對外把 `question.id` 序列化成 `order_index`（`quizzes.py`），前端「第 N 題」顯示與學生作答寫入都依此。但 DB 卻把 `question_id` 設成 `REFERENCES quiz_questions(id)`（全域 PK），且教師端所有讀取（統計 / 各班作答格 / 追問 / 診斷紀錄 / 學生歷史）都用 **PK** 去對位。只有種子卷 `quiz-001`（PK 剛好＝order_index＝1..5）能對上；其餘題組 PK≠order_index（如本卷 PK 14–18）→ 對位全失敗 → 內容全空。`submittedCount` 因只數 distinct `student_id` 不受影響，造成「有人數、無內容」的假象。
+- **決策（使用者 2026-06-18 選「讀取端改用 order_index」+「一併拿掉外鍵」）**: 不動現存 880 筆資料、不動前端契約（前端要的就是題序）；改讓**讀取端一律以 `(quiz, order_index)` 對位**，並移除語意已錯的外鍵。
+- **處置**:
+  1. `services/stats_service.py`：`get_class_stats` / `get_class_answers` 改以 `q.order_index` 對位（`question_stats` 也改用 order_index 為鍵）。
+  2. `routers/answers.py`：`get_quiz_class_followups`、`list_diagnosis_logs`、`get_student_history` 改用 **assignment.quiz_id** 判定題組（不再用 `question_id` join `quiz_questions.id`）；移除 `StudentQuestionResult` 早已被 schema 忽略的 dead `node_id` 參數。
+  3. `routers/quizzes.py`：smart-upsert 的 `QUESTION_HAS_ANSWERS` 守門同樣壞掉（拿 PK 去比題序、對非種子卷恆「無作答」→ 可能誤刪已作答題目並孤立答案），改以 `(assignment.quiz_id, order_index)` 反查；更新對應 docstring。
+  4. `db/models/answer.py` + migration `0031`：移除 `student_answers.question_id → quiz_questions.id` 外鍵（連帶消除 `ON DELETE SET NULL` 把歷史作答題序清空的隱患）；欄位保留為純 `BIGINT`。
+- **驗證**: backend rebuild + `alembic upgrade head`（0031；880 筆資料保全、FK 移除）。Live API 實測 user001：grade-stats `averageMastery 41` / `nodePassRates` 皆有值 / `topMisconceptions` 10 筆；各班作答格 120 格填滿；追問 120 列、診斷紀錄 384 列且正確掛在本卷；學生 `60120` 歷史正確歸到 `quiz-1780855259641`（先前誤歸 `quiz-001`）。改動檔 `ruff check` 全綠（其餘既有錯誤在未觸碰檔案）。後端無測試（`app/tests` 不存在）。
+- **Spec 已更新**: ✅（spec-11 §3.11 + spec-10 quizzes 列；本筆 deviations）
+
+---
+
 ### [2026-06-08] 追問 Round 1 開場改為蘇格拉底式開放問句（非二選一/不附 chips）
 
 - **涉及 Spec**: `docs/spec-05-user-workflows.md` §2.2（followUp Round 1 / belief 階段描述）
@@ -442,3 +479,33 @@
   - 前端 `npm run build` + `npm run lint` ✅
   - Preview 手動測試：登入示範老師 → 新增分類 → 拖曳班級跨分類 → 重整頁面後分類關係保留 ✅
 - **Spec 已更新**: ✅（spec-02b、spec-04、spec-10、spec-11 全部同步）
+
+---
+
+## 學生報告「每一題的結果」+ AI 對話品質強化（2026-06-18）
+
+- **涉及 Spec**: spec-04 §資料 hook、spec-05 §2.1（學生報告）、spec-09 §12.3、spec-10 §6
+- **背景**: 學生問卷簡答反映兩類痛點——(A) 診斷報告「不知道對幾題錯幾題、解釋看不懂」；(B) AI 追問對話「亂說／逃避／冷漠」。其中 B 的「逃避感」經調查 776 段真實對話確認，主因不是「不肯講答案」，而是 **AI 從不確認、不收束 + 不接受「不知道」 + rule-based fallback 鸚鵡式重複問同句**（量化：含罐頭句 9/776、重複≥2 次 4 段；學生連講≥3 次說不出來 21/776）。
+- **A 採用**:
+  1. 後端 `/api/students/{id}/history` 新增 `questionResults`（逐題 `{questionId, selectedTag, diagnosis, isCorrect}`）；schema `StudentQuestionResult` + `StudentHistoryRow.question_results`。
+  2. **去重**：同一題多筆作答（同份題組重複施測，如同學生在 assign-001 與 assign-004 各做一次 quiz-001）只取 `answered_at` 最新一筆——修正題數/對錯數被重複列灌水（原本 5 題顯示「答錯 8 題」）。全庫 880 列中 90 個 (學生,題目) 有重複、790 唯一。
+  3. 前端報告最上方新增「每一題的結果」（`QuestionResultsSection`/`QuestionResultCard`，純資料 helper `buildQuestionResults` 拆到 `reportData.js` 以過 react-refresh lint）；統計卡改題數語意「答對題數 / 答錯題數」，保留研究用詞「迷思概念（錯誤的概念）」。
+- **B 採用（純未來生效，凍結資料不變）**:
+  1. `followUpPrompts.js`：暖度指引、不替學生發言、**final 收束導向「報告會告訴你完整答案」**、連 2 次說不出來硬性收尾、DOWNGRADED 門檻提高、aiSummary 第二人稱溫暖語氣。
+  2. `followUpEngine.js`（rule-based fallback）：連 2 次明確說不出來即 finalize；要重發與上一則相同的話 → 改 finalize（消除鸚鵡式重複）。
+- **與既有規則的關係**: final 仍**不在對話中揭露對錯**（維持蘇格拉底式診斷與研究純度）；新增的只是「告訴學生答案在報告裡」的著落感收束語，未放寬「不揭露答案」原則。
+- **未做**: spec-07 未新增條目——既有 MisconceptionCard/RemedialNodeCard 本就未列入 spec-07，新卡片僅複用既有 spec-07 色票、無新風格，維持一致。
+- **驗證**: `npm run lint` + `npm run build` ✅；`docker compose build backend` 啟動正常 ✅；`GET /api/students/115017/history` 回 `questionResults`（去重後 5 題）✅；dev :3000 登入 115017 報告顯示「每一題的結果」5 題 + 題數統計 ✅。
+- **Spec 已更新**: ✅（spec-04 / spec-05 / spec-09 / spec-10）
+
+---
+
+## errorType 補分析 + 報告以 nodeId 對題（2026-06-18）
+
+- **涉及 Spec**: spec-09 §12.4a、spec-10 §6
+- **背景**: 學生報告要顯示「解釋型/定義型/觀察型」，但凍結資料約 72% 的 followup `error_type` 為 NULL（當時 LLM 未輸出或走 rule-based fallback）。
+- **採用**:
+  1. 新增 `backend/app/services/error_type_analysis_service.py`（依 §12.4a 三類規則的 LLM 分類，回三類之一或 null）＋一次性腳本 `backend/app/scripts/backfill_error_type.py`（目標 `final_status IN ('MISCONCEPTION','UNCERTAIN')`；CORRECT 依規則維持 null；線索不足回 null）。已執行：迷思 followup 分佈補到 DEFINITION 249 / EXPLANATION 114 / OBSERVATION 90 / null 15。正式新施測由追問 LLM 當下輸出，不需此腳本。
+  2. **報告「每一題的結果」改以 `nodeId` 對題**：mock `getQuizQuestions('quiz-002')` 題目 id 為 1-5，但 DB quiz-002 question id 為 6-10，原本用 questionId join 導致 quiz-002 顯示「尚無作答資料」。`StudentQuestionResult` 增 `nodeId`，前端改用 `knowledgeNodeId` 對題（節點在同題組內唯一）、題號顯示用前端題目 id。
+- **驗證**: `npm run lint`+`build` ✅；後端重建 ✅；115017 quiz-002 報告 5 題正常顯示、每題「定義型」徽章渲染（截圖）✅。
+- **Spec 已更新**: ✅（spec-09 §12.4a、spec-10 §6）
