@@ -2,19 +2,24 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.deps import require_teacher
+from app.auth.deps import get_current_user, require_student, require_teacher
 from app.data.knowledge_graph import NODES, topo_sort
-from app.db.models import Class, User
+from app.db.models import Class, Quiz, User
 from app.db.session import get_db
 from app.schemas.adaptive import (
+    AdaptivePathStep,
     AdaptiveRecommendResponse,
     ClassPrerequisiteResponse,
+    NextQuestionRequest,
+    NextQuestionResponse,
     PolishStemRequest,
     PolishStemResponse,
     SuggestedOption,
     SuggestedReasonOption,
     SuggestOptionsRequest,
     SuggestOptionsResponse,
+    TracePathRequest,
+    TracePathResponse,
 )
 from app.schemas.llm import ChatMessage, ChatRequest, ChatResponse
 from app.services import adaptive_service
@@ -72,6 +77,116 @@ async def adaptive_recommend(
         db, class_id, target_ids, mode, threshold,
     )
     return AdaptiveRecommendResponse(**data)
+
+
+@router.post(
+    "/next-question",
+    response_model=NextQuestionResponse,
+    response_model_by_alias=True,
+)
+async def next_question(
+    payload: NextQuestionRequest,
+    _student: User = Depends(require_student),
+    db: AsyncSession = Depends(get_db),
+) -> NextQuestionResponse:
+    """施測中動態選題：依先備圖譜決定學生的下一題（spec-10 §10.4）。
+
+    僅回傳題組內下一題的 order-index，不含任何個資，故開放給作答學生角色。
+    後端由 answered 歷史完整重算，無 session 狀態。
+    """
+    quiz = await db.get(Quiz, payload.quiz_id)
+    if quiz is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "QUIZ_NOT_FOUND")
+
+    # 題組節點順序（依 order_index）＋ 節點 → 該節點題目的 order_index 清單
+    quiz_node_ids: list[str] = []
+    questions_by_node: dict[str, list[int]] = {}
+    for q in quiz.questions:  # 已依 order_index 排序
+        quiz_node_ids.append(q.knowledge_node_id)
+        questions_by_node.setdefault(q.knowledge_node_id, []).append(q.order_index)
+
+    answered_pairs = [(a.node_id, a.passed) for a in payload.answered]
+    asked_qids = {a.question_id for a in payload.answered}
+
+    next_node, skipped = adaptive_service.next_adaptive_node(quiz_node_ids, answered_pairs)
+
+    if next_node is None:
+        return NextQuestionResponse(
+            done=True, skipped_node_ids=skipped,
+            reason="所有應診斷的節點已完成" + (f"（略過 {len(skipped)} 個先備）" if skipped else ""),
+        )
+
+    # 取該節點尚未問過的第一題（示範題組為 1 節點 1 題）
+    candidates = [oi for oi in questions_by_node.get(next_node, []) if oi not in asked_qids]
+    next_qid = candidates[0] if candidates else (questions_by_node.get(next_node) or [None])[0]
+
+    # 僅當下一題確實是「上一題（答錯）的題組內先備」才是 descent；
+    # 否則是 fall-through 到另一條鏈的下一個節點（不宜稱「退回先備」）。
+    node_name = NODES.get(next_node, {}).get("name", next_node)
+    is_descent = (
+        bool(answered_pairs)
+        and not answered_pairs[-1][1]
+        and next_node in adaptive_service.in_quiz_prerequisites(
+            answered_pairs[-1][0], set(quiz_node_ids),
+        )
+    )
+    reason = (
+        f"上一題未通過，退回先備節點「{node_name}」追溯"
+        if is_descent else "進入下一個診斷節點"
+    )
+
+    return NextQuestionResponse(
+        done=False,
+        next_question_id=next_qid,
+        next_node_id=next_node,
+        skipped_node_ids=skipped,
+        reason=reason,
+    )
+
+
+@router.post(
+    "/trace-path",
+    response_model=TracePathResponse,
+    response_model_by_alias=True,
+)
+async def trace_path(
+    payload: TracePathRequest,
+    _user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> TracePathResponse:
+    """重播本次施測的適性出題路徑（供學生／教師診斷報告呈現，spec-10 §10.6）。
+
+    僅回傳題組內的節點順序與退回/前進標註，不含任何個資，故開放給已登入者
+    （學生看自己的報告、教師看學生報告）。後端由 answered 完整重播。
+    """
+    quiz = await db.get(Quiz, payload.quiz_id)
+    if quiz is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "QUIZ_NOT_FOUND")
+
+    quiz_node_ids: list[str] = []
+    node_to_qid: dict[str, int] = {}
+    for q in quiz.questions:  # 已依 order_index 排序
+        quiz_node_ids.append(q.knowledge_node_id)
+        node_to_qid.setdefault(q.knowledge_node_id, q.order_index)
+
+    answered_by_node = {a.node_id: a.passed for a in payload.answered}
+    result = adaptive_service.reconstruct_adaptive_path(quiz_node_ids, answered_by_node)
+
+    steps = [
+        AdaptivePathStep(
+            node_id=s["node_id"],
+            node_name=s["node_name"],
+            question_id=node_to_qid.get(s["node_id"]),
+            passed=s["passed"],
+            kind=s["kind"],
+        )
+        for s in result["steps"]
+    ]
+    return TracePathResponse(
+        steps=steps,
+        skipped_node_ids=result["skipped_node_ids"],
+        consistent=result["consistent"],
+    )
 
 
 @router.get("/sorted-nodes")

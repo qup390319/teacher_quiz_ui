@@ -66,7 +66,7 @@ const { currentUser, loading, role, login, logout } = useAuth();
 | ~~`assignments`~~ | — | — | **P3 移除**：改用 `useAssignments()` |
 | ~~`studentAnswers`~~ | — | — | **P4 移除**：作答即時 POST 至 `/api/answers`，dashboard 從 DB 拉 |
 | `studentName` | `string` | `'學生'` | 已被 `useAuth().currentUser.name` 取代，但保留相容 |
-| ~~`studentHistory`~~ | — | — | **P4 移除**：改用 `useStudentHistory(studentId)` 從 DB 拉 |
+| `studentHistory` | `HistoryRecord[]` | `[]` | **P4 修改**：改為 session-local in-memory 快照（記錄本次作答，供「剛做完即看報告」免等後端）；長期歷史改由 `useStudentHistory(studentId)` 從 DB 拉 |
 | `activeStudentReport` | `HistoryRecord \| null` | `null` | 當前查看的學生報告（仍用 in-memory 暫存當前報告） |
 
 ### 1.2 衍生值
@@ -230,8 +230,8 @@ interface Quiz {
 |----|------|------|------|------|----------|
 | `quiz-001` | 水溶液 · 迷思診斷（第一次） | single | 5 | published | INe-Ⅱ-3-02, INe-Ⅱ-3-03, INe-Ⅱ-3-05, INe-Ⅲ-5-4, INe-Ⅲ-5-7 |
 | `quiz-002` | 水溶液 · 迷思診斷（第二次） | single | 5 | published | INe-Ⅱ-3-02, INe-Ⅱ-3-03, INe-Ⅱ-3-05, INe-Ⅲ-5-4, INe-Ⅲ-5-7 |
-| `quiz-003` | 水溶液 · 雙層次診斷（第一次） | two-tier | 5 | published | INe-Ⅱ-3-02, INe-Ⅱ-3-03, INe-Ⅱ-3-05, INe-Ⅲ-5-4, INe-Ⅲ-5-7 |
-| `quiz-004` | 水溶液 · 雙層次診斷（第二次） | two-tier | 5 | published | INe-Ⅱ-3-02, INe-Ⅱ-3-03, INe-Ⅱ-3-05, INe-Ⅲ-5-4, INe-Ⅲ-5-7 |
+| `quiz-003` | 水溶液 · 雙層次診斷（示範） | two-tier | 5 | published | INe-Ⅱ-3-02, INe-Ⅱ-3-03, INe-Ⅱ-3-05, INe-Ⅲ-5-4, INe-Ⅲ-5-7 |
+| `quiz-004` | 水溶液 · 雙層次診斷（示範·第二份） | two-tier | 5 | published | INe-Ⅱ-3-02, INe-Ⅱ-3-03, INe-Ⅱ-3-05, INe-Ⅲ-5-4, INe-Ⅲ-5-7 |
 
 ### 2.3 Class（班級）
 **來源**: `src/data/classData.js`

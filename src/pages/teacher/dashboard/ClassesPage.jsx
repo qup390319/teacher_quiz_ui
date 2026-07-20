@@ -56,7 +56,11 @@ export default function ClassesPage() {
       }
       let fullCorrect = 0, partial = 0, allWrong = 0;
       rows.forEach((r) => {
-        const correct = (r.answers ?? []).filter(
+        // `/quizzes/{id}/answers` 為每位在籍學生回傳一列；完全未作答者各題 selectedTag 為
+        // null，必須排除，否則會被誤判為「全錯」，造成「作答人數 0 卻顯示全錯一整班」。
+        const answered = (r.answers ?? []).filter((a) => a.selectedTag != null);
+        if (answered.length === 0) return;
+        const correct = answered.filter(
           (a) => correctTagByQuestion[a.questionId] && a.selectedTag === correctTagByQuestion[a.questionId],
         ).length;
         if (correct === totalQ) fullCorrect += 1;

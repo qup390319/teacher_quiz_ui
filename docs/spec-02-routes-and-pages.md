@@ -35,7 +35,8 @@
 | `/teacher/classes/:classId` | `ClassDetail` | 班級詳情：個別班級學生資訊 | `TeacherLayout` |
 | `/teacher/knowledge-map` | `KnowledgeMap` | (預設) 知識節點與迷思概念總覽：唯讀檢視系統預設迷思概念 | `TeacherLayout` |
 | `/teacher/custom-knowledge-map` | `CustomKnowledgeMap` | (自定義) 知識節點總覽：檢視預設＋自訂迷思概念，支援新增/刪除自訂迷思 | `TeacherLayout` |
-| `/teacher/misconception-causes` | `MisconceptionCauses` | 迷思概念成因：列出診斷對話中分類迷思成因的 8 種類別（特徵 + 常見樣態） | `TeacherLayout` |
+| `/teacher/misconception-causes` | `MisconceptionCauses` | 迷思概念成因：列出診斷對話中分類迷思成因的 9 種類別（特徵 + 常見樣態） | `TeacherLayout` |
+| `/teacher/students/:studentId/report` | `StudentDiagnosisReport` | 個別學生診斷報告：統計卡 + 迷思分析（含成因/答錯類型）+ **先備概念追溯** + 補強建議 + 逐題追問對話紀錄（詳見 §2 對應小節） | `TeacherLayout` |
 | `/teacher/report` | `TeacherReport` | 舊版診斷報告（保留向後相容） | `TeacherLayout` |
 | `/student` | `StudentHome` | 學生首頁：頂部兩個 Tab 切換「任務看板」(待挑戰任務) / 「診斷報告」(歷次診斷報告) | 簡易 Header |
 | `/student/quiz/:quizId` | `StudentQuiz` | 對話式診斷測驗介面 | 簡易 Header |
@@ -58,6 +59,7 @@
 |------|------|----------|------|
 | `:classId` | string | `ClassDetail` | 班級 ID（如 `class-A`） |
 | `:quizId` | string | `StudentQuiz` | 題組 ID（如 `quiz-001`） |
+| `:studentId` | string | `StudentDiagnosisReport` | 學生 user id（由 `StudentReportsPage` / `MisconceptionsPage` 等列表跳轉帶入） |
 
 ### 1.3 URL Query 參數（診斷結果子分頁共用）
 
@@ -271,7 +273,7 @@
 **內容**（方案 C 重組）：
 - **主視圖**：`MisconceptionRankingTable` — 完整迷思排行（依持有總人次降序、含 NodeBadge / 人次 / 佔比 bar / 「查看涉及學生」跳轉）
 - **進階折疊面板**（單一 collapsible，內含兩圖並排）：
-  - `MisconceptionCauseDonut` — 所有班級迷思成因 8 類分布甜甜圈
+  - `MisconceptionCauseDonut` — 所有班級迷思成因 9 類分布甜甜圈
   - `FollowupStatusFunnel` — 追問後狀態變化漏斗
 
 > 移除：
@@ -295,7 +297,7 @@
 - `helpers.js` — 常數（`CLASS_KEY_MAP`, `CLASS_CHART_COLORS`）與 `computeOverviewForQuiz`、`getAssignment`、`getAvailableQuizzesForClass`、`getAllAssignedQuizzes`、`getLatestQuizIdForClass`
 - `OverallAIDiagnosisSummary.jsx`、`ClassStatusCards.jsx`、`CrossClassNodeChart.jsx`、`TopMisconceptionsChart.jsx`、`ClassMisconceptionHeatmap.jsx`、`ClassScatterChart.jsx`
 - `SingleClassReport.jsx`（含 4 指標卡 + 子組件 `AIDiagnosisSummary.jsx`、`WeeklyActionChecklist.jsx`、`BreakdownChart.jsx`、`MisconceptionDistribution.jsx`、`QuestionErrorRateChart.jsx`、`ReasoningQualityBars.jsx`、`HeatmapView.jsx`、`FollowupConversations.jsx`）
-- **新增（2026-05）**：`SubjectRadarChart.jsx`（子主題雷達）、`MasteryDistributionHistogram.jsx`（學生掌握度分布）、`FollowupStatusFunnel.jsx`（追問後狀態漏斗）、`MisconceptionCauseDonut.jsx`（迷思成因 8 類甜甜圈）、`ReasoningQualityBars.jsx`（單班追問推理品質分布）、`OptionAttractionChart.jsx`（選項吸引力分析）
+- **新增（2026-05）**：`SubjectRadarChart.jsx`（子主題雷達）、`MasteryDistributionHistogram.jsx`（學生掌握度分布）、`FollowupStatusFunnel.jsx`（追問後狀態漏斗）、`MisconceptionCauseDonut.jsx`（迷思成因 9 類甜甜圈）、`ReasoningQualityBars.jsx`（單班追問推理品質分布）、`OptionAttractionChart.jsx`（選項吸引力分析）
 - `QuestionErrorRateChart.jsx` — 水平長條圖，呈現全班各題的錯誤率；以紅色虛線標示班級平均錯誤率；顯示題幹、知識節點名稱、錯誤率、top misconception；根據錯誤率色碼：紅色（≥50%）、黃色（30-49%）、綠色（<30%）
 - `FollowupConversations.jsx` — 透過 `useClassFollowups` 撈取該班所有學生在 N3 第二層追問的對話紀錄；以「學生 → 題目」兩層摺疊呈現，展開後以聊天泡泡顯示完整對話、AI 摘要與最終判定徽章。資料來源為後端 `GET /api/quizzes/{quizId}/followups?classId=`，撈 `FollowupResult.conversation_log` JSONB
 

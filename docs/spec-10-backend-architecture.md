@@ -125,7 +125,7 @@ backend/
 | `diagnosis_service.py` | P4 ✅ | 驅動兩階段診斷流程（自動診斷 + 迷思確認）；計算節點通過率、迷思命中學生清單 |
 | `stats_service.py` | P4 ✅ | 計算班級統計（節點通過率 / 迷思分佈 / 追問品質）；two-tier 題組的節點通過率以 `quadrant==='TT'` 計算（無 quadrant 的舊資料 fallback `diagnosis`）；額外聚合 `quadrant_stats`（`{ question_id → { TT/TF/FT/FF: count } }`） |
 | `summary_service.py` | P3 ✅ | 彙整學生作答 → 生成摘要（呼叫 RAGFlow N1/N2）；快取到 `AiSummaryCache` 表 |
-| `cause_analysis_service.py` | P4 ✅ | 分析學生迷思成因（透過 LLM）；接收追問對話日誌、迷思資訊與 8 個成因分類，產生 structured prompt，呼叫 LLM 取得分析，解析 JSON 回應提取成因 ID；LLM 不可用時優雅回傳空清單 |
+| `cause_analysis_service.py` | P4 ✅ | 分析學生迷思成因（透過 LLM）；接收追問對話日誌、迷思資訊與 9 個成因分類，產生 structured prompt，呼叫 LLM 取得分析，解析 JSON 回應提取成因 ID；LLM 不可用時優雅回傳空清單 |
 | `adaptive_service.py` | ✅ | 適性派題服務；根據學生歷史作答計算各節點精熟度，結合知識圖譜先備關係產生先備狀態報告與適性推薦（詳見 §10） |
 
 ### 2.2 data/ 詳細說明
@@ -366,9 +366,9 @@ HTTP status code：
 | `assignments` | `GET /api/assignments` | P3 ✅ | **教師範圍隔離**：教師只看 `class_id` 屬於自己班級的派題；學生隱式過濾為自己班級。回傳含 **`completionRate / submittedCount / totalStudents`** 即時統計；對學生身份額外回傳 **`myDiagnosisCompleted`**（該生是否**答完該題組所有題目、且每一題追問對話都已結束**＝該題有對應 `followup_results`；只答一半中途離開 → `false`，視為未完成、留在待完成區），用於學生首頁判斷任務是否做完，跨刷新仍正確 |
 | `assignments` | `POST/PATCH/DELETE /api/assignments[/{id}]` | P3 ✅ | 教師專屬；POST/PATCH 寫入前驗證 `class_id` 屬於自己 |
 | `answers` | `POST /api/answers` | P4 ✅ | 學生作答（接收陣列以批次寫入）；two-tier 題每筆含 `reason_tag` + `quadrant` |
-| `answers` | `POST /api/answers/{id}/followup` | P4 ✅ | 追問結果回寫（驅動 statusChange） |
+| `answers` | `POST /api/answers/followups` | P4 ✅ | 追問結果回寫（複數、一次批次接陣列；原子 upsert，驅動 statusChange） |
 | `answers` | `GET /api/quizzes/{quiz_id}/answers?classId=` | P4 ✅ | 教師查班級作答；two-tier 額外回傳每筆的 `reasonTag` + `quadrant`（含於 `StudentQuestionResult.selectedReasonContent` / `quadrant`） |
-| `answers` | `GET /api/quizzes/{quiz_id}/followups?classId=` | P4 ✅ | 教師查該班完整 N3 追問對話紀錄（含 `conversationLog / aiSummary / finalStatus / misconceptionCode / reasoningQuality / statusChange`），給單班報告底部「學生第二層追問對話完整紀錄」區塊使用 |
+| `answers` | `GET /api/quizzes/{quiz_id}/followups?classId=` | P4 ✅ | 教師查該班完整 N3 追問對話紀錄（含 `conversationLog / aiSummary / finalStatus / misconceptionCode / reasoningQuality / statusChange / causeIds / errorType`），給單班報告底部「學生第二層追問對話完整紀錄」與「追問對話分析」區塊（推理品質、`ErrorTypeDistribution` 問題類型分布、`CauseTypeDistribution` 成因類型統計）使用。其中 `errorType`（解釋型/定義型/觀察型）於 2026-06-20 隨兩張統計圖一併加入回傳 |
 | `answers` | `GET /api/quizzes/{quiz_id}/stats?classId=` | P4 ✅ | 取代前端 mock `getNodePassRates / getMisconceptionStudents`；two-tier 額外回傳 `quadrantStats`（`{ [questionId]: { TT, TF, FT, FF } }`）與 `mode`；節點通過率改用 `quadrant==='TT'`（無 quadrant 的舊資料 fallback `diagnosis`） |
 | `answers` | `GET /api/students/{id}/history` | P4 ✅ | 學生作答歷史；每筆額外回傳 `causeIdsByMisconception`、`errorTypeByMisconception`、`aiSummaryByMisconception`、`statusChangeByMisconception`、`quoteByMisconception`（皆 `{misconceptionCode: ...}`），讓學生診斷報告在 in-memory 快照失效（重新登入/重整/切換分頁）後仍能還原成因徽章、錯誤類別、「給你的話」(aiSummary)、想法轉變標記與「你在對話中提到」引用。`quoteByMisconception` 由後端從 `conversation_log` 依與前端 `getStudentQuote` 相同規則挑出（學生發言 role 同時支援 `student`/`user`）。**所有 `*ByMisconception` map 一律以該題 `answer.diagnosis`（報告迷思卡使用的碼）為 key，掛上該題自己 followup 的產出**——不以 `followup.misconception_code`（LLM 結論碼）為 key，因兩者在部分資料不一致會導致卡片查不到。另回傳 `questionResults`（`{questionId, nodeId, stem, selectedOptionContent, selectedTag, diagnosis, isCorrect}[]`）供報告「每一題的結果」逐題呈現。**`questionId` 為卷內題序（order_index），題組由 assignment 判定**（`StudentAnswer.question_id` 是卷序非全域 PK，見 spec-11 §3.11）；builder 以 `order_index → 該題組 QuizQuestion` 補上 `nodeId / stem / selectedOptionContent`，讓**前端不依賴 mock `getQuizQuestions` 即可渲染任何真實教師題組**（節點由全域 `/api/knowledge-nodes` 以 nodeId 查 studentHint/迷思）。同題多筆作答取 `answered_at` 最新一筆。**同一題若有多筆作答（同份題組重複施測，如同一學生在 assign-001 與 assign-004 各做一次 quiz-001），builder 以 `answered_at` 取每題最新一筆**，避免題數/對錯數被重複列灌水 |
 | `treatment` | `POST /api/treatment/sessions/start` | **已下線（router 註解於 main.py）** | 概念釐清模組已從實驗系統移除；router 實作檔仍保留 |
@@ -421,9 +421,12 @@ HTTP status code：
 
 ---
 
-## 10. 適性派題模組（Adaptive Dispatching）
+## 10. 適性診斷模組（Adaptive Dispatching & Selection）
 
-教師派題前，系統可依據學生歷史作答自動判斷先備知識精熟度，並推薦適合每位學生的診斷/複習節點。
+本模組有兩個應用面，共用同一份知識圖譜（§10.1）：
+
+1. **派題前的適性推薦**（§10.2~§10.4）：教師派題前，系統依學生歷史作答判斷先備精熟度，推薦適合每位學生的診斷/複習節點。
+2. **施測中的動態選題**（§10.5）：學生作答當下，系統依先備圖譜即時決定下一題——過關跳過先備、答錯退回先備追溯，達成「適性診斷的動態選題機制直接用於迷思概念診斷」。
 
 ### 10.1 知識圖譜資料模組
 
@@ -469,19 +472,24 @@ HTTP status code：
 | `diagnosis`（診斷） | 依拓撲序檢查目標節點；遇到未達標節點時**向上溯源**到未精熟的先備，插入推薦清單頭部；一旦某個先備未通過，停止派發更下游的目標節點（`skip`） |
 | `review`（複習） | 蒐集所有先備 + 目標節點的完整鏈，從最基礎的先備開始，推薦所有未達標節點 |
 
+#### 施測中動態選題（純函數）
+
+`next_adaptive_node(quiz_node_ids, answered)` → 施測中依先備圖譜決定下一個要考的知識節點（詳見 §10.5）。純函數，可由已作答歷史 `answered`（`(node_id, passed)` 序列）完整重算，後端無 session 狀態。輔助函式 `in_quiz_prerequisites(node_id, quiz_nodes)` 取「遞移先備 ∩ 題組節點集合」（router 亦用它判定回應 `reason` 是否為真正的 descent）。
+
 ### 10.3 適性派題端點
 
 **Router**：`backend/app/routers/adaptive.py`，掛載於 `/api/adaptive/`
 
-所有端點皆需 `require_teacher`。
+除 `next-question` 外，所有端點皆需 `require_teacher`。`next-question` 為施測中學生作答流程呼叫，需 `require_student`（僅回傳題組內下一題的 order-index，不含任何個資，故開放給作答學生角色；此放行不牴觸「禁止把 `/api/students/{id}` 開放給學生」之規範）。
 
-| 端點 | 方法 | 查詢參數 | 說明 |
-|------|------|---------|------|
-| `/api/adaptive/prerequisite-status` | GET | `classId`, `nodeIds`（逗號分隔）, `threshold`（預設 70） | 回傳全班先備精熟狀態報告 |
-| `/api/adaptive/recommend` | GET | `classId`, `nodeIds`, `mode`（diagnosis/review）, `threshold` | 回傳 per-student 推薦/跳過節點清單與原因說明 |
-| `/api/adaptive/sorted-nodes` | GET | `nodeIds` | 回傳拓撲排序後的節點 ID + 節點名稱/層級資訊 |
-| `/api/adaptive/polish-stem` | POST | Body: `{stem, nodeId, nodeName}` | AI 潤飾題幹（詳見 spec-09 §14.1） |
-| `/api/adaptive/suggest-options` | POST | Body: `{stem, nodeId, nodeName, misconceptions[]}` | AI 產生 4 選項（詳見 spec-09 §14.2） |
+| 端點 | 方法 | 認證 | 參數 | 說明 |
+|------|------|------|------|------|
+| `/api/adaptive/prerequisite-status` | GET | teacher | `classId`, `nodeIds`（逗號分隔）, `threshold`（預設 70） | 回傳全班先備精熟狀態報告 |
+| `/api/adaptive/recommend` | GET | teacher | `classId`, `nodeIds`, `mode`（diagnosis/review）, `threshold` | 回傳 per-student 推薦/跳過節點清單與原因說明 |
+| `/api/adaptive/sorted-nodes` | GET | teacher | `nodeIds` | 回傳拓撲排序後的節點 ID + 節點名稱/層級資訊 |
+| `/api/adaptive/next-question` | POST | **student** | Body: `{quizId, answered:[{questionId, nodeId, passed}]}` | 施測中動態選題：回傳下一題 `{done, nextQuestionId, nextNodeId, skippedNodeIds, reason}`（詳見 §10.5） |
+| `/api/adaptive/polish-stem` | POST | teacher | Body: `{stem, nodeId, nodeName}` | AI 潤飾題幹（詳見 spec-09 §14.1） |
+| `/api/adaptive/suggest-options` | POST | teacher | Body: `{stem, nodeId, nodeName, misconceptions[]}` | AI 產生 4 選項（詳見 spec-09 §14.2） |
 
 ### 10.4 Pydantic Schemas
 
@@ -498,6 +506,33 @@ HTTP status code：
 | `PolishStemRequest` / `PolishStemResponse` | AI 潤飾題幹（request: stem + nodeId + nodeName；response: polished） |
 | `SuggestOptionsRequest` / `SuggestOptionsResponse` | AI 產生選項（request: stem + nodeId + nodeName + misconceptions[]；response: options[]） |
 | `SuggestedOption` | 單一選項（tag: A/B/C/D, content, diagnosis） |
+| `AnsweredNode` | 施測中已作答一題（questionId, nodeId, passed） |
+| `NextQuestionRequest` / `NextQuestionResponse` | 動態選題（request: quizId + answered[]；response: done, nextQuestionId, nextNodeId, skippedNodeIds[], reason） |
+
+### 10.5 施測中動態選題引擎（In-Test Adaptive Selection）
+
+學生作答時,前端每答完一題就呼叫 `POST /api/adaptive/next-question`,由後端決定下一題,而非照題組固定順序線性前進。這是「雙層次測驗 + 適性診斷」中「動態選題」的具體實作。
+
+**選題策略（限題組內既有先備）**：
+
+- **過關**（single 的 `diagnosis==='CORRECT'` / two-tier 的 `quadrant==='TT'`,前端以 `passed` 傳入）→ **跳過**該節點在題組內的先備（推論基礎已穩,省時,呼應 15 分鐘施測上限）
+- **答錯** → **立刻退回**最近的、未作答且未略過的題組內先備節點（動態追溯）；續錯續退,直到過關或無更基礎的題組內先備
+- **先備不在題組內**者不退回（例如 `INe-Ⅲ-5-4` 的先備 `INe-Ⅲ-5-3` 不在題組時）→ 維持前進,交由教師端報告的「先備概念追溯」事後補上（spec-02b §2.10.1）
+
+**演算法**（`next_adaptive_node`,純函數,由 `answered` 歷史重算）：
+
+1. 累計 `skipped` = 所有「已過關節點」的題組內先備。
+2. 若上一題答錯 → 從其題組內先備由近而遠找第一個未作答、未略過者回傳（descent）。
+3. 否則依 `reverse(topo_sort(quiz_nodes))`（最進階者優先）取第一個未作答、未略過節點。
+4. 皆無 → 回傳 `None`（`done=true`,進入追問階段）。
+
+**起始題**：`answered` 為空時回傳最進階節點（top-down 診斷,符合「先測當前年級概念,錯了再往回追溯」）。
+
+**效果**：全對的學生只答兩條鏈的頂端節點即結束（先備全略過）；答錯的學生會被逐級退回先備定位根因。實際作答題數因人而異,體現「動態選題」。
+
+**降級**：端點失敗時前端直接進入追問階段（已問過的題目仍完整診斷），不阻擋流程。
+
+> **測試**：`backend/app/tests/test_adaptive_next_question.py` 涵蓋「全對省題、答錯退回、過關跳過、先備不在題組不退、逐級退回、根因定位、走到底終止」等分支。
 
 ---
 

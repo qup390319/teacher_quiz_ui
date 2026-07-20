@@ -19,6 +19,118 @@ from app.db.models import (
 MASTERY_THRESHOLD = 70
 
 
+def in_quiz_prerequisites(node_id: str, quiz_nodes: set[str]) -> list[str]:
+    """該節點的遞移先備中，落在本題組節點集合內者（root→node 順序）。
+
+    鏡射前端 src/utils/prerequisiteTrace.js 的「題組內先備」概念。
+    """
+    return [p for p in get_all_prerequisites(node_id) if p in quiz_nodes]
+
+
+def next_adaptive_node(
+    quiz_node_ids: list[str],
+    answered: list[tuple[str, bool]],
+) -> tuple[str | None, list[str]]:
+    """施測中動態選題：依先備圖譜決定下一個要考的知識節點。
+
+    純函數，可由已作答歷史完整重算（後端無需保存 session 狀態）。
+    策略（spec-05 §2.2）——**限題組內既有先備**：
+      - 過關（passed=True）→ 跳過該節點在題組內的先備（推論基礎已穩，省時）
+      - 答錯（passed=False）→ 立刻退回最近的題組內先備（動態追溯）；
+        續錯續退，直到過關或無更基礎的題組內先備
+      - 先備不在題組內者不退回（交由報告端事後追溯）
+
+    節點層級運作；題目對應由 router 負責（一節點多題時取尚未問過的）。
+
+    Args:
+        quiz_node_ids: 本題組涵蓋的知識節點（可含重複，內部去重）。
+        answered: 已作答節點的 (node_id, passed) 序列，依實際作答順序。
+
+    Returns:
+        (next_node_id, skipped_node_ids)
+        next_node_id 為 None 代表已無題可出（進入追問階段）；
+        skipped_node_ids 為因過關而略過、且尚未作答的先備節點（供前端說明用）。
+    """
+    quiz_set = set(quiz_node_ids)
+    answered_nodes = {n for n, _ in answered}
+    skipped: set[str] = set()
+    for node_id, passed in answered:
+        if passed:
+            skipped.update(in_quiz_prerequisites(node_id, quiz_set))
+
+    def _pending_skipped() -> list[str]:
+        return topo_sort(list(skipped - answered_nodes))
+
+    # 1) 答錯 descent：上一題答錯 → 退回最近的未作答、未略過的題組內先備
+    if answered and not answered[-1][1]:
+        last_node = answered[-1][0]
+        for pre in reversed(in_quiz_prerequisites(last_node, quiz_set)):  # nearest first
+            if pre not in answered_nodes and pre not in skipped:
+                return pre, _pending_skipped()
+
+    # 2) 否則取下一個最進階（reverse topo）的未作答、未略過節點
+    for node_id in reversed(topo_sort(list(quiz_set))):
+        if node_id not in answered_nodes and node_id not in skipped:
+            return node_id, _pending_skipped()
+
+    return None, _pending_skipped()
+
+
+def reconstruct_adaptive_path(
+    quiz_node_ids: list[str],
+    answered_by_node: dict[str, bool],
+) -> dict[str, Any]:
+    """重播適性引擎，還原「本次施測」的實際出題路徑（供診斷報告呈現）。
+
+    以「第一層作答過關與否」逐步餵入 next_adaptive_node（即施測中動態選題當初
+    依據的訊號），重現當初的出題順序並標註每一步的角色：
+      - start：本次第一個節點（最進階）
+      - retreat：上一題答錯 → 退回其題組內先備（動態追溯的證據）
+      - advance：換到另一條鏈的下一個節點
+
+    因引擎為確定性純函數，餵入相同的第一層判定即可精準重現當初路徑，
+    不需在作答時額外保存 session 狀態。
+
+    Args:
+        quiz_node_ids: 題組涵蓋的知識節點（可含重複）。
+        answered_by_node: {node_id: passed}，passed 以第一層 quadrant=='TT' 判定。
+
+    Returns:
+        {
+            "steps": [{node_id, node_name, passed, kind}],  # 依實際出題順序
+            "skipped_node_ids": [...],  # 因過關而略過、未作答的先備
+            "consistent": bool,         # 重播消化的節點集是否 == 已作答節點集
+                                        # （False 代表非適性 session 的舊資料，報告端可隱藏）
+        }
+    """
+    quiz_set = set(quiz_node_ids)
+    seq: list[tuple[str, bool]] = []
+    steps: list[dict[str, Any]] = []
+    # 防呆上界：最多走訪節點數次，避免資料異常造成無限迴圈。
+    for _ in range(len(quiz_set) + 1):
+        node, _skipped = next_adaptive_node(quiz_node_ids, seq)
+        if node is None or node not in answered_by_node:
+            break
+        if not seq:
+            kind = "start"
+        elif not seq[-1][1] and node in in_quiz_prerequisites(seq[-1][0], quiz_set):
+            kind = "retreat"
+        else:
+            kind = "advance"
+        passed = answered_by_node[node]
+        steps.append({
+            "node_id": node,
+            "node_name": NODES.get(node, {}).get("name", node),
+            "passed": passed,
+            "kind": kind,
+        })
+        seq.append((node, passed))
+
+    _, skipped = next_adaptive_node(quiz_node_ids, seq)
+    consistent = {s["node_id"] for s in steps} == set(answered_by_node)
+    return {"steps": steps, "skipped_node_ids": skipped, "consistent": consistent}
+
+
 async def _load_class_students(db: AsyncSession, class_id: str) -> list[Student]:
     res = await db.execute(
         select(Student).where(Student.class_id == class_id).order_by(Student.seat),

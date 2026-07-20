@@ -120,7 +120,7 @@ export default function Step0Unit({ onNext }) {
               <span className="material-symbols-rounded text-sm">check</span>本系統題型
             </span>
           </span>
-          <p className="text-sm text-[#636E72] leading-relaxed">先選答案、再選理由，四象限判定。</p>
+          <p className="text-sm text-[#636E72] leading-relaxed">先選答案、再選理由，依兩層作答綜合判定。</p>
         </div>
       </div>
 

@@ -14,6 +14,10 @@ import { useQuiz } from './useQuizzes';
  *   - 對一半：1 ~ 99%（至少答對 1 題、未全對）
  *   - 全錯：0%
  *
+ * 注意：`/quizzes/{id}/answers` 會為「每位在籍學生」回傳一列（未作答者各題
+ * selectedTag 為 null）。**完全未作答的學生不計入分布**，否則會被誤判為「全錯」，
+ * 造成「作答人數 0 卻顯示全錯一整班」。total 因此等於實際作答人數。
+ *
  * @param {string} quizId
  * @param {Array} classes - 此題組已派發的班級陣列 (overviewData.classStats)
  * @returns {{ fullCorrect, partial, allWrong, total, loading }}
@@ -51,7 +55,9 @@ export function useAnswerDistribution(quizId, classes) {
     answersQueries.forEach((q) => {
       const rows = q.data?.rows ?? [];
       rows.forEach((r) => {
-        const correct = (r.answers ?? []).filter(
+        const answered = (r.answers ?? []).filter((a) => a.selectedTag != null);
+        if (answered.length === 0) return; // 完全未作答者不計入答題分布
+        const correct = answered.filter(
           (a) => correctTagByQuestion[a.questionId] && a.selectedTag === correctTagByQuestion[a.questionId],
         ).length;
         if (correct === totalQ) fullCorrect += 1;

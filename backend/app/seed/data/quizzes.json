@@ -366,8 +366,8 @@
     ]
   },
   {
-    "id": "quiz-005",
-    "title": "水溶液 · 雙層次診斷（生活情境版）",
+    "id": "quiz-003",
+    "title": "水溶液 · 雙層次診斷（示範）",
     "status": "published",
     "mode": "two-tier",
     "isSample": true,
@@ -593,8 +593,8 @@
     ]
   },
   {
-    "id": "quiz-006",
-    "title": "水溶液溶解概念 · 雙層次診斷（文獻改編）",
+    "id": "quiz-004",
+    "title": "水溶液 · 雙層次診斷（示範·第二份）",
     "status": "published",
     "mode": "two-tier",
     "isSample": true,

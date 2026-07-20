@@ -22,6 +22,11 @@
 | `BottomPanel` / `OptionsPanel` / `DonePanel` | `src/pages/student/studentQuizPanels.jsx` | StudentQuiz 第一層選項面板與完成 loading |
 | `ReasonOptionsPanel` | `src/pages/student/studentQuizPanels.jsx` | **two-tier 專用**：第二層理由選項面板（甲/乙/丙 三個藍系按鈕），在學生選完答案層後顯示；詢問「你這樣選，是因為…？」，點擊即送出 |
 | `QuadrantSummary` | `src/pages/teacher/dashboard/shared/QuadrantSummary.jsx` | **two-tier 教師報告專用**：四象限分佈矩陣元件（TT/TF/FT/FF 各人次與百分比）；僅在 `quiz.mode === 'two-tier'` 時由 `SingleClassReport` 渲染 |
+| `ErrorTypeDistribution` | `src/pages/teacher/dashboard/shared/ErrorTypeDistribution.jsx` | 教師報告「問題類型分布」（單班「追問對話分析」摺疊區）：聚合該班追問結果的 `errorType`（解釋型/定義型/觀察型），三類卡片 + 堆疊條；百分比以已分類人次為分母，未分類另以淡色註記。色票取自 `data/errorTypes.js`。（對應設計文件 §4.2 的 `ProblemTypeChart`，實作改名以對齊 `error_type` 欄位） |
+| `CauseTypeDistribution` | `src/pages/teacher/dashboard/shared/CauseTypeDistribution.jsx` | 教師報告「成因類型統計」（單班「追問對話分析」摺疊區）：攤平聚合該班追問結果的 `causeIds`（9 類成因），依人次排序的橫條；一筆可多成因故各列不互斥、總和可 > 100%。色票取自 `data/misconceptionCauses.js`。（對應設計文件 §4.3 的 `CauseTypeChart`） |
+| `OverviewBar` | `src/pages/teacher/assignment/OverviewBar.jsx` | 派題管理頁頂部全頁概覽列（題組數 / 已派發 / 平均完成率等彙總） |
+| `QuizSummaryCard` | `src/pages/teacher/assignment/QuizSummaryCard.jsx` | 派題管理主清單卡片（2026-06-20 重構）：題組標題、(two-tier 時)「雙層次」badge、X題·Y節點、堆疊進度條（完成/作答中/待作答）、已派 X/Y 班·平均 Z%、四色點小計、「管理派發」鈕 |
+| `AssignmentDrawer` | `src/pages/teacher/assignment/AssignmentDrawer.jsx` | 派題管理右側抽屜（2026-06-20 重構）：管理「單一題組 × 所有班級」的派發；截止日必填、班級搜尋、狀態篩選 tab、全選未派發 + 批次派發、逐班派發/改截止日/移除/看報告 |
 
 ### 1.1 學生端共用元件
 

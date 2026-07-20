@@ -19,6 +19,8 @@ import MisconceptionDistribution from './MisconceptionDistribution';
 import HeatmapView from './HeatmapView';
 import QuestionErrorRateChart from './QuestionErrorRateChart';
 import ReasoningQualityBars from './ReasoningQualityBars';
+import ErrorTypeDistribution from './ErrorTypeDistribution';
+import CauseTypeDistribution from './CauseTypeDistribution';
 import QuadrantSummary from './QuadrantSummary';
 
 export default function SingleClassReport({ cls, assignments, quizzes, quizId }) {
@@ -151,10 +153,16 @@ export default function SingleClassReport({ cls, assignments, quizzes, quizId })
         </div>
       </AdvancedSection>
 
-      <AdvancedSection title="追問對話分析" subtitle="學生推理品質 · AI 文獻診斷摘要">
+      <AdvancedSection title="追問對話分析" subtitle="學生推理品質 · 問題類型 · 成因統計 · AI 文獻診斷摘要">
         <div className="space-y-6">
           <div className="bg-white rounded-2xl border border-[#D5D8DC] p-6">
             <ReasoningQualityBars quizId={quizId} classId={classId} />
+          </div>
+          <div className="bg-white rounded-2xl border border-[#D5D8DC] p-6">
+            <ErrorTypeDistribution quizId={quizId} classId={classId} />
+          </div>
+          <div className="bg-white rounded-2xl border border-[#D5D8DC] p-6">
+            <CauseTypeDistribution quizId={quizId} classId={classId} />
           </div>
           <RagflowSummaryPanel
             scope="class"

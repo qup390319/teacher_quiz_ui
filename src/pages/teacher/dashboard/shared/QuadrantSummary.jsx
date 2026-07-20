@@ -25,7 +25,7 @@ export default function QuadrantSummary({ stats }) {
     <div>
       <div className="flex items-center gap-2 mb-1">
         <span className="material-symbols-rounded text-[#2E6FA6]" style={{ fontSize: 22 }}>stacked_bar_chart</span>
-        <h3 className="font-bold text-[#2D3436]">雙層次四象限分佈</h3>
+        <h3 className="font-bold text-[#2D3436]">雙層次作答分佈</h3>
       </div>
       <p className="text-sm text-[#95A5A6] mb-4">
         以「答案 × 理由」交叉判定：真理解＝答對且理由對；假陽性＝答對但理由錯（可能猜對）；

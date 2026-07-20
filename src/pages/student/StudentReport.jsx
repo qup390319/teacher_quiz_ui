@@ -9,6 +9,7 @@ import { getQuizQuestions } from '../../data/quizData';
 import { knowledgeNodes } from '../../data/knowledgeGraph';
 import { Icon } from '../../components/ui/woodKit';
 import { MisconceptionCard, RemedialNodeCard, QuestionResultCard } from './reportCards';
+import ReportAdaptivePath from './reportAdaptivePath';
 import { buildQuestionResults } from './reportData';
 import bgImg from '../../assets/backgrounds/bg_chiheisen_green.jpg';
 import mascotImg from '../../assets/illustrations/scilens_mascot.png';
@@ -321,6 +322,9 @@ export default function StudentReport() {
 
         {step === 1 && (
           <>
+        {/* 本次診斷的追蹤路徑：施測中動態選題（答錯退回先備）的實際路徑，只在有退回時顯示 */}
+        <ReportAdaptivePath quizId={reportQuizId} resultItems={questionResults} />
+
         {/* 每一題的結果：題目與迷思合為一張卡——答對＝簡卡；答錯＝該題下方直接接完整迷思診斷 */}
         <div>
           <h2 className="font-game text-lg font-black text-[#5A3E22] mb-3 flex items-center gap-2 pl-2 border-l-[5px] border-[#D08B2E] rounded-l">

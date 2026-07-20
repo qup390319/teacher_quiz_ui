@@ -41,7 +41,7 @@ export default function MisconceptionsPage() {
             <span className="material-symbols-rounded text-[#636E72]" style={{ fontSize: 22 }}>tune</span>
             <div className="text-left">
               <p className="font-bold text-[#2D3436]">進階：迷思成因 & 追問結果</p>
-              <p className="text-sm text-[#95A5A6] mt-0.5">迷思成因 8 類分布 + 追問後學生狀態變化漏斗</p>
+              <p className="text-sm text-[#95A5A6] mt-0.5">迷思成因 9 類分布 + 追問後學生狀態變化漏斗</p>
             </div>
           </div>
           <svg className={`w-5 h-5 text-[#636E72] transition-transform ${showAdvanced ? 'rotate-180' : ''}`}

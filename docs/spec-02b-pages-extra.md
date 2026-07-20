@@ -143,28 +143,29 @@
 **檔案**: `src/pages/teacher/MisconceptionCauses.jsx`
 
 **功能描述**:
-- 純說明頁，列出診斷模型用來歸類學生迷思成因的 **8 種類別**
-- 類別 1–6 為一般通用成因；類別 7、8 為「情境條件成因」（僅在學生對話明確提及對應描述時才適用），UI 上以灰色徽章 + 虛線分隔 + 提示文字明確區分
+- 純說明頁，列出診斷模型用來歸類學生迷思成因的 **9 種類別**
+- 類別 1–7 為一般通用成因；類別 8、9 為「情境條件成因」（僅在學生對話明確提及對應描述時才適用），UI 上以灰色徽章 + 虛線分隔 + 提示文字明確區分
 - 教師可作為診斷報告閱讀時的參考圖鑑
 
 **UI 元素**:
 - 頁面標題 + 返回首頁按鈕
-- 黃色提示橫幅：說明類別 1–6 與 7、8 的差異
+- 黃色提示橫幅：說明類別 1–7 與 8、9 的差異
 - 兩欄響應式網格（手機單欄、md+ 雙欄），每張卡片含：
   - 圓形編號徽章 + 類別名稱（彩色 header）
   - 「特徵」段落
   - 「常見樣態」段落
-  - （僅 7、8）虛線分隔下方的「情境條件成因」提示
+  - （僅 8、9）虛線分隔下方的「情境條件成因」提示
 
-**8 個成因類別**:
-1. 學科知識不足或缺乏
-2. 概念不清楚或混淆
-3. 不正確的推論或運算過程
-4. 單憑個人直覺或關鍵字反應
-5. 來自日常的經驗和生活中的觀察
-6. 日常生活用語與科學用語的混淆
-7. 教師的教學過程不當（情境條件）
-8. 實驗操作不當（情境條件）
+**9 個成因類別**（名稱採學術用語）:
+1. 概念缺失
+2. 概念混淆
+3. 日常經驗的直觀建構
+4. 日常語言的字面干擾
+5. 直覺反應
+6. 推理謬誤（含因果倒置）
+7. 過度類推
+8. 教學與教材因素（情境條件）
+9. 實驗操作不當（情境條件）
 
 **資料來源**: 頁面內 hard-coded 常數 `CAUSE_CATEGORIES`（無外部依賴）
 
@@ -176,6 +177,34 @@
 **功能描述**:
 - 舊版診斷報告頁面
 - 保留以避免路由失效（向後相容）
+
+---
+
+### 2.10.1 StudentDiagnosisReport (`/teacher/students/:studentId/report`)
+**檔案**: `src/pages/teacher/StudentDiagnosisReport.jsx`
+**子元件目錄**: `src/pages/teacher/studentReport/`
+
+教師檢視的**個別學生診斷報告**。資料來源 `useDiagnosisLogs({ studentId })`（該生跨題組全部紀錄）。由 `StudentReportsPage` / `MisconceptionsPage` 等列表的「查看報告」跳轉進入。
+
+**頁面區塊（由上而下）**:
+1. **統計卡 ×4**：作答題數 / 理解 / 持有迷思 / 不確定
+2. **題組篩選器**：影響 2.–3. 以外的區塊（見下方註記）
+3. **偵測到的迷思概念**（`MisconceptionSection`）：每條迷思一張折疊卡——學生想法、成因標籤、AI 摘要、LLM 答錯類型 + 教師覆寫下拉、正確觀念與教學建議
+4. **先備概念追溯**（`studentReport/PrerequisiteTraceSection.jsx`，2026-07-09 新增）：
+   - 對每個「持有迷思」的節點，沿知識圖譜先備鏈畫出 **root 先備 → … → 做錯節點** 的追溯鏈
+   - 每節膠囊標示精熟狀態：**已精熟**（綠，答對率 ≥70%）／**未精熟**（紅，<70%）／**未施測**（黃，無作答紀錄）；做錯節點以紅色 ring 強調
+   - 卡底結論句指出**最早的問題點（根因）**：
+     - 根因為未精熟先備 → 紅框：「問題最早出現在先備概念 X，建議先補救再回頭處理本節點」
+     - 根因為未施測先備 → 黃框：「先備 X 尚未施測，建議先派發涵蓋此節點的題組確認」
+     - 先備皆精熟 → 綠框：「屬本節點自身的概念迷思，可直接補救」
+     - 無先備（起點節點）→ 灰框說明
+   - 精熟度計算邏輯在 `src/utils/prerequisiteTrace.js`（純函數）：以**追問後最終判定**（`finalStatus === 'CORRECT'`）計答對，門檻 70%，語意鏡射後端 `adaptive_service`（spec-10 §10）與 `knowledge_graph.py` 的 `get_all_prerequisites()`
+   - **不受題組篩選影響**——追溯需要跨題組證據（先備節點可能在其他題組施測過），區塊副標有註明
+5. **答對但推理薄弱**（`WeakReasoningSection`）
+6. **建議補強的知識節點**（`RemedialSection`）：迷思節點 + 推理薄弱節點的補強清單（含教學影片連結）
+7. **逐題對話紀錄**：依題組分組的 `studentReport/QuestionCard.jsx`（折疊列 + AI 摘要 / 迷思說明 / 狀態變化 / 追問對話氣泡）
+
+**狀態依賴**: `useDiagnosisLogs({ studentId })`、`knowledgeNodes`（app boot 已載入）、session-only 的答錯類型教師覆寫 `errorTypeOverrides`
 
 ---
 
@@ -295,7 +324,8 @@
 ---
 
 ### 2.12 StudentQuiz (`/student/quiz/:quizId`)
-**檔案**: `src/pages/student/StudentQuiz.jsx`
+**檔案**: `src/pages/student/StudentQuiz.jsx`（458 行）
+**抽出模組**: `adaptiveNav.js`（動態選題 client）、`useQuizCompletion.js`（收尾）、`useAskFollowUpRound1.js`（追問開場）、`useFollowUpFinalizer.js`（單題追問收尾）
 
 **功能描述**:
 - 對話式（Chat-like）的診斷測驗介面
@@ -303,6 +333,12 @@
 - 學生選擇答案後進行即時診斷
 - 若診斷出迷思概念，出現確認問題讓學生反思
 - 作答完成後顯示摘要並記錄歷史
+
+**施測中動態選題（2026-07-09 新增,spec-05 §2.2 / spec-10 §10.5）**:
+- 第一層作答不照題組固定順序,而是每答完一題呼叫 `POST /api/adaptive/next-question` 由**後端適性引擎**決定下一題:**過關跳過先備、答錯退回先備追溯**（限題組內既有先備）。
+- 前端只保存「實際問過的題目」序列 `askedRef`（非 `questionPool` 全清單）;追問階段、進度條分母、報告 `totalQuestions` 皆以此為準。
+- `adaptiveNav.js` 負責組 answered payload（`passed = quadrant==='TT'`）並把回傳 `nextQuestionId` 對應回題目物件;端點失敗時降級直接進入追問階段。
+- **單題重做模式**（`?retry=questionId`）不走動態選題,只作答該題。
 
 **UI 子元件**:
 - `SystemBubble` — 機器人/系統訊息泡泡

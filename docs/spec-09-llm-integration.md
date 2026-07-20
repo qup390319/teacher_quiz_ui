@@ -211,9 +211,9 @@ RAGFlow（spec-12）用於「檢索文獻 + 生成」場景（N1 / N2 / N6），
 }
 ```
 
-- `causeIds` 為 1-8 的整數陣列（對應 `misconceptionCauses.js` 的 8 大成因類別），通常 1-2 個
+- `causeIds` 為 1-9 的整數陣列（對應 `misconceptionCauses.js` 的 9 大成因類別），通常 1-2 個
 - 後端 service: `app/services/cause_analysis_service.py`
-- 透過 `llm_service.chat()` 呼叫 vLLM，使用專門的 system prompt 讓 LLM 從 8 大成因中選擇
+- 透過 `llm_service.chat()` 呼叫 vLLM，使用專門的 system prompt 讓 LLM 從 9 大成因中選擇
 - LLM 不可用時回傳空陣列 `[]`，不阻擋流程
 
 ## 12. 診斷追問對話 prompt（followup，2026-05-14 起）
@@ -252,11 +252,11 @@ shared skeleton（一份，所有 12 節點共用）：
 5. POE 4 階段對話結構（belief → challenge（取 POE 之 **Predict**：請學生預測變體結果以製造認知衝突；純文字無實體演示，不含真實 Observe / Explain）→ **cause 為必經、final 前至少 1 次成因探測** → final）
    - **進 final 硬前提**：除非到第 4 輪（硬上限）或觸發逃生例外（§9 三種收尾條件），否則「尚未引出學生一次完整自述」前不得進 final
    - **第 1 輪 belief 先把回答分為三類（解釋型/定義型/觀察型，即 `errorType` 三類）作為分流依據**（§12.4b「先引導再判斷」）：解釋型照常 belief→challenge→cause→final；定義型/觀察型先以一次錨定式 why 引導向因果，成功則接 cause→final（challenge 可略），引不出即溫和收尾。第 1 輪所判型態即為收尾輸出的 `errorType`
-6. 8 大成因類別（與 backend `cause_analysis_service.py` 對齊）
+6. 9 大成因類別（與 backend `cause_analysis_service.py` 對齊）
 7. **Chip 規則**（每輪 2~4 個選項，每個 ≤ 6 字，必含逃生口）
 8. **漸進釋放（scaffold-and-fade）+ 分級提問**：依學生回應能力動態調整鷹架強度——單詞/「不知道」→ 二選一+chips（**禁任何 why**）；有內容短句 → 鏡像後邀請「再多講一點」，並可用**一次「錨定式 why」**（錨定學生說過的詞/具體情境，例「你說『太燙會壞掉』，怎麼會這樣想呢？」；仍嚴禁抽象懸空的「你為什麼這樣覺得」）；**cause 階段若學生已給出完整短句，「推理歸因（錨定式 why）」為優先招式、取代場景二選一**；**全程必須至少引出一次學生自己的完整想法（為進 final 之硬前提）**
 9. **現場難搞情況處理**：亂答/髒話（不給趣味反應，避免全班模仿）、講不出來（不逼問、改指認）、反反覆覆（標 GUESSING 不糾纏）、**明確想結束（立刻在本輪出 final、不再追問，凌駕 cause 必經規則）**、看不懂（換白話）；原則「情緒安全 > 問到完整答案」
-10. **final causeIds 必填**（MISCONCEPTION/UNCERTAIN 至少 1 個；資訊不足也要做最佳推測並於 causeEvidence 註明信心，毫無線索填成因 4）
+10. **final causeIds 必填**（MISCONCEPTION/UNCERTAIN 至少 1 個；資訊不足也要做最佳推測並於 causeEvidence 註明信心，毫無線索填成因 5）
 11. JSON 輸出 schema（強制無 markdown / 無多餘文字）
 12. statusChange / reasoningQuality 推導規則
 
@@ -283,13 +283,13 @@ per-node injection（NODE_CONTEXT[nodeId]，12 份）：
   "round": 1-4,
   "assistantMessage": "string，1-2 句、≤ 60 字",
   "chips": ["string", "..."] | null,
-  "feedback": "string | null，≤ 20 字",
+  "feedback": "string | null，≤ 30 字（前端 `followUpLlm.js` 以 slice(0,30) 截斷）",
   "finalDiagnosis": null | {
     "finalStatus": "CORRECT" | "MISCONCEPTION" | "UNCERTAIN",
     "misconceptionCode": "M02-1" | null,
     "reasoningQuality": "SOLID" | "PARTIAL" | "WEAK" | "GUESSING",
     "errorType": "EXPLANATION" | "DEFINITION" | "OBSERVATION" | null,
-    "causeIds": [1-8],
+    "causeIds": [1-9],
     "causeEvidence": "string，學生哪段話顯示了該成因",
     "aiSummary": "string，給學生的最終回饋",
     "statusChange": { "from": "...", "to": "...",

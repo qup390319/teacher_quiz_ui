@@ -5,6 +5,67 @@
 
 ---
 
+### [2026-07-09] 施測中動態選題（適性診斷）——設計取捨
+
+- **涉及 Spec**: `docs/spec-02-routes-and-pages.md`、`docs/spec-02b-pages-extra.md`、`docs/spec-05-user-workflows.md`、`docs/spec-10-backend-architecture.md`、`CLAUDE.md`
+- **背景**: 指導教授要求系統體現「雙層次測驗 + 適性診斷」,關鍵在**施測中動態選題**——學生答錯當前節點時,當場退回先備節點追溯根因,而非照題組固定順序線性作答。原系統學生端為固定題本（`StudentQuiz` 以 `currentQIndex + 1` 線性前進）。
+- **可行性限制**: 題組資料結構為「固定題目清單,每題綁一個知識節點」。示範題組 quiz-001 的 5 節點中,`INe-Ⅲ-5-4`／`INe-Ⅲ-5-7` 的先備（`INe-Ⅲ-5-3/2/1`）**不在題組內**,無題可退回;僅 `INe-Ⅱ-3-02→03→05` 這條鏈三節點都在題組。
+- **決策**（經使用者確認）：
+  1. **限題組內既有先備**：只在「先備也在同一題組」時才動態退回;先備不在題組者維持前進,交由教師端報告「先備概念追溯」（spec-02b §2.10.1）事後補上。**跨年級／跨單元追溯為後續延伸**（知識節點庫擴充後,同一套鏈式邏輯自然生效）——不新建題庫,避免題目品質不可控與可重現性問題。
+  2. **選題策略「過關跳過先備 / 答錯退回先備」**：過關（single 的 CORRECT / two-tier 的 TT）跳過該節點題組內先備（省時,呼應 15 分鐘施測上限）;答錯逐級退回先備定位根因。**此策略使實際作答題數因人而異**（全對者只答兩鏈頂端即結束）——這是「動態選題」的本質,而非「動態排序」。
+  3. **選題引擎放後端**：新增 `POST /api/adaptive/next-question`（`require_student`,不含個資）,重用 `adaptive_service` 的先備圖譜與拓撲排序;純函數 `next_adaptive_node` 由已作答歷史完整重算,後端無 session 狀態。前端 `adaptiveNav.js` 只組 payload、對應題目物件。
+  4. **判定用第一層作答**（非追問後結果）：動態選題發生在第一層作答階段（追問是後續獨立階段）,故 `passed` 取當下作答判定 `quadrant==='TT'`。
+- **500 行鐵律**：`StudentQuiz.jsx` 原已超標,本次改動再增邏輯,故抽出 `adaptiveNav.js`、`useQuizCompletion.js`、`useAskFollowUpRound1.js`、`useFollowUpFinalizer.js` 四模組,主檔降至 458 行（物理行數）。
+- **同步更新 spec**: ✅ spec-10 新增 §10.5（引擎）+ 端點/schema 表;spec-05 §2.1/§2.2 學生流程改為動態選題;spec-02/02b 補 StudentQuiz 註記;CLAUDE.md 領域知識「診斷機制」補一句。
+- **驗證**: 後端 `pytest`（`test_adaptive_next_question.py` 8 條分支全過）+ `ruff`;前端 `build` + `lint`。**瀏覽器 E2E 待後端／DB 啟動後補測**。
+
+---
+
+### [2026-06-20] 迷思概念成因分類統一為 9 類（10/8 → 9，重新編號）
+
+- **涉及 Spec**: `docs/spec-02-routes-and-pages.md`、`docs/spec-02b-pages-extra.md`、`docs/spec-03-components.md`、`docs/spec-05-user-workflows.md`、`docs/spec-09-llm-integration.md`、`docs/spec-10-backend-architecture.md`、`docs/功能修改文件_迷思成因診斷強化_v1.md`
+- **背景**: 原先前端 `src/data/misconceptionCauses.js` 為 **10 類**（含獨立「因果倒置」id=10、「過度類推」id=9），後端 `cause_analysis_service.py` 僅 **8 類**（缺「過度類推」），兩端類別數與編號不一致，且「因果倒置」缺乏文獻支持其為獨立成因。
+- **決策**: 依來源文件《迷思概念成因分類.md》（`Documents\Claude\Projects\論文撰寫\...\迷思概念相關文獻\`）統一為 **9 類**：
+  - 「因果倒置」**併入第 6 類「推理謬誤（含因果倒置）」**（屬推理謬誤子型態，資料夾中無文獻明確支持其為獨立成因）。
+  - 後端補上「過度類推」（第 7 類），與前端對齊。
+  - 類別全部**重新編號**；causeIds 範圍由前端 1-10／後端 1-8 統一為 **1-9**。
+  - 第 8、9 類為「情境條件成因」（僅在學生明確提及老師/課本或描述自身錯誤操作時才歸類）。
+  - 種子資料 `cause_map` 已重映射；「毫無線索」時的 fallback 預設成因由舊 4 改為新 **5（直覺反應）**。
+  - **（同日後續）類別名稱由白話改為學術用語**（依代表文獻原始術語命名，符合論文撰寫慣例）；ID、數量、順序、合併與情境條件邏輯皆不變，僅顯示名稱改變，故 DB 既有 `cause_ids` 無需再次重映射。**系統一律只顯示中文學術名（不顯示英文）**——來源文件雖附英文學術名，但依需求未在系統任何介面/prompt 呈現。
+- **舊 → 新 ID 對照表**（新名稱為最終學術用語）：
+
+  | 舊（前端 10 類 / 後端 8 類） | 新（9 類，學術名） |
+  |---|---|
+  | 1 學科知識不足或缺乏 | 1 概念缺失 |
+  | 2 概念不清楚或混淆 | 2 概念混淆 |
+  | 3 不正確的推論或運算過程 | 6 推理謬誤（含因果倒置） |
+  | 4 單憑個人直覺或關鍵字反應 | 5 直覺反應 |
+  | 5 來自日常的經驗和生活中的觀察 | 3 日常經驗的直觀建構 |
+  | 6 日常生活用語與科學用語的混淆 | 4 日常語言的字面干擾 |
+  | 7 教師的教學過程不當 | 8 教學與教材因素 |
+  | 8 實驗操作不當 | 9 實驗操作不當 |
+  | 9 過度類推（前端獨有） | 7 過度類推 |
+  | 10 因果倒置（前端獨有） | 6（併入「推理謬誤」） |
+
+- **同步更新 spec**: ✅ 已更新上列各 spec 的類別清單、計數（8/10 類 → 9 類）、ID 範圍（1-8/1-10 → 1-9）、情境條件類別句（1–6 ... 7、8 → 1–7 ... 8、9）、類別名稱（白話 → 學術用語）與 fallback 預設成因；歷史提案文件 `功能修改文件_迷思成因診斷強化_v1.md` 加註後續更新說明（其凍結之熱傳導範例維持原樣作設計史參考）。
+
+---
+
+### [2026-06-20] Spec 一致性稽核修正（five-area audit）
+
+- **涉及 Spec**: `docs/spec-03-components.md`、`docs/spec-04-data-models.md`、`docs/spec-10-backend-architecture.md`、`docs/功能修改文件_迷思成因診斷強化_v1.md`
+- **背景**: 全庫稽核「最新功能 vs spec」一致性，發現數處 spec 落後於程式，已同步修正：
+  1. **示範題組 ID 前後端不一致（P0）**：後端 `backend/app/seed/data/quizzes.json` 兩份 two-tier 題組原為 `quiz-005/006`，但前端 `src/data/quizData.js` 與 spec-04 用 `quiz-003/004` → 後端 `GET /api/quizzes/quiz-003` 取不到資料、demo 流程斷裂。**已將 seed 改回 `quiz-003/004`**，標題三層統一為「水溶液 · 雙層次診斷（示範）／（示範·第二份）」（移除原 spec-04 的「第一次/第二次」前後測式措辭，符合「示範題組非前後測」原則）。
+  2. **spec-03 漏登派題重構新元件**：2026-06-20 派題頁重構新增 `OverviewBar` / `QuizSummaryCard` / `AssignmentDrawer`（並刪除 `MatrixView` / `ViewTabs` / `ClassCardView` / `QuizCardView` / `AssignmentMatrixParts`），spec-02 已述但 spec-03 §1 元件表漏列 → **已補登三元件**。
+  3. **spec-10 §6 追問端點命名錯誤**：spec 寫 `POST /api/answers/{id}/followup`（單數 per-answer），實作為 `POST /api/answers/followups`（複數、批次接陣列、原子 upsert）→ **已修 spec 對齊實作**。
+  4. **spec-04 `studentHistory` 註解**：標「P4 移除」但 `AppContext` 仍保留作 session-local 快照 → **已改註解**為「session-local in-memory 快照；長期歷史走 `useStudentHistory()`」。
+  5. **`功能修改文件_迷思成因診斷強化_v1.md` 用詞與範圍落差**：設計提案用 `problemType`，實作為 `error_type`（`errorTypes.js`）→ **已於該文件頂部加「實作落差對照」橫幅**。
+  6. **教師端「問題類型分布／成因類型統計」兩張圖（原列為規格超前、未開發）已於 2026-06-20 實作**：新增 `src/pages/teacher/dashboard/shared/ErrorTypeDistribution.jsx`（聚合 `errorType`，三類+未分類）與 `CauseTypeDistribution.jsx`（攤平聚合 `causeIds`，9 類橫條），渲染於 `SingleClassReport` 的「追問對話分析」摺疊區；後端 `GET /api/quizzes/{id}/followups` 回傳 schema 加上 `errorType`（`FollowupConversationRow` / `DiagnosisLogRow` 與 router 同步）。命名以 `error_type` 欄位為準，非設計文件的 `ProblemTypeChart`/`CauseTypeChart`。spec-03 已登錄、spec-10 已註記。
+  7. **答題分布把「未作答學生」誤判為「全錯」的 bug 修正（2026-06-20）**：`/quizzes/{id}/answers` 為每位在籍學生回傳一列（未作答者各題 `selectedTag` 為 null）。`src/hooks/useAnswerDistribution.js`（總覽頁）與 `src/pages/teacher/dashboard/ClassesPage.jsx`（各班頁）原先把這些列以 `correct===0` 歸入「全錯」，導致「作答人數 0 卻顯示整班全錯」。修法：完全未作答者（無任何非 null `selectedTag`）不計入答題分布，`total` 即為實際作答人數。此 bug 因 P4 作答增量持久化（中途離開也留下部分作答列）而更明顯。
+- **同步更新 spec**: ✅ 全部已更新（見上）。
+
+---
+
 ### [2026-06-20] 診斷題型擴充：單層（single）與雙層次（two-tier）並存（mode 旗標，migration 0032）
 
 - **涉及 Spec**: `docs/spec-04-data-models.md`（題目資料結構、作答記錄、AppContext）、`docs/spec-05-user-workflows.md`（學生作答流程、診斷機制）、`docs/spec-03-components.md`（ReasonOptionsPanel、QuadrantSummary、EditQuestionModal、CoveragePanel）、`docs/spec-09-llm-integration.md`（追問接在 two-tier 之後）、`docs/spec-10-backend-architecture.md`（answers/stats 欄位）、`docs/spec-11-database-schema.md`（quizzes.mode、quiz_questions.reason_options、student_answers.reason_tag/quadrant）、`docs/spec-12-ragflow-integration.md`（N6 在 two-tier 理由層）

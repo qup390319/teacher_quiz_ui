@@ -205,6 +205,37 @@
 - `?classId=` 僅 `class-detail` 使用
 - 兩者都同步寫入 `AppContext.currentQuizId / currentClassId` 作「最近檢視」記憶
 
+### 1.4.1 個別學生報告與先備概念追溯（2026-07-09 新增）
+
+從學生列表（`StudentReportsPage`）或迷思排行（`MisconceptionsPage`）點「查看報告」進入
+`/teacher/students/:studentId/report`（`StudentDiagnosisReport`，詳見 spec-02b §2.10.1）。
+
+本系統的診斷定位是「**雙層次測驗 + 先備追溯**」：雙層次測驗判定學生*現在*哪個節點出錯，
+先備概念追溯再沿知識圖譜往回定位*最早*出問題的先備節點——回答「他是這個節點本身沒學好，
+還是更早的基礎就歪了？」
+
+```
+教師點開學生個別報告
+    │
+    ├─ 系統列出該生「持有迷思」的知識節點（追問後最終判定）
+    │
+    └─ 對每個做錯節點，沿先備鏈往回追溯（PrerequisiteTraceSection）
+        │   root 先備 → … → 做錯節點，每節用該生全部歷史作答計算精熟狀態
+        │   （≥70% 已精熟 / <70% 未精熟 / 無紀錄＝未施測）
+        │
+        ├─ 根因 = 鏈上由根往後第一個「未精熟或未施測」的先備
+        │   ├─ 未精熟 → 建議先補救該先備，再回頭處理做錯節點
+        │   ├─ 未施測 → 建議先派發涵蓋該先備的題組確認基礎
+        │   └─ 不存在（先備皆精熟）→ 判定為本節點自身的迷思，直接補救
+        │
+        └─ 教師依根因決定補救起點（配合建議補強清單的教學影片）
+```
+
+- 追溯**跨題組**取證：先備節點的精熟證據可能來自其他題組的作答，故不受頁面題組篩選影響
+- 溯源語意與後端適性派題（spec-10 §10 `adaptive_service`）一致；本區塊為前端純函數實作
+  （`src/utils/prerequisiteTrace.js`），差異在於前端以「追問後最終判定」計答對，後端以第一層作答診斷計
+- 目前知識圖譜為單一單元內的 12 節點先備鏈；跨年級／跨單元追溯待知識節點庫擴充後自然生效（同一套鏈式邏輯）
+
 ### 1.5 班級管理流程
 
 ```
@@ -339,13 +370,18 @@
     │   │   └─ 完成後自動進入 question phase
     │   │
     │   ├─ Phase: question（第一階段：逐題作答，無即時對錯回饋）
-    │   │   ├─ SystemBubble 顯示知識節點名稱 + 題號
+    │   │   ├─ **施測中動態選題**：題目順序與集合由後端適性引擎逐題決定
+    │   │   │   （非題組固定順序）；每答完一題呼叫 `POST /api/adaptive/next-question`，
+    │   │   │   過關跳過先備、答錯退回先備追溯（spec-10 §10.5）。前端以
+    │   │   │   `src/pages/student/adaptiveNav.js` 組 payload、對應下一題物件。
+    │   │   │   實際問過的題目序列存於 `askedRef`，追問階段與進度、報告皆以此為準。
+    │   │   ├─ SystemBubble 顯示題號（動態選題下總題數未定，只顯示序號、不顯示節點名稱）
     │   │   ├─ SystemBubble 顯示題幹
     │   │   │
     │   │   ├─ [single 模式] 學生選擇選項（OptionsPanel：A/B/C/D 四個按鈕）
     │   │   │   ├─ StudentBubble 顯示學生選擇的選項內容
-    │   │   │   ├─ 呼叫 recordAnswer(q.id, opt.tag, opt.diagnosis, null, null)
-    │   │   │   └─ 直接進入下一題（無對錯回饋）
+    │   │   │   ├─ commitAnswer 判定 { quadrant, diagnosis } 並即時存檔
+    │   │   │   └─ 交由後端適性引擎決定下一題（passed = quadrant==='TT'）
     │   │   │
     │   │   ├─ [two-tier 模式] 雙層作答子流程
     │   │   │   ├─ 子階段 1：選答案（OptionsPanel：A/B/C 三個按鈕）
@@ -355,10 +391,11 @@
     │   │   │   │   ├─ SystemBubble 詢問「你選這個答案，是因為...？」
     │   │   │   │   ├─ StudentBubble 顯示「我覺得：{理由內容}」
     │   │   │   │   ├─ 計算四象限：answerCorrect × reasonCorrect → TT/TF/FT/FF
-    │   │   │   │   └─ 呼叫 recordAnswer(q.id, selectedAnswerTag, reasonTag, diagnosis, quadrant)
-    │   │   │   └─ 進入下一題（無對錯回饋）
+    │   │   │   │   └─ commitAnswer 存檔後交由後端適性引擎決定下一題（passed = quadrant==='TT'）
+    │   │   │   └─ （同上）
     │   │   │
-    │   │   └─ 最後一題完成後 → 進入 followUp phase
+    │   │   └─ 後端回傳 done（無更多應診斷節點）→ 進入 followUp phase
+    │   │       （單題重做模式 `?retry=` 不走動態選題，只作答該題）
     │   │
     │   ├─ Phase: followUp（第二階段：AI POE 追問 + 成因追溯）
     │   │   ├─ 過渡訊息：「選擇題的部分結束了！接下來想跟你聊聊剛才的幾道題⋯」
@@ -439,7 +476,7 @@
 StudentReport 答錯迷思卡 → 按「重新問我這一題」
   └─ handleDispute(questionId) → navigate(/student/quiz/{quizId}?retry={questionId})
        └─ StudentQuiz 進入「單題重做模式」（讀網址參數 ?retry=questionId）
-            ├─ 只跑該題（過濾 sortedQuestions，僅留 id === retryQuestionId）
+            ├─ 只跑該題（過濾 questionPool，僅留 id === retryQuestionId；不走動態選題）
             ├─ 跳過開場 intro
             ├─ 保留現有報告（不清空 activeStudentReport）
             └─ 收尾走 finishRetry（不建立新報告、不 addToHistory）
@@ -454,6 +491,8 @@ StudentReport 答錯迷思卡 → 按「重新問我這一題」
 - 相關函式：`AppContext.mergeRetryIntoReport`（spec-04 §1.3）、`StudentQuiz.finishRetry`、`StudentReport.handleDispute`。
 
 ### 2.2 迷思概念診斷機制
+
+> **外層：施測中動態選題（適性診斷）**。第一層作答不是照題組固定順序線性前進,而是由後端適性引擎依先備圖譜逐題決定:**過關跳過先備、答錯退回先備追溯**（限題組內既有先備,spec-10 §10.5）。此即「雙層次測驗 + 適性診斷」——雙層次測驗判定學生*現在*哪個節點出錯,動態選題再*當場*沿先備鏈定位最早出問題的節點。跨年級／跨單元追溯待知識節點庫擴充後以同一套鏈式邏輯生效;先備不在題組內時,改由教師端報告的「先備概念追溯」（spec-02b §2.10.1）事後補上。
 
 診斷流程依題組 `mode` 分為 **single（傳統單層）** 與 **two-tier（雙層次，Treagust 1988）** 兩種，兩者並存靠 `mode` 旗標分流，之後皆接同一套批次 AI 蘇格拉底追問：
 
@@ -502,7 +541,7 @@ StudentReport 答錯迷思卡 → 按「重新問我這一題」
   - `finalStatus`: `'CORRECT' | 'MISCONCEPTION' | 'UNCERTAIN'`
   - `reasoningQuality`: `'SOLID' | 'PARTIAL' | 'WEAK' | 'GUESSING'`
   - `statusChange.changeType`: `'CONFIRMED' | 'UPGRADED' | 'DOWNGRADED'`
-  - `causeIds`: `number[]`（1~2 個 1-8 之成因 ID；LLM 模式自帶，fallback 為空）
+  - `causeIds`: `number[]`（1~2 個 1-9 之成因 ID；LLM 模式自帶，fallback 為空）
   - `causeEvidence`: `string`（LLM 在對話中蒐集到的成因證據引文）
 - 依 statusChange 自動修正第一層作答記錄：
   - **UPGRADED**（學生選錯但追問展現正確理解）→ 改為 CORRECT
@@ -518,17 +557,18 @@ StudentReport 答錯迷思卡 → 按「重新問我這一題」
   - 對話紀錄（`conversationLog`）
   - 迷思代碼（`misconceptionCode`）
   - 知識節點 ID（`nodeId`）
-- LLM 根據對話內容與迷思特徵，從以下 **8 大成因類別** 中判斷 **1～2 個最可能的成因**
+- LLM 根據對話內容與迷思特徵，從以下 **9 大成因類別** 中判斷 **1～2 個最可能的成因**
   （與 `backend/app/services/cause_analysis_service.py` 及 `src/data/misconceptionCauses.js` 完全對齊）：
-  - 1. 學科知識不足或缺乏
-  - 2. 概念不清楚或混淆
-  - 3. 不正確的推論或運算過程
-  - 4. 單憑個人直覺或關鍵字反應
-  - 5. 來自日常的經驗和生活中的觀察
-  - 6. 日常生活用語與科學用語的混淆
-  - 7. 教師的教學過程不當（conditional）
-  - 8. 實驗操作不當（conditional）
-- 成因 ID 以 `C{1-8}` 標記，存儲於 `followup_results.cause_ids`（JSONB array，最多 2 個）
+  - 1. 概念缺失
+  - 2. 概念混淆
+  - 3. 日常經驗的直觀建構
+  - 4. 日常語言的字面干擾
+  - 5. 直覺反應
+  - 6. 推理謬誤（含因果倒置）
+  - 7. 過度類推
+  - 8. 教學與教材因素（conditional）
+  - 9. 實驗操作不當（conditional）
+- 成因 ID 以 `C{1-9}` 標記，存儲於 `followup_results.cause_ids`（JSONB array，最多 2 個）
 - **LLM 不可用時的降級**：若呼叫失敗，系統不阻擋流程（不拋錯），`cause_ids` 為空陣列 `[]`；前端會延後顯示成因徽章或不顯示
 - **報告顯示**：
   - StudentReport（學生完成後看到的報告頁）：確認迷思的「可能的原因」區塊不只顯示成因標籤，還附：

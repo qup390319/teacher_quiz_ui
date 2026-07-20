@@ -65,6 +65,79 @@ class AdaptiveRecommendResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class AnsweredNode(BaseModel):
+    """學生已作答一題的最小資訊（施測中動態選題用）。"""
+
+    question_id: int = Field(alias="questionId")
+    node_id: str = Field(alias="nodeId", min_length=1, max_length=32)
+    # 是否通過該節點：single 為 diagnosis==='CORRECT'；two-tier 為 quadrant==='TT'。
+    passed: bool
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class NextQuestionRequest(BaseModel):
+    quiz_id: str = Field(alias="quizId", min_length=1, max_length=32)
+    # 依實際作答順序排列；後端由此完整重算下一題（無 session 狀態）。
+    answered: list[AnsweredNode] = Field(default_factory=list)
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class NextQuestionResponse(BaseModel):
+    done: bool
+    next_question_id: int | None = Field(default=None, serialization_alias="nextQuestionId")
+    next_node_id: str | None = Field(default=None, serialization_alias="nextNodeId")
+    # 因過關而略過、尚未作答的先備節點（前端可據此說明「已跳過的基礎」）。
+    skipped_node_ids: list[str] = Field(
+        default_factory=list, serialization_alias="skippedNodeIds",
+    )
+    reason: str = ""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class TraceAnsweredNode(BaseModel):
+    """報告端重播用：一個已作答節點的最小資訊。"""
+
+    node_id: str = Field(alias="nodeId", min_length=1, max_length=32)
+    # 第一層是否通過：single 為 diagnosis==='CORRECT'；two-tier 為 quadrant==='TT'。
+    passed: bool
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class TracePathRequest(BaseModel):
+    quiz_id: str = Field(alias="quizId", min_length=1, max_length=32)
+    # 本次施測已作答的節點（順序不拘，後端由引擎重播還原出題順序）。
+    answered: list[TraceAnsweredNode] = Field(default_factory=list)
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class AdaptivePathStep(BaseModel):
+    node_id: str = Field(serialization_alias="nodeId")
+    node_name: str = Field(serialization_alias="nodeName")
+    question_id: int | None = Field(default=None, serialization_alias="questionId")
+    passed: bool
+    # 'start'（起始最進階）/ 'retreat'（答錯退回先備）/ 'advance'（換下一條鏈）。
+    kind: Literal["start", "retreat", "advance"]
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class TracePathResponse(BaseModel):
+    # 依實際出題順序排列的路徑（含動態退回/前進標註）。
+    steps: list[AdaptivePathStep]
+    skipped_node_ids: list[str] = Field(
+        default_factory=list, serialization_alias="skippedNodeIds",
+    )
+    # False 代表已作答節點集與重播結果不一致（多為非適性 session 的舊資料）。
+    consistent: bool = True
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
 class PolishStemRequest(BaseModel):
     stem: str = Field(min_length=1, max_length=2048)
     node_id: str = Field(alias="nodeId", min_length=1, max_length=32)

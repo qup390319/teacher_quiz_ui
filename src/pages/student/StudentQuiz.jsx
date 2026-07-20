@@ -4,20 +4,21 @@ import { useApp } from '../../context/AppContext';
 import { useStudentMode } from '../../hooks/useStudentMode';
 import { useQuiz } from '../../hooks/useQuizzes';
 import { useQuizPersistence } from '../../hooks/useQuizPersistence';
-import { knowledgeNodes, getMisconceptionById } from '../../data/knowledgeGraph';
-import { api } from '../../lib/api';
 import { WoodIconButton } from '../../components/ui/woodKit';
 import WoodenProgressBar from '../../components/student/WoodenProgressBar';
 import { Bubble, ThinkingBubble } from '../../components/student/ChatStream';
 import LeaveConfirmModal from '../../components/student/LeaveConfirmModal';
 import AIFollowUpPanel from './followUp/AIFollowUpPanel';
 import {
-  buildRound1Message,
   processStudentReply,
   FOLLOWUP_MAX_ROUNDS,
 } from './followUp/followUpEngine';
 import { BottomPanel, OptionsPanel, ReasonOptionsPanel, DonePanel } from './studentQuizPanels';
 import { INTRO_MESSAGES, sortQuestionsByNodeOrder } from './studentQuizConfig';
+import { resolveNextQuestion } from './adaptiveNav';
+import { useQuizCompletion } from './useQuizCompletion';
+import { useAskFollowUpRound1 } from './useAskFollowUpRound1';
+import { useFollowUpFinalizer } from './useFollowUpFinalizer';
 import {
   getQuestionMode, getAnswerOptions, getReasonOptions, diagnoseQuestion,
 } from '../../data/twoTier';
@@ -45,11 +46,22 @@ function StudentQuizScreen({ quizId }) {
   const bottomRef = useRef(null);
   const answersRef = useRef([]);
   const followUpResultsRef = useRef([]);
+  // 施測中動態選題：實際問過的題目（依作答順序）。第一層由後端適性引擎逐題決定；
+  // 追問階段與進度、報告皆以此序列為準（非題組原始清單）。
+  const askedRef = useRef([]);
+  const [asked, setAsked] = useState([]);
+  const setAskedQuestions = useCallback((next) => {
+    askedRef.current = next;
+    setAsked(next);
+  }, []);
 
-  const sortedQuestions = useMemo(() => {
-    const all = sortQuestionsByNodeOrder(currentQuiz?.questions ?? []);
-    return isRetryMode ? all.filter((q) => q.id === retryQuestionId) : all;
-  }, [currentQuiz, isRetryMode, retryQuestionId]);
+  // 題組全部題目（動態選題的候選池；以 id 對應出下一題物件）
+  const questionPool = useMemo(
+    () => sortQuestionsByNodeOrder(currentQuiz?.questions ?? []),
+    [currentQuiz],
+  );
+  // 進度分母的名目上限（動態選題實際問的題數可能更少）
+  const maxQuestions = questionPool.length;
 
   /* phase: intro → question → followUp → done */
   const [phase, setPhase] = useState('intro');
@@ -75,19 +87,21 @@ function StudentQuizScreen({ quizId }) {
 
   useEffect(() => {
     if (quizLoading) return;
-    if (quizError || !currentQuiz || sortedQuestions.length === 0) {
+    if (quizError || !currentQuiz || questionPool.length === 0) {
       // 重做模式找不到該題 → 回報告（保留原報告）；一般模式回首頁。
       navigate(isRetryMode ? '/student/report' : '/student', { replace: true });
       return;
     }
     answersRef.current = [];
     followUpResultsRef.current = [];
+    // asked 狀態初始即為 []（元件依 quizId 重新掛載）；此處僅需同步清空 ref。
+    askedRef.current = [];
     resetPersistence();
     setCurrentQuizId(quizId);
     // 重做模式必須保留現有報告（待結束後併入該題新結果）；一般模式才清空重來。
     if (!isRetryMode) setActiveStudentReport(null);
   }, [
-    quizId, currentQuiz, sortedQuestions.length, navigate, isRetryMode,
+    quizId, currentQuiz, questionPool.length, navigate, isRetryMode,
     quizLoading, quizError, setCurrentQuizId, setActiveStudentReport,
     resetPersistence,
   ]);
@@ -96,184 +110,20 @@ function StudentQuizScreen({ quizId }) {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isThinking]);
 
-  /* ── 第一層：逐題出題 ────────────────────────────── */
-  const showNextQuestion = useCallback((qIdx) => {
-    const q = sortedQuestions[qIdx];
-    if (!q) return;
-    setIsThinking(true);
-    setOptionsEnabled(false);
-    setAnswerStage('answer');
-    setPendingAnswer(null);
+  const { finishQuiz, finishRetry } = useQuizCompletion({
+    quizId, currentQuiz, retryQuestionId, followUpResultsRef,
+    flushAll, addToHistory, mergeRetryIntoReport, navigate,
+    setIsThinking, setMessages, setPhase,
+  });
 
-    setTimeout(() => {
-      setIsThinking(false);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `q-${q.id}-node`,
-          role: 'ai',
-          // 對話進行中不向學生提及知識節點名稱（節點名稱可能是完整課綱描述句）
-          text: isRetryMode
-            ? '好的，我們再一起看一次這一題～'
-            : `接下來我們來看看第 ${qIdx + 1}/${sortedQuestions.length} 題`,
-        },
-      ]);
-      setTimeout(() => {
-        setIsThinking(true);
-        setTimeout(() => {
-          setIsThinking(false);
-          setMessages((prev) => [
-            ...prev,
-            { id: `q-${q.id}-stem`, role: 'ai', text: q.stem, variant: 'question' },
-          ]);
-          setOptionsEnabled(true);
-        }, 1400);
-      }, 1200);
-    }, 1800);
-  }, [sortedQuestions, isRetryMode]);
+  /* ── 第二層：AI 追問（qIdx 為 askedRef 序列索引）──────────── */
+  const askFollowUpRound1 = useAskFollowUpRound1({
+    askedRef, answersRef, finishQuiz,
+    setFollowUpCtx, setFollowUpEnabled, setIsThinking,
+    setFollowUpInput, setFollowUpChips, setMessages,
+  });
 
-  useEffect(() => {
-    if (phase !== 'intro') return;
-    // 重做模式：跳過冗長開場，直接進這一題。
-    if (isRetryMode) {
-      const t = setTimeout(() => { setPhase('question'); showNextQuestion(0); }, 400);
-      return () => clearTimeout(t);
-    }
-    if (introIdx >= INTRO_MESSAGES.length) {
-      const timer = setTimeout(() => {
-        setPhase('question');
-        showNextQuestion(0);
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-    const delay = introIdx === 0 ? 600 : 1500;
-    const timer = setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        { ...INTRO_MESSAGES[introIdx], role: 'ai' },
-      ]);
-      setIntroIdx((i) => i + 1);
-    }, delay);
-    return () => clearTimeout(timer);
-  }, [phase, introIdx, showNextQuestion, isRetryMode]);
-
-  const finishQuiz = async (finalAnswers, leadText) => {
-    const record = {
-      quizId,
-      quizTitle: currentQuiz?.title ?? '科學診斷',
-      completedAt: new Date().toLocaleString('zh-TW', { hour12: false }),
-      totalQuestions: sortedQuestions.length,
-      correctCount: finalAnswers.filter((a) => a.diagnosis === 'CORRECT').length,
-      misconceptions: [
-        ...new Set(
-          finalAnswers.filter((a) => a.diagnosis !== 'CORRECT').map((a) => a.diagnosis)
-        ),
-      ],
-      answers: finalAnswers,
-      followUpResults: [...followUpResultsRef.current],
-    };
-
-    setIsThinking(true);
-    setMessages((prev) => [
-      ...prev,
-      { id: `done-1-${Date.now()}`, role: 'ai', text: leadText },
-      { id: `done-2-${Date.now()}`, role: 'ai', text: '讓我把所有對話整理一下，幫你做一份專屬的「診斷報告」⋯' },
-    ]);
-    setPhase('done');
-
-    // 結尾保險：即時存若有漏，這裡整批 re-upsert 補齊（冪等）。
-    // 即時存檔已在選項 / 追問結束時逐筆寫入，見 useQuizPersistence。
-    await flushAll(finalAnswers, followUpResultsRef.current);
-
-    addToHistory(record);
-    setIsThinking(false);
-    setTimeout(() => navigate('/student/report'), 1200);
-  };
-
-  /* 單題重做收尾：把這一題的新作答＋追問結果併回現有報告（不建立新報告），回報告頁。 */
-  const finishRetry = async (finalAnswers) => {
-    const answer = finalAnswers.find((a) => a.questionId === retryQuestionId)
-      ?? finalAnswers[0] ?? null;
-    const followUpResult = followUpResultsRef.current.find((r) => r.questionId === retryQuestionId)
-      ?? followUpResultsRef.current[0] ?? null;
-
-    setIsThinking(true);
-    setMessages((prev) => [
-      ...prev,
-      { id: `retry-done-${Date.now()}`, role: 'ai', text: '好，我把這一題重新整理進你的報告囉⋯' },
-    ]);
-    setPhase('done');
-
-    await flushAll(finalAnswers, followUpResultsRef.current);
-    mergeRetryIntoReport(retryQuestionId, { answer, followUpResult });
-    setIsThinking(false);
-    setTimeout(() => navigate('/student/report'), 1000);
-  };
-
-  /* ── 第二層：AI 追問 ─────────────────────────────── */
-  const askFollowUpRound1 = (qIdx) => {
-    const q = sortedQuestions[qIdx];
-    if (!q) {
-      finishQuiz(answersRef.current, '謝謝你！我已經整理好你的診斷結果了。');
-      return;
-    }
-    const answer = answersRef.current.find((a) => a.questionId === q.id);
-    const selectedOption = getAnswerOptions(q).find((o) => o.tag === answer?.selectedTag);
-    const reasonOption = getReasonOptions(q).find((o) => o.tag === answer?.reasonTag);
-    const isCorrect = answer?.diagnosis === 'CORRECT';
-    // two-tier：把學生選的「理由」併進 selectedOptionContent，讓追問 prompt 能引用其真實理由
-    const selectedOptionContent = reasonOption
-      ? `${selectedOption?.content ?? ''}（理由：${reasonOption.content}）`
-      : (selectedOption?.content ?? '');
-
-    const ctx = {
-      round: 1,
-      phase: 'belief',
-      strategy: null,
-      isCorrect,
-      misconceptionId: isCorrect ? null : answer?.diagnosis,
-      knowledgeNodeId: q.knowledgeNodeId,
-      conversationLog: [],
-      questionId: q.id,
-      questionStem: q.stem,
-      selectedOption,
-      selectedOptionContent,
-      selectedReasonContent: reasonOption?.content ?? '',
-      quadrant: answer?.quadrant ?? null,
-    };
-    setFollowUpCtx(ctx);
-    setFollowUpEnabled(false);
-    setIsThinking(true);
-    setFollowUpInput('');
-    setFollowUpChips(null);
-
-    setTimeout(() => {
-      setIsThinking(false);
-      const headerText = `接下來想跟你聊聊第 ${qIdx + 1} 題。`;
-      const askText = buildRound1Message(selectedOption, isCorrect);
-      setMessages((prev) => [
-        ...prev,
-        { id: `fu-${q.id}-header`, role: 'ai', text: headerText },
-      ]);
-      setTimeout(() => {
-        setIsThinking(true);
-        setTimeout(() => {
-          setIsThinking(false);
-          setMessages((prev) => [
-            ...prev,
-            { id: `fu-${q.id}-r1`, role: 'ai', text: askText },
-          ]);
-          setFollowUpCtx((c) => c && {
-            ...c,
-            conversationLog: [{ role: 'ai', content: askText }],
-          });
-          setFollowUpEnabled(true);
-        }, 1600);
-      }, 1200);
-    }, 1800);
-  };
-
-  const startFollowUpPhase = (finalAnswers) => {
+  const startFollowUpPhase = useCallback((finalAnswers) => {
     if (finalAnswers.length === 0) {
       finishQuiz(finalAnswers, '謝謝你的回答！我已經整理好你的診斷結果了。');
       return;
@@ -289,68 +139,105 @@ function StudentQuizScreen({ quizId }) {
       },
     ]);
     askFollowUpRound1(0);
-  };
+  }, [finishQuiz, askFollowUpRound1, setPhase, setFollowUpIndex, setMessages]);
 
-  const handleFollowUpFinal = async (finalDiagnosis, ctxAtFinal) => {
-    const result = {
-      questionId: ctxAtFinal.questionId,
-      followUpRounds: ctxAtFinal.round,
-      conversationLog: ctxAtFinal.conversationLog,
-      diagnosis: finalDiagnosis,
-    };
-
-    // LLM POE prompt 已自帶 causeIds 時跳過後端再分析
-    const hasCauses = Array.isArray(finalDiagnosis.causeIds) && finalDiagnosis.causeIds.length > 0;
-    if (!hasCauses && finalDiagnosis.finalStatus === 'MISCONCEPTION' && ctxAtFinal.conversationLog.length > 0) {
-      try {
-        const miscon = getMisconceptionById(finalDiagnosis.misconceptionCode);
-        const node = knowledgeNodes.find((n) => n.id === ctxAtFinal.knowledgeNodeId);
-        const resp = await api.post('/llm/analyze-cause', {
-          conversationLog: ctxAtFinal.conversationLog,
-          misconceptionCode: finalDiagnosis.misconceptionCode ?? null,
-          misconceptionLabel: miscon?.label ?? null,
-          knowledgeNode: node?.name ?? null,
-        });
-        result.diagnosis = { ...finalDiagnosis, causeIds: resp.causeIds ?? [] };
-      } catch {
-        // LLM 不可用時不阻擋流程
-      }
-    }
-
-    followUpResultsRef.current = [...followUpResultsRef.current, result];
-    // 即時存檔：該題追問一結束就背景送出對話紀錄（內部會等該題答案存完拿到 id）
-    saveFollowup(result.questionId, result);
-
-    /* 依 statusChange 反向修正 answersRef.current（僅本地，最終 POST 時送修正後值） */
-    const change = finalDiagnosis.statusChange?.changeType;
-    if (change === 'UPGRADED' && ctxAtFinal.misconceptionId) {
-      answersRef.current = answersRef.current.map((a) =>
-        a.questionId === ctxAtFinal.questionId ? { ...a, diagnosis: 'CORRECT' } : a
-      );
-    } else if (change === 'DOWNGRADED' && finalDiagnosis.misconceptionCode) {
-      answersRef.current = answersRef.current.map((a) =>
-        a.questionId === ctxAtFinal.questionId
-          ? { ...a, diagnosis: finalDiagnosis.misconceptionCode }
-          : a
-      );
-    }
-
-    /* 進下一題或結束 */
-    const nextIdx = followUpIndex + 1;
+  /* ── 第一層：逐題出題（qIdx 為「已問題目序列」askedRef 的索引）───── */
+  const showNextQuestion = useCallback((qIdx) => {
+    const q = askedRef.current[qIdx];
+    if (!q) return;
     setIsThinking(true);
-    setFollowUpEnabled(false);
+    setOptionsEnabled(false);
+    setAnswerStage('answer');
+    setPendingAnswer(null);
+
     setTimeout(() => {
       setIsThinking(false);
-      if (nextIdx >= sortedQuestions.length) {
-        setTimeout(() => (isRetryMode
-          ? finishRetry(answersRef.current)
-          : finishQuiz(answersRef.current, '謝謝你陪我聊完所有題目！')), 1500);
-        return;
-      }
-      setFollowUpIndex(nextIdx);
-      setTimeout(() => askFollowUpRound1(nextIdx), 1500);
-    }, 1500);
-  };
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `q-${q.id}-node`,
+          role: 'ai',
+          // 對話進行中不向學生提及知識節點名稱（節點名稱可能是完整課綱描述句）；
+          // 動態選題下總題數未定，只顯示序號不顯示分母。
+          text: isRetryMode
+            ? '好的，我們再一起看一次這一題～'
+            : `接下來我們來看看第 ${qIdx + 1} 題`,
+        },
+      ]);
+      setTimeout(() => {
+        setIsThinking(true);
+        setTimeout(() => {
+          setIsThinking(false);
+          setMessages((prev) => [
+            ...prev,
+            { id: `q-${q.id}-stem`, role: 'ai', text: q.stem, variant: 'question' },
+          ]);
+          setOptionsEnabled(true);
+        }, 1400);
+      }, 1200);
+    }, 1800);
+  }, [isRetryMode]);
+
+  /* 動態選題：問後端拿下一題,推入 asked 序列並顯示;done 則進追問階段。 */
+  const serveNextQuestion = useCallback(async () => {
+    let result;
+    try {
+      result = await resolveNextQuestion(quizId, askedRef.current, answersRef.current, questionPool);
+    } catch (err) {
+      console.error('[StudentQuiz] resolveNextQuestion failed', err);
+      // 後端不可用時的降級：直接進入追問階段（已問過的題目仍完整診斷）
+      startFollowUpPhase(askedRef.current);
+      return;
+    }
+    if (result.done || !result.question) {
+      startFollowUpPhase(askedRef.current);
+      return;
+    }
+    const nextAsked = [...askedRef.current, result.question];
+    setAskedQuestions(nextAsked);
+    const idx = nextAsked.length - 1;
+    setCurrentQIndex(idx);
+    showNextQuestion(idx);
+  }, [quizId, questionPool, setAskedQuestions, showNextQuestion, startFollowUpPhase]);
+
+  // 進入第一層：重做模式用固定單題；一般模式向後端適性引擎要第一題。
+  const startQuestionPhase = useCallback(() => {
+    setPhase('question');
+    if (isRetryMode) {
+      setAskedQuestions(questionPool);
+      setCurrentQIndex(0);
+      showNextQuestion(0);
+    } else {
+      serveNextQuestion();
+    }
+  }, [isRetryMode, questionPool, setAskedQuestions, showNextQuestion, serveNextQuestion]);
+
+  useEffect(() => {
+    if (phase !== 'intro') return;
+    // 重做模式：跳過冗長開場，直接進這一題。
+    if (isRetryMode) {
+      const t = setTimeout(startQuestionPhase, 400);
+      return () => clearTimeout(t);
+    }
+    if (introIdx >= INTRO_MESSAGES.length) {
+      const timer = setTimeout(startQuestionPhase, 500);
+      return () => clearTimeout(timer);
+    }
+    const delay = introIdx === 0 ? 600 : 1500;
+    const timer = setTimeout(() => {
+      setMessages((prev) => [
+        ...prev,
+        { ...INTRO_MESSAGES[introIdx], role: 'ai' },
+      ]);
+      setIntroIdx((i) => i + 1);
+    }, delay);
+    return () => clearTimeout(timer);
+  }, [phase, introIdx, startQuestionPhase, isRetryMode]);
+
+  const handleFollowUpFinal = useFollowUpFinalizer({
+    followUpIndex, isRetryMode, askedRef, answersRef, followUpResultsRef, saveFollowup,
+    finishQuiz, finishRetry, askFollowUpRound1, setFollowUpIndex, setIsThinking, setFollowUpEnabled,
+  });
 
   const handleFollowUpSend = async (overrideText) => {
     if (!followUpEnabled || !followUpCtx) return;
@@ -417,18 +304,17 @@ function StudentQuizScreen({ quizId }) {
   };
 
   const advanceAfterAnswer = (updatedAnswers) => {
-    const nextIdx = currentQIndex + 1;
-    if (nextIdx >= sortedQuestions.length) {
+    // 重做模式：只有單題,答完直接進追問；一般模式:交由後端適性引擎決定下一題。
+    if (isRetryMode) {
       startFollowUpPhase(updatedAnswers);
     } else {
-      setCurrentQIndex(nextIdx);
-      showNextQuestion(nextIdx);
+      serveNextQuestion();
     }
   };
 
   const handleSelectOption = (opt) => {
     if (!optionsEnabled) return;
-    const q = sortedQuestions[currentQIndex];
+    const q = askedRef.current[currentQIndex];
     setMessages((prev) => [
       ...prev,
       { id: `ans-${q.id}`, role: 'student', text: opt.content },
@@ -450,7 +336,7 @@ function StudentQuizScreen({ quizId }) {
   const handleSelectReason = (reasonOpt) => {
     if (!optionsEnabled || !pendingAnswer) return;
     setOptionsEnabled(false);
-    const q = sortedQuestions[currentQIndex];
+    const q = askedRef.current[currentQIndex];
     setMessages((prev) => [
       ...prev,
       { id: `reason-${q.id}`, role: 'student', text: reasonOpt.content },
@@ -461,8 +347,8 @@ function StudentQuizScreen({ quizId }) {
     advanceAfterAnswer(updatedAnswers);
   };
 
-  const currentQ = phase === 'question' ? sortedQuestions[currentQIndex] : null;
-  const followUpQuestion = phase === 'followUp' ? sortedQuestions[followUpIndex] : null;
+  const currentQ = phase === 'question' ? asked[currentQIndex] : null;
+  const followUpQuestion = phase === 'followUp' ? asked[followUpIndex] : null;
   const followUpSelectedOption = followUpCtx?.selectedOption ?? null;
 
   const isQuestionPhase = phase === 'question';
@@ -470,19 +356,20 @@ function StudentQuizScreen({ quizId }) {
 
   /* 進度條 0~100：分兩段顯示（第一階段 0~50%、第二階段 50~100%）
    * 「當前題」算成進行到一半（+0.5），避免在最後一題對話尚未結束時就顯示 100%；
-   * 唯有 phase === 'done' 才會真正到 100%。 */
+   * 唯有 phase === 'done' 才會真正到 100%。
+   * 第一階段動態選題總題數未定,分母用名目上限 maxQuestions；第二階段題數已定,用 asked.length。 */
   const progress = isQuestionPhase
-    ? Math.round(((currentQIndex + 0.5) / sortedQuestions.length) * 50)
+    ? Math.round(((currentQIndex + 0.5) / Math.max(maxQuestions, 1)) * 50)
     : isFollowUpPhase
-      ? 50 + Math.round(((followUpIndex + 0.5) / sortedQuestions.length) * 50)
+      ? 50 + Math.round(((followUpIndex + 0.5) / Math.max(asked.length, 1)) * 50)
       : phase === 'done' ? 100 : 0;
 
   const stepInfo = isRetryMode
     ? (isQuestionPhase ? '重新作答這一題' : isFollowUpPhase ? '重新聊聊這一題' : phase === 'done' ? '整理結果中⋯' : null)
     : isQuestionPhase
-      ? `第一階段・第 ${currentQIndex + 1}/${sortedQuestions.length} 題`
+      ? `第一階段・第 ${currentQIndex + 1} 題`
       : isFollowUpPhase
-        ? `第二階段・想法探索 ${followUpIndex + 1}/${sortedQuestions.length}`
+        ? `第二階段・想法探索 ${followUpIndex + 1}/${asked.length}`
         : phase === 'done' ? '整理結果中⋯' : null;
 
   return (

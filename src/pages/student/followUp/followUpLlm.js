@@ -161,7 +161,7 @@ function normalizeChips(raw) {
 
 function normalizeCauseIds(raw) {
   if (!Array.isArray(raw)) return [];
-  const valid = raw.filter((n) => Number.isInteger(n) && n >= 1 && n <= 8);
+  const valid = raw.filter((n) => Number.isInteger(n) && n >= 1 && n <= 9);
   return Array.from(new Set(valid)).slice(0, 2);
 }
 

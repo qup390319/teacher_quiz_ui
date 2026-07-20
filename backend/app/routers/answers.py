@@ -272,6 +272,7 @@ async def get_quiz_class_followups(
             reasoning_quality=fup.reasoning_quality,
             ai_summary=fup.ai_summary,
             cause_ids=fup.cause_ids,
+            error_type=fup.error_type,
             status_change=fup.status_change or {},
             conversation_log=fup.conversation_log or [],
         ))
@@ -513,6 +514,7 @@ async def list_diagnosis_logs(
             reasoning_quality=fup.reasoning_quality,
             ai_summary=fup.ai_summary,
             cause_ids=fup.cause_ids,
+            error_type=fup.error_type,
             status_change=fup.status_change or {},
             conversation_log=fup.conversation_log or [],
             answered_at=ans.answered_at,

@@ -215,6 +215,7 @@ class FollowupConversationRow(BaseModel):
     reasoning_quality: str = Field(serialization_alias="reasoningQuality")
     ai_summary: str | None = Field(serialization_alias="aiSummary")
     cause_ids: list[int] | None = Field(default=None, serialization_alias="causeIds")
+    error_type: str | None = Field(default=None, serialization_alias="errorType")
     status_change: dict[str, Any] = Field(serialization_alias="statusChange")
     conversation_log: list[dict[str, Any]] = Field(serialization_alias="conversationLog")
 
@@ -249,6 +250,7 @@ class DiagnosisLogRow(BaseModel):
     reasoning_quality: str = Field(serialization_alias="reasoningQuality")
     ai_summary: str | None = Field(serialization_alias="aiSummary")
     cause_ids: list[int] | None = Field(default=None, serialization_alias="causeIds")
+    error_type: str | None = Field(default=None, serialization_alias="errorType")
     status_change: dict[str, Any] = Field(serialization_alias="statusChange")
     conversation_log: list[dict[str, Any]] = Field(serialization_alias="conversationLog")
     answered_at: datetime = Field(serialization_alias="answeredAt")

@@ -1,0 +1,62 @@
+<svg width="680" height="620" viewBox="0 0 680 620" xmlns="http://www.w3.org/2000/svg">
+<style>
+  text{font-family:"Microsoft JhengHei","PingFang TC","Noto Sans CJK TC",sans-serif;}
+  .th{font-size:15px;font-weight:600;}
+  .ts{font-size:13px;font-weight:400;fill:#5F5E5A;}
+</style>
+<rect x="0" y="0" width="680" height="620" fill="#FFFFFF"/>
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+
+<!-- Bidirectional (navy) arrows -->
+<line x1="262" y1="125" x2="418" y2="125" stroke="#0C447C" stroke-width="2.5" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+<line x1="160" y1="202" x2="160" y2="328" stroke="#0C447C" stroke-width="2.5" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+<line x1="520" y1="202" x2="520" y2="328" stroke="#0C447C" stroke-width="2.5" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+<line x1="262" y1="405" x2="418" y2="405" stroke="#0C447C" stroke-width="2.5" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+
+<!-- Participation (green) arrows -->
+<line x1="232" y1="188" x2="268" y2="216" stroke="#3B6D11" stroke-width="2.5" marker-end="url(#arrow)"/>
+<line x1="448" y1="188" x2="412" y2="216" stroke="#3B6D11" stroke-width="2.5" marker-end="url(#arrow)"/>
+<line x1="232" y1="342" x2="268" y2="314" stroke="#3B6D11" stroke-width="2.5" marker-end="url(#arrow)"/>
+<line x1="448" y1="342" x2="412" y2="314" stroke="#3B6D11" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+<!-- 教師 (blue) -->
+<rect x="60" y="50" width="200" height="150" rx="14" fill="#E6F1FB" stroke="#185FA5" stroke-width="1.5"/>
+<circle cx="160" cy="100" r="20" fill="#185FA5"/>
+<path d="M132 160 C132 124 188 124 188 160 Z" fill="#185FA5"/>
+<text class="th" x="160" y="185" text-anchor="middle" fill="#0C447C">教學現場教師</text>
+
+<!-- 學生 (green) -->
+<rect x="420" y="50" width="200" height="150" rx="14" fill="#EAF3DE" stroke="#3B6D11" stroke-width="1.5"/>
+<circle cx="520" cy="100" r="20" fill="#3B6D11"/>
+<path d="M492 160 C492 124 548 124 548 160 Z" fill="#3B6D11"/>
+<text class="th" x="520" y="185" text-anchor="middle" fill="#27500A">教學現場學生</text>
+
+<!-- 研究者 (purple) -->
+<rect x="60" y="330" width="200" height="150" rx="14" fill="#EEEDFE" stroke="#534AB7" stroke-width="1.5"/>
+<circle cx="160" cy="380" r="20" fill="#534AB7"/>
+<path d="M132 440 C132 404 188 404 188 440 Z" fill="#534AB7"/>
+<text class="th" x="160" y="465" text-anchor="middle" fill="#3C3489">數位教學研究者</text>
+
+<!-- 開發人員 (amber) -->
+<rect x="420" y="330" width="200" height="150" rx="14" fill="#FAEEDA" stroke="#854F0B" stroke-width="1.5"/>
+<circle cx="520" cy="380" r="20" fill="#854F0B"/>
+<path d="M492 440 C492 404 548 404 548 440 Z" fill="#854F0B"/>
+<text class="th" x="520" y="465" text-anchor="middle" fill="#633806">系統開發人員</text>
+
+<!-- Centre platform -->
+<rect x="248" y="212" width="184" height="106" rx="14" fill="#0F6E56" stroke="#04342C" stroke-width="1.5"/>
+<text x="340" y="258" text-anchor="middle" fill="#FFFFFF" font-family="'Microsoft JhengHei',sans-serif" font-size="15" font-weight="600">SciLens</text>
+<text x="340" y="284" text-anchor="middle" fill="#FFFFFF" font-family="'Microsoft JhengHei',sans-serif" font-size="15" font-weight="600">迷思概念診斷平台</text>
+
+<!-- Legend -->
+<rect x="180" y="508" width="320" height="92" rx="12" fill="#FAFAF7" stroke="#0000001F" stroke-width="1"/>
+<text class="th" x="340" y="532" text-anchor="middle" fill="#1A1A18">圖例</text>
+<line x1="208" y1="555" x2="262" y2="555" stroke="#0C447C" stroke-width="2.5" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+<text class="ts" x="278" y="559">討論需求（雙向溝通）</text>
+<line x1="208" y1="582" x2="262" y2="582" stroke="#3B6D11" stroke-width="2.5" marker-end="url(#arrow)"/>
+<text class="ts" x="278" y="586">參與討論（單向投入）</text>
+</svg>
